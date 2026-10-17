@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZIP - 자취생 생활 도우미</title>
+  <link rel="icon" type="image/png" href="../../images/app-icon.png">
+  <!-- 순서 중요: 공통(base) → 레이아웃 → 화면별. 뒤에 오는 파일이 앞의 같은 우선순위 규칙을 덮어쓴다. -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/views/dashboard.css">
+  <link rel="stylesheet" href="css/views/calendar.css">
+  <link rel="stylesheet" href="css/views/noti.css">
+  <link rel="stylesheet" href="css/views/ai.css">
+  <link rel="stylesheet" href="css/views/map.css">
+  <link rel="stylesheet" href="css/views/community.css">
+  <link rel="stylesheet" href="css/views/life.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+
+<body data-view="home">
+  <div class="app">
+
+    <!-- 왼쪽 메뉴 (모바일에서는 하단 탭바로 바뀜) -->
+    <nav class="sidebar">
+      <div class="logo"><img src="../../images/app-icon.png" alt="ZIP"></div>
+      <a class="nav-item active" href="#" data-view="home" title="홈">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" />
+        </svg>
+        <span class="nav-label">홈</span>
+      </a>
+      <button class="nav-item" type="button" data-action="photo" title="사진 찍기"
+        aria-label="사진 찍기 또는 선택하기">
+        <svg viewBox="0 0 24 24">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+          <circle cx="12" cy="13" r="4" />
+        </svg>
+        <span class="nav-label">사진</span>
+      </button>
+      <a class="nav-item" href="#" data-view="ai" title="AI 대화">
+        <svg viewBox="0 0 24 24">
+          <path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z" />
+        </svg>
+        <span class="nav-label">AI</span>
+      </a>
+      <a class="nav-item" href="#" data-view="map" title="동네 · 지도">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 21s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z" />
+          <circle cx="12" cy="9" r="2.5" />
+        </svg>
+        <span class="nav-label">동네</span>
+      </a>
+      <a class="nav-item" href="#" data-view="community" title="커뮤니티">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" />
+        </svg>
+        <span class="nav-label">커뮤니티</span>
+      </a>
+      <a class="nav-item" href="#" data-view="todo" title="마이페이지 (할 일 · 가계부 · 알림 · 내 정보)">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" /></svg>
+        <span class="dot" id="navDot"></span>
+        <span class="nav-label">마이페이지</span>
+      </a>
+    </nav>
+
+    <!-- 가운데 영역 -->
+    <main class="main">
+      <header class="topbar">
+        <div class="mob-icons">
+          <a class="mob-icon" href="#" data-view="noti" aria-label="알림" title="알림">
+            <svg viewBox="0 0 24 24">
+              <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
+            </svg>
+            <span class="dot" id="bellDot" hidden></span>
+          </a>
+          <a class="mob-icon" href="#" data-view="settings" aria-label="내 정보 · 설정" title="내 정보 · 설정"><span
+              class="avatar-sm" id="pAvatar2">지</span></a>
+          <button class="mob-icon menu-btn" type="button" id="menuBtn" aria-label="전체 메뉴 열기" aria-haspopup="true" aria-expanded="false">
+            <svg class="ico-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+            <svg class="ico-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+        <div>
+          <p class="hello">좋은 아침이에요</p>
+          <h1 id="todayTitle">오늘은 날짜 확인 중입니다 지기님</h1>
+        </div>
+        <div class="actions">
+          <form class="search" id="searchForm" role="search">
+            <svg viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.3-4.3" />
+            </svg>
+            <input type="search" id="searchInput" placeholder="일정 검색" aria-label="검색">
+          </form>
+          <button class="btn-ghost" type="button" id="btnAdd" title="새 일정">+</button>
+        </div>
+      </header>
+
+      <!-- ===== 홈 ===== -->
+      <div id="view-home">
+        <section class="home-photo card" aria-labelledby="homePhotoTitle">
+          <div class="home-photo-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-3h4l2 3h3a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+          </div>
+          <div class="home-photo-copy">
+            <h2 id="homePhotoTitle">사진으로 생활 고민을 물어보세요</h2>
+            <p>사진을 첨부하고 도움받을 분야를 골라보세요.</p>
+            <small>현재는 데모로, 사진 내용을 직접 분석하지 않습니다.</small>
+          </div>
+          <button class="btn-primary home-photo-button" type="button" data-action="photo">
+            <span class="photo-desktop-label">사진 선택하고 상담 시작</span>
+            <span class="photo-mobile-label">사진 찍고 상담 시작</span>
+          </button>
+        </section>
+        <section class="stat-grid">
+          <article class="stat teal" data-go="todo" tabindex="0" role="button" aria-label="이번 주 할 일 자세히 보기">
+            <div class="label">이번 주 할 일</div>
+            <div class="value"><span id="todoLeft">5</span><small>개 남음</small></div>
+            <div class="bar"><i id="todoBar" style="width:55%"></i></div>
+            <div class="sub" id="todoSub">전체 11개 중 6개 완료</div>
+          </article>
+          <article class="stat orange" data-go="bills" tabindex="0" role="button" aria-label="이번 달 공과금 자세히 보기">
+            <div class="label">이번 달 공과금</div>
+            <div class="value"><span id="billPct">68</span><small>% 납부</small></div>
+            <div class="bar"><i id="billBar" style="width:68%"></i></div>
+            <div class="sub" id="billSub">가스 · 전기 납부 완료, 수도 남음</div>
+          </article>
+          <article class="stat pink" data-go="trash" tabindex="0" role="button" aria-label="쓰레기 배출 일정 보기">
+            <div class="label">쓰레기 배출</div>
+            <div class="value" id="trashToday" style="font-size:20px;line-height:1.3">오늘은 일반쓰레기</div>
+            <div class="sub" id="trashSub">저녁 6시 ~ 자정, 종량제 봉투 사용</div>
+          </article>
+          <article class="stat purple" data-go="rent" tabindex="0" role="button" aria-label="월세 납부 정보 보기">
+            <div class="label">월세 납부일</div>
+            <div class="value" id="rentDday">D-5</div>
+            <div class="sub" id="rentSub">매월 15일 · 55만원 · 계좌이체</div>
+          </article>
+        </section>
+
+        <section class="row">
+          <article class="card">
+            <div class="card-head">
+              <h2>주간 식비 지출</h2>
+              <select class="select">
+                <option>이번 주</option>
+                <option>지난 주</option>
+              </select>
+            </div>
+            <div class="chart">
+              <div class="col">
+                <div class="b" style="height:30%"></div><span>월</span>
+              </div>
+              <div class="col">
+                <div class="b" style="height:55%"></div><span>화</span>
+              </div>
+              <div class="col">
+                <div class="b" style="height:38%"></div><span>수</span>
+              </div>
+              <div class="col">
+                <div class="b" style="height:60%"></div><span>목</span>
+              </div>
+              <div class="col hl">
+                <div class="tip">1만 2천원</div>
+                <div class="b" style="height:85%"></div><span>금</span>
+              </div>
+              <div class="col">
+                <div class="b" style="height:58%"></div><span>토</span>
+              </div>
+              <div class="col">
+                <div class="b" style="height:28%"></div><span>일</span>
+              </div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>이번 달 지출 구성</h2>
+              <select class="select">
+                <option>이번 달</option>
+                <option>지난 달</option>
+              </select>
+            </div>
+            <div class="donut-wrap">
+              <div class="donut">
+                <div class="center"><small>총 지출</small><b>48만원</b></div>
+              </div>
+              <ul class="legend">
+                <li style="--c:var(--teal)">식비 <span>30%</span></li>
+                <li style="--c:var(--orange)">공과금 <span>32%</span></li>
+                <li style="--c:var(--pink)">생활용품 <span>20%</span></li>
+                <li style="--c:var(--purple)">기타 <span>18%</span></li>
+              </ul>
+            </div>
+          </article>
+        </section>
+
+        <section class="row">
+          <article class="card">
+            <div class="card-head">
+              <h2>자취 꿀팁 게시글</h2>
+              <a class="link" href="#" data-go="community">더 보기</a>
+            </div>
+            <div class="recipe" data-go="community" data-tip-id="1001">
+              <div class="thumb" style="background:#e9f7f2">💡</div>
+              <div class="info"><b>작은 방을 넓어 보이게 정리하는 법</b><small>수납장 위 3개만 남기고, 빛 반사되는 소품은 줄이기</small></div>
+              <span class="tag">꿀팁</span>
+            </div>
+            <div class="recipe" data-go="community" data-tip-id="1002">
+              <div class="thumb" style="background:#e3efff">🧴</div>
+              <div class="info"><b>세제는 이렇게 놓으면 관리가 편해요</b><small>설거지용·청소용 분리 보관, 세면대 아래 행거 활용</small></div>
+              <span class="tag warn">실전</span>
+            </div>
+            <div class="recipe" data-go="community" data-tip-id="1003">
+              <div class="thumb" style="background:#f3efff">🥗</div>
+              <div class="info"><b>1인 가구 냉장고 관리 루틴</b><small>채소는 물기 제거 후 반찬통, 소분된 간식은 눈높이 자석통에</small></div>
+              <span class="tag">생활</span>
+            </div>
+          </article>
+          <article class="card ai-card" id="homeAiCard">
+            <div class="card-head">
+              <h2>AI와 대화</h2>
+              <button type="button" class="link link-btn" id="homeAiOpen">대화 열기</button>
+            </div>
+            <div class="ai-bubble"><span class="ai-face" aria-hidden="true">🤖</span><p>안녕하세요! 자취하면서 궁금한 걸 편하게 물어보세요.<br>분리배출, 요리, 곰팡이, 보증금까지 도와드려요.</p></div>
+            <div class="ai-chips">
+              <button type="button" class="ai-chip" data-chat-topic="trash">♻️ 이건 어떻게 버려요?</button>
+              <button type="button" class="ai-chip" data-chat-topic="cook">🍳 냉장고 요리</button>
+              <button type="button" class="ai-chip" data-chat-topic="clean">🧹 청소·곰팡이</button>
+              <button type="button" class="ai-chip" data-chat-topic="contract">📄 계약·보증금</button>
+              <button type="button" class="ai-chip" data-chat-topic="bill">💡 공과금·생활비</button>
+            </div>
+            <form class="ai-ask" id="homeAskForm">
+              <input type="text" id="homeAskInput" maxlength="80" placeholder="무엇이든 물어보세요" aria-label="AI에게 질문하기">
+              <button class="btn-primary" type="submit">물어보기</button>
+            </form>
+          </article>
+        </section>
+      </div>
+
+      <!-- ===== 마이페이지 머리말: 할 일 · 일정 · 가계부 · 알림 · 내 정보 (이 중 하나를 보는 동안만 표시) ===== -->
+      <div class="my-head" id="myHead">
+        <h2 class="page-title">마이페이지 <small>할 일 · 일정 · 가계부 · 알림 · 내 정보</small></h2>
+        <div class="my-tabs" id="myTabs" role="tablist" aria-label="마이페이지">
+          <button type="button" class="my-tab" role="tab" data-go="todo">할 일</button>
+          <button type="button" class="my-tab" role="tab" data-go="calendar">일정</button>
+          <button type="button" class="my-tab" role="tab" data-go="income">가계부</button>
+          <button type="button" class="my-tab" role="tab" data-go="noti">알림 <span class="dot-badge" id="myNotiDot" hidden></span></button>
+          <button type="button" class="my-tab" role="tab" data-go="settings">내 정보</button>
+        </div>
+      </div>
+
+      <!-- ===== 할 일 탭: 이번 주 할 일 | 쓰레기 배출 (할 일 메뉴 안에서 두 화면을 오감) ===== -->
+      <div class="exp-tabs" id="taskTabs" role="tablist" aria-label="할 일">
+        <button type="button" class="exp-tab" role="tab" data-go="todo">이번 주 할 일</button>
+        <button type="button" class="exp-tab" role="tab" data-go="trash">쓰레기 배출</button>
+      </div>
+
+      <!-- ===== 이번 주 할 일 ===== -->
+      <div id="view-todo" hidden>
+        <button type="button" class="back" data-go="home">‹ 홈으로</button>
+        <article class="card narrow">
+          <div class="card-head">
+            <h2>이번 주 할 일 <span class="todo-count" id="todoCount2"></span></h2>
+            <button type="button" class="btn-line" id="todoClear">완료 항목 지우기</button>
+          </div>
+          <div class="page-bar"><i id="todoBar2"></i></div>
+          <p class="page-sub" id="todoSub2"></p>
+          <div id="todoList2"></div>
+          <form class="todo-form" id="todoForm2">
+            <input type="text" id="todoInput2" maxlength="40" placeholder="할 일 추가" aria-label="할 일 추가" required>
+            <button class="btn-primary" type="submit">추가</button>
+          </form>
+        </article>
+      </div>
+
+      <!-- ===== 가계부 탭: 수입 | 지출 → (지출이면) 고정 지출 | 기타 지출 ===== -->
+      <div class="exp-tabs" id="expTabs" role="tablist" aria-label="가계부">
+        <button type="button" class="exp-tab" role="tab" data-go="income">수입</button>
+        <button type="button" class="exp-tab" role="tab" data-go="bills">지출</button>
+      </div>
+      <div class="exp-sub" id="expSub" role="tablist" aria-label="지출 종류">
+        <button type="button" class="exp-subtab" role="tab" data-go="bills">고정 지출 <small>월세·공과금</small></button>
+        <button type="button" class="exp-subtab" role="tab" data-go="spend">기타 지출 <small>식비·생활용품 등</small></button>
+      </div>
+
+      <!-- ===== 고정 지출 머리말 (월세·공과금을 한 화면에 합쳐 볼 때만 표시) ===== -->
+      <div class="fixed-head" id="fixedHead">
+        <button type="button" class="back" data-go="home">‹ 홈으로</button>
+        <h2 class="page-title">고정 지출 <small>월세 + 공과금</small></h2>
+        <div class="fixed-sum">
+          <article class="card total"><small>이번 달 고정 지출 합계</small><b id="fixTotal">0원</b><span id="fixSub"></span></article>
+          <article class="card"><small>월세</small><b id="fixRent">0원</b><span id="fixRentSub"></span></article>
+          <article class="card"><small>공과금</small><b id="fixBills">0원</b><span id="fixBillsSub"></span></article>
+        </div>
+      </div>
+
+      <!-- ===== 월세 ===== -->
+      <div id="view-rent" hidden>
+        <button type="button" class="back" data-go="home">‹ 홈으로</button>
+        <div class="cal-layout">
+          <article class="card">
+            <div class="card-head">
+              <h2>다음 월세 납부</h2>
+            </div>
+            <div class="rent-hero">
+              <b id="rentBig">D-5</b>
+              <span id="rentDate"></span>
+            </div>
+            <div class="info-rows">
+              <div><small>금액</small><b id="rentAmt"></b></div>
+              <div><small>납부일</small><b id="rentDayTxt"></b></div>
+              <div><small>납부 방법</small><b>계좌이체</b></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+              <button type="button" class="btn-primary" id="rentCal">캘린더에 일정 추가</button>
+              <a class="btn-line" href="#" data-go="settings" style="text-decoration:none;display:inline-block">금액·날짜
+                수정</a>
+            </div>
+            <div class="saved" id="rentMsg"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>납부 내역 (최근 6개월)</h2>
+            </div>
+            <div id="rentHistory"></div>
+          </article>
+        </div>
+      </div>
+
+      <!-- ===== 공과금 ===== -->
+      <div id="view-bills" hidden>
+        <button type="button" class="back" data-go="home">‹ 홈으로</button>
+        <div class="cal-layout">
+          <article class="card">
+            <div class="card-head">
+              <h2 id="billTitle">이번 달 공과금</h2>
+            </div>
+            <div class="sum-row">
+              <div><small>전체</small><b id="billTotal">0원</b></div>
+              <div><small>납부</small><b id="billPaid">0원</b></div>
+              <div><small>남음</small><b id="billLeft">0원</b></div>
+            </div>
+            <div class="page-bar"><i id="billBar2"></i></div>
+            <div id="billList"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>항목 추가</h2>
+            </div>
+            <form class="form" id="billForm">
+              <label>이름 <input type="text" id="billName" maxlength="20" placeholder="예) 인터넷, 관리비" required></label>
+              <label>금액 (원) <input type="number" id="billAmount" min="0" max="9999999" required></label>
+              <button class="btn-primary" type="submit">추가</button>
+            </form>
+            <p class="map-note">납부 체크는 이 브라우저에만 저장돼요. 다음 달이 되면 "새 달 시작"으로 체크를 풀 수 있어요.</p>
+            <button type="button" class="btn-line" id="billReset" style="margin-top:10px">새 달 시작 (체크 모두 풀기)</button>
+          </article>
+        </div>
+      </div>
+
+      <!-- ===== 수입 (무엇으로 얼마 벌었는지 직접 기록) ===== -->
+      <div id="view-income" hidden>
+        <button type="button" class="back" data-go="home">‹ 홈으로</button>
+        <h2 class="page-title">수입 <small>월급 · 아르바이트 · 용돈 등 무엇으로 얼마 벌었는지 기록</small></h2>
+        <div class="cal-layout">
+          <article class="card">
+            <div class="card-head">
+              <h2 id="incomeTitle">이번 달 수입</h2>
+              <select class="select" id="incomeMonth" aria-label="월 선택"></select>
+            </div>
+            <div class="sum-row">
+              <div><small>합계</small><b id="incomeTotal">0원</b></div>
+              <div><small>기록</small><b id="incomeCount">0건</b></div>
+              <div><small>가장 큰 수입</small><b id="incomeTop">-</b></div>
+            </div>
+            <div class="spend-cats" id="incomeCats"></div>
+            <div id="incomeList"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>수입 기록하기</h2>
+            </div>
+            <form class="form" id="incomeForm">
+              <div class="two">
+                <label>날짜 <input type="date" id="incomeDate" required></label>
+                <label>수입 종류 <select id="incomeCat"></select></label>
+              </div>
+              <label>금액 (원) <input type="number" id="incomeAmount" min="1" max="999999999" required></label>
+              <label>메모 (선택) <input type="text" id="incomeMemo" maxlength="30" placeholder="예) 주말 카페 알바, 중고거래"></label>
+              <button class="btn-primary" type="submit">기록하기</button>
+            </form>
+            <p class="map-note">기록은 이 브라우저에만 저장돼요. 쓴 돈은 "지출" 탭에 있어요.</p>
+          </article>
+        </div>
+      </div>
+
+      <!-- ===== 기타 지출 (식비·생활용품 등 직접 기록) ===== -->
+      <div id="view-spend" hidden>
+        <button type="button" class="back" data-go="home">‹ 홈으로</button>
+        <h2 class="page-title">기타 지출 <small>식비 · 생활용품 · 기타를 쓴 날짜와 금액으로 기록</small></h2>
+        <div class="cal-layout">
+          <article class="card">
+            <div class="card-head">
+              <h2 id="spendTitle">이번 달 기타 지출</h2>
+              <select class="select" id="spendMonth" aria-label="월 선택"></select>
+            </div>
+            <div class="sum-row">
+              <div><small>합계</small><b id="spendTotal">0원</b></div>
+              <div><small>기록</small><b id="spendCount">0건</b></div>
+              <div><small>가장 많이 쓴 곳</small><b id="spendTop">-</b></div>
+            </div>
+            <div class="spend-cats" id="spendCats"></div>
+            <div id="spendList"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>지출 기록하기</h2>
+            </div>
+            <form class="form" id="spendForm">
+              <div class="two">
+                <label>날짜 <input type="date" id="spendDate" required></label>
+                <label>분류 <select id="spendCat"></select></label>
+              </div>
+              <label>금액 (원) <input type="number" id="spendAmount" min="1" max="99999999" required></label>
+              <label>메모 (선택) <input type="text" id="spendMemo" maxlength="30" placeholder="예) 점심 김밥, 세제"></label>
+              <button class="btn-primary" type="submit">기록하기</button>
+            </form>
+            <p class="map-note">기록은 이 브라우저에만 저장돼요. 월세·공과금은 "고정지출"에 따로 있어요.</p>
+          </article>
+        </div>
+      </div>
+
+      <!-- ===== 쓰레기 배출 ===== -->
+      <div id="view-trash" hidden>
+        <button type="button" class="back" data-go="home">‹ 홈으로</button>
+        <div class="cal-layout">
+          <article class="card">
+            <div class="card-head">
+              <h2>요일별 배출 일정</h2><span class="tag purple">예시 데이터</span>
+            </div>
+            <div id="trashWeek"></div>
+            <p class="map-note">실제 배출 요일과 시간은 지역마다 달라요. 사는 동네 구청 안내를 확인하세요.</p>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>오늘 배출</h2>
+            </div>
+            <div class="today-box" id="trashBox"></div>
+            <div class="card-head" style="margin-top:18px">
+              <h2>분리배출 기본</h2>
+            </div>
+            <ul class="tip-list">
+              <li>플라스틱·캔·유리병은 비우고 헹군 뒤 라벨 제거</li>
+              <li>종이는 테이프·스테이플러 제거 후 펼쳐서 묶기</li>
+              <li>음식물은 종량제(음식물) 봉투나 전용 용기 사용</li>
+              <li>기름기 남은 배달 용기는 일반쓰레기</li>
+            </ul>
+            <a class="btn-line" href="#" data-go="ai" data-topic="trash"
+              style="display:inline-block;margin-top:10px;text-decoration:none">이건 어떻게 버려요? AI에게 묻기</a>
+          </article>
+        </div>
+      </div>
+
+      <!-- ===== 캘린더 ===== -->
+      <div id="view-calendar" hidden>
+        <div class="cal-layout">
+          <div class="cal-col">
+            <article class="card">
+              <div class="card-head">
+                <h2 id="calTitle">캘린더</h2>
+                <div class="cal-nav">
+                  <button type="button" id="calPrev" aria-label="이전 달">‹</button>
+                  <button type="button" id="calToday" class="today-btn">오늘</button>
+                  <button type="button" id="calNext" aria-label="다음 달">›</button>
+                </div>
+              </div>
+              <div class="cal-grid" id="calGrid"></div>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <h2>알림</h2>
+              </div>
+              <div id="notiList"></div>
+            </article>
+          </div>
+          <div class="cal-col">
+            <article class="card">
+              <div class="card-head">
+                <h2>일정 기록하기</h2>
+              </div>
+              <form class="form" id="evForm">
+                <label>일정 제목
+                  <input type="text" id="evTitle" maxlength="60" placeholder="예) 월세 이체, 집주인 통화" required>
+                </label>
+                <div class="two">
+                  <label>날짜 <input type="date" id="evDate" required></label>
+                  <label>시간 (선택) <input type="time" id="evTime"></label>
+                </div>
+                <button class="btn-primary" type="submit">일정 추가</button>
+              </form>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <h2 id="listTitle">일정</h2>
+                <div class="seg">
+                  <button type="button" id="modeDay" class="on">선택한 날</button>
+                  <button type="button" id="modeAll">전체</button>
+                </div>
+              </div>
+              <ul class="ev-list" id="evList"></ul>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== AI 도우미 (분야 선택 → 질문 초안 → 답변) ===== -->
+      <div id="view-ai" hidden>
+        <div class="cal-layout">
+          <article class="card">
+            <div class="card-head">
+              <h2>어떤 도움이 필요하세요?</h2>
+              <span class="tag purple">데모 응답</span>
+            </div>
+            <p class="ai-help">분야를 고르면 좋은 답변을 받을 수 있는 질문 초안을 만들어 드려요.</p>
+            <div class="photo-box" id="photoBox" hidden>
+              <img id="photoImg" alt="첨부한 사진">
+              <div class="photo-info">
+                <b>사진이 첨부됐어요</b>
+                <small>도움받을 분야를 골라주세요.</small>
+              </div>
+              <button type="button" class="btn-line" id="photoRemove">사진 빼기</button>
+            </div>
+            <div class="topic-grid" id="topicGrid"></div>
+          </article>
+          <article class="card" id="aiWork">
+            <div class="card-head">
+              <h2 id="draftTitle">질문 초안</h2>
+              <button type="button" class="btn-line" id="draftBack" hidden>다른 분야</button>
+            </div>
+            <div class="empty" id="draftEmpty">왼쪽에서 분야를 골라주세요.</div>
+            <form class="form" id="draftForm" hidden>
+              <div class="form" id="draftFields"></div>
+              <label>질문 초안 (직접 고쳐도 돼요)
+                <textarea id="draftText" rows="8"></textarea>
+              </label>
+              <button class="btn-primary" type="submit">AI에게 보내기</button>
+            </form>
+            <div class="answer" id="aiAnswer" hidden></div>
+            <div class="answer-actions" id="answerActions" hidden></div>
+          </article>
+        </div>
+      </div>
+
+      <!-- ===== 지도 ===== -->
+      <div id="view-map" hidden>
+        <div class="sub-tabs seg">
+          <button type="button" data-go="map">지도</button>
+          <button type="button" data-go="community">이야기</button>
+        </div>
+        <div class="cal-layout">
+          <article class="card">
+            <div class="card-head">
+              <h2>우리 동네 지도</h2>
+              <a class="link" id="mapBig" href="#" target="_blank" rel="noopener">큰 지도로 보기</a>
+            </div>
+            <iframe class="map-frame" id="mapFrame" title="동네 지도" loading="lazy"></iframe>
+            <p class="map-note">장소 목록은 예시 데이터입니다. 지도는 OpenStreetMap을 사용하며 인터넷 연결이 필요해요.</p>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>주변 장소</h2>
+            </div>
+            <div class="chips" id="mapChips"></div>
+            <div id="placeList"></div>
+          </article>
+        </div>
+      </div>
+
+      <!-- ===== 알림 ===== -->
+      <div id="view-noti" hidden>
+        <article class="card">
+          <div class="card-head">
+            <h2>알림 <span id="notiCount" class="tag warn" hidden></span></h2>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <div class="seg">
+                <button type="button" id="nAll" class="on">전체</button>
+                <button type="button" id="nUnread">안 읽음</button>
+              </div>
+              <button type="button" class="btn-line" id="nReadAll">모두 읽음</button>
+            </div>
+          </div>
+          <div class="notice" id="notiOffNotice" hidden>알림이 꺼져 있어요. 마이페이지의 "내 정보" 탭에서 켤 수 있어요.</div>
+          <div id="notiCenter"></div>
+        </article>
+      </div>
+
+      <!-- ===== 커뮤니티 ===== -->
+      <div id="view-community" hidden>
+        <div class="sub-tabs seg">
+          <button type="button" data-go="map">지도</button>
+          <button type="button" data-go="community">이야기</button>
+        </div>
+        <div class="cal-layout">
+          <article class="card">
+            <div class="card-head">
+              <h2 id="commTitle">우리 동네 이야기</h2>
+              <div class="seg" id="scopeSeg">
+                <button type="button" data-scope="here" class="on">우리 동네</button>
+                <button type="button" data-scope="near">주변 동네</button>
+                <button type="button" data-scope="all">전체</button>
+              </div>
+            </div>
+            <p class="scope-note" id="scopeNote"></p>
+            <div class="chips" id="catChips"></div>
+            <div id="postList"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h2>글쓰기</h2><span class="loc" id="postWhere"></span>
+            </div>
+            <form class="form" id="postForm">
+              <label>분류
+                <select id="postCat">
+                  <option>자유</option>
+                  <option>꿀팁</option>
+                  <option>질문</option>
+                  <option>동네</option>
+                </select>
+              </label>
+              <label>제목 <input type="text" id="postTitle" maxlength="60" required></label>
+              <label>내용 <textarea id="postBody" maxlength="500" required></textarea></label>
+              <button class="btn-primary" type="submit">올리기</button>
+            </form>
+          </article>
+        </div>
+      </div>
+
+      <!-- ===== 설정 ===== -->
+      <div id="view-settings" hidden>
+        <article class="card narrow">
+          <div class="card-head">
+            <h2>내 정보 · 설정</h2>
+          </div>
+          <form class="form" id="setForm">
+            <label>이름(닉네임) <input type="text" id="setName" maxlength="12" required></label>
+            <label>우리 동네 <input type="text" id="setRegion" maxlength="30"></label>
+            <div class="two">
+              <label>월세 납부일 (매월) <input type="number" id="setRentDay" min="1" max="31" required></label>
+              <label>월세 (만원) <input type="number" id="setRent" min="0" max="9999" required></label>
+            </div>
+            <label class="check"><input type="checkbox" id="setNoti"> 알림 받기</label>
+            <button class="btn-primary" type="submit">저장</button>
+            <div class="saved" id="setSaved"></div>
+          </form>
+          <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:10px">일정, 알림 읽음 상태, 커뮤니티 글, 설정을 이 브라우저에서 모두 지웁니다.
+          </p>
+          <button type="button" class="btn-danger" id="btnReset">모든 데이터 초기화</button>
+          <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:10px">회원 탈퇴를 하면 이 기기에 저장된 모든 정보가 삭제되고, 처음 화면으로 돌아가요.</p>
+          <button type="button" class="btn-danger" id="btnWithdraw">회원 탈퇴</button>
+        </article>
+      </div>
+    </main>
+
+    <!-- 오른쪽 패널 -->
+    <aside class="panel">
+      <div class="profile">
+        <div class="avatar" id="pAvatar">지</div>
+        <div><b id="pName">지기</b><small id="pRegion">📍 서울 마포구</small></div>
+        <button type="button" class="logout-btn" id="btnLogout">로그아웃</button>
+      </div>
+      <div class="mini-stats">
+        <div><b id="pRent">55만</b><small>월세</small></div>
+        <div><b>8개월</b><small>거주</small></div>
+        <div><b>14개월</b><small>계약 남음</small></div>
+      </div>
+      <section class="panel-todo">
+        <h3>이번 주 할 일 <span class="todo-count" id="todoCount"></span></h3>
+        <div id="todoList"></div>
+        <form class="todo-form" id="todoForm">
+          <input type="text" id="todoInput" maxlength="40" placeholder="할 일 추가" aria-label="할 일 추가" required>
+          <button class="btn-primary" type="submit">추가</button>
+        </form>
+      </section>
+      <section class="panel-upcoming">
+        <h3>다가오는 알림</h3>
+        <div class="sched">
+          <div class="ico" id="pTrashIco">🗑️</div>
+          <div class="t"><b id="pTrashT">일반쓰레기 배출</b><small id="pTrashS">오늘 저녁 6시 이후</small></div>
+          <time>오늘</time>
+        </div>
+        <div class="sched">
+          <div class="ico">💸</div>
+          <div class="t"><b>월세 납부</b><small id="pRentSub">55만원 · 이체</small></div>
+          <time id="pRentTime">10/15</time>
+        </div>
+        <div class="sched">
+          <div class="ico">♻️</div>
+          <div class="t"><b>재활용 배출</b><small id="pRecyS">플라스틱 · 캔 · 종이</small></div>
+          <time id="pRecyTime">이번 주</time>
+        </div>
+      </section>
+    </aside>
+
+  </div>
+
+  <button class="ai-fab" type="button" data-go="ai" aria-label="AI 도우미 열기" title="AI 도우미"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z" /><text x="12" y="15" text-anchor="middle">AI</text></svg></button>
+
+  <!-- AI와 대화 모달: 홈의 "AI와 대화" 카드에서 열림. 대화는 이 브라우저에 저장돼서 다시 열면 이어짐 -->
+  <div class="chat-modal" id="chatModal" hidden>
+    <div class="chat-backdrop" id="chatBackdrop"></div>
+    <section class="chat-window" role="dialog" aria-modal="true" aria-labelledby="chatTitle">
+      <header class="chat-head">
+        <span class="ai-face" aria-hidden="true">🤖</span>
+        <div class="grow"><b id="chatTitle">AI와 대화</b><small>데모 버전이라 정해진 주제만 답해요</small></div>
+        <button type="button" class="chat-new" id="chatNew">새 대화</button>
+        <button type="button" class="chat-close" id="chatClose" aria-label="닫기">×</button>
+      </header>
+      <div class="chat-body" id="chatBody" aria-live="polite"></div>
+      <div class="chat-chips">
+        <button type="button" class="ai-chip" data-chat-topic="trash">♻️ 분리배출</button>
+        <button type="button" class="ai-chip" data-chat-topic="cook">🍳 냉장고 요리</button>
+        <button type="button" class="ai-chip" data-chat-topic="clean">🧹 청소·곰팡이</button>
+        <button type="button" class="ai-chip" data-chat-topic="contract">📄 계약·보증금</button>
+        <button type="button" class="ai-chip" data-chat-topic="bill">💡 공과금·생활비</button>
+      </div>
+      <form class="chat-form" id="chatForm">
+        <input type="text" id="chatInput" maxlength="80" placeholder="궁금한 걸 입력하세요" aria-label="AI에게 보낼 메시지" autocomplete="off">
+        <button type="submit" class="btn-primary">보내기</button>
+      </form>
+    </section>
+  </div>
+
+  <!-- 회원 탈퇴 확인 창: 동의에 체크해야 "탈퇴하기"가 눌림 -->
+  <div class="confirm-modal" id="confirmModal" hidden>
+    <div class="confirm-backdrop" id="confirmBackdrop"></div>
+    <section class="confirm-box" id="confirmBox" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText">
+      <h3 id="confirmTitle">정말 탈퇴할까요?</h3>
+      <p id="confirmText"></p>
+      <label class="confirm-check" id="confirmCheckWrap"><input type="checkbox" id="confirmCheck"> 위 내용을 확인했고, 탈퇴에 동의해요</label>
+      <div class="confirm-actions">
+        <button type="button" class="btn-line" id="confirmCancel">취소</button>
+        <button type="button" class="btn-danger solid" id="confirmOk" disabled>탈퇴하기</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="menu-backdrop" id="menuBackdrop" hidden></div>
+  <aside class="menu-panel" id="menuPanel" hidden aria-label="전체 메뉴">
+    <div class="menu-head"><img class="menu-logo" src="../../images/logo-zip.png" alt="ZIP"><b>전체 메뉴</b><button type="button" id="menuClose" aria-label="메뉴 닫기">×</button></div>
+    <section>
+      <div class="menu-grid">
+      <a href="#" data-go="home" class="menu-tile"><span class="ico-wrap"><svg viewBox="0 0 24 24"> <path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" /> </svg></span>홈</a>
+      <button type="button" class="menu-tile" data-action="photo"><span class="ico-wrap"><svg viewBox="0 0 24 24"> <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /> <circle cx="12" cy="13" r="4" /> </svg></span>사진</button>
+      <a href="#" data-go="ai" class="menu-tile"><span class="ico-wrap"><svg viewBox="0 0 24 24"> <path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z" /> </svg></span>AI</a>
+      <a href="#" data-go="map" class="menu-tile"><span class="ico-wrap"><svg viewBox="0 0 24 24"> <path d="M12 21s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z" /> <circle cx="12" cy="9" r="2.5" /> </svg></span>동네</a>
+      <a href="#" data-go="community" class="menu-tile"><span class="ico-wrap"><svg viewBox="0 0 24 24"> <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" /> </svg></span>커뮤니티</a>
+      <a href="#" data-go="todo" class="menu-tile"><span class="ico-wrap"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" /></svg></span>마이페이지</a>
+      </div>
+    </section>
+  </aside>
+
+  <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
+  <!-- ES 모듈: Live Server 같은 서버로 열어야 동작함 (파일을 더블클릭해서 열면 안 됨) -->
+  <script type="module" src="js/main.js"></script>
+</body>
+
+</html>

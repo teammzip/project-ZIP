@@ -1,0 +1,466 @@
+/* 레이아웃: 전체 격자, 사이드바(모바일 하단 탭), 상단바, 검색, 오른쪽 패널 */
+
+/* ---------- 전체 레이아웃 ---------- */
+.app {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 300px;
+  min-height: 100vh;
+}
+
+/* ---------- 왼쪽 메뉴 ---------- */
+.sidebar {
+  background: var(--card);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--orange);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.nav-item {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  position: relative;
+  transition: background .15s, color .15s;
+  text-decoration: none;
+}
+
+.nav-item:hover {
+  background: #f1f2f7;
+}
+
+.nav-item.active {
+  background: var(--orange);
+  color: #fff;
+}
+
+.nav-item svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-item .dot {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pink);
+  border: 2px solid #fff;
+}
+
+.nav-label {
+  display: none;
+  font-size: 10px;
+}
+
+/* ---------- 가운데 ---------- */
+.main {
+  padding: 28px 28px 40px;
+  min-width: 0;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+
+.topbar .hello {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.topbar h1 {
+  font-size: 38px;
+  margin-top: 4px;
+  line-height: 1.25;
+}
+
+.topbar .actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+  height: 38px;
+}
+
+.search:focus-within {
+  border-color: var(--orange);
+}
+
+.search svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  flex: none;
+}
+
+.search input {
+  border: 0;
+  outline: 0;
+  background: none;
+  width: 160px;
+  font-size: 14px;
+}
+
+/* ---------- 오른쪽 패널 ---------- */
+.panel {
+  background: #f0f1f6;
+  padding: 24px 20px 40px;
+  display: grid;
+  gap: 22px;
+  align-content: start;
+}
+
+.profile {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8dbaf6, var(--orange));
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+}
+
+.profile b {
+  font-size: 16px;
+  display: block;
+}
+
+.profile small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mini-stats {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  text-align: center;
+}
+
+.mini-stats b {
+  font-size: 18px;
+  display: block;
+}
+
+.mini-stats small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.panel h3 {
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+.sched {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.sched .ico {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  background: #eaf2ff;
+  flex: none;
+}
+
+.sched .t {
+  flex: 1;
+  min-width: 0;
+}
+
+.sched .t b {
+  font-size: 13px;
+  display: block;
+}
+
+.sched .t small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.sched time {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ---------- 모바일 하단 메뉴: 5칸 (홈 · 일정 · 사진 · AI · 동네) ---------- */
+.mob-icons,
+.sub-tabs {
+  display: none;
+}
+
+.mob-icon {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.mob-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mob-icon .dot {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pink);
+  border: 2px solid #fff;
+}
+
+.avatar-sm {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8dbaf6, var(--orange));
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+@media (max-width: 1200px) {
+  .app {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .panel {
+    grid-column: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .panel .profile,
+  .panel .mini-stats {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 1fr;
+    padding-bottom: 68px;
+  }
+
+  .sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    height: 62px;
+    z-index: 10;
+    flex-direction: row;
+    justify-content: space-around;
+    padding: 0 4px;
+    gap: 0;
+    border-right: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .logo {
+    display: none;
+  }
+
+  .nav-item {
+    width: auto;
+    height: 100%;
+    flex: 1;
+    border-radius: 0;
+    background: none !important;
+    flex-direction: column;
+    gap: 2px;
+    align-content: center;
+  }
+
+  .nav-item.active {
+    color: var(--orange);
+  }
+
+  .nav-item .dot {
+    right: 24%;
+  }
+
+  .nav-label {
+    display: block;
+  }
+
+  .main {
+    padding: 20px 16px 24px;
+  }
+
+  .topbar h1 {
+    font-size: 28px;
+  }
+
+  .topbar .actions {
+    width: 100%;
+  }
+
+  .search {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .search input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .panel {
+    grid-column: 1;
+    grid-template-columns: 1fr;
+    padding: 20px 16px 30px;
+  }
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    position: relative;
+  }
+
+  .topbar>div:nth-child(2) {
+    padding-right: 96px;
+  }
+
+  .topbar h1 {
+    font-size: 24px;
+  }
+
+  .mob-icons {
+    display: flex;
+    gap: 8px;
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  .nav-item[data-action="photo"] {
+    display: grid;
+    flex: none;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    align-self: center;
+    margin-top: -22px;
+    background: var(--orange) !important;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(47, 128, 237, .45);
+  }
+
+  .nav-item[data-action="photo"] svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .nav-item[data-action="photo"] .nav-label {
+    display: none;
+  }
+
+  .sub-tabs {
+    display: flex;
+    width: 100%;
+    margin-bottom: 14px;
+  }
+
+  .sub-tabs button {
+    flex: 1;
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+
+  .sub-tabs button[data-go].on {
+    background: #fff;
+    color: var(--text);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
+  }
+}
+
+/* 모바일: 하단 요약 패널(프로필, 이번 주 할 일, 다가오는 알림)은 홈에서만 보임 */
+@media (max-width: 900px) {
+  body:not([data-view="home"]) .panel {
+    display: none;
+  }
+}

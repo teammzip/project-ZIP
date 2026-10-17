@@ -1,0 +1,297 @@
+/* 생활 관리: 할 일, 공과금, 쓰레기 배출, 월세 상세 화면 */
+
+.todo-count {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.todo {
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.todo input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--orange);
+  flex: none;
+}
+
+.todo span {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.todo.done span {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.todo .del {
+  color: var(--muted);
+  font-size: 16px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+.todo .del:hover {
+  background: #ffe9ee;
+  color: var(--pink);
+}
+
+.todo-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.todo-form input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: 0;
+  background: #fff;
+}
+
+.todo-form input:focus {
+  border-color: var(--orange);
+}
+
+.back {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 12px;
+  padding: 4px 0;
+}
+
+.back:hover {
+  color: var(--orange);
+}
+
+.page-bar {
+  height: 8px;
+  background: #eceef4;
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.page-bar>i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--orange);
+  border-radius: 99px;
+  transition: width .2s;
+}
+
+.page-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+.sum-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.sum-row>div {
+  background: #f7f8fc;
+  border-radius: 10px;
+  padding: 10px 4px;
+}
+
+.sum-row small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.sum-row b {
+  font-size: 15px;
+}
+
+.bill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.bill:last-child {
+  border-bottom: 0;
+}
+
+.bill input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--orange);
+  flex: none;
+}
+
+.bill .nm {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.bill .nm small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.bill.paid .nm b {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.bill .del {
+  color: var(--muted);
+  font-size: 16px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+.bill .del:hover {
+  background: #ffe9ee;
+  color: var(--pink);
+}
+
+.week-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  background: #f7f8fc;
+}
+
+.week-row.today {
+  background: #fff0f3;
+  border: 1px solid #ffd3dc;
+}
+
+.week-row .dw {
+  width: 28px;
+  font-weight: 700;
+}
+
+.week-row .it {
+  flex: 1;
+  font-size: 14px;
+}
+
+.week-row .it small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.today-box {
+  background: #fff0f3;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.today-box b {
+  font-size: 18px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.tip-list {
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #3c4254;
+}
+
+.rent-hero {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.rent-hero b {
+  font-size: 40px;
+  color: var(--purple);
+}
+
+.rent-hero span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.info-rows {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.info-rows>div {
+  background: #f7f8fc;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.info-rows small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.info-rows b {
+  font-size: 14px;
+}
+
+.rent-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.rent-row:last-child {
+  border-bottom: 0;
+}
+
+.rent-row input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--purple);
+}
+
+.rent-row span {
+  flex: 1;
+}
+
+.rent-row small {
+  color: var(--muted);
+}

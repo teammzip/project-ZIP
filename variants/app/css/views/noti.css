@@ -1,0 +1,85 @@
+/* 알림 */
+
+.noti {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.noti:last-child {
+  border-bottom: 0;
+}
+
+.noti .ico {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #eaf2ff;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  flex: none;
+}
+
+.noti .t {
+  flex: 1;
+  min-width: 0;
+}
+
+.noti .t b {
+  font-size: 14px;
+  display: block;
+  word-break: break-all;
+}
+
+.noti .t small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.noti .badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: #f1efff;
+  color: var(--purple);
+  white-space: nowrap;
+}
+
+.noti .badge.hot {
+  background: #fff0f3;
+  color: var(--pink);
+}
+
+.noti.clickable {
+  cursor: pointer;
+}
+
+.noti.clickable:hover {
+  background: #fafbfe;
+}
+
+.noti.unread {
+  background: #f5f9ff;
+}
+
+.noti .udot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pink);
+  flex: none;
+}
+
+.notice {
+  background: #fff8e8;
+  color: #9a6a00;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}

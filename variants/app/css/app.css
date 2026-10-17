@@ -1,0 +1,1064 @@
+/* 앱 화면 전용 스타일: PC 사이드바, 모바일 하단 메뉴 + 우측 상단 ☰ 전체 메뉴·AI 버튼, ZIP 로고, 가계부(수입·지출 탭) 등 */
+.ai-fab,
+.menu-backdrop,
+.menu-panel {
+  display: none;
+}
+
+/* 데스크톱: 모든 메뉴를 왼쪽 사이드바에 표시 (아이콘 아래 글자) */
+@media (min-width: 901px) {
+  .sidebar {
+    gap: 4px;
+    padding: 16px 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .sidebar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .logo {
+    margin-bottom: 6px;
+    flex: none;
+  }
+
+  .nav-item {
+    width: 60px;
+    height: 52px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .nav-label {
+    display: block;
+    font-size: 10px;
+  }
+
+  .nav-item .dot {
+    top: 6px;
+    right: 12px;
+  }
+
+  .nav-item[data-action="photo"] {
+    color: var(--orange);
+  }
+}
+
+/* 태블릿·모바일: 하단 메뉴(홈·마이페이지·사진·AI·동네) 위에 AI 버튼, 상단에 ☰ 전체 메뉴 버튼을 더함 */
+@media (max-width: 900px) {
+  /* 커뮤니티는 하단 메뉴에서 뺀다 (☰ 전체 메뉴에서 열 수 있음) */
+  .sidebar .nav-item[data-view="community"] {
+    display: none;
+  }
+
+  /* 하단 메뉴 순서: 홈 · 마이페이지 · 사진(가운데) · AI · 동네  (HTML 순서와 상관없이 사진 버튼을 가운데에 둠) */
+  .sidebar .nav-item[data-view="home"] {
+    order: 1;
+  }
+
+  .sidebar .nav-item[data-view="todo"] {
+    order: 2;
+  }
+
+  .sidebar .nav-item[data-action="photo"] {
+    order: 3;
+  }
+
+  .sidebar .nav-item[data-view="ai"] {
+    order: 4;
+  }
+
+  .sidebar .nav-item[data-view="map"] {
+    order: 5;
+  }
+
+  .app {
+    padding-bottom: 148px;   /* 하단 메뉴(62px) + 그 위에 뜨는 AI 버튼 자리 */
+  }
+
+  .topbar > div:nth-child(2) {
+    padding-right: 142px;   /* 상단 아이콘 3개(알림, 내 정보, 메뉴) 자리 */
+  }
+
+  .ai-fab {
+    display: grid;
+    place-items: center;
+    position: fixed;
+    right: 16px;
+    bottom: 78px;   /* 하단 메뉴(62px) 바로 위 */
+    z-index: 11;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: var(--orange);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(47, 128, 237, .45);
+  }
+
+  .ai-fab svg {
+    width: 32px;
+    height: 32px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .ai-fab svg text {
+    fill: currentColor;
+    stroke: none;
+    font-size: 7px;
+    font-weight: 800;
+  }
+
+  body[data-view="ai"] .ai-fab {
+    display: none;
+  }
+
+  .menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(31, 36, 48, .35);
+    z-index: 29;
+  }
+
+  .menu-panel {
+    display: block;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 420px;
+    z-index: 30;
+    background: #fff;
+    overflow-y: auto;
+    padding: 16px 16px 28px;
+  }
+
+  .menu-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .menu-head b {
+    flex: 1;
+    font-size: 18px;
+  }
+
+  .menu-head .avatar-sm {
+    width: 40px;
+    height: 40px;
+    flex: none;
+  }
+
+  .menu-head button {
+    width: 40px;
+    height: 40px;
+    font-size: 28px;
+    line-height: 1;
+    color: var(--muted);
+  }
+
+  .menu-panel h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin: 18px 2px 8px;
+  }
+
+  .menu-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px 6px;
+  }
+
+  .menu-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0 2px;
+    font-size: 12px;
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .menu-tile .ico-wrap {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: #f3f4f9;
+    display: grid;
+    place-items: center;
+  }
+
+  .menu-tile.on .ico-wrap {
+    background: var(--orange);
+    color: #fff;
+  }
+
+  .menu-tile svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+/* ZIP 로고: 사이드바 맨 위 앱 아이콘(app-icon.png), 전체 메뉴 패널 맨 위 가로형 로고(logo-zip.png) */
+.logo {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  overflow: hidden;
+  background: none;
+  border-radius: 10px;
+}
+
+.logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.menu-logo {
+  display: block;
+  height: 30px;
+  width: auto;
+}
+
+.menu-head .menu-logo+b {
+  margin-left: 4px;
+  font-size: 15px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* 메뉴 버튼 ↔ ✕: 패널이 열려 있는 동안 버튼이 패널 위(같은 자리)에 보이고, 다시 누르면 닫힘 */
+.menu-btn .ico-close {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  body.menu-open .menu-btn {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 31;
+  }
+
+  body.menu-open .menu-btn .ico-menu {
+    display: none;
+  }
+
+  body.menu-open .menu-btn .ico-close {
+    display: block;
+  }
+
+  body.menu-open #menuClose {
+    visibility: hidden;
+  }
+}
+
+/* 상단 아이콘: 지금 보는 화면의 아이콘은 강조색 테두리로 표시 (다시 누르면 홈) */
+.mob-icon.active {
+  color: var(--orange);
+  border-color: var(--orange);
+}
+
+/* 세로 스크롤바를 항상 보이게: 내용이 짧은 화면에서도 스크롤바가 사라지지 않고,
+ * 화면을 옮겨도 본문 폭이 흔들리지 않는다 (내용이 짧으면 스크롤바는 흐리게 비활성으로만 보임) */
+html {
+  overflow-y: scroll;
+}
+
+/* 고정 지출: 월세 + 공과금을 한 화면에 합쳐 보여주고, 위쪽에 제목과 합계 카드를 표시 */
+.fixed-head {
+  display: none;
+}
+
+body.merged-fixed .fixed-head {
+  display: block;
+  margin-bottom: 16px;
+}
+
+body.merged-fixed #view-bills {
+  margin-top: 16px;
+}
+
+body.merged-fixed #view-bills .back,
+body.merged-fixed #view-rent .back {
+  display: none;
+}
+
+.fixed-sum {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 14px;
+}
+
+.fixed-sum .card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+}
+
+.fixed-sum small {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.fixed-sum b {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.fixed-sum span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.fixed-sum .total {
+  background: var(--orange);   /* 11번은 이 값이 파란색 */
+}
+
+.fixed-sum .total small,
+.fixed-sum .total b,
+.fixed-sum .total span {
+  color: #fff;
+}
+
+/* 화면 제목(page-title), 분류 칩, 수입·지출 기록 목록 */
+.page-title {
+  margin: 8px 0 14px;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.page-title small {
+  margin-left: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.spend-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 14px;
+}
+
+.spend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: #f3f4f9;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.spend-chip::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.spend-chip.small {
+  padding: 2px 9px;
+  font-size: 12px;
+}
+
+.spend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.spend-row:last-child {
+  border-bottom: 0;
+}
+
+.spend-row .dt {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 42px;
+  height: 46px;
+  border-radius: 12px;
+  background: #f3f4f9;
+  line-height: 1.15;
+}
+
+.spend-row .dt b {
+  font-size: 17px;
+}
+
+.spend-row .dt small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.spend-row .info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.spend-row .info b {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+}
+
+.spend-row .amt {
+  font-weight: 800;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.spend-row .del {
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.spend-row .del:hover {
+  background: #fff0f3;
+  color: #e5484d;
+}
+
+/* 모바일: 고정지출 합계 카드(합계·월세·공과금)를 한 줄에 하나씩 */
+@media (max-width: 900px) {
+  .fixed-sum {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .fixed-sum .card {
+    padding: 14px 16px;
+  }
+
+  .fixed-sum b {
+    font-size: 22px;
+  }
+}
+
+/* 2단계 탭 (같은 모양): 할 일 = 이번 주 할 일 | 쓰레기 배출, 가계부 = 수입 | 지출. 해당 화면에서만 보임 */
+.exp-tabs {
+  display: none;
+  gap: 6px;
+  width: fit-content;
+  margin: 0 0 16px;
+  padding: 5px;
+  border-radius: 14px;
+  background: #e9ebf3;
+}
+
+body[data-view="income"] #expTabs,
+body[data-view="bills"] #expTabs,
+body[data-view="rent"] #expTabs,
+body[data-view="spend"] #expTabs,
+body[data-view="todo"] #taskTabs,
+body[data-view="trash"] #taskTabs {
+  display: flex;
+}
+
+.exp-tab {
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.exp-tab.on {
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+}
+
+@media (max-width: 900px) {
+  .exp-tabs {
+    width: 100%;
+  }
+
+  .exp-tab {
+    flex: 1;
+    padding: 9px 6px;
+    font-size: 14px;
+  }
+
+}
+
+/* 3단계 탭 (지출일 때만): 고정 지출 | 기타 지출 */
+.exp-sub {
+  display: none;
+  gap: 8px;
+  margin: -4px 0 16px;
+}
+
+body[data-view="bills"] .exp-sub,
+body[data-view="rent"] .exp-sub,
+body[data-view="spend"] .exp-sub {
+  display: flex;
+}
+
+.exp-subtab {
+  padding: 8px 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.exp-subtab small {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.exp-subtab.on {
+  border-color: var(--orange);   /* 11번은 이 값이 파란색 */
+  background: var(--orange);
+  color: #fff;
+}
+
+.spend-row .amt.plus {
+  color: var(--teal);   /* 수입은 +금액을 청록으로 */
+}
+
+@media (max-width: 900px) {
+  .exp-sub {
+    margin-top: -6px;
+  }
+
+  .exp-subtab {
+    flex: 1;
+    padding: 8px 6px;
+    font-size: 14px;
+  }
+
+  .exp-subtab small {
+    display: block;
+    margin: 2px 0 0;
+    font-size: 11px;
+  }
+}
+
+/* 홈 "AI와 대화" 카드: PC에서만 자취 꿀팁 오른쪽에 보임 (모바일에는 하단 AI 탭과 AI 버튼이 있음) */
+.ai-card {
+  display: none;
+}
+
+@media (min-width: 901px) {
+  .ai-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+}
+
+.ai-bubble {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ai-face {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #eaf2ff;
+  font-size: 22px;
+}
+
+.ai-bubble p {
+  padding: 11px 14px;
+  border-radius: 4px 16px 16px 16px;
+  background: #f3f4f9;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-chip {
+  padding: 8px 13px;
+  border: 1.5px solid #cfe0fb;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ai-chip:hover {
+  border-color: var(--orange);   /* 앱 화면에서는 이 값이 파란색 */
+  background: #eaf2ff;
+}
+
+.ai-ask {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.ai-ask input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font: inherit;
+}
+
+.ai-ask input:focus {
+  outline: 2px solid var(--orange);
+  outline-offset: -1px;
+  border-color: var(--orange);
+}
+
+/* 홈 "AI와 대화" 카드: 누르면 모달 대화가 열림 */
+.ai-card {
+  cursor: pointer;
+}
+
+.ai-card .link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ai-chip {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* AI와 대화 모달 */
+.chat-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.chat-modal[hidden] {
+  display: none;
+}
+
+.chat-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(31, 36, 48, .45);
+}
+
+.chat-window {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  height: min(640px, calc(100vh - 32px));
+  overflow: hidden;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+  animation: chatIn .25s ease;
+}
+
+@keyframes chatIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.chat-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.chat-head .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-head b {
+  display: block;
+  font-size: 16px;
+}
+
+.chat-head small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.chat-new {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chat-close {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chat-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  overflow-y: auto;
+  background: #f7f8fc;
+}
+
+.msg {
+  max-width: 84%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.msg.bot {
+  align-self: flex-start;
+  border: 1px solid var(--line);
+  border-top-left-radius: 4px;
+  background: #fff;
+}
+
+.msg.user {
+  align-self: flex-end;
+  border-top-right-radius: 4px;
+  background: var(--orange);   /* 앱 화면에서는 이 값이 파란색 */
+  color: #fff;
+}
+
+.msg.typing {
+  color: var(--muted);
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .45;
+  }
+}
+
+.chat-chips {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chat-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chat-chips .ai-chip {
+  flex: none;
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+}
+
+.chat-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font: inherit;
+}
+
+.chat-form input:focus {
+  outline: 2px solid var(--orange);
+  outline-offset: -1px;
+  border-color: var(--orange);
+}
+
+@media (max-width: 900px) {
+  .chat-modal {
+    padding: 0;
+    place-items: end stretch;
+  }
+
+  .chat-window {
+    max-width: none;
+    height: min(86vh, 720px);
+    border-radius: 20px 20px 0 0;
+  }
+}
+
+/* 마이페이지 머리말과 1단계 탭 (할 일 | 일정 | 가계부 | 알림 | 내 정보) */
+.my-head {
+  display: none;
+  margin: 0 0 6px;
+}
+
+body[data-view="todo"] .my-head,
+body[data-view="trash"] .my-head,
+body[data-view="calendar"] .my-head,
+body[data-view="income"] .my-head,
+body[data-view="bills"] .my-head,
+body[data-view="rent"] .my-head,
+body[data-view="spend"] .my-head,
+body[data-view="noti"] .my-head,
+body[data-view="settings"] .my-head {
+  display: block;
+}
+
+.my-head .page-title {
+  margin: 4px 0 12px;
+}
+
+.my-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 16px;
+  border-bottom: 2px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.my-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.my-tab {
+  position: relative;
+  padding: 11px 20px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.my-tab.on {
+  color: var(--text);
+}
+
+.my-tab.on::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -2px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--orange);   /* 앱 화면에서는 이 값이 파란색 */
+}
+
+.my-tab .dot-badge {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: #ff5a7e;
+  vertical-align: top;
+}
+
+@media (max-width: 900px) {
+  .my-head .page-title small {
+    display: none;
+  }
+
+  .my-tab {
+    flex: 1;
+    padding: 10px 6px;
+    font-size: 14px;
+  }
+}
+
+/* 프로필 카드의 로그아웃 버튼 (이름·사는 곳 오른쪽) */
+.profile > div:nth-child(2) {
+  min-width: 0;
+}
+
+.logout-btn {
+  margin-left: auto;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  border-color: var(--orange);   /* 앱 화면에서는 이 값이 파란색 */
+  color: var(--orange);
+}
+
+/* 회원 탈퇴 확인 창 */
+.btn-danger {
+  cursor: pointer;
+}
+
+.btn-danger.solid {
+  border-color: var(--pink);
+  background: var(--pink);
+  color: #fff;
+  font-weight: 700;
+}
+
+.btn-danger.solid:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.confirm-modal[hidden] {
+  display: none;
+}
+
+.confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(31, 36, 48, .5);
+}
+
+.confirm-box {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  padding: 24px 22px 20px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+}
+
+.confirm-box h3 {
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.confirm-box p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.confirm-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.confirm-actions button {
+  padding: 10px 18px;
+  font-size: 14px;
+}
