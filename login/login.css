@@ -175,3 +175,78 @@ body {
 [hidden] {
   display: none !important;
 }
+
+/* 소셜 로그인: 동그란 아이콘 버튼 (카카오 · 구글 · 네이버) */
+.social {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 12px;
+}
+
+.social-btn {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.social-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, .15);
+}
+
+.social-btn svg {
+  width: 26px;
+  height: 26px;
+}
+
+.social-btn.kakao {
+  background: #fee500;
+}
+
+.social-btn.google {
+  background: #fff;
+  border-color: var(--line);
+}
+
+.social-btn.naver {
+  background: #03c75a;
+}
+
+/* 문구를 비운 제목·설명은 자리도 차지하지 않게 */
+.card h2:empty,
+.card .lead:empty,
+.login-card h2:empty,
+.login-card .lead:empty {
+  display: none;
+}
+
+/* 회원가입: 약관 한 줄 + 동의 */
+.terms {
+  margin: 4px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f9fafb;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.terms-text {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.terms label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--ink);
+}
