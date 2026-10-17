@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZIP 시안 비교</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+    }
+
+    body {
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+      background: #2b2f3a;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bar {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      padding: 10px 16px;
+      background: #1f2430;
+      flex-wrap: wrap;
+    }
+
+    .group {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .group>span {
+      font-size: 13px;
+      color: #aab0c0;
+      margin-right: 4px;
+    }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+      border: 1px solid #444b5c;
+      background: #2b2f3a;
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 8px;
+    }
+
+    button:hover {
+      border-color: #ff7a45;
+    }
+
+    button.on {
+      background: #ff7a45;
+      border-color: #ff7a45;
+      font-weight: 700;
+    }
+
+    .bar a {
+      color: #9fb4c8;
+      font-size: 13px;
+    }
+
+    .stage {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 12px;
+    }
+
+    iframe {
+      border: 0;
+      background: #fff;
+      border-radius: 8px;
+      height: 100%;
+      max-width: 100%;
+    }
+
+    /* DB 예시 버튼과 그림 보기 */
+    .db-btn {
+      border-style: dashed;
+      margin-left: 8px;
+    }
+
+    .db-btn.on {
+      border-style: solid;
+    }
+
+    .dbview {
+      align-self: stretch;
+      flex: 1;
+      min-width: 0;
+      overflow: auto;
+      background: #fff;
+      color: #1f2430;
+      border-radius: 8px;
+      padding: 16px 20px 28px;
+    }
+
+    .dbview h2 {
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+
+    .dbview .hint {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 18px;
+    }
+
+    .dbview figure {
+      margin: 0 0 30px;
+    }
+
+    .dbview figcaption {
+      font-weight: 700;
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+
+    .dbview .scroll {
+      overflow-x: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+    }
+
+    .dbview img {
+      display: block;
+      width: 100%;
+      height: auto;
+      cursor: zoom-in;
+    }
+
+    .dbview figure.zoom img {
+      max-width: none;
+      cursor: zoom-out;
+    }
+
+    .dbview figure a {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 13px;
+      color: #7c6cf5;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bar">
+    <div class="group" id="vars"><span>시안</span></div>
+    <div class="group" id="sizes"><span>화면</span></div>
+    <a id="open" href="#" target="_blank" rel="noopener">새 탭에서 열기</a>
+  </div>
+  <div class="stage">
+    <iframe id="frame" title="시안 미리보기"></iframe>
+
+    <!-- DB 예시: db/ 폴더의 ERD 그림 3장 -->
+    <div class="dbview" id="dbview" hidden>
+      <h2>DB 구조 예시 (ERD)</h2>
+      <p class="hint">그림을 누르면 원래 크기로 커지고, 다시 누르면 화면 폭에 맞게 줄어듭니다. 커졌을 때는 옆으로 밀어서 볼 수 있어요.</p>
+      <figure>
+        <figcaption>1. 로그인 · 커뮤니티</figcaption>
+        <div class="scroll"><img src="db/erd-1-accounts-community.png" alt="로그인과 커뮤니티 ERD"></div>
+        <a href="db/erd-1-accounts-community.png" target="_blank" rel="noopener">새 탭에서 크게 보기</a>
+      </figure>
+      <figure>
+        <figcaption>2. 생활 관리 (사용자별 데이터)</figcaption>
+        <div class="scroll"><img src="db/erd-2-life-management.png" alt="생활 관리 ERD"></div>
+        <a href="db/erd-2-life-management.png" target="_blank" rel="noopener">새 탭에서 크게 보기</a>
+      </figure>
+      <figure>
+        <figcaption>3. 공용 데이터 · AI</figcaption>
+        <div class="scroll"><img src="db/erd-3-shared-ai.png" alt="공용 데이터와 AI ERD"></div>
+        <a href="db/erd-3-shared-ai.png" target="_blank" rel="noopener">새 탭에서 크게 보기</a>
+      </figure>
+    </div>
+  </div>
+
+  <script>
+    // 비교할 화면: [폴더 이름(variants/<이름>/index.html), 버튼 이름, 눌렀을 때 맞춰 줄 화면 크기(SIZES 번호, null이면 그대로)]
+    var VARIANTS = [
+      ['app', '앱 화면', null],
+      ['start-mobile', '모바일시작', 2],
+      ['start-pc', 'PC시작', 0]
+    ];
+    // [이름, 폭, 높이]  태블릿·모바일은 실제 기기 비율(768×1024, 375×812)로 맞추고, 창이 작으면 높이만 창에 맞춰 줄어듦
+    var SIZES = [['데스크톱', '100%', '100%'], ['태블릿', '768px', 'min(1024px, 100%)'], ['모바일', '375px', 'min(812px, 100%)']];
+    function applySize() { frame.style.width = SIZES[size][1]; frame.style.height = SIZES[size][2]; }
+    var frame = document.getElementById('frame');
+
+    function read(key, fallback) { try { return localStorage.getItem(key) || fallback; } catch (e) { return fallback; } }
+    function write(key, val) { try { localStorage.setItem(key, val); } catch (e) { } }
+    function isVariant(id) { return VARIANTS.some(function (v) { return v[0] === id; }); }
+
+    var fromUrl = new URLSearchParams(location.search).get('v');          // compare.html?v=start-pc 또는 ?v=db 로 바로 열기
+    var saved = fromUrl || read('compare-v', 'app');
+    var cur = (saved === 'db' || saved === 'login' || isVariant(saved)) ? saved : 'app';   // 화면 이름, 'db', 'login'
+    var LOGINS = [['A', 'a-intro'], ['B', 'b-overlay'], ['C', 'c-gradient']];
+    var lg = Number(read('compare-login', '0'));
+    if (!(lg >= 0 && lg < LOGINS.length)) lg = 0;
+    var size = Number(read('compare-size', '0'));
+    if (!(size >= 0 && size < SIZES.length)) size = 0;
+
+    function render() {
+      var isDb = cur === 'db', isLogin = cur === 'login';
+      document.querySelectorAll('#vars button[data-v]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === cur); });
+      document.querySelectorAll('#sizes button').forEach(function (b, i) { b.classList.toggle('on', i === size); });
+      document.querySelectorAll('#vars .login-btn').forEach(function (b, i) { b.classList.toggle('on', isLogin && i === lg); });
+      frame.hidden = isDb;                                        // DB 예시를 보는 동안에는 화면 미리보기를 숨김
+      document.getElementById('dbview').hidden = !isDb;
+      document.getElementById('sizes').style.visibility = isDb ? 'hidden' : '';
+      document.getElementById('open').style.visibility = isDb ? 'hidden' : '';
+      if (isDb) { document.title = 'ZIP DB 예시'; return; }
+      var src = isLogin
+        ? 'login/' + LOGINS[lg][1] + '.html?next=' + encodeURIComponent('../variants/app/index.html')   // 로그인하면 앱 화면으로
+        : 'variants/' + cur + '/index.html';
+      if (isLogin) { frame.src = src; applySize(); document.getElementById('open').href = src; document.title = 'ZIP 로그인 예시'; return; }
+      if (frame.getAttribute('src') !== src) frame.src = src;
+      applySize();
+      document.getElementById('open').href = src;
+      document.title = 'ZIP ' + VARIANTS.filter(function (v) { return v[0] === cur; })[0][1] + ' 비교';
+    }
+
+    VARIANTS.forEach(function (v) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.textContent = v[1]; b.setAttribute('data-v', v[0]);
+      b.addEventListener('click', function () {
+        cur = v[0]; write('compare-v', cur);
+        if (v[2] !== null) { size = v[2]; write('compare-size', String(size)); }   // 모바일시작은 모바일 화면, PC시작은 데스크톱 화면으로 바로 보여줌
+        render();
+      });
+      document.getElementById('vars').appendChild(b);
+    });
+    // "DB 예시" 버튼: 누르면 db/ 폴더의 ERD 그림을 보여줌
+    var dbBtn = document.createElement('button');
+    dbBtn.type = 'button'; dbBtn.className = 'db-btn'; dbBtn.textContent = 'DB 예시'; dbBtn.setAttribute('data-v', 'db');
+    dbBtn.addEventListener('click', function () { cur = 'db'; write('compare-v', 'db'); render(); });
+    document.getElementById('vars').appendChild(dbBtn);
+    // 로그인 예시 버튼 3개 (A·B·C 구조)
+    LOGINS.forEach(function (l, i) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'db-btn login-btn'; b.textContent = '로그인 ' + l[0];
+      b.addEventListener('click', function () { cur = 'login'; lg = i; write('compare-v', 'login'); write('compare-login', String(i)); render(); });
+      document.getElementById('vars').appendChild(b);
+    });
+
+    // 그림을 누르면 원래 크기로 확대(옆으로 밀어서 보기), 다시 누르면 화면 폭에 맞게 축소
+    document.querySelectorAll('#dbview img').forEach(function (img) {
+      img.addEventListener('click', function () {
+        var zoomed = img.closest('figure').classList.toggle('zoom');
+        img.style.width = zoomed ? Math.round(img.naturalWidth / 1.5) + 'px' : '';   // 그림은 1.5배 해상도로 저장됨
+      });
+    });
+    SIZES.forEach(function (s, i) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.textContent = s[0];
+      b.addEventListener('click', function () { size = i; write('compare-size', String(i)); render(); });
+      document.getElementById('sizes').appendChild(b);
+    });
+    render();
+  </script>
+</body>
+
+</html>

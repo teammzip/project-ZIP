@@ -1,0 +1,138 @@
+/* 커뮤니티 */
+
+.scope-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.loc {
+  color: var(--teal);
+  font-weight: 600;
+}
+
+.post {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.post:last-child {
+  border-bottom: 0;
+}
+
+.post:hover {
+  background: rgba(255, 255, 255, .2);
+}
+
+.post-meta {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.post h3 {
+  font-size: 16px;
+  margin: 8px 0 4px;
+  word-break: break-word;
+}
+
+.post p {
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #3c4254;
+}
+
+.post-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.post-detail-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 20px 18px;
+  box-shadow: 0 10px 28px rgba(45, 54, 74, 0.08);
+}
+
+.post-detail-card h3 {
+  font-size: 24px;
+  line-height: 1.4;
+  margin: 12px 0 10px;
+}
+
+.post-detail-card p {
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.detail-cmt {
+  margin-top: 14px;
+}
+
+.pbtn {
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: 5px 12px;
+  font-size: 12px;
+  background: #fff;
+}
+
+.pbtn:hover {
+  border-color: var(--orange);
+}
+
+.pbtn.on {
+  border-color: var(--pink);
+  color: var(--pink);
+}
+
+.pbtn.del:hover {
+  border-color: var(--pink);
+  color: var(--pink);
+}
+
+.cmt {
+  background: #f7f8fc;
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.cmt-item {
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.cmt-item b {
+  margin-right: 6px;
+}
+
+.cmt-form {
+  display: flex;
+  gap: 6px;
+}
+
+.cmt-form input {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+  outline: 0;
+  min-width: 0;
+  background: #fff;
+}
+
+.cmt-form input:focus {
+  border-color: var(--orange);
+}

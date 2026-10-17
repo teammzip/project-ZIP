@@ -1,0 +1,135 @@
+/* 캘린더 */
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-nav button {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.cal-nav button:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.cal-nav .today-btn {
+  width: auto;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.cal-dow {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 4px 0 8px;
+}
+
+.cal-dow:first-child {
+  color: var(--pink);
+}
+
+.cal-day {
+  aspect-ratio: 1 / 0.85;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: #f7f8fc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 14px;
+  transition: background .12s;
+}
+
+.cal-day:hover {
+  background: #eceefa;
+}
+
+.cal-day.today {
+  border-color: var(--orange);
+  font-weight: 700;
+}
+
+.cal-day.sel {
+  background: var(--orange);
+  color: #fff;
+}
+
+.cal-day .mark {
+  display: flex;
+  gap: 2px;
+  height: 6px;
+}
+
+.cal-day .mark i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--purple);
+}
+
+.cal-day.sel .mark i {
+  background: #fff;
+}
+
+.cal-empty {
+  visibility: hidden;
+}
+
+.ev-list {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.ev {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f7f8fc;
+  border-radius: 10px;
+}
+
+.ev .when {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 62px;
+}
+
+.ev .name {
+  flex: 1;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.ev .del {
+  color: var(--muted);
+  font-size: 16px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+.ev .del:hover {
+  background: #ffe9ee;
+  color: var(--pink);
+}
