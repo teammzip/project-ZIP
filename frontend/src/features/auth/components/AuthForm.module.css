@@ -1,0 +1,103 @@
+/* 로그인·회원가입 폼과 소셜 버튼이 같이 쓰는 스타일 (기존 login/login.css 를 옮겨 옴) */
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.textLink {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.textLink:disabled {
+  color: var(--color-muted);
+  cursor: default;
+}
+
+.serverError {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: #fff0f1;
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.terms {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: #f9fafb;
+}
+
+.termsText {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 12px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-line);
+}
+
+.social {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+}
+
+.socialButton {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.socialButton:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
+}
+
+.socialButton svg {
+  width: 26px;
+  height: 26px;
+}
+
+.kakao {
+  background: var(--color-kakao);
+}
+
+.google {
+  background: #fff;
+  border-color: var(--color-line);
+}
+
+.naver {
+  background: var(--color-naver);
+}

@@ -1,0 +1,31 @@
+/* 디자인 토큰: 색·간격·모서리 등. 색은 기존 시안(variants/app/css/base.css)과 같은 값을 씁니다.
+ * 컴포넌트 CSS 에서는 색 값을 직접 쓰지 말고 이 변수만 쓰세요. */
+:root {
+  --color-bg: #f5f6fa;
+  --color-card: #ffffff;
+  --color-text: #1f2430;
+  --color-muted: #8a90a2;
+  --color-line: #eceef4;
+
+  --color-primary: #2f80ed;
+  --color-teal: #1fb5a3;
+  --color-pink: #ff5a7e;
+  --color-purple: #7c6cf5;
+  --color-danger: #e5484d;
+
+  --color-kakao: #fee500;
+  --color-naver: #03c75a;
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(31, 36, 48, 0.06);
+  --shadow-modal: 0 20px 60px rgba(31, 36, 48, 0.25);
+
+  --font-sans: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+
+  /* 레이아웃 (모바일/PC 경계는 900px — 미디어쿼리에는 변수를 못 써서 각 CSS 에 직접 씀) */
+  --sidebar-width: 220px;
+  --bottom-nav-height: 64px;
+}

@@ -1,0 +1,139 @@
+.section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 120px 32px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 64px;
+  margin-top: 40px;
+}
+
+.step {
+  display: grid;
+  align-content: center;
+  gap: 16px;
+  min-height: 80vh;
+  opacity: 0.25;
+  transition: opacity 0.4s ease;
+}
+
+.stepActive {
+  opacity: 1;
+}
+
+.stepLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.stepLabel span {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted);
+}
+
+.stepTitle {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+}
+
+.stepBody {
+  max-width: 440px;
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--color-muted);
+  word-break: keep-all;
+}
+
+.stickyWrap {
+  position: relative;
+}
+
+.sticky {
+  position: sticky;
+  top: calc(50vh - 220px);
+}
+
+.panel {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 440px;
+  border-radius: 32px;
+  overflow: hidden;
+}
+
+.panelEmoji {
+  position: absolute;
+  top: 36px;
+  left: 40px;
+  font-size: 72px;
+}
+
+.panelCard {
+  display: grid;
+  gap: 10px;
+  width: min(300px, 80%);
+  margin-top: 60px;
+  padding: 18px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: var(--shadow-card);
+}
+
+.panelCard li {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--color-bg);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.mobilePanel {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .section {
+    padding: 80px 16px;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .stickyWrap {
+    display: none;
+  }
+
+  .step {
+    min-height: auto;
+    padding: 48px 0;
+    opacity: 1;
+  }
+
+  .mobilePanel {
+    display: block;
+    margin-top: 12px;
+  }
+
+  .panel {
+    height: 320px;
+    border-radius: 24px;
+  }
+
+  .panelEmoji {
+    top: 24px;
+    left: 24px;
+    font-size: 52px;
+  }
+}

@@ -1,0 +1,38 @@
+.title {
+  margin-bottom: 20px;
+  font-size: 20px;
+  text-align: center;
+}
+
+.switch {
+  margin-top: 18px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.switch a {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.mockNote {
+  margin-top: 12px;
+  font-size: 12px;
+  text-align: center;
+  color: #9aa0ae;
+}
+
+.callback {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  min-height: 100dvh;
+  font-size: 15px;
+}
+
+.callback a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
