@@ -7,9 +7,11 @@
 
   function setMode(m) {
     mode = m;
-    document.getElementById('title').textContent = m === 'login' ? '다시 만나서 반가워요' : '처음이세요? 가입해요';
-    document.getElementById('lead').textContent = m === 'login' ? '로그인하고 내 일정과 할 일을 이어서 확인하세요.' : '이메일과 비밀번호만 있으면 바로 시작할 수 있어요.';
+    document.getElementById('title').textContent = m === 'login' ? '' : '어서와 ZIP은 처음이지?';
+    document.getElementById('lead').textContent = '';
     document.getElementById('nickField').hidden = m === 'login';
+    document.getElementById('addrField').hidden = m === 'login';
+    document.getElementById('termsField').hidden = m === 'login';
     document.getElementById('loginOnly').hidden = m !== 'login';
     document.getElementById('submitBtn').textContent = m === 'login' ? '로그인' : '가입하고 시작하기';
     var sw = document.getElementById('switchText');   // 고정 문구 + 전환 링크 (innerHTML 없이 요소로 만듦)
@@ -43,11 +45,13 @@
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.textContent = '이메일 형식을 확인해 주세요.'; return; }
     if (pw.length < 4) { err.textContent = '비밀번호는 4자 이상 입력해 주세요.'; return; }
     if (mode === 'signup' && !form.nick.value.trim()) { err.textContent = '닉네임을 입력해 주세요.'; return; }
+    if (mode === 'signup' && !form.addr.value.trim()) { err.textContent = '주소를 입력해 주세요.'; return; }
+    if (mode === 'signup' && !form.agree.checked) { err.textContent = '약관에 동의해 주세요.'; return; }
     if (mode === 'signup') saveNick(form.nick.value.trim());
     enter();
   });
 
-  document.getElementById('kakaoBtn').addEventListener('click', enter);
+  [].slice.call(document.querySelectorAll('#kakaoBtn, [data-provider]')).forEach(function (b) { b.addEventListener('click', enter); });   // 카카오·구글·네이버: 지금은 시안이라 누르면 바로 입장
   document.getElementById('pwToggle').addEventListener('click', function () {
     var t = form.pw.type === 'password';
     form.pw.type = t ? 'text' : 'password';
