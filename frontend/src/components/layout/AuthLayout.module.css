@@ -1,0 +1,32 @@
+.page {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 32px 16px;
+  background: linear-gradient(160deg, #eef5ff 0%, #e5ffff 100%);
+}
+
+.card {
+  width: min(420px, 100%);
+  padding: 28px 28px 24px;
+  border-radius: 20px;
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+}
+
+.logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.logo img {
+  height: 64px;
+  width: auto;
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 22px 18px 18px;
+  }
+}

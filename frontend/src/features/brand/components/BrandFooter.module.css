@@ -1,0 +1,39 @@
+.footer {
+  padding: 48px 32px 56px;
+  background: var(--color-text);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+}
+
+.inner {
+  display: grid;
+  gap: 8px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.logo {
+  height: 32px;
+  width: auto;
+  margin-bottom: 8px;
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
+}
+
+.links {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.copy {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 900px) {
+  .footer {
+    padding: 40px 16px calc(48px + env(safe-area-inset-bottom));
+  }
+}

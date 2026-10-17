@@ -1,0 +1,27 @@
+.intro {
+  display: grid;
+  gap: 28px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 160px 32px;
+}
+
+.kicker {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.text {
+  font-size: clamp(26px, 4.2vw, 48px);
+  font-weight: 800;
+  line-height: 1.45;
+  letter-spacing: -0.03em;
+  word-break: keep-all;
+}
+
+@media (max-width: 900px) {
+  .intro {
+    padding: 96px 16px;
+  }
+}

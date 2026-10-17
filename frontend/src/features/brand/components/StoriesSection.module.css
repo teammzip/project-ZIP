@@ -1,0 +1,93 @@
+.section {
+  padding: 140px 0;
+  background: #fff;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto 48px;
+  padding: 0 32px;
+}
+
+/* 가로로 넘기는 카드 줄: 왼쪽 여백은 위 제목과 맞춤 */
+.track {
+  display: flex;
+  gap: 20px;
+  padding: 0 max(32px, calc((100vw - 1200px) / 2 + 32px)) 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 max(32px, calc((100vw - 1200px) / 2 + 32px));
+  scrollbar-width: thin;
+}
+
+.card {
+  flex: none;
+  width: 320px;
+  scroll-snap-align: start;
+  border-radius: 24px;
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+.media {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  font-size: 64px;
+}
+
+.body {
+  display: grid;
+  gap: 10px;
+  padding: 20px 22px 24px;
+}
+
+.tag {
+  justify-self: start;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.title {
+  font-size: 19px;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  word-break: keep-all;
+}
+
+.quote {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+
+.author {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .section {
+    padding: 88px 0;
+  }
+
+  .inner {
+    padding: 0 16px;
+    margin-bottom: 32px;
+  }
+
+  .track {
+    gap: 14px;
+    padding: 0 16px 12px;
+    scroll-padding: 0 16px;
+  }
+
+  .card {
+    width: 78vw;
+    max-width: 300px;
+  }
+}

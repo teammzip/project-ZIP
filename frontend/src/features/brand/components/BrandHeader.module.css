@@ -1,0 +1,38 @@
+.header {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 68px;
+  padding: 0 32px;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.scrolled {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 0 var(--color-line);
+}
+
+.logo img {
+  height: 40px;
+  width: auto;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .header {
+    height: 56px;
+    padding: 0 16px;
+  }
+
+  .logo img {
+    height: 32px;
+  }
+}
