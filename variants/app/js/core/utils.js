@@ -16,3 +16,8 @@ export function dayDiff(dateStr) { return Math.round((new Date(dateStr) - new Da
 export function sortEvents(list) {
   return list.slice().sort(function (a, b) { return (a.date + (a.time || '99:99')).localeCompare(b.date + (b.time || '99:99')); });
 }
+
+/* 금액·날짜 표시 (가계부 화면들이 같이 씀) */
+export function won(n) { return Number(n).toLocaleString('ko-KR') + '원'; }
+export function ago(n) { var d = new Date(today); d.setDate(d.getDate() - n); return fmt(d); }   // n일 전 날짜 (YYYY-MM-DD)
+export function monthLabel(k) { var p = k.split('-'); return p[0] + '년 ' + Number(p[1]) + '월' + (k === fmt(today).slice(0, 7) ? ' (이번 달)' : ''); }

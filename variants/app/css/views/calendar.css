@@ -133,3 +133,69 @@
   background: #ffe9ee;
   color: var(--pink);
 }
+
+.ev .edit {
+  padding: 3px 8px;
+  font-size: 12px;
+  color: var(--muted);
+  border-radius: 6px;
+}
+
+.ev .edit:hover {
+  background: #e8ecff;
+  color: var(--purple);
+}
+
+/* 수정 중인 일정 줄 */
+.ev.editing {
+  align-items: stretch;
+  background: #eef1ff;
+}
+
+.ev.editing .fields {
+  flex: 1;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ev.editing .fields-row {
+  display: flex;
+  gap: 6px;
+}
+
+.ev.editing input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.ev.editing .btns {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+
+.ev.editing .btns button {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+.ev.editing .save {
+  background: var(--purple);
+  color: #fff;
+  font-weight: 700;
+}
+
+.ev.editing .cancel {
+  background: #fff;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}

@@ -173,7 +173,7 @@
 .chart .b {
   width: 26px;
   border-radius: 6px 6px 0 0;
-  background: #e8ecfb;
+  background: #d3dbf8;
   transition: background .15s;
 }
 
@@ -361,4 +361,19 @@
   .photo-mobile-label {
     display: inline;
   }
+}
+
+/* 월별 수입 그래프 */
+.chart-sum {
+  margin: -4px 0 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.chart.dense .b {
+  width: 16px;
+}
+
+.chart.dense .col span {
+  font-size: 10px;
 }

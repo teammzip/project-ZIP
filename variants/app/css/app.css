@@ -1062,3 +1062,87 @@ body[data-view="settings"] .my-head {
   padding: 10px 18px;
   font-size: 14px;
 }
+
+/* AI 대화 안의 "이번 달 지출 요약" 카드 */
+.msg.has-card {
+  width: min(84%, 340px);
+}
+
+.sum-card {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f7f8fc;
+}
+
+.sum-card small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sum-total {
+  font-size: 22px;
+}
+
+.sum-cmp {
+  margin: -4px 0 2px;
+  font-size: 12px;
+  color: var(--teal);
+}
+
+.sum-cmp.up {
+  color: var(--pink);
+}
+
+.sum-rows {
+  display: grid;
+  gap: 7px;
+}
+
+.sum-row {
+  display: grid;
+  grid-template-columns: 54px 1fr 58px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.sum-row .v {
+  text-align: right;
+  color: var(--muted);
+}
+
+.sum-row .bar {
+  height: 8px;
+  border-radius: 4px;
+  background: #e8ecfb;
+  overflow: hidden;
+}
+
+.sum-row .bar i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--orange);
+}
+
+.sum-note {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.sum-go {
+  padding: 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--orange);
+  border: 1px solid var(--orange);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}

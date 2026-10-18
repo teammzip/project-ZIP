@@ -4,6 +4,7 @@
  *   (항상 state.events 처럼 읽어야 최신 값을 본다.) */
 import { load, store } from './storage.js';
 import { HOME, SEED_POSTS } from '../data/posts-seed.js';
+import { demoEvents } from '../data/demo.js';
 
 export var settings = Object.assign({ name: '지기', region: '서울 마포구', rentDay: 15, rent: 55, notiOn: true }, load('zip-settings', {}));
 export var readMap = load('zip-noti-read', {});
@@ -11,6 +12,10 @@ export var rentPaid = load('zip-rent-paid', {});
 
 var events = load('zip-events', []);
 if (!Array.isArray(events)) events = [];
+if (!load('zip-demo-events', false)) {   // 둘러보기용: 오늘 앞뒤 일정 예시를 한 번만 더함
+  events = events.concat(demoEvents());
+  store('zip-events', events); store('zip-demo-events', true);
+}
 
 var posts = load('zip-posts', null);
 if (!Array.isArray(posts)) posts = [];

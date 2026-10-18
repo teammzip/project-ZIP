@@ -206,7 +206,8 @@ document.querySelectorAll('[data-topic]').forEach(function (a) {
 /* 홈의 "AI와 대화" 모달(components/ai-chat.js)이 같은 데모 답변을 쓰도록 내보냄 */
 export var CHAT_TOPICS = {   // 분야 칩을 눌렀을 때 보낼 질문
   trash: '이건 어떻게 버려요?', cook: '냉장고 재료로 뭐 해먹을까요?', clean: '욕실에 곰팡이가 생겼어요',
-  contract: '보증금이랑 계약 때 뭘 확인해야 해요?', bill: '공과금 아끼는 방법이 궁금해요'
+  contract: '보증금이랑 계약 때 뭘 확인해야 해요?', bill: '공과금 아끼는 방법이 궁금해요',
+  summary: '이번 달 지출 요약해 줘'
 };
 export function chatReply(text, topicId) {
   var t = topicId && topicById(topicId);

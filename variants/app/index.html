@@ -146,55 +146,28 @@
         <section class="row">
           <article class="card">
             <div class="card-head">
-              <h2>주간 식비 지출</h2>
-              <select class="select">
-                <option>이번 주</option>
-                <option>지난 주</option>
+              <h2>월별 수입</h2>
+              <select class="select" id="incRange" aria-label="보기 기간">
+                <option value="6">최근 6개월</option>
+                <option value="12">최근 12개월</option>
               </select>
             </div>
-            <div class="chart">
-              <div class="col">
-                <div class="b" style="height:30%"></div><span>월</span>
-              </div>
-              <div class="col">
-                <div class="b" style="height:55%"></div><span>화</span>
-              </div>
-              <div class="col">
-                <div class="b" style="height:38%"></div><span>수</span>
-              </div>
-              <div class="col">
-                <div class="b" style="height:60%"></div><span>목</span>
-              </div>
-              <div class="col hl">
-                <div class="tip">1만 2천원</div>
-                <div class="b" style="height:85%"></div><span>금</span>
-              </div>
-              <div class="col">
-                <div class="b" style="height:58%"></div><span>토</span>
-              </div>
-              <div class="col">
-                <div class="b" style="height:28%"></div><span>일</span>
-              </div>
-            </div>
+            <p class="chart-sum" id="incSum"></p>
+            <div class="chart" id="incChart"></div>
           </article>
           <article class="card">
             <div class="card-head">
               <h2>이번 달 지출 구성</h2>
-              <select class="select">
-                <option>이번 달</option>
-                <option>지난 달</option>
+              <select class="select" id="spendRange" aria-label="보기 달">
+                <option value="0">이번 달</option>
+                <option value="1">지난 달</option>
               </select>
             </div>
             <div class="donut-wrap">
-              <div class="donut">
-                <div class="center"><small>총 지출</small><b>48만원</b></div>
+              <div class="donut" id="spendDonut">
+                <div class="center"><small>총 지출</small><b id="spendDonutTotal">0원</b></div>
               </div>
-              <ul class="legend">
-                <li style="--c:var(--teal)">식비 <span>30%</span></li>
-                <li style="--c:var(--orange)">공과금 <span>32%</span></li>
-                <li style="--c:var(--pink)">생활용품 <span>20%</span></li>
-                <li style="--c:var(--purple)">기타 <span>18%</span></li>
-              </ul>
+              <ul class="legend" id="spendLegend"></ul>
             </div>
           </article>
         </section>
@@ -233,6 +206,7 @@
               <button type="button" class="ai-chip" data-chat-topic="clean">🧹 청소·곰팡이</button>
               <button type="button" class="ai-chip" data-chat-topic="contract">📄 계약·보증금</button>
               <button type="button" class="ai-chip" data-chat-topic="bill">💡 공과금·생활비</button>
+              <button type="button" class="ai-chip" data-chat-topic="summary">📊 이번 달 지출 요약</button>
             </div>
             <form class="ai-ask" id="homeAskForm">
               <input type="text" id="homeAskInput" maxlength="80" placeholder="무엇이든 물어보세요" aria-label="AI에게 질문하기">
@@ -729,6 +703,7 @@
         <button type="button" class="ai-chip" data-chat-topic="clean">🧹 청소·곰팡이</button>
         <button type="button" class="ai-chip" data-chat-topic="contract">📄 계약·보증금</button>
         <button type="button" class="ai-chip" data-chat-topic="bill">💡 공과금·생활비</button>
+        <button type="button" class="ai-chip" data-chat-topic="summary">📊 지출 요약</button>
       </div>
       <form class="chat-form" id="chatForm">
         <input type="text" id="chatInput" maxlength="80" placeholder="궁금한 걸 입력하세요" aria-label="AI에게 보낼 메시지" autocomplete="off">

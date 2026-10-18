@@ -1,4 +1,4 @@
-/* 캘린더: 달력, 일정 추가·삭제, 상단 검색, 캘린더 아래 알림 */
+/* 캘린더: 달력, 일정 추가·수정·삭제, 상단 검색, 캘린더 아래 알림 */
 import { $, el, pad, fmt, today, todayStr, dayDiff, sortEvents } from '../core/utils.js';
 import { store } from '../core/storage.js';
 import { state, settings } from '../core/state.js';
@@ -7,7 +7,7 @@ import { TRASH, trashIco } from '../data/trash.js';
 import { registerView, showView } from '../core/router.js';
 import { updateDot } from './noti.js';
 
-var viewY = today.getFullYear(), viewM = today.getMonth(), selected = todayStr, mode = 'day', query = '';
+var viewY = today.getFullYear(), viewM = today.getMonth(), selected = todayStr, mode = 'day', query = '', editingId = null;   // editingId: 지금 수정 중인 일정
 
 function renderGrid() {
   $('calTitle').textContent = viewY + '년 ' + (viewM + 1) + '월';
@@ -37,7 +37,7 @@ $('calGrid').addEventListener('click', function (e) {
   if (!btn) return;
   selected = btn.getAttribute('data-date');
   $('evDate').value = selected;
-  mode = 'day'; query = ''; $('searchInput').value = '';
+  editingId = null; mode = 'day'; query = ''; $('searchInput').value = '';
   renderCalendarAll();
 });
 $('calPrev').addEventListener('click', function () { viewM--; if (viewM < 0) { viewM = 11; viewY--; } renderGrid(); });
@@ -62,9 +62,14 @@ function renderEvList() {
   $('modeAll').classList.toggle('on', mode === 'all');
   if (!items.length) { list.appendChild(el('li', 'empty', query ? '검색 결과가 없어요.' : '등록된 일정이 없어요.')); return; }
   items.forEach(function (ev) {
+    if (ev.id === editingId) { list.appendChild(editRow(ev)); return; }
     var li = el('li', 'ev');
     li.appendChild(el('span', 'when', (mode === 'all' ? ev.date.slice(5).replace('-', '/') + ' ' : '') + (ev.time || '종일')));
     li.appendChild(el('span', 'name', ev.title));
+    var edit = el('button', 'edit', '수정');
+    edit.type = 'button'; edit.title = '일정 수정';
+    edit.addEventListener('click', function () { editingId = ev.id; renderEvList(); });
+    li.appendChild(edit);
     var del = el('button', 'del', '×');
     del.type = 'button'; del.title = '삭제';
     del.addEventListener('click', function () {
@@ -76,8 +81,45 @@ function renderEvList() {
     list.appendChild(li);
   });
 }
-$('modeDay').addEventListener('click', function () { mode = 'day'; renderEvList(); });
-$('modeAll').addEventListener('click', function () { mode = 'all'; renderEvList(); });
+$('modeDay').addEventListener('click', function () { editingId = null; mode = 'day'; renderEvList(); });
+$('modeAll').addEventListener('click', function () { editingId = null; mode = 'all'; renderEvList(); });
+
+/* 일정 한 줄을 입력칸으로 바꿔 제목·날짜·시간을 고치는 줄 */
+function editRow(ev) {
+  var li = el('li', 'ev editing');
+  var title = el('input'); title.type = 'text'; title.maxLength = 60; title.value = ev.title; title.setAttribute('aria-label', '일정 제목');
+  var date = el('input'); date.type = 'date'; date.value = ev.date; date.setAttribute('aria-label', '날짜');
+  var time = el('input'); time.type = 'time'; time.value = ev.time || ''; time.setAttribute('aria-label', '시간 (선택)');
+  var ok = el('button', 'save', '저장'); ok.type = 'button';
+  var no = el('button', 'cancel', '취소'); no.type = 'button';
+  function save() {
+    var t = title.value.trim();
+    if (!t || !date.value) { (t ? date : title).focus(); return; }
+    ev.title = t; ev.date = date.value; ev.time = time.value;
+    store('zip-events', state.events);
+    editingId = null;
+    selected = ev.date; viewY = Number(ev.date.slice(0, 4)); viewM = Number(ev.date.slice(5, 7)) - 1;   // 날짜를 바꿨으면 그 날로 따라감
+    $('evDate').value = selected;
+    renderCalendarAll(); updateDot();
+  }
+  function cancel() { editingId = null; renderEvList(); }
+  ok.addEventListener('click', save);
+  no.addEventListener('click', cancel);
+  li.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); save(); }
+    else if (e.key === 'Escape') cancel();
+  });
+  var fields = el('div', 'fields');
+  fields.appendChild(title);
+  var row = el('div', 'fields-row');
+  row.appendChild(date); row.appendChild(time);
+  fields.appendChild(row);
+  var btns = el('div', 'btns');
+  btns.appendChild(ok); btns.appendChild(no);
+  li.appendChild(fields); li.appendChild(btns);
+  setTimeout(function () { title.focus(); }, 0);
+  return li;
+}
 
 function renderCalNoti() {
   var box = $('notiList');
