@@ -57,6 +57,49 @@
     form.pw.type = t ? 'text' : 'password';
     this.textContent = t ? '숨기기' : '보기';
   });
+  // 약관 전체 보기: 요약 줄 옆 "전체 보기" → 조항별로 펼쳐 보는 창 (내용은 terms.js, innerHTML 없이 요소로 만듦)
+  function initTerms() {
+    var data = window.ZIP_TERMS, box = document.getElementById('termsField');
+    if (!data || !box) return;
+    var tv = document.createElement('div');
+    tv.className = 'tv'; tv.hidden = true;
+    var win = document.createElement('div');
+    win.className = 'tv-box'; win.setAttribute('role', 'dialog'); win.setAttribute('aria-modal', 'true');
+    var head = document.createElement('div'); head.className = 'tv-head';
+    var h = document.createElement('h3'); h.textContent = data.title;
+    var up = document.createElement('p'); up.textContent = data.updated;
+    head.appendChild(h); head.appendChild(up);
+    var body = document.createElement('div'); body.className = 'tv-body';
+    data.sections.forEach(function (s, i) {
+      var d = document.createElement('details');
+      if (i === 0) d.open = true;
+      var sm = document.createElement('summary'); sm.textContent = s[0];
+      d.appendChild(sm);
+      s[1].forEach(function (line) { var p = document.createElement('p'); p.textContent = line; d.appendChild(p); });
+      body.appendChild(d);
+    });
+    var foot = document.createElement('div'); foot.className = 'tv-foot';
+    var close = document.createElement('button'); close.type = 'button'; close.className = 'btn btn-sub'; close.textContent = '닫기';
+    var agree = document.createElement('button'); agree.type = 'button'; agree.className = 'btn btn-main'; agree.textContent = '동의하고 닫기';
+    foot.appendChild(close); foot.appendChild(agree);
+    win.appendChild(head); win.appendChild(body); win.appendChild(foot);
+    tv.appendChild(win); document.body.appendChild(tv);
+
+    var more = document.createElement('button');
+    more.type = 'button'; more.className = 'terms-more'; more.textContent = '전체 보기';
+    box.querySelector('.terms-text').appendChild(more);
+
+    function open() { tv.hidden = false; body.scrollTop = 0; agree.focus(); }
+    function shut() { tv.hidden = true; more.focus(); }
+    more.addEventListener('click', open);
+    close.addEventListener('click', shut);
+    agree.addEventListener('click', function () { form.agree.checked = true; shut(); });
+    tv.addEventListener('mousedown', function (e) { if (e.target === tv) shut(); });
+    window.addEventListener('keydown', function (e) {   // Esc는 약관 창만 닫고, 아래 로그인 창은 그대로 둠
+      if (e.key === 'Escape' && !tv.hidden) { e.stopImmediatePropagation(); shut(); }
+    }, true);
+  }
+  initTerms();
   window.setLoginMode = setMode;   // 시작 화면의 "회원가입" 버튼이 로그인 창을 가입 모드로 열 때 사용
   setMode('login');
 })();

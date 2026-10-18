@@ -1,10 +1,9 @@
 /* 공과금: 홈 카드, 상세 화면 */
-import { $, el, today } from '../core/utils.js';
+import { $, el, today, won } from '../core/utils.js';
 import { store } from '../core/storage.js';
 import { state } from '../core/state.js';
 import { registerView } from '../core/router.js';
 
-function won(n) { return Number(n).toLocaleString('ko-KR') + '원'; }
 function saveBills() { store('zip-bills', state.bills); renderBills(); }
 
 export function renderBills() {

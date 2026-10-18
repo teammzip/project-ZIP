@@ -1,16 +1,15 @@
 /* 수입: 월급·아르바이트·용돈 등 무엇으로 얼마 벌었는지 기록하고 월별로 보기 */
-import { $, el, today, fmt } from '../core/utils.js';
+import { $, el, pad, today, fmt, won, ago, monthLabel } from '../core/utils.js';
 import { load, store } from '../core/storage.js';
 import { registerView } from '../core/router.js';
+import { demoIncomes } from '../data/demo.js';
 
 var CATS = [   // [수입 종류, 색]
   ['월급', 'var(--teal)'], ['아르바이트', 'var(--orange)'], ['용돈', 'var(--pink)'],
   ['부수입', '#f5a623'], ['환급·정산', 'var(--purple)'], ['기타', '#8a90a2']
 ];
 var DAYS = ['일', '월', '화', '수', '목', '금', '토'];
-function won(n) { return Number(n).toLocaleString('ko-KR') + '원'; }
 function colorOf(cat) { for (var i = 0; i < CATS.length; i++) if (CATS[i][0] === cat) return CATS[i][1]; return '#8a90a2'; }
-function ago(n) { var d = new Date(today); d.setDate(d.getDate() - n); return fmt(d); }
 
 var incomes = load('zip-incomes', null);
 if (!Array.isArray(incomes)) {   // 처음 열 때만 보여줄 예시 기록 (지우거나 새로 기록하면 됨)
@@ -21,12 +20,47 @@ if (!Array.isArray(incomes)) {   // 처음 열 때만 보여줄 예시 기록 (�
   ];
   store('zip-incomes', incomes);
 }
+if (!load('zip-demo-income', false)) {   // 둘러보기용: 지난 달들의 수입 예시를 한 번만 더함
+  incomes = incomes.concat(demoIncomes());
+  store('zip-demo-income', true); store('zip-incomes', incomes);
+}
 var monthKey = fmt(today).slice(0, 7);   // 지금 보고 있는 달 (YYYY-MM)
 
 function save() { store('zip-incomes', incomes); renderIncome(); }
-function monthLabel(k) { var p = k.split('-'); return p[0] + '년 ' + Number(p[1]) + '월' + (k === fmt(today).slice(0, 7) ? ' (이번 달)' : ''); }
+
+/* 홈의 "월별 수입" 막대 그래프: 최근 6·12개월의 달별 수입 합계 (기록이 바뀔 때마다 다시 그림) */
+function renderIncomeChart() {
+  var n = Number($('incRange').value) || 6;
+  var sums = {};
+  incomes.forEach(function (s) { var k = s.date.slice(0, 7); sums[k] = (sums[k] || 0) + s.amount; });
+  var months = [];
+  for (var i = n - 1; i >= 0; i--) {
+    var d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    var k = d.getFullYear() + '-' + pad(d.getMonth() + 1);
+    months.push({ key: k, label: (d.getMonth() + 1) + '월', sum: sums[k] || 0 });
+  }
+  var max = Math.max.apply(null, months.map(function (m) { return m.sum; }));
+  var box = $('incChart');
+  box.textContent = '';
+  box.classList.toggle('dense', n > 6);
+  months.forEach(function (m, idx) {
+    var col = el('div', 'col' + (idx === months.length - 1 ? ' hl' : ''));   // 이번 달 강조
+    col.appendChild(el('div', 'tip', won(m.sum)));
+    var b = el('div', 'b');
+    b.style.height = (max ? Math.max(m.sum / max * 88, m.sum ? 4 : 1.5) : 1.5) + '%';
+    col.appendChild(b);
+    col.appendChild(el('span', null, m.label));
+    col.title = m.label + ' 수입 ' + won(m.sum);
+    box.appendChild(col);
+  });
+  var cur = months[months.length - 1].sum, prev = months.length > 1 ? months[months.length - 2].sum : 0;
+  var diff = cur - prev;
+  $('incSum').textContent = '이번 달 ' + won(cur) + (prev || cur ? ' · 지난달보다 ' + (diff === 0 ? '같아요' : won(Math.abs(diff)) + (diff > 0 ? ' 많아요' : ' 적어요')) : ' · 아직 기록이 없어요');
+}
+$('incRange').addEventListener('change', renderIncomeChart);
 
 export function renderIncome() {
+  renderIncomeChart();
   var keys = {}; keys[fmt(today).slice(0, 7)] = 1;
   incomes.forEach(function (s) { keys[s.date.slice(0, 7)] = 1; });
   var list = Object.keys(keys).sort().reverse();
