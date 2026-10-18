@@ -1,11 +1,14 @@
-import { PagePlaceholder } from '@/components/common/PagePlaceholder'
+import { useProfile } from '@/app/useProfile'
+import { CommunityBoard } from '@/features/community'
+import common from '@/styles/common.module.css'
+import { TownTabs } from '../town/TownTabs'
 
 export function CommunityPage() {
+  const { name, region } = useProfile()
   return (
-    <PagePlaceholder
-      title="커뮤니티"
-      description="글 목록·상세, 좋아요·댓글, 동네 범위"
-      legacy={['variants/app/js/views/community.js', 'variants/app/js/data/posts-seed.js', 'variants/app/css/views/community.css']}
-    />
+    <div className={common.stack}>
+      <TownTabs />
+      <CommunityBoard region={region} author={name} />
+    </div>
   )
 }

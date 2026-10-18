@@ -1,0 +1,81 @@
+.page {
+  display: grid;
+  gap: 18px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* ---------- 사진 상담 카드 ---------- */
+.photo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid #cfe0fb;
+}
+
+.photoIco {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #eaf2ff;
+  font-size: 26px;
+}
+
+.photoCopy {
+  flex: 1;
+  min-width: 0;
+}
+
+.photoCopy h2 {
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.photoCopy p {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.photoCopy small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.photoBtn {
+  flex: none;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+}
+
+.photoBtn:hover {
+  filter: brightness(0.95);
+}
+
+@media (max-width: 900px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .photo {
+    flex-wrap: wrap;
+  }
+
+  .photoBtn {
+    width: 100%;
+  }
+}

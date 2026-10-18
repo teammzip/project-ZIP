@@ -1,11 +1,18 @@
-import { PagePlaceholder } from '@/components/common/PagePlaceholder'
+import { Outlet } from 'react-router-dom'
+import { TabNav, type TabItem } from '@/components/ui'
+import common from '@/styles/common.module.css'
+
+/* 가계부 탭: 수입 | 지출 (지출 안에 고정 지출 | 기타 지출) */
+const TABS: TabItem[] = [
+  { to: '/my/budget/income', label: '수입' },
+  { to: '/my/budget/expense', label: '지출' },
+]
 
 export function BudgetPage() {
   return (
-    <PagePlaceholder
-      title="가계부"
-      description="수입 | 지출(고정 지출: 월세 + 공과금 / 기타 지출)"
-      legacy={['variants/app/js/views/income.js', 'variants/app/js/views/spend.js', 'variants/app/js/views/fixed.js', 'variants/app/js/views/rent.js', 'variants/app/js/views/bills.js']}
-    />
+    <div className={common.stack}>
+      <TabNav items={TABS} label="가계부" variant="pill" />
+      <Outlet />
+    </div>
   )
 }

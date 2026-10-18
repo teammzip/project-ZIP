@@ -1,27 +1,27 @@
 .shell {
   display: grid;
-  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--panel-width);
   min-height: 100dvh;
 }
 
-/* ---------- PC 사이드바 ---------- */
+/* ---------- PC 사이드바: 좁은 아이콘 막대 (아이콘 위 · 글자 아래) ---------- */
 .sidebar {
   position: sticky;
   top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   height: 100dvh;
-  padding: 24px 14px;
+  padding: 16px 0;
+  overflow-y: auto;
   background: var(--color-card);
   border-right: 1px solid var(--color-line);
+  scrollbar-width: none;
 }
 
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 10px 24px;
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--color-primary);
+  display: block;
+  margin-bottom: 14px;
 }
 
 .brand img {
@@ -34,24 +34,44 @@
 }
 
 .navItem {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 11px 12px;
-  border-radius: var(--radius-md);
-  font-size: 15px;
+  justify-content: center;
+  gap: 3px;
+  width: 64px;
+  height: 56px;
+  border-radius: 12px;
   color: var(--color-muted);
+  transition: background 0.15s, color 0.15s;
 }
 
 .navItem:hover {
-  background: var(--color-bg);
+  background: #f1f2f7;
   color: var(--color-text);
 }
 
 .navItem.active {
-  background: #eaf2fe;
-  color: var(--color-primary);
-  font-weight: 700;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.navLabel {
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dot {
+  position: absolute;
+  top: 7px;
+  right: 15px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-pink);
+  box-shadow: 0 0 0 2px #fff;
 }
 
 /* ---------- 본문 ---------- */
@@ -67,25 +87,66 @@
   padding: 18px 28px;
 }
 
+.date {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
 .greeting {
-  font-size: 17px;
+  margin-top: 2px;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+.greeting b {
+  font-weight: 800;
 }
 
 .main {
   padding: 0 28px 40px;
 }
 
-/* ---------- 모바일 하단 메뉴 ---------- */
-.bottomNav {
+/* ---------- 오른쪽 요약 패널 ---------- */
+.panel {
+  min-height: 100dvh;
+}
+
+.headerLogout,
+.mobIcons,
+.bottomNav,
+.aiFab,
+.menuBackdrop,
+.menuPanel {
   display: none;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1200px) {
   .shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   }
 
-  .sidebar {
+  /* 본문 아래로 */
+  .panel {
+    grid-column: 2;
+    min-height: 0;
+    margin: 0 28px 40px;
+  }
+
+  .headerLogout {
+    display: inline-flex;
+  }
+}
+
+/* ---------- 모바일 (900px 이하) ---------- */
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar,
+  .headerLogout {
     display: none;
   }
 
@@ -93,16 +154,94 @@
     padding: 14px 16px;
   }
 
-  .main {
-    padding: 0 16px calc(var(--bottom-nav-height) + 24px);
+  .date {
+    font-size: 13px;
   }
 
+  /* 오른쪽 아이콘 3개와 한 줄에 들어가도록 조금 작게 */
+  .greeting {
+    font-size: 21px;
+  }
+
+  .main {
+    padding: 0 16px 24px;
+  }
+
+  .panel {
+    grid-column: 1;
+    margin: 0 16px calc(var(--bottom-nav-height) + 84px);
+  }
+
+  /* 요약 패널은 홈에서만. 다른 화면은 하단 메뉴 + AI 버튼만큼 여백 */
+  .panelNotHome {
+    display: none;
+  }
+
+  .body:has(+ .panelNotHome) .main {
+    padding-bottom: calc(var(--bottom-nav-height) + 84px);
+  }
+
+  /* 오른쪽 위 아이콘: 알림 · 내 정보 · ☰ */
+  .mobIcons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .mobIcon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--color-line);
+    border-radius: 50%;
+    background: #fff;
+    color: var(--color-text);
+  }
+
+  .mobOn {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .mobDot {
+    position: absolute;
+    top: 6px;
+    right: 7px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-pink);
+    box-shadow: 0 0 0 2px #fff;
+  }
+
+  .avatarSm {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8dbaf6, var(--color-primary));
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  /* 메뉴가 열려 있는 동안 ✕ 버튼은 패널 위 같은 자리에 */
+  .menuBtnOpen {
+    position: fixed;
+    top: 14px;
+    right: 16px;
+    z-index: 31;
+  }
+
+  /* 하단 메뉴: 홈 · 마이페이지 · 사진 · AI · 동네 */
   .bottomNav {
     position: fixed;
     inset: auto 0 0 0;
     z-index: 20;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     height: var(--bottom-nav-height);
     padding-bottom: env(safe-area-inset-bottom);
     background: var(--color-card);
@@ -115,15 +254,199 @@
     align-content: center;
     gap: 2px;
     font-size: 11px;
+    font-weight: 600;
     color: var(--color-muted);
-  }
-
-  .bottomItem span {
-    font-size: 20px;
   }
 
   .bottomItem.active {
     color: var(--color-primary);
-    font-weight: 700;
+  }
+
+  /* 가운데 사진 버튼: 메뉴 위로 솟은 큰 파란 동그라미 (기존 시안과 같음) */
+  .bottomPhoto {
+    display: grid;
+    place-items: center;
+  }
+
+  .photoCircle {
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    margin-top: -26px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(47, 128, 237, 0.45);
+    transition: transform 0.15s;
+  }
+
+  .bottomPhoto:active .photoCircle {
+    transform: scale(0.94);
+  }
+
+  .bottomPhoto:focus-visible {
+    outline: none;
+  }
+
+  .bottomPhoto:focus-visible .photoCircle {
+    outline: 3px solid var(--color-text);
+    outline-offset: 3px;
+  }
+
+  .photoOn .photoCircle {
+    box-shadow: 0 0 0 4px #dbe9fd, 0 6px 16px rgba(47, 128, 237, 0.45);
+  }
+
+  .bottomIco {
+    position: relative;
+    display: grid;
+  }
+
+  .bottomIco .dot {
+    top: -2px;
+    right: -6px;
+  }
+
+  /* 하단 메뉴 위에 뜨는 AI 버튼 */
+  .aiFab {
+    position: fixed;
+    right: 16px;
+    bottom: calc(var(--bottom-nav-height) + 14px);
+    z-index: 21;
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(47, 128, 237, 0.45);
+  }
+
+  .aiFab svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .aiFab text {
+    fill: currentColor;
+    stroke: none;
+    font-size: 7px;
+    font-weight: 800;
+  }
+
+  /* ☰ 전체 메뉴 */
+  .menuBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+    display: block;
+    background: rgba(31, 36, 48, 0.35);
+  }
+
+  .menuPanel {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 30;
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    padding: 16px 16px 28px;
+    overflow-y: auto;
+    background: #fff;
+    animation: slideIn 0.2s ease-out;
+  }
+
+  .menuHead {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 40px;
+    margin-bottom: 18px;
+  }
+
+  .menuHead img {
+    height: 30px;
+    width: auto;
+  }
+
+  .menuHead b {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-muted);
+  }
+
+  .menuGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px 6px;
+  }
+
+  .menuTile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .icoWrap {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: #f3f4f9;
+  }
+
+  .menuOn .icoWrap {
+    background: var(--color-primary);
+    color: #fff;
+  }
+
+  .menuAccount {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 28px;
+    padding: 14px;
+    border-radius: var(--radius-lg);
+    background: #f3f4f9;
+  }
+
+  .menuAccount .avatarSm {
+    width: 40px;
+    height: 40px;
+    font-size: 15px;
+  }
+
+  .menuWho {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .menuWho b {
+    display: block;
+    font-size: 15px;
+  }
+
+  .menuWho small {
+    display: block;
+    overflow: hidden;
+    font-size: 12px;
+    color: var(--color-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
   }
 }

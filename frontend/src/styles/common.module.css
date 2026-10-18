@@ -1,0 +1,365 @@
+/* 앱 안 여러 화면이 같이 쓰는 모양: 2단 배치, 폼, 칩, 태그, 빈 목록, 진행 막대, 합계 칸, 삭제 버튼.
+ * import common from '@/styles/common.module.css' 로 가져와 className={common.form} 처럼 씁니다.
+ * (한 화면에서만 쓰는 모양은 그 컴포넌트 옆 Xxx.module.css 에 두세요) */
+
+/* ---------- 배치 ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.col {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.stack {
+  display: grid;
+  gap: 16px;
+}
+
+.narrow {
+  max-width: 560px;
+}
+
+.pageTitle {
+  margin: 4px 0 2px;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.pageTitle small {
+  margin-left: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pageTitle small {
+    display: block;
+    margin: 4px 0 0;
+  }
+}
+
+/* ---------- 폼 ---------- */
+.form {
+  display: grid;
+  gap: 10px;
+}
+
+.form label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.form input:not([type='checkbox']),
+.form select,
+.form textarea,
+.input {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 14px;
+  color: var(--color-text);
+  outline: 0;
+}
+
+.form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.form input:focus,
+.form select:focus,
+.form textarea:focus,
+.input:focus {
+  border-color: var(--color-primary);
+}
+
+.two {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.form .check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.check input,
+.checkbox {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+/* 입력칸 + 버튼 한 줄 (할 일 추가, 댓글 등) */
+.inline {
+  display: flex;
+  gap: 6px;
+}
+
+.select {
+  padding: 5px 10px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.saved {
+  min-height: 16px;
+  font-size: 12px;
+  color: var(--color-teal);
+}
+
+.note {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+.notice {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: #fff8e8;
+  font-size: 12px;
+  color: #9a6a00;
+}
+
+.link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-purple);
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- 칩 · 태그 ---------- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.chip {
+  padding: 6px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 99px;
+  background: #fff;
+  font-size: 12px;
+}
+
+.chip:hover,
+.chipOn {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.tag {
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: #eefaf8;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-teal);
+  white-space: nowrap;
+}
+
+.tagWarn {
+  background: #fff0f3;
+  color: var(--color-pink);
+}
+
+.tagPurple {
+  background: #f1efff;
+  color: var(--color-purple);
+}
+
+/* 분류 색 점이 붙은 칩 (style={{ '--c': 색 }}) */
+.dotChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: #f3f4f9;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dotChip::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.dotChipSmall {
+  padding: 2px 9px;
+  font-size: 12px;
+}
+
+/* ---------- 목록 ---------- */
+.empty {
+  padding: 16px 0;
+  font-size: 13px;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.del {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 17px;
+  color: var(--color-muted);
+}
+
+.del:hover {
+  background: #ffe9ee;
+  color: var(--color-pink);
+}
+
+.count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+/* 진행 막대: <div className={bar}><i style={{ width: '50%' }} /></div> */
+.bar {
+  height: 8px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--color-line);
+}
+
+.bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--color-primary);
+  transition: width 0.2s;
+}
+
+.sub {
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+/* 합계 칸 3개 (전체 | 납부 | 남음 등) */
+.sumRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.sumRow > div {
+  padding: 10px 4px;
+  border-radius: var(--radius-md);
+  background: #f7f8fc;
+}
+
+.sumRow small {
+  display: block;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.sumRow b {
+  font-size: 15px;
+}
+
+/* 알림 한 줄 (알림 화면, 캘린더 아래 알림) */
+.noti {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+
+.noti:last-child {
+  border-bottom: 0;
+}
+
+.notiIco {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: #eaf2ff;
+  font-size: 17px;
+}
+
+.notiText {
+  flex: 1;
+  min-width: 0;
+}
+
+.notiText b {
+  display: block;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.notiText small {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.badge {
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: #f1efff;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-purple);
+  white-space: nowrap;
+}
+
+.badgeHot {
+  background: #fff0f3;
+  color: var(--color-pink);
+}

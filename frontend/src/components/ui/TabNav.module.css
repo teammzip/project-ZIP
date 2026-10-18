@@ -2,12 +2,20 @@
   display: flex;
   gap: 4px;
   overflow-x: auto;
-  border-bottom: 1px solid var(--color-line);
   scrollbar-width: none;
 }
 
 .tab {
   flex: none;
+  white-space: nowrap;
+}
+
+/* ---------- underline: 마이페이지 1단계 ---------- */
+.underline {
+  border-bottom: 1px solid var(--color-line);
+}
+
+.underline .tab {
   padding: 10px 14px;
   font-size: 14px;
   color: var(--color-muted);
@@ -15,12 +23,69 @@
   margin-bottom: -1px;
 }
 
-.tab:hover {
+.underline .tab:hover {
   color: var(--color-text);
 }
 
-.on {
+.underline .on {
   color: var(--color-primary);
   font-weight: 700;
   border-bottom-color: var(--color-primary);
+}
+
+/* ---------- pill: 2단계 ---------- */
+.pill {
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px;
+  border-radius: 14px;
+  background: #e9ebf3;
+}
+
+.pill .tab {
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-weight: 800;
+  color: var(--color-muted);
+}
+
+.pill .on {
+  background: #fff;
+  color: var(--color-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- chip: 3단계 ---------- */
+.chip {
+  gap: 8px;
+}
+
+.chip .tab {
+  padding: 8px 16px;
+  border: 1.5px solid var(--color-line);
+  border-radius: 999px;
+  background: #fff;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.chip .on {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+@media (max-width: 900px) {
+  .pill {
+    width: 100%;
+  }
+
+  .pill .tab,
+  .chip .tab {
+    flex: 1;
+    padding: 9px 6px;
+    font-size: 14px;
+    text-align: center;
+  }
 }

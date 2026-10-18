@@ -1,0 +1,236 @@
+/* 회원가입 · 아이디/비밀번호 찾기 폼 (팀 시안 variants/account/account.css): 라벨은 왼쪽, 입력칸은 밑줄만 있는 형식 */
+.form {
+  display: block;
+}
+
+.h1 {
+  margin: 34px 0 30px;
+  font-size: 32px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.lead {
+  margin: -14px 0 26px;
+  font-size: 14px;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.secTitle {
+  margin: 34px 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.form > .secTitle:first-child {
+  margin-top: 0;
+}
+
+/* ---------- 한 줄: 왼쪽 라벨 + 오른쪽 밑줄 입력 ---------- */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 56px;
+  border-bottom: 1px solid #d5d9e0;
+}
+
+.row:focus-within {
+  border-bottom-color: var(--color-text);
+}
+
+.row label {
+  flex: none;
+  width: 104px;
+  padding-left: 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.rowSub label {
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.cell {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cell input {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font-size: 14px;
+}
+
+.cell input::placeholder {
+  color: #aab0bd;
+}
+
+.cell input:read-only {
+  color: var(--color-muted);
+}
+
+.prefix {
+  font-size: 14px;
+}
+
+.lineBtn {
+  flex: none;
+  padding: 9px 14px;
+  border: 1px solid #4a505c;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 13px;
+}
+
+.lineBtn:disabled {
+  border-color: #d5d9e0;
+  color: var(--color-muted);
+  cursor: default;
+}
+
+.lineBtn.done {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* 비밀번호 보기 눈 아이콘 */
+.eye {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  background: transparent center / 20px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a90a2' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M3 3l18 18' stroke='%23fff' stroke-width='5'/%3E%3Cpath d='M3 3l18 18'/%3E%3C/svg%3E");
+}
+
+.eyeOn {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f80ed' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
+}
+
+/* 입력 안내·오류 한 줄 */
+.hint {
+  padding: 5px 0 0 120px;
+  font-size: 12px;
+  color: var(--color-danger);
+}
+
+.hintOk {
+  color: #0b8f7d;
+}
+
+/* ---------- 아래쪽 ---------- */
+.error {
+  min-height: 18px;
+  margin-top: 14px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--color-danger);
+}
+
+/* 가입하기: 필수 항목을 다 채우면 파란색 */
+.submit {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 18px;
+  border-radius: 3px;
+  background: #dcdfe4;
+  font-size: 15px;
+  font-weight: 700;
+  color: #9aa0ad;
+}
+
+.submitOn {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.result {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 6px;
+  background: #e8f8f4;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #0b6b5d;
+}
+
+.result small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #5b8a83;
+}
+
+.foot {
+  margin-top: 22px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.foot a,
+.foot button {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* ---------- 찾기 페이지 위쪽 탭 ---------- */
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+  border-bottom: 1px solid #eceef2;
+}
+
+.tabs button {
+  padding: 12px 4px;
+  border-bottom: 2px solid transparent;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+.tabs button[aria-selected='true'] {
+  border-bottom-color: var(--color-text);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+@media (max-width: 560px) {
+  .h1 {
+    font-size: 26px;
+  }
+
+  .row {
+    flex-wrap: wrap;
+    gap: 0;
+    padding-top: 10px;
+  }
+
+  .row label {
+    width: 100%;
+    padding-left: 0;
+  }
+
+  .cell {
+    flex: 1 1 100%;
+  }
+
+  .hint {
+    padding-left: 0;
+  }
+}

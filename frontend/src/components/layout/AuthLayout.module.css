@@ -30,3 +30,9 @@
     padding: 22px 18px 18px;
   }
 }
+
+.legal {
+  justify-content: center;
+  margin-top: 18px;
+  color: var(--color-muted);
+}

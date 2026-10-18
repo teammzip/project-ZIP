@@ -15,6 +15,8 @@ type AuthState = {
   token: string | null
   setAuth: (user: User, token: string, remember: boolean) => void
   clearAuth: () => void
+  /** 닉네임 등 내 정보가 바뀌었을 때 (토큰·저장 위치는 그대로) */
+  updateUser: (user: User) => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -27,6 +29,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user, token })
   },
 
+  updateUser(user) {
+    const where = readJSON<Session>(KEY, 'local') ? 'local' : 'session'
+    const token = useAuthStore.getState().token
+    if (token) writeJSON(KEY, { user, token } satisfies Session, where)
+    set({ user })
+  },
+
   clearAuth() {
     remove(KEY, 'local')
     remove(KEY, 'session')
@@ -35,3 +44,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 }))
 
 export const selectIsLoggedIn = (s: AuthState) => s.token !== null
+
+/** 소셜 로그인으로 처음 들어와 아직 약관 동의·주소 입력을 안 한 상태 (이메일 가입은 가입할 때 동의함) */
+export const selectNeedsConsent = (s: AuthState) => !!s.user && s.user.provider !== 'email' && !s.user.agreedAt
