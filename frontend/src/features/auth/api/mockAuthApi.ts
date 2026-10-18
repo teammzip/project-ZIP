@@ -3,20 +3,20 @@ import type { AuthApi, AuthResponse, SocialProvider, User } from '../types'
 
 /* 백엔드가 준비되기 전까지 쓰는 가짜 API. 가입한 계정은 이 브라우저(localStorage)에만 저장됩니다.
  * 실제 서버처럼 약간 기다렸다가 응답하고, 실패하면 에러를 던집니다.
- * 휴대전화 인증은 아무 6자리 숫자나 통과합니다 (문자는 실제로 보내지 않음). */
+ * 휴대전화 인증은 아무 6자리 숫자나 통과합니다 (문자는 실제로 보내지 않음).
+ * ⚠️ 가짜라서 비밀번호를 그대로 저장합니다. 실제 서버는 반드시 해시(bcrypt 등)로 저장해야 해요. */
 
 type MockAccount = User & { password: string; phone?: string }
 
 const USERS_KEY = 'zip-mock-users'
 const SOCIAL_NAMES: Record<SocialProvider, string> = { kakao: '카카오', google: '구글', naver: '네이버' }
 
-/** 가입 없이 바로 둘러보는 데모 계정 (가짜 API 모드에서만 있음). 아이디·이메일 둘 다로 로그인 가능 */
-export const DEMO_ACCOUNT = { username: 'zipdemo', email: 'demo@zip.com', password: 'zip12345' }
+/** 가입 없이 바로 둘러보는 데모 계정 (가짜 API 모드에서만 있음, 팀 시안 shared/zip-password.js 와 같은 값).
+ * 아이디·이메일 둘 다로 로그인 가능, 아이디·비밀번호 찾기는 닉네임 "지기" + 휴대전화 010-1234-5678 */
+export const DEMO_ACCOUNT = { username: 'zipdemo', email: 'demo@zip.com', password: 'zip12345', nickname: '지기', phone: '010-1234-5678' }
 const DEMO: MockAccount = {
   id: 'demo',
   ...DEMO_ACCOUNT,
-  nickname: '지기',
-  phone: '010-1234-5678',
   address: '서울시 마포구 합정동',
   provider: 'email',
   agreedAt: '2026-10-18T00:00:00.000Z',
@@ -25,9 +25,9 @@ const DEMO: MockAccount = {
 const wait = (ms = 400) => new Promise((r) => setTimeout(r, ms))
 const loadAccounts = () => {
   const list = readJSON<MockAccount[]>(USERS_KEY) ?? []
-  // 예전에 저장된 데모 계정에 아이디가 없으면 새 데모 계정으로 바꿈
-  const rest = list.filter((a) => a.id !== DEMO.id)
-  return [DEMO, ...rest]
+  // 데모 계정은 저장된 게 있으면 그걸 씀 (비밀번호를 바꿨을 수 있어서). 예전 형식(아이디 없음)이면 새로
+  const saved = list.find((a) => a.id === DEMO.id && a.username)
+  return [saved ?? DEMO, ...list.filter((a) => a.id !== DEMO.id)]
 }
 const saveAccounts = (list: MockAccount[]) => writeJSON(USERS_KEY, list)
 
@@ -35,9 +35,11 @@ function toResponse({ password: _password, phone: _phone, ...user }: MockAccount
   return { accessToken: `mock-token-${user.id}`, user }
 }
 
-/** 'zipdemo' → 'zi***mo' */
-const maskId = (id: string) => (id.length <= 4 ? `${id[0]}***` : `${id.slice(0, 2)}${'*'.repeat(id.length - 4)}${id.slice(-2)}`)
 const same = (a: string, b: string) => a.replace(/\s/g, '') === b.replace(/\s/g, '')
+const digits = (p = '') => p.replace(/\D/g, '')
+/** 인증을 마친 휴대전화 번호 → 인증 토큰 (가짜 서버의 기억) */
+const verifiedPhones = new Map<string, string>()
+const resetTokens = new Map<string, string>() // 재설정 토큰 → 계정 id
 
 let currentId: string | null = null
 
@@ -62,10 +64,12 @@ export const mockAuthApi: AuthApi = {
     await wait(300)
   },
 
-  async verifyPhoneCode(phone, code) {
+  async verifyPhoneCode(phone, code, purpose) {
     await wait(300)
     if (!/^\d{6}$/.test(code)) throw new Error('인증번호 6자리를 입력해 주세요.')
-    return { verificationToken: `mock-phone-${phone}` }
+    const token = `mock-${purpose}-${digits(phone)}-${Date.now()}`
+    verifiedPhones.set(token, digits(phone))
+    return { verificationToken: token }
   },
 
   async signup(req) {
@@ -91,16 +95,40 @@ export const mockAuthApi: AuthApi = {
     return toResponse(account)
   },
 
-  async findId({ nickname, address }) {
+  async findId({ nickname, phone, phoneVerificationToken }) {
     await wait()
-    const account = loadAccounts().find((a) => a.username && same(a.nickname, nickname) && same(a.address, address))
-    if (!account?.username) throw new Error('입력한 정보와 일치하는 계정이 없어요.')
-    return { maskedUsername: maskId(account.username) }
+    if (verifiedPhones.get(phoneVerificationToken) !== digits(phone)) throw new Error('휴대전화 인증을 다시 해 주세요.')
+    const account = loadAccounts().find((a) => a.username && same(a.nickname, nickname) && digits(a.phone) === digits(phone))
+    if (!account?.username) throw new Error('입력한 정보와 일치하는 계정을 찾을 수 없어요. 닉네임과 휴대전화를 다시 확인해 주세요.')
+    return { username: account.username }
   },
 
-  async requestPasswordReset() {
+  async verifyPasswordReset({ username, phone, phoneVerificationToken }) {
     await wait()
-    // 실제 서버도 계정이 있든 없든 같은 응답을 줘야 함 (가입 여부를 남이 알아내지 못하게)
+    if (verifiedPhones.get(phoneVerificationToken) !== digits(phone)) throw new Error('휴대전화 인증을 다시 해 주세요.')
+    const account = loadAccounts().find((a) => a.username === username.trim().toLowerCase() && digits(a.phone) === digits(phone))
+    if (!account) throw new Error('입력한 정보와 일치하는 계정을 찾을 수 없어요. 아이디와 휴대전화를 다시 확인해 주세요.')
+    const resetToken = crypto.randomUUID()
+    resetTokens.set(resetToken, account.id)
+    return { resetToken }
+  },
+
+  async resetPassword({ resetToken, newPassword }) {
+    await wait()
+    const id = resetTokens.get(resetToken)
+    if (!id) throw new Error('본인 확인이 만료됐어요. 처음부터 다시 해 주세요.')
+    resetTokens.delete(resetToken) // 한 번만 쓸 수 있음
+    saveAccounts(loadAccounts().map((a) => (a.id === id ? { ...a, password: newPassword } : a)))
+  },
+
+  async changePassword({ currentPassword, newPassword }) {
+    await wait()
+    const id = currentAccountId()
+    const accounts = loadAccounts()
+    const account = accounts.find((a) => a.id === id)
+    if (!account) throw new Error('로그인 정보가 없어요.')
+    if (account.password !== currentPassword) throw new Error('현재 비밀번호가 맞지 않아요.')
+    saveAccounts(accounts.map((a) => (a.id === id ? { ...a, password: newPassword } : a)))
   },
 
   async me() {

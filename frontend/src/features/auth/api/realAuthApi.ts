@@ -13,12 +13,12 @@ export const realAuthApi: AuthApi = {
     return data
   },
 
-  async sendPhoneCode(phone) {
-    await apiClient.post('/auth/phone/send', { phone })
+  async sendPhoneCode(phone, purpose) {
+    await apiClient.post('/auth/phone/send', { phone, purpose })
   },
 
-  async verifyPhoneCode(phone, code) {
-    const { data } = await apiClient.post<{ verificationToken: string }>('/auth/phone/verify', { phone, code })
+  async verifyPhoneCode(phone, code, purpose) {
+    const { data } = await apiClient.post<{ verificationToken: string }>('/auth/phone/verify', { phone, code, purpose })
     return data
   },
 
@@ -27,8 +27,17 @@ export const realAuthApi: AuthApi = {
     return data
   },
 
-  async requestPasswordReset(req) {
+  async verifyPasswordReset(req) {
+    const { data } = await apiClient.post<{ resetToken: string }>('/auth/password-reset/verify', req)
+    return data
+  },
+
+  async resetPassword(req) {
     await apiClient.post('/auth/password-reset', req)
+  },
+
+  async changePassword(req) {
+    await apiClient.patch('/auth/me/password', req)
   },
 
   async me() {

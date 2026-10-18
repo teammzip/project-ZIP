@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Card, Modal } from '@/components/ui'
 import { useChatStore } from '@/features/ai'
-import { useAuthStore, useLogout, useUpdateMe, useWithdraw } from '@/features/auth'
+import { PasswordChangeForm, useAuthStore, useLogout, useUpdateMe, useWithdraw } from '@/features/auth'
 import { useCommunityStore } from '@/features/community'
 import { LegalLinks } from '@/features/legal'
 import { SettingsForm, useLifeStore } from '@/features/life'
@@ -30,6 +30,14 @@ export function SettingsPage() {
     <Card title="내 정보 · 설정" className={common.narrow}>
       <SettingsForm name={user?.nickname ?? ''} onSaveName={(nickname) => updateMe.mutate({ nickname })} />
       {updateMe.isError && <p className={styles.error}>{getErrorMessage(updateMe.error)}</p>}
+
+      {user?.provider === 'email' && (
+        <>
+          <hr className={styles.hr} />
+          <h3 className={styles.subTitle}>비밀번호 변경</h3>
+          <PasswordChangeForm />
+        </>
+      )}
 
       <hr className={styles.hr} />
       <div className={styles.account}>

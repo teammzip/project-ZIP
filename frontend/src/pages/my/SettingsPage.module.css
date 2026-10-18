@@ -62,3 +62,8 @@
 .account .desc {
   margin-bottom: 0;
 }
+
+.subTitle {
+  margin-bottom: 12px;
+  font-size: 15px;
+}
