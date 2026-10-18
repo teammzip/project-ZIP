@@ -1,4 +1,4 @@
-/* 공과금: 홈 카드, 상세 화면 */
+/* 공과금 상세 화면 */
 import { $, el, today, won } from '../core/utils.js';
 import { store } from '../core/storage.js';
 import { state } from '../core/state.js';
@@ -7,19 +7,11 @@ import { registerView } from '../core/router.js';
 // 공과금 목록을 저장하고 화면을 다시 그림 (체크·삭제·추가 때마다 호출)
 function saveBills() { store('zip-bills', state.bills); renderBills(); }
 
-// 홈 "이번 달 공과금" 카드(납부율·막대)와 공과금 상세 화면(합계·납부·남음·항목 목록)을 한 번에 그림
+// 공과금 상세 화면(합계·납부·남음·항목 목록)을 그림
 export function renderBills() {
   var total = 0, paid = 0;
   state.bills.forEach(function (b) { total += b.amount; if (b.paid) paid += b.amount; });
   var pct = total ? Math.round(paid / total * 100) : 0;
-  var paidNames = state.bills.filter(function (b) { return b.paid; }).map(function (b) { return b.name; });
-  var leftNames = state.bills.filter(function (b) { return !b.paid; }).map(function (b) { return b.name; });
-  $('billPct').textContent = pct;
-  $('billBar').style.width = pct + '%';
-  var parts = [];
-  if (paidNames.length) parts.push(paidNames.join(' · ') + ' 납부 완료');
-  if (leftNames.length) parts.push(leftNames.join(' · ') + ' 남음');
-  $('billSub').textContent = parts.length ? parts.join(', ') : '공과금 항목을 추가해 보세요';
   $('billTitle').textContent = (today.getMonth() + 1) + '월 공과금';
   $('billTotal').textContent = won(total); $('billPaid').textContent = won(paid); $('billLeft').textContent = won(total - paid);
   $('billBar2').style.width = pct + '%';

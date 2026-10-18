@@ -1,27 +1,34 @@
 /* 알림 화면 + 빨간 점 */
-import { $, el, fmt, todayStr, today, dayDiff, sortEvents } from '../core/utils.js';
+import { $, el, fmt, todayStr, dayDiff, sortEvents } from '../core/utils.js';
 import { store } from '../core/storage.js';
 import { state, settings, readMap } from '../core/state.js';
 import { nextRentDate } from '../core/rentdate.js';
-import { TRASH, trashIco } from '../data/trash.js';
+import { trashEventsBetween } from '../data/trash.js';
 import { registerView } from '../core/router.js';
 
-// 알림 화면의 보기 방식: all(전체) 또는 unread(안 읽음)
+// 알림 화면의 보기 방식: all(전체), unread(안 읽음), read(읽음)
 var notiMode = 'all';
 
-// 지금 보여줄 알림 목록을 만듦: 3일 안 일정, 오늘 쓰레기 배출, 월세 D-day, 예시 알림(냉장고·댓글)
+// 지금 보여줄 알림 목록을 만듦: 3일 안 일정·배출, 월세 D-day, 예시 알림(냉장고·댓글)
 function buildNotis() {
   var list = [];
-  sortEvents(state.events).forEach(function (ev) {
+  var end = new Date(todayStr + 'T00:00:00');
+  end.setDate(end.getDate() + 3);
+  var endDate = fmt(end);
+  var events = state.events.concat(trashEventsBetween(todayStr, endDate));
+  sortEvents(events).forEach(function (ev) {
     var diff = dayDiff(ev.date);
-    if (diff < 0 || diff > 3) return;
-    list.push({ id: 'ev-' + ev.id, ico: '📌', t: ev.title, s: ev.date.slice(5).replace('-', '월 ') + '일 ' + (ev.time || '종일'), time: diff === 0 ? '오늘' : 'D-' + diff });
+    if (diff < 0 || diff > 3 || ev.done) return;
+    list.push({
+      id: ev.kind === 'trash' ? ev.id : 'ev-' + ev.id,
+      ico: ev.kind === 'trash' ? (ev.title.indexOf('재활용') === 0 ? '♻️' : '🗑️') : '📌',
+      t: ev.title,
+      s: ev.date.slice(5).replace('-', '월 ') + '일 ' + (ev.time || '종일') + (ev.detail ? ' · ' + ev.detail : ''),
+      time: diff === 0 ? '오늘' : 'D-' + diff
+    });
   });
   var rd = nextRentDate(), rdiff = dayDiff(fmt(rd));
-  var td = TRASH[today.getDay()];
   list.push(
-    td ? { id: 'trash-' + todayStr, ico: trashIco(td.t), t: '오늘은 ' + td.t + ' 배출일이에요', s: td.d, time: '오늘' }
-      : { id: 'trash-' + todayStr, ico: '🗑️', t: '오늘은 쓰레기 배출이 없어요', s: '쓰레기는 모아 두세요', time: '오늘' },
     { id: 'n2', ico: '💸', t: '월세 납부일이 ' + (rdiff === 0 ? '오늘이에요' : rdiff + '일 남았어요'), s: '매월 ' + settings.rentDay + '일 · ' + settings.rent + '만원', time: '1시간 전' },
     { id: 'n3', ico: '🧊', t: '냉장고 재료 3개가 곧 만료돼요', s: '두부 · 방울토마토 · 우유', time: '오늘' },
     { id: 'n4', ico: '💬', t: '커뮤니티에 새 댓글이 달렸어요', s: '쓰레기 배출 시간 바뀐 건가요?', time: '어제' }
@@ -39,13 +46,19 @@ function renderNotiCenter() {
   box.textContent = '';
   $('notiOffNotice').hidden = settings.notiOn;
   var all = buildNotis();
-  var items = notiMode === 'unread' ? all.filter(function (n) { return !readMap[n.id]; }) : all;
+  var items = notiMode === 'unread' ? all.filter(function (n) { return !readMap[n.id]; })
+    : notiMode === 'read' ? all.filter(function (n) { return !!readMap[n.id]; })
+      : all;
   var cnt = unreadCount();
   $('notiCount').hidden = cnt === 0;
   $('notiCount').textContent = cnt + '개 안 읽음';
   $('nAll').classList.toggle('on', notiMode === 'all');
   $('nUnread').classList.toggle('on', notiMode === 'unread');
-  if (!items.length) { box.appendChild(el('div', 'empty', '알림이 없어요.')); return; }
+  $('nRead').classList.toggle('on', notiMode === 'read');
+  if (!items.length) {
+    box.appendChild(el('div', 'empty', notiMode === 'read' ? '읽은 알림이 없어요.' : '알림이 없어요.'));
+    return;
+  }
   items.forEach(function (n) {
     var row = el('div', 'noti clickable' + (readMap[n.id] ? '' : ' unread'));
     row.appendChild(el('div', 'ico', n.ico));
@@ -56,17 +69,21 @@ function renderNotiCenter() {
     if (!readMap[n.id]) row.appendChild(el('span', 'udot'));
     row.addEventListener('click', function () {
       readMap[n.id] = true; store('zip-noti-read', readMap);
+      notiMode = 'read';
       renderNotiCenter(); updateDot();
     });
     box.appendChild(row);
   });
 }
-// 알림 화면의 "전체 / 안 읽음 / 모두 읽음" 버튼
+// 알림 화면의 "전체 / 안 읽음 / 읽음 / 모두 읽음" 버튼
 $('nAll').addEventListener('click', function () { notiMode = 'all'; renderNotiCenter(); });
 $('nUnread').addEventListener('click', function () { notiMode = 'unread'; renderNotiCenter(); });
+$('nRead').addEventListener('click', function () { notiMode = 'read'; renderNotiCenter(); });
 $('nReadAll').addEventListener('click', function () {
   buildNotis().forEach(function (n) { readMap[n.id] = true; });
-  store('zip-noti-read', readMap); renderNotiCenter(); updateDot();
+  store('zip-noti-read', readMap);
+  notiMode = 'read';
+  renderNotiCenter(); updateDot();
 });
 
 registerView('noti', renderNotiCenter);

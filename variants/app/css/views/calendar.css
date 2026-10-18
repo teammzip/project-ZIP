@@ -118,10 +118,54 @@
   min-width: 62px;
 }
 
+.ev .ev-check {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  accent-color: var(--orange);
+}
+
 .ev .name {
   flex: 1;
   font-size: 14px;
   word-break: break-all;
+}
+
+.ev.completed .name {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.ev.trash-event {
+  flex-wrap: wrap;
+  border-left: 3px solid var(--purple);
+}
+
+.ev.trash-event .name {
+  flex: 1;
+  min-width: 100px;
+}
+
+.ev .trash-detail {
+  flex-basis: 100%;
+  padding-left: 72px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.quick-date {
+  display: flex;
+  gap: 8px;
+}
+
+.quick-date button {
+  padding: 7px 12px;
+  font-size: 13px;
+}
+
+.quick-date-help {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .ev .del {

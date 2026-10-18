@@ -232,7 +232,7 @@ $('photoRemove').addEventListener('click', function () {
   photoUrl = null; renderPhoto(); renderTopics(); refreshDraft();
 });
 
-/* data-topic 링크(예: 쓰레기 화면의 "이건 어떻게 버려요?")는 AI 화면을 열고 해당 분야를 바로 펼친다 */
+/* data-topic 링크(예: 캘린더의 "이건 어떻게 버려요?")는 AI 화면을 열고 해당 분야를 바로 펼친다 */
 document.querySelectorAll('[data-topic]').forEach(function (a) {
   a.addEventListener('click', function (e) {
     e.preventDefault();
