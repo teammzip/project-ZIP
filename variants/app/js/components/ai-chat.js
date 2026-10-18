@@ -29,17 +29,17 @@ function spendCard() {
   };
 }
 function cardNode(c) {
-  var box = el('div', 'sum-card');
+  var box = el('div', 'chat-sum-card');
   box.appendChild(el('small', null, c.month + '월 지출 요약'));
-  box.appendChild(el('b', 'sum-total', won(c.total)));
+  box.appendChild(el('b', 'chat-sum-total', won(c.total)));
   var diff = c.total - c.prevTotal;
-  var cmp = el('p', 'sum-cmp', c.prevTotal ? '지난달보다 ' + (diff === 0 ? '같아요' : man(Math.abs(diff)) + (diff > 0 ? ' 더 썼어요' : ' 덜 썼어요')) : '지난달 기록이 없어요');
+  var cmp = el('p', 'chat-sum-cmp', c.prevTotal ? '지난달보다 ' + (diff === 0 ? '같아요' : man(Math.abs(diff)) + (diff > 0 ? ' 더 썼어요' : ' 덜 썼어요')) : '지난달 기록이 없어요');
   if (diff > 0) cmp.classList.add('up');
   box.appendChild(cmp);
-  var list = el('div', 'sum-rows');
+  var list = el('div', 'chat-sum-rows');
   var max = c.rows.length ? c.rows[0][1] : 1;
   c.rows.forEach(function (r) {
-    var row = el('div', 'sum-row');
+    var row = el('div', 'chat-sum-row');
     row.appendChild(el('span', 'n', r[0]));
     var bar = el('span', 'bar'); var fill = el('i'); fill.style.width = Math.max(r[1] / max * 100, 3) + '%'; bar.appendChild(fill);
     row.appendChild(bar);
@@ -48,8 +48,8 @@ function cardNode(c) {
   });
   box.appendChild(list);
   var pct = c.total ? Math.round(c.fixed / c.total * 100) : 0;
-  box.appendChild(el('p', 'sum-note', '고정 지출(월세·공과금) ' + pct + '% · 변동 지출 ' + (100 - pct) + '%' + (c.top ? '\n변동 지출 중 ' + c.top[0] + subj(c.top[0]) + ' 가장 커요 (' + man(c.top[1]) + ')' : '')));
-  var go = el('button', 'sum-go', '가계부에서 자세히 보기'); go.type = 'button';
+  box.appendChild(el('p', 'chat-sum-note', '고정 지출(월세·공과금) ' + pct + '% · 변동 지출 ' + (100 - pct) + '%' + (c.top ? '\n변동 지출 중 ' + c.top[0] + subj(c.top[0]) + ' 가장 커요 (' + man(c.top[1]) + ')' : '')));
+  var go = el('button', 'chat-sum-go', '가계부에서 자세히 보기'); go.type = 'button';
   go.addEventListener('click', function () { closeChat(); showView('spend'); });
   box.appendChild(go);
   return box;

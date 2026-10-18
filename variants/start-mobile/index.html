@@ -205,7 +205,7 @@
       }
     }
 
-    /* 회원가입: 화면 아래 가운데. 누르면 로그인 창이 가입 모드로 열림 */
+    /* 회원가입: 화면 아래 가운데. 누르면 별도 가입 페이지(variants/account/signup.html)로 이동 */
     .signup-btn {
       position: absolute;
       left: 50%;
@@ -407,6 +407,7 @@
 </head>
 
 <body>
+  <!-- 집 그림 장면: 집·문·로봇·창문 불빛이 들어 있고, 줌인할 때 함께 확대됨 -->
   <div class="scene" id="scene">
     <div id="world">
       <img id="houseImg" src="../../images/집2.png" alt="ZIP 집" draggable="false">
@@ -430,24 +431,17 @@
     <div class="s-tag">나의 자취 생활을 한곳에.</div>
   </div>
 
+  <!-- 로그인 창(모달): 문 모션이 끝나면 아래에서 올라옴. 가입은 별도 페이지로 이동하는 링크만 있음 -->
   <div class="modal" id="modal" aria-hidden="true">
-    <div class="card" role="dialog" aria-modal="true" aria-labelledby="title">
+    <div class="card" role="dialog" aria-modal="true" aria-label="로그인">
       <button class="close" id="closeBtn" type="button" aria-label="닫기">×</button>
       <div class="logo"><img src="../../images/logo-zip.png" alt="ZIP"></div>
-      <h2 id="title"></h2>
-      <p class="lead" id="lead"></p>
       <form id="loginForm" novalidate>
-        <label class="field" id="nickField" hidden><span>닉네임</span><input name="nick" placeholder="예: 지기"></label>
         <label class="field"><span>이메일</span><input name="email" type="email" placeholder="you@example.com" autocomplete="username"></label>
         <label class="field"><span>비밀번호</span>
           <div class="pw-row"><input name="pw" type="password" placeholder="4자 이상" autocomplete="current-password"><button type="button" id="pwToggle">보기</button></div>
         </label>
-        <label class="field" id="addrField" hidden><span>주소</span><input name="addr" placeholder="예: 서울시 마포구 합정동 123-4" autocomplete="street-address"></label>
-        <div class="terms" id="termsField" hidden>
-          <p class="terms-text">[약관] ZIP 서비스 이용을 위해 이메일·주소 등 최소한의 개인정보를 수집·이용하며, 탈퇴 시 즉시 삭제합니다.</p>
-          <label><input type="checkbox" name="agree"> <b>[필수]</b> 위 약관에 동의합니다</label>
-        </div>
-        <div class="row" id="loginOnly"><label><input type="checkbox"> 로그인 유지</label><span class="find-links"><a href="../account/find.html#id">아이디 찾기</a><i>/</i><a href="../account/find.html#pw">비밀번호 찾기</a></span></div>
+        <div class="row"><label><input type="checkbox"> 로그인 유지</label><span class="find-links"><a href="../account/find.html#id">아이디 찾기</a><i>/</i><a href="../account/find.html#pw">비밀번호 찾기</a></span></div>
         <div class="error" id="error"></div>
         <button class="btn btn-main" id="submitBtn" type="submit">로그인</button>
       </form>
@@ -466,8 +460,8 @@
     window.LOGIN_NEXT = '../app/index.html';   // 로그인에 성공하면 이동할 화면 (주소 끝에 ?next=... 로 바꿀 수 있음)
     window.SIGNUP_URL = '../account/signup.html';   // 회원가입은 모달이 아니라 별도 페이지(흰 화면)로 이동
   </script>
-  <script src="../../login/terms.js"></script>
   <script src="../../login/login.js"></script>
+  <!-- 모바일 시작 화면의 모션: 시작 화면(아이콘) → 로봇 등장 → 줌인 → 문 누르기 → 문 열림·입장 → 로그인 창. 시간 흐름은 T_* 값, 그림 속 좌표는 DOOR·WINDOWS -->
   <script>
     (function () {
       // 집2.png(1448×1086) 안의 위치(그림 기준 픽셀)
@@ -493,6 +487,7 @@
       var easeInOut = function (p) { return p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; };
       function place(el, x, y, w, h) { el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.width = w + 'px'; el.style.height = h + 'px'; }
 
+      // 화면 크기에 맞춰 집 그림·문·창문·로봇의 위치와 크기를 계산
       function layout() {
         vw = window.innerWidth; vh = window.innerHeight;
         s = Math.min(vw / HOUSE_W, vh * 0.62 / 700);                      // 집 폭이 화면 폭에 맞게(너무 크면 높이 기준)
@@ -511,11 +506,13 @@
         Z = Math.max(1.6, Math.min(3.2, vw * 0.5 / dw));                   // 줌인: 문 폭이 화면의 절반 가까이(최대 3.2배)
       }
 
+      // 로봇 아래 글(말풍선)을 바꿈
       function setCaption(key, text) {
         if (key === capKey) return; capKey = key; cap.textContent = text;
         cap.classList.remove('swap'); void cap.offsetWidth; cap.classList.add('swap');
       }
 
+      // 한 프레임을 그림: 지금 시간 t에 맞춰 로봇 위치·크기, 문이 열리는 각도, 줌인, 창문 불빛을 정함
       function frame(t) {
         var doorCx = mx, doorLeft = ox + DOOR.x1 * s, doorBottom = oy + DOOR.y2 * s;
         var hoverX = doorLeft - R * .15, hoverY = doorBottom - RH * .8;    // 문 바로 옆
@@ -559,15 +556,18 @@
         skipBtn.hidden = opened || (tClick < 0 && t >= T_ENTER + T_ZOOM);   // 모션이 도는 동안만 건너뛰기 표시
       }
 
+      // 화면이 갱신될 때마다 frame 을 부름
       function loop(now) { frame((now - tStart) / 1000); raf = requestAnimationFrame(loop); }
 
-      function openModal(mode) {
-        if (window.setLoginMode) window.setLoginMode(mode === 'signup' ? 'signup' : 'login');   // 문으로 들어오면 로그인, 회원가입 버튼이면 가입 모드
+      // 로그인 창을 엶 (이메일 칸에 커서)
+      function openModal() {
         opened = true; modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false');
         var em = modal.querySelector('input[name=email]'); setTimeout(function () { em.focus(); }, 350);
       }
+      // 로그인 창을 닫고 모션을 처음부터 다시 재생
       function closeModal() { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); play(); }
 
+      // 문을 누르면 문 열림 모션을 시작
       function onDoor() {
         if (tClick >= 0) return;
         tClick = (performance.now() - tStart) / 1000;
@@ -576,6 +576,7 @@
         if (reduce) { opened = true; wglows.forEach(function (e) { e.style.opacity = 1; }); openModal(); }
       }
 
+      // 모션을 처음부터 재생
       function play() {
         cancelAnimationFrame(raf); tClick = -1; opened = false; capKey = ''; door.classList.remove('off');
         doorway.style.visibility = panel.style.visibility = 'hidden'; panel.style.transform = 'none';

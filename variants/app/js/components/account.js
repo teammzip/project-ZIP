@@ -7,11 +7,14 @@ import { clearAll } from '../core/storage.js';
 // 좁은 화면(모바일)은 모바일 시작, 넓은 화면은 PC 시작으로
 function startUrl() { return window.innerWidth <= 900 ? '../start-mobile/index.html' : '../start-pc/index.html'; }
 
+// 프로필 카드의 로그아웃 버튼
 $('btnLogout').addEventListener('click', function () { location.href = startUrl(); });
 
+// 회원 탈퇴 확인 창의 요소들과 상태(done: 탈퇴 완료 상태)
 var modal = $('confirmModal'), box = $('confirmBox'), check = $('confirmCheck'), okBtn = $('confirmOk'), cancelBtn = $('confirmCancel');
 var done = false, lastFocus = null;
 
+// 탈퇴 확인 창을 엶: 안내문과 "위 내용을 확인했습니다" 체크, 체크해야 "탈퇴하기"가 켜짐
 function open() {
   done = false; lastFocus = document.activeElement;
   $('confirmTitle').textContent = '정말 탈퇴할까요?';
@@ -32,6 +35,7 @@ check.addEventListener('change', function () { okBtn.disabled = !check.checked; 
 cancelBtn.addEventListener('click', close);
 $('confirmBackdrop').addEventListener('click', close);
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) close(); });
+// "탈퇴하기": 앱 데이터를 모두 지우고 완료 화면으로 바꿈 / 완료 후에는 "처음 화면으로"
 okBtn.addEventListener('click', function () {
   if (done) { location.href = startUrl(); return; }
   if (!check.checked) return;

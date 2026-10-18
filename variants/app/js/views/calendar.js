@@ -7,8 +7,10 @@ import { TRASH, trashIco } from '../data/trash.js';
 import { registerView, showView } from '../core/router.js';
 import { updateDot } from './noti.js';
 
+// 달력이 보여주는 연·월, 선택한 날, 목록 보기 방식(day=선택한 날, all=전체), 검색어, 수정 중인 일정 번호
 var viewY = today.getFullYear(), viewM = today.getMonth(), selected = todayStr, mode = 'day', query = '', editingId = null;   // editingId: 지금 수정 중인 일정
 
+// 달력 칸을 그림: 오늘·선택한 날 표시, 일정이 있는 날은 점(최대 3개)
 function renderGrid() {
   $('calTitle').textContent = viewY + '년 ' + (viewM + 1) + '월';
   var grid = $('calGrid');
@@ -32,6 +34,7 @@ function renderGrid() {
     grid.appendChild(btn);
   }
 }
+// 날짜를 누르면 그 날을 선택하고 일정 목록을 그 날로 바꿈
 $('calGrid').addEventListener('click', function (e) {
   var btn = e.target.closest('.cal-day');
   if (!btn) return;
@@ -40,12 +43,14 @@ $('calGrid').addEventListener('click', function (e) {
   editingId = null; mode = 'day'; query = ''; $('searchInput').value = '';
   renderCalendarAll();
 });
+// 이전 달 / 다음 달 / 오늘 버튼
 $('calPrev').addEventListener('click', function () { viewM--; if (viewM < 0) { viewM = 11; viewY--; } renderGrid(); });
 $('calNext').addEventListener('click', function () { viewM++; if (viewM > 11) { viewM = 0; viewY++; } renderGrid(); });
 $('calToday').addEventListener('click', function () {
   viewY = today.getFullYear(); viewM = today.getMonth(); selected = todayStr; $('evDate').value = selected; renderCalendarAll();
 });
 
+// 일정 목록: 선택한 날 또는 전체, 검색어가 있으면 제목으로 거름. 줄마다 수정·삭제 버튼
 function renderEvList() {
   var list = $('evList');
   list.textContent = '';
@@ -81,6 +86,7 @@ function renderEvList() {
     list.appendChild(li);
   });
 }
+// "선택한 날 / 전체" 보기 전환
 $('modeDay').addEventListener('click', function () { editingId = null; mode = 'day'; renderEvList(); });
 $('modeAll').addEventListener('click', function () { editingId = null; mode = 'all'; renderEvList(); });
 
@@ -121,6 +127,7 @@ function editRow(ev) {
   return li;
 }
 
+// 달력 아래 "다가오는 일정" 알림: 오늘 쓰레기 배출, 월세 D-day, 일주일 안 일정
 function renderCalNoti() {
   var box = $('notiList');
   box.textContent = '';
@@ -146,9 +153,11 @@ function renderCalNoti() {
     box.appendChild(n);
   });
 }
+// 달력·일정 목록·알림을 한 번에 다시 그림
 export function renderCalendarAll() { renderGrid(); renderEvList(); renderCalNoti(); }
 
 $('evDate').value = selected;
+// 일정 추가 폼: 제목, 날짜, 시간(선택)
 $('evForm').addEventListener('submit', function (e) {
   e.preventDefault();
   var title = $('evTitle').value.trim(), date = $('evDate').value;

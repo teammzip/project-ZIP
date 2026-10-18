@@ -1,0 +1,644 @@
+-- ============================================================================
+-- ZIP – 자취생 생활 도우미 : 데이터베이스 (MySQL 8.0 이상)
+-- 현재 프로그램(variants/app, variants/account, 시작 화면)의 기능 기준으로 다시 설계한 구조입니다.
+--   · 표 33개 + 집계용 VIEW 2개
+--   · 그림: db/erd-1 ~ erd-5 PNG, 한글 설명: db/README.md
+-- 사용법:  mysql -u root -p < db/schema.sql      (zip 데이터베이스가 새로 만들어집니다)
+-- 규칙:   금액은 원 단위 정수(INT), 날짜·시간은 DATE/TIME/DATETIME, 글자는 utf8mb4,
+--         비밀번호·인증번호·토큰은 원문 대신 해시만 저장, 회원 탈퇴 시 사용자의 개인 데이터는 CASCADE 로 함께 삭제
+-- ============================================================================
+SET NAMES utf8mb4;
+CREATE DATABASE IF NOT EXISTS `zip` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+USE `zip`;
+
+-- ----------------------------------------------------------------------------
+-- 1. 계정 · 인증 · 약관
+-- ----------------------------------------------------------------------------
+
+-- 동네: 시·도와 구·군 같은 "동네" 목록. 사용자가 사는 동네, 커뮤니티 글의 동네, 쓰레기 배출표, 주변 장소가 모두 이 표를 가리킵니다. (내 정보의 "우리 동네", 커뮤니티의 "우리 동네 / 주변 동네 / 전체" 범위)
+CREATE TABLE IF NOT EXISTS `regions` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '동네 아이디 — 자동 증가',
+  `parent_id` BIGINT UNSIGNED NULL COMMENT '상위 동네 아이디 — 시·도 → 구·군',
+  `name` VARCHAR(30) NOT NULL COMMENT '동네 이름 — 예: 마포구',
+  `level` TINYINT UNSIGNED NOT NULL COMMENT '동네 단계 — 1=시·도, 2=구·군',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_regions_parent_id_name` (`parent_id`, `name`),
+  CONSTRAINT `fk_regions_parent_id` FOREIGN KEY (`parent_id`) REFERENCES `regions` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='동네: 시·도와 구·군 같은 "동네" 목록.';
+
+-- 주변 동네: 어느 동네가 어느 동네와 이웃한지 적어 둔 표. 커뮤니티의 "주변 동네" 범위로 글을 모아 볼 때 씁니다. (마포구 ↔ 서대문구·용산구·영등포구)
+CREATE TABLE IF NOT EXISTS `region_neighbors` (
+  `region_id` BIGINT UNSIGNED NOT NULL COMMENT '동네 아이디',
+  `neighbor_region_id` BIGINT UNSIGNED NOT NULL COMMENT '주변 동네 아이디 — 이웃한 동네',
+  PRIMARY KEY (`region_id`, `neighbor_region_id`),
+  CONSTRAINT `fk_region_neighbors_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_region_neighbors_neighbor_region_id` FOREIGN KEY (`neighbor_region_id`) REFERENCES `regions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='주변 동네: 어느 동네가 어느 동네와 이웃한지 적어 둔 표.';
+
+-- 사용자: 가입한 사람 한 명당 한 줄. 로그인 정보(아이디·비밀번호), 본인 확인 정보(휴대전화·이메일), 닉네임과 사는 동네를 담습니다. 모든 개인 데이터(일정·할 일·가계부·글 등)가 이 표의 id 를 따라갑니다. 회원 탈퇴를 하면 이 줄과 딸린 데이터가 모두 지워집니다.
+CREATE TABLE IF NOT EXISTS `users` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '사용자 아이디 — 자동 증가',
+  `login_id` VARCHAR(16) NOT NULL COMMENT '로그인 아이디 — 6~16자, 영문 소문자·숫자',
+  `password_hash` VARCHAR(100) NULL COMMENT '비밀번호(해시) — 원문은 저장 안 함. 소셜 가입자는 비어 있음',
+  `nickname` VARCHAR(12) NOT NULL COMMENT '닉네임 — 2~12자, 앱 인사말에 쓰임',
+  `email` VARCHAR(100) NULL COMMENT '이메일',
+  `phone` VARCHAR(11) NULL COMMENT '휴대전화 — 숫자만 (01012345678)',
+  `phone_verified_at` DATETIME NULL COMMENT '휴대전화 인증 일시 — 가입 때 인증을 마친 시각',
+  `region_id` BIGINT UNSIGNED NULL COMMENT '사는 동네 아이디 — 내 정보의 "우리 동네"',
+  `address` VARCHAR(200) NULL COMMENT '입력한 주소 — 가입할 때 쓴 주소 글자',
+  `role` ENUM('USER','ADMIN') NOT NULL DEFAULT 'USER' COMMENT '사용자 권한 — 운영자만 ADMIN',
+  `status` ENUM('ACTIVE','SUSPENDED') NOT NULL DEFAULT 'ACTIVE' COMMENT '이용 상태 — 이용 제한 중이면 SUSPENDED',
+  `password_changed_at` DATETIME NULL COMMENT '비밀번호 변경 일시 — 내 정보·비밀번호 찾기로 바꾼 시각',
+  `last_login_at` DATETIME NULL COMMENT '마지막 로그인 일시',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '가입 일시',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '정보 수정 일시',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_users_login_id` (`login_id`),
+  UNIQUE KEY `uk_users_email` (`email`),
+  UNIQUE KEY `uk_users_phone` (`phone`),
+  CONSTRAINT `fk_users_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자: 가입한 사람 한 명당 한 줄.';
+
+-- 소셜 로그인 계정: 카카오·구글·네이버로 로그인한 사용자가 어느 소셜 계정인지 연결해 두는 표. 한 사용자가 여러 소셜을 연결할 수 있고, 같은 소셜 계정은 한 사용자에게만 붙습니다.
+CREATE TABLE IF NOT EXISTS `social_accounts` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '소셜계정 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '연결된 사용자 아이디',
+  `provider` ENUM('KAKAO','GOOGLE','NAVER') NOT NULL COMMENT '소셜 서비스',
+  `provider_user_id` VARCHAR(100) NOT NULL COMMENT '소셜 서비스 사용자 번호 — 소셜 쪽에서 준 고유 번호',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '연결 일시',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_social_accounts_provider_provider_user_id` (`provider`, `provider_user_id`),
+  UNIQUE KEY `uk_social_accounts_user_id_provider` (`user_id`, `provider`),
+  CONSTRAINT `fk_social_accounts_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='소셜 로그인 계정: 카카오·구글·네이버로 로그인한 사용자가 어느 소셜 계정인지 연결해 두는 표.';
+
+-- 로그인 세션: 로그인한 기기마다 한 줄. 토큰 원문 대신 해시만 저장합니다. 로그아웃하면 revoked_at 이 채워지고, "로그인 유지"를 켜면 만료가 길어집니다.
+CREATE TABLE IF NOT EXISTS `auth_sessions` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '세션 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '로그인한 사용자 아이디',
+  `refresh_token_hash` CHAR(64) NOT NULL COMMENT '재발급 토큰(해시) — 원문은 저장 안 함',
+  `remember` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '로그인 유지 여부 — 로그인 창의 "로그인 유지" 체크',
+  `user_agent` VARCHAR(255) NULL COMMENT '접속 기기 정보 — 브라우저 이름 등',
+  `ip_address` VARCHAR(45) NULL COMMENT '접속 IP',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '로그인 일시',
+  `expires_at` DATETIME NOT NULL COMMENT '만료 일시',
+  `revoked_at` DATETIME NULL COMMENT '로그아웃(무효) 일시 — 비어 있으면 아직 유효',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_auth_sessions_refresh_token_hash` (`refresh_token_hash`),
+  CONSTRAINT `fk_auth_sessions_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='로그인 세션: 로그인한 기기마다 한 줄.';
+
+-- 휴대전화 인증: 문자로 보낸 인증번호 기록. 가입, 아이디 찾기, 비밀번호 찾기에서 같은 방식으로 씁니다. 비밀번호 찾기는 메일 대신 이 인증을 통과하면 1회용 재설정 토큰이 발급되고, 그 토큰으로 바로 새 비밀번호를 정합니다.
+CREATE TABLE IF NOT EXISTS `phone_verifications` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '인증 아이디 — 자동 증가',
+  `purpose` ENUM('SIGNUP','FIND_ID','RESET_PASSWORD') NOT NULL COMMENT '인증 목적 — 가입 / 아이디 찾기 / 비밀번호 찾기',
+  `phone` VARCHAR(11) NOT NULL COMMENT '인증받는 휴대전화 — 숫자만',
+  `user_id` BIGINT UNSIGNED NULL COMMENT '대상 사용자 아이디 — 찾기일 때만 채움(가입 때는 비움). 탈퇴하면 함께 삭제',
+  `code_hash` CHAR(64) NOT NULL COMMENT '인증번호(해시) — 6자리 번호를 해시로 저장',
+  `attempt_count` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '틀린 횟수 — 횟수가 넘으면 잠금',
+  `requested_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '인증번호 요청 일시',
+  `expires_at` DATETIME NOT NULL COMMENT '인증번호 만료 일시 — 보통 3분',
+  `verified_at` DATETIME NULL COMMENT '인증 성공 일시',
+  `reset_token_hash` CHAR(64) NULL COMMENT '재설정 토큰(해시) — 비밀번호 찾기 인증 성공 때 발급',
+  `reset_token_expires_at` DATETIME NULL COMMENT '재설정 토큰 만료 일시',
+  `consumed_at` DATETIME NULL COMMENT '재설정 완료 일시 — 토큰을 쓴 시각(한 번만 사용)',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_phone_verifications_reset_token_hash` (`reset_token_hash`),
+  KEY `idx_phone_verifications_phone_requested_at` (`phone`, `requested_at`),
+  CONSTRAINT `fk_phone_verifications_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='휴대전화 인증: 문자로 보낸 인증번호 기록.';
+
+-- 약관 문서: 가입 화면에 보이는 약관의 본문과 버전. 서비스 이용약관, 개인정보 처리방침, 커뮤니티·AI 운영 정책 세 종류이고, 내용이 바뀌면 새 버전 줄을 추가합니다.
+CREATE TABLE IF NOT EXISTS `terms_documents` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '약관 아이디 — 자동 증가',
+  `doc_type` ENUM('SERVICE','PRIVACY','POLICY') NOT NULL COMMENT '약관 종류 — 이용약관 / 개인정보 처리방침 / 운영 정책',
+  `version` VARCHAR(20) NOT NULL COMMENT '약관 버전 — 예: 1.0',
+  `title` VARCHAR(100) NOT NULL COMMENT '약관 제목',
+  `content` MEDIUMTEXT NOT NULL COMMENT '약관 본문 — 조항 전체',
+  `consent_kind` ENUM('AGREE','CONFIRM') NOT NULL COMMENT '받는 방식 — 동의(이용약관·운영정책) / 안내 확인(개인정보 처리방침)',
+  `is_required` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '필수 여부 — 필수면 체크해야 가입 가능',
+  `effective_at` DATETIME NOT NULL COMMENT '시행 일시',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록 일시',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_terms_documents_doc_type_version` (`doc_type`, `version`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='약관 문서: 가입 화면에 보이는 약관의 본문과 버전.';
+
+-- 약관 동의 이력: 누가 어떤 약관(어느 버전)에 언제 동의했는지 남기는 표. 분쟁이 생기면 증거가 되므로 사용자가 탈퇴하기 전까지 보관합니다.
+CREATE TABLE IF NOT EXISTS `user_term_agreements` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '동의 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '동의한 사용자 아이디',
+  `terms_id` BIGINT UNSIGNED NOT NULL COMMENT '동의한 약관 아이디',
+  `agreed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '동의 일시',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_term_agreements_user_id_terms_id` (`user_id`, `terms_id`),
+  CONSTRAINT `fk_user_term_agreements_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_user_term_agreements_terms_id` FOREIGN KEY (`terms_id`) REFERENCES `terms_documents` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='약관 동의 이력: 누가 어떤 약관(어느 버전)에 언제 동의했는지 남기는 표.';
+
+-- 회원 탈퇴 기록: 탈퇴가 있었다는 사실만 남기는 표(통계·문의 대응용). 탈퇴하면 개인정보와 개인 데이터는 모두 지워지므로 이름·연락처는 저장하지 않고, 사용자 번호도 연결(FK)하지 않습니다.
+CREATE TABLE IF NOT EXISTS `withdrawal_logs` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '탈퇴기록 아이디 — 자동 증가',
+  `former_user_id` BIGINT UNSIGNED NOT NULL COMMENT '탈퇴한 사용자 번호 — 이미 지워진 번호(연결 없음)',
+  `withdrawn_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '탈퇴 일시',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='회원 탈퇴 기록: 탈퇴가 있었다는 사실만 남기는 표(통계·문의 대응용).';
+
+-- ----------------------------------------------------------------------------
+-- 2. 마이페이지 · 생활 관리
+-- ----------------------------------------------------------------------------
+
+-- 사용자 설정: 내 정보 화면의 설정값(월세·월세 납부일·알림 수신). 사용자 한 명당 한 줄. 이름(닉네임)과 동네는 users 에 있습니다.
+CREATE TABLE IF NOT EXISTS `user_settings` (
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '사용자 아이디',
+  `rent_amount` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '월세 금액 — 만원 단위 (55 = 55만원)',
+  `rent_day` TINYINT UNSIGNED NOT NULL DEFAULT 15 COMMENT '월세 납부일 — 매월 며칠 (1~31)',
+  `noti_on` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '알림 수신 여부 — 끄면 빨간 점·알림을 숨김',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '설정 수정 일시',
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_user_settings_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자 설정: 내 정보 화면의 설정값(월세·월세 납부일·알림 수신).';
+
+-- 할 일: 마이페이지 "할 일" 탭과 오른쪽 패널의 이번 주 할 일 목록. 체크하면 완료 처리되고, 홈 카드의 남은 개수와 진행 막대가 여기서 계산됩니다.
+CREATE TABLE IF NOT EXISTS `todos` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '할 일 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '할 일 주인 아이디',
+  `content` VARCHAR(40) NOT NULL COMMENT '할 일 내용',
+  `is_done` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '완료 여부',
+  `sort_order` INT NOT NULL DEFAULT 0 COMMENT '정렬 순서',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록 일시',
+  `done_at` DATETIME NULL COMMENT '완료 일시 — 비우면 아직 안 함',
+  PRIMARY KEY (`id`),
+  KEY `idx_todos_user_id_is_done` (`user_id`, `is_done`),
+  CONSTRAINT `fk_todos_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='할 일: 마이페이지 "할 일" 탭과 오른쪽 패널의 이번 주 할 일 목록.';
+
+-- 일정: 마이페이지 "일정" 탭의 달력과 일정 목록. 일정 추가·수정·삭제와 상단 검색의 대상이며, 가까운 일정은 알림으로도 보입니다. "월세 캘린더에 추가"로 자동 등록된 일정은 source 로 구분합니다.
+CREATE TABLE IF NOT EXISTS `events` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '일정 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '일정 주인 아이디',
+  `title` VARCHAR(60) NOT NULL COMMENT '일정 제목',
+  `event_date` DATE NOT NULL COMMENT '일정 날짜',
+  `event_time` TIME NULL COMMENT '일정 시간 — 비우면 종일',
+  `source` ENUM('USER','RENT') NOT NULL DEFAULT 'USER' COMMENT '등록 경로 — 직접 입력 / 월세 납부일 자동 등록',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록 일시',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시 — 일정 수정 기능이 갱신',
+  PRIMARY KEY (`id`),
+  KEY `idx_events_user_id_event_date` (`user_id`, `event_date`),
+  CONSTRAINT `fk_events_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='일정: 마이페이지 "일정" 탭의 달력과 일정 목록.';
+
+-- 공과금 항목: 내가 관리하는 공과금 종류(가스·전기·수도 등)와 평소 금액. 항목은 한 번 만들어 두고 달마다 납부 기록(bill_payments)을 붙입니다.
+CREATE TABLE IF NOT EXISTS `bill_items` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '공과금 항목 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '공과금 주인 아이디',
+  `name` VARCHAR(30) NOT NULL COMMENT '공과금 이름 — 가스, 전기, 수도 등',
+  `default_amount` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '평소 금액 — 원 단위',
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '사용 여부 — 해지한 항목은 0',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록 일시',
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_bill_items_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='공과금 항목: 내가 관리하는 공과금 종류(가스·전기·수도 등)와 평소 금액.';
+
+-- 공과금 납부: 공과금 항목별 월별 청구·납부 기록. 홈의 "이번 달 공과금 % 납부"와 공과금 상세 화면, 가계부의 고정 지출이 여기서 계산됩니다. paid_at 이 비어 있으면 미납입니다.
+CREATE TABLE IF NOT EXISTS `bill_payments` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '공과금납부 아이디 — 자동 증가',
+  `bill_item_id` BIGINT UNSIGNED NOT NULL COMMENT '공과금 항목 아이디',
+  `period_ym` CHAR(7) NOT NULL COMMENT '대상 연월 — 예: 2026-10',
+  `amount` INT UNSIGNED NOT NULL COMMENT '그 달 금액 — 원 단위',
+  `paid_at` DATETIME NULL COMMENT '납부 일시 — 비어 있으면 미납',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_bill_payments_bill_item_id_period_ym` (`bill_item_id`, `period_ym`),
+  CONSTRAINT `fk_bill_payments_bill_item_id` FOREIGN KEY (`bill_item_id`) REFERENCES `bill_items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='공과금 납부: 공과금 항목별 월별 청구·납부 기록.';
+
+-- 월세 납부: 월별 월세 납부 기록. 월세 상세 화면의 최근 6개월 체크 목록, 홈 월세 D-day 카드, 가계부 고정 지출이 이 표를 씁니다. paid_at 이 비어 있으면 미납입니다.
+CREATE TABLE IF NOT EXISTS `rent_payments` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '월세납부 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '월세 내는 사용자 아이디',
+  `period_ym` CHAR(7) NOT NULL COMMENT '대상 연월 — 예: 2026-10',
+  `amount` INT UNSIGNED NOT NULL COMMENT '그 달 월세 — 원 단위 (설정의 월세 × 10000)',
+  `paid_at` DATETIME NULL COMMENT '납부 일시 — 비어 있으면 미납',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_rent_payments_user_id_period_ym` (`user_id`, `period_ym`),
+  CONSTRAINT `fk_rent_payments_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='월세 납부: 월별 월세 납부 기록.';
+
+-- 알림: 알림 화면과 빨간 점이 쓰는 표. 일정·쓰레기 배출·월세·공과금·커뮤니티 댓글 알림이 생길 때 한 줄씩 쌓이고, 누르면 read_at 이 채워져 "읽음"이 됩니다. 안 읽은 알림 개수가 메뉴·종·마이페이지 탭의 빨간 점이 됩니다.
+CREATE TABLE IF NOT EXISTS `notifications` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '알림 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '알림 받는 사용자 아이디',
+  `noti_type` ENUM('EVENT','TRASH','RENT','BILL','COMMUNITY','SYSTEM') NOT NULL COMMENT '알림 종류',
+  `title` VARCHAR(100) NOT NULL COMMENT '알림 제목',
+  `body` VARCHAR(200) NULL COMMENT '알림 설명',
+  `link_view` VARCHAR(20) NULL COMMENT '이동 화면 — 눌렀을 때 열 화면 이름',
+  `ref_id` BIGINT UNSIGNED NULL COMMENT '관련 데이터 번호 — 일정·글 번호 등',
+  `notify_at` DATETIME NOT NULL COMMENT '알릴 일시',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
+  `read_at` DATETIME NULL COMMENT '읽은 일시 — 비어 있으면 안 읽음',
+  PRIMARY KEY (`id`),
+  KEY `idx_notifications_user_id_read_at` (`user_id`, `read_at`),
+  CONSTRAINT `fk_notifications_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='알림: 알림 화면과 빨간 점이 쓰는 표.';
+
+-- ----------------------------------------------------------------------------
+-- 3. 가계부
+-- ----------------------------------------------------------------------------
+
+-- 가계부 분류: 수입 종류(월급·아르바이트·용돈 등)와 기타 지출 분류(식비·생활용품 등)를 한 표로 관리합니다. 화면의 칩 색깔도 여기서 가져옵니다. 월세·공과금은 별도 표(rent_payments, bill_payments)에서 옵니다.
+CREATE TABLE IF NOT EXISTS `ledger_categories` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '분류 아이디 — 자동 증가',
+  `kind` ENUM('INCOME','EXPENSE') NOT NULL COMMENT '분류 구분 — 수입 / 기타 지출',
+  `name` VARCHAR(20) NOT NULL COMMENT '분류 이름 — 월급, 식비 등',
+  `color` VARCHAR(20) NOT NULL COMMENT '표시 색 — 예: #1fb5a3',
+  `sort_order` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '정렬 순서',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_ledger_categories_kind_name` (`kind`, `name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='가계부 분류: 수입 종류(월급·아르바이트·용돈 등)와 기타 지출 분류(식비·생활용품 등)를 한 표로 관리합니다.';
+
+-- 수입: 가계부 "수입" 탭에서 기록하는 수입 한 건. 월별 합계·가장 큰 종류, 홈의 "월별 수입" 막대 그래프의 원본입니다.
+CREATE TABLE IF NOT EXISTS `incomes` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '수입 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '수입 주인 아이디',
+  `category_id` BIGINT UNSIGNED NOT NULL COMMENT '수입 종류 아이디 — 월급, 아르바이트 등',
+  `amount` INT UNSIGNED NOT NULL COMMENT '수입 금액 — 원 단위',
+  `income_date` DATE NOT NULL COMMENT '번 날짜',
+  `memo` VARCHAR(100) NULL COMMENT '메모 — 예: 주말 카페 알바',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '기록 일시',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
+  PRIMARY KEY (`id`),
+  KEY `idx_incomes_user_id_income_date` (`user_id`, `income_date`),
+  CONSTRAINT `fk_incomes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_incomes_category_id` FOREIGN KEY (`category_id`) REFERENCES `ledger_categories` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='수입: 가계부 "수입" 탭에서 기록하는 수입 한 건.';
+
+-- 기타 지출: 가계부 "지출 → 기타 지출" 탭에서 기록하는 지출 한 건(식비·생활용품·교통 등). 월별 보기, 홈의 "이번 달 지출 구성" 도넛, AI "이번 달 지출 요약" 카드가 월세·공과금과 합쳐 계산합니다.
+CREATE TABLE IF NOT EXISTS `expenses` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '지출 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '지출 주인 아이디',
+  `category_id` BIGINT UNSIGNED NOT NULL COMMENT '지출 분류 아이디 — 식비, 교통 등',
+  `amount` INT UNSIGNED NOT NULL COMMENT '지출 금액 — 원 단위',
+  `expense_date` DATE NOT NULL COMMENT '쓴 날짜',
+  `memo` VARCHAR(100) NULL COMMENT '메모 — 예: 점심 제육덮밥',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '기록 일시',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
+  PRIMARY KEY (`id`),
+  KEY `idx_expenses_user_id_expense_date` (`user_id`, `expense_date`),
+  CONSTRAINT `fk_expenses_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_expenses_category_id` FOREIGN KEY (`category_id`) REFERENCES `ledger_categories` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='기타 지출: 가계부 "지출 → 기타 지출" 탭에서 기록하는 지출 한 건(식비·생활용품·교통 등).';
+
+-- ----------------------------------------------------------------------------
+-- 4. 커뮤니티 · 신고 · 이용 제한
+-- ----------------------------------------------------------------------------
+
+-- 커뮤니티 글: 커뮤니티의 글 한 개. 동네와 분류(자유·꿀팁·질문·동네)로 걸러 보고, 홈의 "자취 꿀팁"은 is_home_tip 이 켜진 꿀팁 글입니다. 좋아요·댓글 수는 목록을 빨리 보여주려고 글에 같이 적어 둡니다.
+CREATE TABLE IF NOT EXISTS `posts` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '글 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '글 작성자 아이디',
+  `region_id` BIGINT UNSIGNED NOT NULL COMMENT '글 동네 아이디 — 어느 동네 글인지',
+  `category` ENUM('FREE','TIP','QUESTION','TOWN') NOT NULL COMMENT '글 분류 — 자유 / 꿀팁 / 질문 / 동네',
+  `title` VARCHAR(100) NOT NULL COMMENT '글 제목',
+  `body` TEXT NOT NULL COMMENT '글 내용',
+  `like_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '좋아요 수',
+  `comment_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '댓글 수',
+  `is_home_tip` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '홈 꿀팁 노출 — 켜면 홈에 보임',
+  `status` ENUM('VISIBLE','HIDDEN','DELETED') NOT NULL DEFAULT 'VISIBLE' COMMENT '글 상태 — 신고로 숨김 / 삭제',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
+  `deleted_at` DATETIME NULL COMMENT '삭제 일시 — 소프트 삭제',
+  PRIMARY KEY (`id`),
+  KEY `idx_posts_region_id_category_created_at` (`region_id`, `category`, `created_at`),
+  CONSTRAINT `fk_posts_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_posts_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='커뮤니티 글: 커뮤니티의 글 한 개.';
+
+-- 글 좋아요: 누가 어느 글에 좋아요를 눌렀는지. 한 사람이 한 글에 한 번만 누를 수 있어서 (글, 사용자)가 기본키입니다.
+CREATE TABLE IF NOT EXISTS `post_likes` (
+  `post_id` BIGINT UNSIGNED NOT NULL COMMENT '좋아요 받은 글 아이디',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '좋아요 누른 사용자 아이디 — 한 사람당 한 번',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '좋아요 일시',
+  PRIMARY KEY (`post_id`, `user_id`),
+  CONSTRAINT `fk_post_likes_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_post_likes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='글 좋아요: 누가 어느 글에 좋아요를 눌렀는지.';
+
+-- 댓글: 글에 달린 댓글. 지금 화면은 한 줄 댓글이지만 parent_id 로 대댓글도 만들 수 있게 열어 뒀습니다.
+CREATE TABLE IF NOT EXISTS `comments` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '댓글 아이디 — 자동 증가',
+  `post_id` BIGINT UNSIGNED NOT NULL COMMENT '댓글이 달린 글 아이디',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '댓글 작성자 아이디',
+  `parent_id` BIGINT UNSIGNED NULL COMMENT '부모 댓글 아이디 — 대댓글일 때만',
+  `body` VARCHAR(200) NOT NULL COMMENT '댓글 내용',
+  `status` ENUM('VISIBLE','HIDDEN','DELETED') NOT NULL DEFAULT 'VISIBLE' COMMENT '댓글 상태',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
+  `deleted_at` DATETIME NULL COMMENT '삭제 일시 — 소프트 삭제',
+  PRIMARY KEY (`id`),
+  KEY `idx_comments_post_id_created_at` (`post_id`, `created_at`),
+  CONSTRAINT `fk_comments_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_comments_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_comments_parent_id` FOREIGN KEY (`parent_id`) REFERENCES `comments` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='댓글: 글에 달린 댓글.';
+
+-- 신고: 운영 정책에 어긋나는 글·댓글을 신고한 기록(정책 제3조). 운영자가 확인해 숨김 처리하거나 기각합니다.
+CREATE TABLE IF NOT EXISTS `reports` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '신고 아이디 — 자동 증가',
+  `reporter_id` BIGINT UNSIGNED NOT NULL COMMENT '신고한 사용자 아이디',
+  `target_type` ENUM('POST','COMMENT') NOT NULL COMMENT '신고 대상 종류 — 글 / 댓글',
+  `target_id` BIGINT UNSIGNED NOT NULL COMMENT '신고 대상 번호 — 글 또는 댓글 아이디',
+  `reason` ENUM('ABUSE','FALSE_INFO','PRIVACY','AD_ILLEGAL','COPYRIGHT','OTHER') NOT NULL COMMENT '신고 사유 — 욕설·허위·개인정보·광고/불법·저작권·기타',
+  `detail` VARCHAR(200) NULL COMMENT '자세한 내용',
+  `status` ENUM('RECEIVED','HIDDEN','DISMISSED') NOT NULL DEFAULT 'RECEIVED' COMMENT '처리 상태 — 접수 / 숨김 처리 / 기각',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '신고 일시',
+  `handled_by` BIGINT UNSIGNED NULL COMMENT '처리한 운영자 아이디',
+  `handled_at` DATETIME NULL COMMENT '처리 일시',
+  PRIMARY KEY (`id`),
+  KEY `idx_reports_target_type_target_id` (`target_type`, `target_id`),
+  CONSTRAINT `fk_reports_reporter_id` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_reports_handled_by` FOREIGN KEY (`handled_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='신고: 운영 정책에 어긋나는 글·댓글을 신고한 기록(정책 제3조).';
+
+-- 이용 제한: 운영 정책 위반에 따른 조치 기록(정책 제7조: 경고 → 게시 제한 → 이용 제한 → 이용 정지). 기간이 있는 제한은 ends_at 까지 적용됩니다.
+CREATE TABLE IF NOT EXISTS `user_sanctions` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '조치 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '조치 받은 사용자 아이디',
+  `sanction_type` ENUM('WARNING','POST_RESTRICT','SUSPEND','BAN') NOT NULL COMMENT '조치 종류 — 경고 / 게시 제한 / 이용 제한 / 정지',
+  `reason` VARCHAR(200) NOT NULL COMMENT '조치 사유',
+  `report_id` BIGINT UNSIGNED NULL COMMENT '관련 신고 아이디',
+  `starts_at` DATETIME NOT NULL COMMENT '시작 일시',
+  `ends_at` DATETIME NULL COMMENT '끝나는 일시 — 비우면 기간 없음(정지)',
+  `created_by` BIGINT UNSIGNED NULL COMMENT '조치한 운영자 아이디',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '기록 일시',
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_user_sanctions_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_user_sanctions_report_id` FOREIGN KEY (`report_id`) REFERENCES `reports` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_user_sanctions_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='이용 제한: 운영 정책 위반에 따른 조치 기록(정책 제7조: 경고 → 게시 제한 → 이용 제한 → 이용 정지).';
+
+-- ----------------------------------------------------------------------------
+-- 5. AI · 지도 · 공용 데이터
+-- ----------------------------------------------------------------------------
+
+-- AI 분야: AI 화면의 분야 카드와 홈 AI 대화 칩의 목록(자유 질문·근처 탐색·분리배출·냉장고 요리·청소·계약·집주인 문자·공과금·지출 요약). 분야를 추가·숨기는 것은 이 표만 고치면 됩니다.
+CREATE TABLE IF NOT EXISTS `ai_topics` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '분야 아이디 — 자동 증가',
+  `code` VARCHAR(20) NOT NULL COMMENT '분야 코드 — trash, cook, summary 등',
+  `name` VARCHAR(30) NOT NULL COMMENT '분야 이름',
+  `description` VARCHAR(60) NOT NULL COMMENT '분야 설명 — 카드에 보이는 한 줄',
+  `photo_supported` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '사진 첨부 지원 — 사진을 올리면 "추천" 표시',
+  `sort_order` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '정렬 순서',
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '사용 여부',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_ai_topics_code` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 분야: AI 화면의 분야 카드와 홈 AI 대화 칩의 목록(자유 질문·근처 탐색·분리배출·냉장고 요리·청소·계약·집주인 문자·공과금·지출 요약).';
+
+-- 업로드 파일: 사용자가 올린 사진(AI 상담용). 파일 자체는 파일 저장소에 두고 여기에는 주소와 정보만 적습니다. 탈퇴하면 파일도 함께 지웁니다.
+CREATE TABLE IF NOT EXISTS `uploaded_files` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '파일 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '올린 사용자 아이디',
+  `original_name` VARCHAR(255) NOT NULL COMMENT '원래 파일 이름',
+  `storage_url` VARCHAR(500) NOT NULL COMMENT '저장 주소 — 파일 저장소 주소',
+  `mime_type` VARCHAR(50) NOT NULL COMMENT '파일 형식 — 예: image/jpeg',
+  `size_bytes` INT UNSIGNED NOT NULL COMMENT '파일 크기 — 바이트',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '업로드 일시',
+  `deleted_at` DATETIME NULL COMMENT '삭제 일시',
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_uploaded_files_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='업로드 파일: 사용자가 올린 사진(AI 상담용).';
+
+-- AI 대화: AI와의 대화 한 건(대화방). 홈의 "AI와 대화" 모달에서 시작한 대화와 AI 메뉴 화면에서 시작한 대화를 구분하고, "새 대화"를 누르면 새 줄이 생깁니다.
+CREATE TABLE IF NOT EXISTS `ai_conversations` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '대화 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '대화한 사용자 아이디',
+  `topic_id` BIGINT UNSIGNED NULL COMMENT '대화 분야 아이디 — 분야를 고르고 시작했을 때',
+  `entry_point` ENUM('HOME_MODAL','AI_PAGE') NOT NULL COMMENT '시작한 곳 — 홈 모달 / AI 화면',
+  `title` VARCHAR(100) NULL COMMENT '대화 제목 — 첫 질문 요약',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '대화 시작 일시',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '마지막 대화 일시',
+  PRIMARY KEY (`id`),
+  KEY `idx_ai_conversations_user_id_updated_at` (`user_id`, `updated_at`),
+  CONSTRAINT `fk_ai_conversations_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ai_conversations_topic_id` FOREIGN KEY (`topic_id`) REFERENCES `ai_topics` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 대화: AI와의 대화 한 건(대화방).';
+
+-- AI 메시지: 대화 안의 말풍선 한 개. 사용자가 보낸 말과 AI의 답을 순서대로 쌓습니다. "이번 달 지출 요약"처럼 카드로 보이는 답은 그때의 숫자를 card_data(JSON)에 같이 저장해 다시 열어도 같은 모습으로 보입니다.
+CREATE TABLE IF NOT EXISTS `ai_messages` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '메시지 아이디 — 자동 증가',
+  `conversation_id` BIGINT UNSIGNED NOT NULL COMMENT '메시지가 속한 대화 아이디',
+  `role` ENUM('USER','ASSISTANT') NOT NULL COMMENT '보낸 쪽 — 사용자 / AI',
+  `content` TEXT NOT NULL COMMENT '메시지 내용',
+  `card_type` ENUM('SPEND_SUMMARY') NULL COMMENT '카드 종류 — 카드로 보이는 답일 때',
+  `card_data` JSON NULL COMMENT '카드 내용 — 카드에 보이는 숫자 스냅샷',
+  `attachment_id` BIGINT UNSIGNED NULL COMMENT '첨부 파일 아이디 — 사진 첨부(선택)',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
+  PRIMARY KEY (`id`),
+  KEY `idx_ai_messages_conversation_id_created_at` (`conversation_id`, `created_at`),
+  CONSTRAINT `fk_ai_messages_conversation_id` FOREIGN KEY (`conversation_id`) REFERENCES `ai_conversations` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ai_messages_attachment_id` FOREIGN KEY (`attachment_id`) REFERENCES `uploaded_files` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 메시지: 대화 안의 말풍선 한 개.';
+
+-- AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 세는 표. 실제 AI를 연결할 때 하루 한도를 걸거나 비용을 확인하는 데 씁니다.
+CREATE TABLE IF NOT EXISTS `ai_usage_daily` (
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '사용자 아이디',
+  `usage_date` DATE NOT NULL COMMENT '사용 날짜',
+  `question_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '하루 질문 횟수',
+  PRIMARY KEY (`user_id`, `usage_date`),
+  CONSTRAINT `fk_ai_usage_daily_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 세는 표.';
+
+-- 쓰레기 배출 일정: 동네별 요일 배출표. 홈 쓰레기 카드, 쓰레기 화면의 요일표, 오른쪽 패널, 알림이 모두 이 표로 "오늘 무슨 쓰레기를 내놓는지"를 알려줍니다. 배출 없는 요일은 줄이 없습니다.
+CREATE TABLE IF NOT EXISTS `trash_schedules` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '배출일정 아이디 — 자동 증가',
+  `region_id` BIGINT UNSIGNED NOT NULL COMMENT '동네 아이디',
+  `weekday` TINYINT UNSIGNED NOT NULL COMMENT '배출 요일 — 0=일 ~ 6=토',
+  `waste_type` ENUM('GENERAL','RECYCLE','FOOD') NOT NULL COMMENT '배출 종류 — 일반쓰레기 / 재활용 / 음식물',
+  `description` VARCHAR(100) NOT NULL COMMENT '배출 안내 — 예: 저녁 6시 ~ 자정, 종량제 봉투 사용',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_trash_schedules_region_id_weekday` (`region_id`, `weekday`),
+  CONSTRAINT `fk_trash_schedules_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='쓰레기 배출 일정: 동네별 요일 배출표.';
+
+-- 장소 분류: 지도 화면의 칩(세탁방·편의점·약국·마트) 목록.
+CREATE TABLE IF NOT EXISTS `place_categories` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '장소 분류 아이디 — 자동 증가',
+  `name` VARCHAR(20) NOT NULL COMMENT '장소 분류 이름 — 세탁방, 편의점 등',
+  `sort_order` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '정렬 순서',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_place_categories_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='장소 분류: 지도 화면의 칩(세탁방·편의점·약국·마트) 목록.';
+
+-- 주변 장소: 지도 화면과 AI "근처 탐색"에 나오는 가게·시설. 이름·위치뿐 아니라 전화번호·영업시간·평점도 담을 수 있게 열어 뒀고, 공공데이터에서 가져온 장소는 source_id 로 원본과 연결합니다.
+CREATE TABLE IF NOT EXISTS `places` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '장소 아이디 — 자동 증가',
+  `region_id` BIGINT UNSIGNED NOT NULL COMMENT '장소 동네 아이디',
+  `category_id` BIGINT UNSIGNED NOT NULL COMMENT '장소 분류 아이디',
+  `name` VARCHAR(60) NOT NULL COMMENT '장소 이름',
+  `description` VARCHAR(100) NULL COMMENT '장소 설명 — 예: 도보 약 3분 · 24시간',
+  `lat` DECIMAL(9,6) NOT NULL COMMENT '위도',
+  `lon` DECIMAL(9,6) NOT NULL COMMENT '경도',
+  `address` VARCHAR(200) NULL COMMENT '주소',
+  `phone` VARCHAR(20) NULL COMMENT '전화번호',
+  `open_hours` VARCHAR(100) NULL COMMENT '영업시간',
+  `rating_avg` DECIMAL(2,1) NULL COMMENT '평균 별점 — 리뷰로 계산',
+  `review_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '리뷰 수',
+  `source` ENUM('MANUAL','PUBLIC_DATA') NOT NULL DEFAULT 'MANUAL' COMMENT '정보 출처 — 직접 입력 / 공공데이터',
+  `source_id` VARCHAR(50) NULL COMMENT '원본 데이터 번호 — 공공데이터 원본 ID',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '정보 갱신 일시',
+  PRIMARY KEY (`id`),
+  KEY `idx_places_region_id_category_id` (`region_id`, `category_id`),
+  CONSTRAINT `fk_places_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_places_category_id` FOREIGN KEY (`category_id`) REFERENCES `place_categories` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='주변 장소: 지도 화면과 AI "근처 탐색"에 나오는 가게·시설.';
+
+-- 장소 리뷰: 사용자가 장소에 남기는 별점과 한 줄 리뷰(확장 기능). 평균 별점과 리뷰 수는 이 표로 계산해 places 에 채웁니다. 한 사람이 한 장소에 하나만 남깁니다.
+CREATE TABLE IF NOT EXISTS `place_reviews` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '리뷰 아이디 — 자동 증가',
+  `place_id` BIGINT UNSIGNED NOT NULL COMMENT '리뷰 받은 장소 아이디',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '리뷰 쓴 사용자 아이디',
+  `rating` TINYINT UNSIGNED NOT NULL COMMENT '별점 — 1~5',
+  `body` VARCHAR(300) NULL COMMENT '리뷰 내용',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_place_reviews_place_id_user_id` (`place_id`, `user_id`),
+  CONSTRAINT `fk_place_reviews_place_id` FOREIGN KEY (`place_id`) REFERENCES `places` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_place_reviews_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='장소 리뷰: 사용자가 장소에 남기는 별점과 한 줄 리뷰(확장 기능).';
+
+-- ----------------------------------------------------------------------------
+-- 집계용 VIEW: 홈의 "월별 수입" 그래프, "이번 달 지출 구성" 도넛, AI "이번 달 지출 요약"이 쓰는 계산
+-- ----------------------------------------------------------------------------
+
+-- 월별 수입 합계: 홈의 "월별 수입" 막대 그래프와 수입 탭의 월 합계. 사용자·월별로 수입 금액을 더합니다.
+CREATE OR REPLACE VIEW `v_monthly_income` AS
+SELECT i.user_id, DATE_FORMAT(i.income_date, '%Y-%m') AS period_ym, SUM(i.amount) AS total_amount
+FROM incomes i
+GROUP BY i.user_id, DATE_FORMAT(i.income_date, '%Y-%m');
+
+-- 월별 지출 구성: 홈의 "이번 달 지출 구성" 도넛과 AI "이번 달 지출 요약". 월세 + 공과금(고정 지출) + 기타 지출을 분류별로 합쳐 한 줄씩 보여줍니다. (월세·공과금 행은 매달 1일에 미납 상태로 미리 만들어 둡니다)
+CREATE OR REPLACE VIEW `v_monthly_spend_breakdown` AS
+SELECT r.user_id, r.period_ym, '월세' AS label, r.amount AS amount
+FROM rent_payments r
+UNION ALL
+SELECT b.user_id, p.period_ym, '공과금' AS label, SUM(p.amount) AS amount
+FROM bill_payments p JOIN bill_items b ON b.id = p.bill_item_id
+GROUP BY b.user_id, p.period_ym
+UNION ALL
+SELECT e.user_id, DATE_FORMAT(e.expense_date, '%Y-%m') AS period_ym, c.name AS label, SUM(e.amount) AS amount
+FROM expenses e JOIN ledger_categories c ON c.id = e.category_id
+GROUP BY e.user_id, DATE_FORMAT(e.expense_date, '%Y-%m'), c.name;
+
+-- ----------------------------------------------------------------------------
+-- 기본 데이터 (프로그램이 처음부터 알고 있어야 하는 값)
+-- ----------------------------------------------------------------------------
+
+-- 동네: 시·도 1개 + 구 11개 (id 를 고정해서 아래 주변 동네·쓰레기표가 가리킴)
+INSERT IGNORE INTO `regions` (`id`, `parent_id`, `name`, `level`) VALUES
+  (1, NULL, '서울특별시', 1),
+  (2, 1, '마포구', 2), (3, 1, '서대문구', 2), (4, 1, '용산구', 2), (5, 1, '영등포구', 2), (6, 1, '은평구', 2),
+  (7, 1, '종로구', 2), (8, 1, '중구', 2), (9, 1, '성동구', 2), (10, 1, '동작구', 2), (11, 1, '양천구', 2), (12, 1, '강남구', 2);
+
+-- 주변 동네 (커뮤니티의 "주변 동네" 범위)
+INSERT IGNORE INTO `region_neighbors` (`region_id`, `neighbor_region_id`) VALUES
+  (2, 3), (2, 4), (2, 5),
+  (3, 2), (3, 6), (3, 7),
+  (4, 2), (4, 8), (4, 9),
+  (5, 2), (5, 10), (5, 11);
+
+-- 가계부 분류: 수입 종류 / 기타 지출 분류 (색은 화면의 칩 색과 같음)
+INSERT IGNORE INTO `ledger_categories` (`kind`, `name`, `color`, `sort_order`) VALUES
+  ('INCOME', '월급', '#1fb5a3', 1), ('INCOME', '아르바이트', '#2f80ed', 2), ('INCOME', '용돈', '#ff5a7e', 3),
+  ('INCOME', '부수입', '#f5a623', 4), ('INCOME', '환급·정산', '#7c6cf5', 5), ('INCOME', '기타', '#8a90a2', 6),
+  ('EXPENSE', '식비', '#1fb5a3', 1), ('EXPENSE', '생활용품', '#ff5a7e', 2), ('EXPENSE', '교통', '#7c6cf5', 3),
+  ('EXPENSE', '건강·의료', '#2f80ed', 4), ('EXPENSE', '문화·여가', '#f5a623', 5), ('EXPENSE', '기타', '#8a90a2', 6);
+
+-- AI 분야 (AI 화면의 카드 / 홈 AI 대화 칩)
+INSERT IGNORE INTO `ai_topics` (`code`, `name`, `description`, `photo_supported`, `sort_order`) VALUES
+  ('qna', '자유 질문', '자취 관련 궁금한 것', 0, 1),
+  ('nearby', '근처 탐색', '세탁방·편의점·약국·마트', 0, 2),
+  ('trash', '분리배출', '이건 어떻게 버려요?', 1, 3),
+  ('cook', '냉장고 요리', '남은 재료로 한 끼', 1, 4),
+  ('clean', '청소·곰팡이', '얼룩, 냄새, 곰팡이', 1, 5),
+  ('contract', '계약·보증금', '입주·퇴거 체크리스트', 0, 6),
+  ('landlord', '집주인 문자', '정중한 요청 문자 초안', 1, 7),
+  ('bill', '공과금·생활비', '아끼는 법, 납부 관리', 0, 8),
+  ('summary', '이번 달 지출 요약', '가계부 기록으로 정리', 0, 9);
+
+-- 지도 장소 분류
+INSERT IGNORE INTO `place_categories` (`name`, `sort_order`) VALUES ('세탁방', 1), ('편의점', 2), ('약국', 3), ('마트', 4);
+
+-- 쓰레기 배출표 (마포구 예시: 일반쓰레기 월·수·금 ... 요일은 0=일 ~ 6=토, 토요일은 배출 없음)
+INSERT IGNORE INTO `trash_schedules` (`region_id`, `weekday`, `waste_type`, `description`) VALUES
+  (2, 0, 'GENERAL', '저녁 6시 ~ 자정, 종량제 봉투 사용'),
+  (2, 1, 'RECYCLE', '저녁 6시 ~ 자정, 플라스틱 · 캔 · 종이 분리'),
+  (2, 2, 'GENERAL', '저녁 6시 ~ 자정, 종량제 봉투 사용'),
+  (2, 3, 'RECYCLE', '저녁 6시 ~ 자정, 유리병 · 비닐 분리'),
+  (2, 4, 'GENERAL', '저녁 6시 ~ 자정, 종량제 봉투 사용'),
+  (2, 5, 'RECYCLE', '저녁 6시 ~ 자정, 플라스틱 · 캔 · 종이 분리');
+
+-- 약관 본문 (예시 문구: 실제 서비스 전에 법률 검토 필요. 원본은 variants/account/terms.js)
+INSERT IGNORE INTO `terms_documents` (`doc_type`, `version`, `title`, `content`, `consent_kind`, `is_required`, `effective_at`) VALUES
+  ('SERVICE', '1.0', '서비스 이용약관', '제1조 (목적)
+이 약관은 ZIP(이하 "서비스")이 제공하는 자취 생활 관리 서비스의 이용과 관련하여 서비스와 이용자 사이의 권리, 의무 및 책임사항을 정하는 것을 목적으로 합니다.
+
+제2조 (서비스 내용)
+서비스는 다음 기능을 제공합니다.
+1. 할 일, 일정, 쓰레기 배출 일정 관리
+2. 가계부(수입, 고정 지출, 기타 지출) 및 월세·공과금 관리
+3. AI 대화 및 생활 꿀팁, 동네 지도 정보, 커뮤니티
+서비스의 내용은 운영상 필요에 따라 변경될 수 있으며, 중요한 변경은 사전에 알립니다.
+
+제3조 (회원가입과 계정)
+① 이용자는 아이디, 비밀번호, 닉네임, 휴대전화, 이메일, 주소를 입력하고 이 약관에 동의하여 가입할 수 있습니다.
+② 이용자는 계정 정보를 직접 관리해야 하며, 타인에게 양도하거나 대여할 수 없습니다.
+③ 허위 정보를 입력한 경우 서비스 이용이 제한될 수 있습니다.
+
+제4조 (약관의 변경)
+약관을 변경하는 경우 시행 7일 전(이용자에게 불리한 변경은 30일 전)에 서비스 내 공지로 알립니다.', 'AGREE', 1, '2026-10-18 00:00:00'),
+  ('PRIVACY', '1.0', '개인정보 처리방침', '제1조 (수집하는 개인정보)
+서비스는 회원가입과 이용을 위해 아래 정보를 수집합니다.
+· 필수: 아이디, 비밀번호, 닉네임, 휴대전화, 이메일, 주소(동네 정보 제공 목적)
+· 이용 중 생성: 할 일, 일정, 가계부 기록, AI 대화 내용, 커뮤니티 게시글
+소셜 로그인 이용 시 해당 제공자가 전달하는 이름·이메일 등 최소한의 정보를 받습니다.
+
+제2조 (개인정보의 이용 목적과 보유 기간)
+① 수집한 정보는 회원 식별, 맞춤형 동네 정보 제공, 서비스 개선, 문의 응대에 사용합니다.
+② 개인정보는 회원 탈퇴 시 지체 없이 삭제합니다. 다만 관련 법령에 따라 보관해야 하는 정보는 해당 기간 동안 별도로 보관합니다.
+③ 동의를 거부할 수 있으나, 필수 항목에 동의하지 않으면 가입할 수 없습니다.
+
+제3조 (이용자의 권리)
+이용자는 언제든지 내 정보에서 개인정보를 열람·수정할 수 있고, 회원 탈퇴를 통해 모든 데이터의 삭제를 요청할 수 있습니다.', 'CONFIRM', 1, '2026-10-18 00:00:00'),
+  ('POLICY', '1.0', '커뮤니티·AI 운영 정책', '제1조 (목적)
+이 정책은 ZIP 커뮤니티와 AI 도우미를 모두가 안전하고 기분 좋게 쓸 수 있도록 지켜야 할 기준과, 지키지 않았을 때의 조치를 정하는 것을 목적으로 합니다.
+
+제2조 (커뮤니티 이용 원칙)
+동네 이웃과 생활 정보를 나누는 공간이에요. 서로 존중하며 이용해 주세요.
+다음 글과 댓글은 금지되며 운영자가 숨기거나 삭제할 수 있어요.
+1. 욕설, 비방, 혐오·차별 표현, 특정인을 향한 공격
+2. 허위 사실, 확인되지 않은 소문, 타인의 사생활·개인정보(전화번호, 상세 주소, 얼굴 사진 등) 노출
+3. 광고·홍보성 글의 반복 게시, 불법 거래·도박·성인물 관련 글
+4. 저작권 등 타인의 권리를 침해하는 내용
+
+제3조 (신고와 게시글 관리)
+부적절한 글은 신고할 수 있고, 운영자는 내용을 확인해 숨김·삭제 등을 결정해요.
+내 글은 언제든 수정하거나 삭제할 수 있어요. 탈퇴하면 내 글과 기록이 함께 삭제돼요.
+
+제4조 (AI 도우미 이용 안내)
+AI 도우미는 분리배출, 요리, 청소, 계약, 생활비 등 자취 생활의 궁금증을 돕는 보조 도구예요.
+1. AI의 답변은 부정확하거나 최신이 아닐 수 있어요. 참고용으로만 활용해 주세요.
+2. 보증금·계약·세금 등 법률·금융, 건강·의료처럼 중요한 결정은 반드시 전문가나 공식 기관의 안내로 다시 확인해 주세요.
+3. 답변에 따라 한 행동의 결과는 이용자 본인에게 있으며, 서비스는 AI 답변의 정확성을 보장하지 않아요.
+4. 현재 사진 첨부는 분야 선택을 돕는 용도이며, 사진 속 내용을 직접 분석하지는 않아요.
+
+제5조 (AI 이용 시 주의사항)
+비밀번호, 주민등록번호, 계좌·카드 번호 등 민감한 정보는 AI 대화나 사진에 입력·첨부하지 마세요.
+타인의 개인정보가 담긴 사진이나 내용은 올리지 마세요.
+AI를 이용해 타인을 괴롭히거나 불법적인 목적의 내용을 만드는 행위는 금지돼요.
+
+제6조 (AI 대화 기록)
+대화 내용은 이어서 볼 수 있도록 저장되며, 이용자는 "새 대화"나 내 정보의 데이터 초기화, 회원 탈퇴로 삭제할 수 있어요.
+
+제7조 (위반 시 조치)
+운영 정책을 위반하면 경고, 게시 제한, 일정 기간 이용 제한, 반복·중대한 경우 이용 정지 순으로 조치할 수 있어요.
+조치에 이의가 있으면 문의를 통해 소명할 수 있어요.
+
+제8조 (정책의 변경)
+운영 정책을 바꿀 때는 시행 7일 전에 서비스 내 공지로 알려요.', 'AGREE', 1, '2026-10-18 00:00:00');

@@ -64,6 +64,7 @@
 }
 
 
+/* 홈 위쪽 요약 카드 4개(할 일·공과금·쓰레기·월세) 격자와 카드 모양/색(.teal/.orange/.pink/.purple) */
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -129,6 +130,7 @@
   opacity: .95;
 }
 
+/* 카드 안의 진행 막대 */
 .bar {
   height: 6px;
   background: rgba(255, 255, 255, .35);
@@ -144,6 +146,7 @@
   border-radius: 99px;
 }
 
+/* 홈에서 카드 두 개를 나란히 놓는 줄 */
 .row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -151,6 +154,7 @@
   margin-bottom: 18px;
 }
 
+/* 막대 그래프 (월별 수입) */
 .chart {
   display: flex;
   align-items: flex-end;
@@ -204,6 +208,7 @@
   display: block;
 }
 
+/* 도넛 그래프와 범례 (이번 달 지출 구성) */
 .donut-wrap {
   display: flex;
   align-items: center;
@@ -275,6 +280,7 @@
   color: var(--muted);
 }
 
+/* 자취 꿀팁 글 한 줄 */
 .recipe {
   display: flex;
   gap: 12px;
@@ -329,6 +335,7 @@
   outline-offset: 2px;
 }
 
+/* 태블릿·모바일: 사진 상담 카드 줄바꿈, 요약 카드 2열, 홈의 카드 줄은 한 줄에 카드 한 개 */
 @media (max-width: 900px) {
   .home-photo.card {
     flex-wrap: wrap;
@@ -347,12 +354,14 @@
   }
 }
 
+/* 모바일: 홈의 사진 상담 카드는 숨김 (하단 메뉴의 사진 버튼을 씀) */
 @media (max-width: 700px) {
   .home-photo.card {
     display: none;
   }
 }
 
+/* 모바일: 사진 버튼 글자를 짧은 문구로 바꿈 */
 @media (max-width: 700px) {
   .photo-desktop-label {
     display: none;

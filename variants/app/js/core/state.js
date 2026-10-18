@@ -6,10 +6,13 @@ import { load, store } from './storage.js';
 import { HOME, SEED_POSTS } from '../data/posts-seed.js';
 import { demoEvents } from '../data/demo.js';
 
+// 내 정보(이름·동네·월세·납부일·알림). 저장된 값이 있으면 기본값 위에 덮어씀
 export var settings = Object.assign({ name: '지기', region: '서울 마포구', rentDay: 15, rent: 55, notiOn: true }, load('zip-settings', {}));
+// 읽은 알림 기록 / 월별 월세 납부 기록
 export var readMap = load('zip-noti-read', {});
 export var rentPaid = load('zip-rent-paid', {});
 
+// 일정 (처음 한 번 오늘 앞뒤 예시 일정을 더함)
 var events = load('zip-events', []);
 if (!Array.isArray(events)) events = [];
 if (!load('zip-demo-events', false)) {   // 둘러보기용: 오늘 앞뒤 일정 예시를 한 번만 더함
@@ -17,12 +20,14 @@ if (!load('zip-demo-events', false)) {   // 둘러보기용: 오늘 앞뒤 일�
   store('zip-events', events); store('zip-demo-events', true);
 }
 
+// 커뮤니티 글 (기본 글을 한 번씩 채워 넣음)
 var posts = load('zip-posts', null);
 if (!Array.isArray(posts)) posts = [];
 posts.forEach(function (p) { if (!p.region) p.region = p.mine ? settings.region : HOME; });
 SEED_POSTS.forEach(function (sp) { if (!posts.some(function (p) { return p.id === sp.id; })) posts.push(sp); });
 store('zip-posts', posts);
 
+// 이번 주 할 일 (처음에는 예시 6개)
 var todos = load('zip-todos', null);
 if (!Array.isArray(todos)) {
   todos = [
@@ -36,6 +41,7 @@ if (!Array.isArray(todos)) {
   store('zip-todos', todos);
 }
 
+// 공과금 항목 (처음에는 가스·전기·수도 예시)
 var bills = load('zip-bills', null);
 if (!Array.isArray(bills)) {
   bills = [
@@ -46,4 +52,5 @@ if (!Array.isArray(bills)) {
   store('zip-bills', bills);
 }
 
+// 화면에서 새 배열로 바꿔 끼우는 데이터는 state 안에 담아 항상 최신 값을 읽게 함
 export var state = { events: events, posts: posts, todos: todos, bills: bills };

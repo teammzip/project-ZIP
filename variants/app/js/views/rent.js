@@ -7,6 +7,7 @@ import { DOW } from '../data/trash.js';
 import { registerView } from '../core/router.js';
 import { updateDot } from './noti.js';
 
+// 월별 납부 기록의 키 (예: 2026-10)
 function rentKey(y, m) { return y + '-' + pad(m + 1); }
 
 /* 홈의 월세 카드 + 오른쪽 패널의 월세 줄 */
@@ -19,6 +20,7 @@ export function renderRentSummary() {
   $('pRentTime').textContent = (c.getMonth() + 1) + '/' + c.getDate();
 }
 
+// 월세 상세 화면: D-day, 납부 예정일, 금액, 최근 6개월 납부 체크 목록
 function renderRent() {
   var c = nextRentDate(), diff = dayDiff(fmt(c));
   $('rentBig').textContent = diff === 0 ? 'D-Day' : 'D-' + diff;
@@ -40,6 +42,7 @@ function renderRent() {
     box.appendChild(row);
   }
 }
+// "캘린더에 추가" 버튼: 다음 월세 납부일을 일정으로 등록 (이미 있으면 중복 등록하지 않음)
 $('rentCal').addEventListener('click', function () {
   var c = nextRentDate(), ds = fmt(c);
   var msg = $('rentMsg');

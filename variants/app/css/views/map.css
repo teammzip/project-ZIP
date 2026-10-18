@@ -1,5 +1,6 @@
 /* 지도 */
 
+/* 지도 칸(iframe) */
 .map-frame {
   width: 100%;
   height: 480px;
@@ -14,6 +15,7 @@
   margin-top: 8px;
 }
 
+/* 장소 목록 한 줄 (선택하면 .on) */
 .place {
   display: flex;
   gap: 10px;

@@ -19,6 +19,7 @@ import './components/menu-panel.js';
 import './components/ai-chat.js';
 import './components/account.js';
 
+// 처음 한 번 화면을 그림: 메뉴 연결 → 설정 반영 → 각 화면의 내용
 initRouter();
 applySettings();
 renderCalendarAll();

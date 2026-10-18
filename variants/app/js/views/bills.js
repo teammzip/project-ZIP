@@ -4,8 +4,10 @@ import { store } from '../core/storage.js';
 import { state } from '../core/state.js';
 import { registerView } from '../core/router.js';
 
+// 공과금 목록을 저장하고 화면을 다시 그림 (체크·삭제·추가 때마다 호출)
 function saveBills() { store('zip-bills', state.bills); renderBills(); }
 
+// 홈 "이번 달 공과금" 카드(납부율·막대)와 공과금 상세 화면(합계·납부·남음·항목 목록)을 한 번에 그림
 export function renderBills() {
   var total = 0, paid = 0;
   state.bills.forEach(function (b) { total += b.amount; if (b.paid) paid += b.amount; });
@@ -36,6 +38,7 @@ export function renderBills() {
   });
   if (!state.bills.length) box.appendChild(el('div', 'empty', '등록된 공과금이 없어요.'));
 }
+// 공과금 항목 추가 폼: 이름과 금액을 받아 "미납" 상태로 목록에 더함
 $('billForm').addEventListener('submit', function (e) {
   e.preventDefault();
   var name = $('billName').value.trim(), amt = Math.max(0, Number($('billAmount').value) || 0);
@@ -44,6 +47,7 @@ $('billForm').addEventListener('submit', function (e) {
   $('billName').value = ''; $('billAmount').value = '';
   saveBills();
 });
+// "새 달 시작" 버튼: 모든 항목을 다시 미납으로 되돌림
 $('billReset').addEventListener('click', function () {
   state.bills.forEach(function (b) { b.paid = false; });
   saveBills();

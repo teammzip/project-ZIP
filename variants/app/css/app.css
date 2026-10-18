@@ -1063,12 +1063,12 @@ body[data-view="settings"] .my-head {
   font-size: 14px;
 }
 
-/* AI 대화 안의 "이번 달 지출 요약" 카드 */
+/* AI 대화 안의 "이번 달 지출 요약" 카드 (이름 앞에 chat- 을 붙여 life.css 의 .sum-row 와 겹치지 않게 함) */
 .msg.has-card {
   width: min(84%, 340px);
 }
 
-.sum-card {
+.chat-sum-card {
   display: grid;
   gap: 8px;
   margin-top: 10px;
@@ -1078,31 +1078,31 @@ body[data-view="settings"] .my-head {
   background: #f7f8fc;
 }
 
-.sum-card small {
+.chat-sum-card small {
   color: var(--muted);
   font-size: 12px;
 }
 
-.sum-total {
+.chat-sum-total {
   font-size: 22px;
 }
 
-.sum-cmp {
+.chat-sum-cmp {
   margin: -4px 0 2px;
   font-size: 12px;
   color: var(--teal);
 }
 
-.sum-cmp.up {
+.chat-sum-cmp.up {
   color: var(--pink);
 }
 
-.sum-rows {
+.chat-sum-rows {
   display: grid;
   gap: 7px;
 }
 
-.sum-row {
+.chat-sum-row {
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr) 58px;
   align-items: center;
@@ -1110,32 +1110,32 @@ body[data-view="settings"] .my-head {
   font-size: 12px;
 }
 
-.sum-row .v {
+.chat-sum-row .v {
   text-align: right;
   color: var(--muted);
 }
 
-.sum-row .bar {
+.chat-sum-row .bar {
   height: 8px;
   border-radius: 4px;
   background: #e8ecfb;
   overflow: hidden;
 }
 
-.sum-row .bar i {
+.chat-sum-row .bar i {
   display: block;
   height: 100%;
   border-radius: 4px;
   background: var(--orange);
 }
 
-.sum-note {
+.chat-sum-note {
   font-size: 12px;
   line-height: 1.55;
   color: var(--muted);
 }
 
-.sum-go {
+.chat-sum-go {
   padding: 8px;
   font: inherit;
   font-size: 12px;
@@ -1152,4 +1152,29 @@ body[data-view="settings"] .my-head {
   :root {
     --ms-bottom: 74px;
   }
+}
+
+/* 내 정보: 비밀번호 변경 */
+.sub-title {
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+
+.form-msg {
+  min-height: 18px;
+  font-size: 13px;
+}
+
+.form-msg.err {
+  color: var(--pink);
+}
+
+.form-msg.ok {
+  color: var(--teal);
+}
+
+.demo-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
 }

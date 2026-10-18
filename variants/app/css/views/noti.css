@@ -1,5 +1,6 @@
 /* 알림 */
 
+/* 알림 한 줄 (아이콘, 제목·설명, 오른쪽 배지) */
 .noti {
   display: flex;
   gap: 10px;
@@ -55,6 +56,7 @@
   color: var(--pink);
 }
 
+/* 알림 화면 전용: 눌러서 읽음 처리, 안 읽은 알림은 파란 점 표시 */
 .noti.clickable {
   cursor: pointer;
 }
@@ -75,6 +77,7 @@
   flex: none;
 }
 
+/* 알림을 껐을 때 보이는 안내 문구 */
 .notice {
   background: #fff8e8;
   color: #9a6a00;
