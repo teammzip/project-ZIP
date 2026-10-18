@@ -1,4 +1,4 @@
-/* 로그인 예시 3종이 같이 쓰는 스타일 */
+/* 시작 화면(PC·모바일)의 로그인 창이 같이 쓰는 스타일 */
 :root {
   --orange: #ff7a45;
   --ink: #1f2430;
@@ -6,42 +6,20 @@
   --line: #e5e7eb;
 }
 
+/* 모든 요소 기본 설정 */
 * {
   box-sizing: border-box;
   margin: 0;
 }
 
+/* 기본 글꼴·글자색 */
 body {
   font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   color: var(--ink);
   min-height: 100vh;
 }
 
-.logo {
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  color: var(--orange);
-}
-
-.logo small {
-  margin-left: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--muted);
-}
-
-.card h2 {
-  font-size: 22px;
-  margin-bottom: 4px;
-}
-
-.card .lead {
-  font-size: 14px;
-  color: var(--muted);
-  margin-bottom: 20px;
-}
-
+/* 입력칸 한 개 (라벨 + 입력) */
 .field {
   display: block;
   margin-bottom: 12px;
@@ -69,6 +47,7 @@ body {
   border-color: var(--orange);
 }
 
+/* 비밀번호 입력칸과 오른쪽 "보기" 버튼 */
 .pw-row {
   position: relative;
 }
@@ -86,6 +65,7 @@ body {
   cursor: pointer;
 }
 
+/* 큰 버튼 (로그인 버튼은 .btn-main) */
 .btn {
   width: 100%;
   padding: 13px;
@@ -105,12 +85,7 @@ body {
   filter: brightness(0.95);
 }
 
-.btn-kakao {
-  margin-top: 8px;
-  background: #fee500;
-  color: #191919;
-}
-
+/* "또는" 가로줄 */
 .divider {
   display: flex;
   align-items: center;
@@ -128,6 +103,7 @@ body {
   background: var(--line);
 }
 
+/* "로그인 유지" 체크 + 아이디/비밀번호 찾기 링크 줄 */
 .row {
   display: flex;
   justify-content: space-between;
@@ -143,6 +119,7 @@ body {
   align-items: center;
 }
 
+/* 로그인 창 맨 아래 "아직 계정이 없나요? 회원가입" */
 .switch {
   margin-top: 16px;
   font-size: 13px;
@@ -158,6 +135,7 @@ body {
   text-decoration: none;
 }
 
+/* 입력 오류 문구 (빨간 글씨) */
 .error {
   min-height: 18px;
   margin-bottom: 8px;
@@ -165,6 +143,7 @@ body {
   color: #e5484d;
 }
 
+/* "시안용 화면" 안내 문구 */
 .demo-note {
   margin-top: 14px;
   font-size: 12px;
@@ -172,6 +151,7 @@ body {
   color: #9aa0ae;
 }
 
+/* hidden 속성이 붙으면 확실히 숨김 */
 [hidden] {
   display: none !important;
 }
@@ -217,138 +197,6 @@ body {
 
 .social-btn.naver {
   background: #03c75a;
-}
-
-/* 문구를 비운 제목·설명은 자리도 차지하지 않게 */
-.card h2:empty,
-.card .lead:empty,
-.login-card h2:empty,
-.login-card .lead:empty {
-  display: none;
-}
-
-/* 회원가입: 약관 한 줄 + 동의 */
-.terms {
-  margin: 4px 0 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #f9fafb;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.terms-text {
-  margin-bottom: 8px;
-  line-height: 1.5;
-}
-
-.terms label {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  font-size: 13px;
-  color: var(--ink);
-}
-
-/* 약관 전체 보기: 요약 줄 옆의 링크와 전체 화면 창 */
-.terms-more {
-  margin-left: 6px;
-  padding: 0;
-  font: inherit;
-  font-weight: 600;
-  color: var(--orange);
-  background: none;
-  border: 0;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.tv {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  background: rgba(20, 24, 33, .55);
-}
-
-.tv[hidden] {
-  display: none !important;
-}
-
-.tv-box {
-  display: flex;
-  flex-direction: column;
-  width: min(520px, 100%);
-  max-height: min(640px, 100%);
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, .3);
-  overflow: hidden;
-}
-
-.tv-head {
-  padding: 18px 20px 12px;
-  border-bottom: 1px solid var(--line);
-}
-
-.tv-head h3 {
-  font-size: 17px;
-}
-
-.tv-head p {
-  margin-top: 2px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.tv-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 6px 20px;
-  overscroll-behavior: contain;
-}
-
-.tv-body details {
-  border-bottom: 1px solid var(--line);
-}
-
-.tv-body summary {
-  padding: 13px 0;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.tv-body details p {
-  margin-bottom: 8px;
-  font-size: 13px;
-  line-height: 1.65;
-  color: #3b4252;
-}
-
-.tv-body details p:last-child {
-  margin-bottom: 14px;
-}
-
-.tv-foot {
-  display: flex;
-  gap: 8px;
-  padding: 12px 20px 16px;
-  border-top: 1px solid var(--line);
-}
-
-.tv-foot .btn {
-  padding: 11px;
-}
-
-.tv-foot .btn-sub {
-  flex: 0 0 38%;
-  background: #f1f3f6;
-  color: var(--ink);
 }
 
 /* 로그인 창의 "아이디 찾기 / 비밀번호 찾기" 링크 두 개 */

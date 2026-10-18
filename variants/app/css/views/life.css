@@ -1,5 +1,6 @@
 /* 생활 관리: 할 일, 공과금, 쓰레기 배출, 월세 상세 화면 */
 
+/* 할 일: 개수 표시, 목록 한 줄(체크·완료 취소선·삭제), 추가 폼 */
 .todo-count {
   font-size: 12px;
   color: var(--muted);
@@ -70,6 +71,7 @@
   border-color: var(--orange);
 }
 
+/* 상세 화면 공통: 뒤로 가기 버튼, 진행 막대(.page-bar), 합계 3칸(.sum-row) */
 .back {
   color: var(--muted);
   font-size: 14px;
@@ -128,6 +130,7 @@
   font-size: 15px;
 }
 
+/* 공과금 목록 한 줄 (체크, 이름·금액, 삭제) */
 .bill {
   display: flex;
   align-items: center;
@@ -178,6 +181,7 @@
   color: var(--pink);
 }
 
+/* 쓰레기 배출 요일표 한 줄 (오늘은 강조) */
 .week-row {
   display: flex;
   align-items: center;
@@ -230,6 +234,7 @@
   color: #3c4254;
 }
 
+/* 월세 상세: 위쪽 큰 D-day, 정보 줄, 월별 납부 체크 */
 .rent-hero {
   display: flex;
   align-items: baseline;

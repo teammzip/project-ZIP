@@ -5,10 +5,14 @@ import { state, settings } from '../core/state.js';
 import { HOME, NEARBY } from '../data/posts-seed.js';
 import { registerView, showView } from '../core/router.js';
 
+// 지금 보는 분류 칩(전체·자유·꿀팁·질문·동네)과 범위(here=우리 동네, near=주변 동네, all=전체)
 var catFilter = '전체', scope = 'here';
+// 댓글창을 펼쳐 둔 글 번호 모음
 var openCmt = {};
+// 상세로 열어 둔 글 번호 (없으면 목록을 보여줌)
 var selectedPostId = null;
 
+// 글 쓴 시각을 "방금 전 / N분 전 / N시간 전 / N일 전"으로 바꿈
 function rel(ts) {
   var m = Math.floor((Date.now() - ts) / 60000);
   if (m < 1) return '방금 전';
@@ -17,6 +21,7 @@ function rel(ts) {
   if (h < 24) return h + '시간 전';
   return Math.floor(h / 24) + '일 전';
 }
+// 글·좋아요·댓글 변경을 저장
 function savePosts() { store('zip-posts', state.posts); }
 
 /* 홈의 꿀팁 글을 눌렀을 때: 해당 글 상세로 */
@@ -28,6 +33,7 @@ export function openTipDetail(postId) {
   showView('community');
 }
 
+// 글 한 개를 크게 보여주는 상세 카드 (좋아요, 댓글 목록·입력 포함)
 function renderPostDetail(post, box) {
   var art = el('article', 'post-detail-card');
   var meta = el('div', 'post-meta');
@@ -82,6 +88,7 @@ function renderPostDetail(post, box) {
   box.appendChild(art);
 }
 
+// 커뮤니티 화면 전체: 분류 칩, 동네 범위 안내, 글 목록(또는 선택한 글 상세)을 그림
 function renderPosts() {
   var chips = $('catChips'); chips.textContent = '';
   ['전체', '자유', '꿀팁', '질문', '동네'].forEach(function (c) {
@@ -181,6 +188,7 @@ function renderPosts() {
     box.appendChild(art);
   });
 }
+// 글쓰기 폼: 새 글을 맨 위에 추가 (동네는 내 정보의 "우리 동네")
 $('postForm').addEventListener('submit', function (e) {
   e.preventDefault();
   var title = $('postTitle').value.trim(), body = $('postBody').value.trim();
@@ -191,6 +199,7 @@ $('postForm').addEventListener('submit', function (e) {
   catFilter = '전체'; scope = 'here';
   renderPosts();
 });
+// "우리 동네 / 주변 동네 / 전체" 범위 버튼
 $('scopeSeg').addEventListener('click', function (e) {
   var b = e.target.closest('button');
   if (!b) return;

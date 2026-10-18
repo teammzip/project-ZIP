@@ -1,11 +1,13 @@
 /* AI 도우미 */
 
+/* 분야 카드와 질문 작성 영역의 배치 */
 .ai-help {
   font-size: 13px;
   color: var(--muted);
   margin-bottom: 14px;
 }
 
+/* 분야 카드 격자 (카드를 누르면 그 분야 질문 초안이 열림, .on=선택, .suggest=사진 추천) */
 .topic-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -50,6 +52,7 @@
   line-height: 1.4;
 }
 
+/* 올린 사진 미리보기와 "사진 빼기" */
 .photo-box {
   display: flex;
   gap: 12px;
@@ -83,6 +86,7 @@
   font-size: 12px;
 }
 
+/* AI 답변 상자와 답변 아래 버튼 */
 .answer {
   margin-top: 14px;
   background: #f1f2f7;

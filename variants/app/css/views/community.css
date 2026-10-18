@@ -1,5 +1,6 @@
 /* 커뮤니티 */
 
+/* "우리 동네 / 주변 동네 / 전체" 범위 안내 문구와 동네 표시 */
 .scope-note {
   font-size: 12px;
   color: var(--muted);
@@ -11,6 +12,7 @@
   font-weight: 600;
 }
 
+/* 글 목록의 글 카드 (분류·동네·작성자, 제목, 본문, 좋아요·댓글 버튼) */
 .post {
   padding: 16px 0;
   border-bottom: 1px solid var(--line);
@@ -54,6 +56,7 @@
   margin-top: 10px;
 }
 
+/* 글 상세 카드 */
 .post-detail-card {
   background: #fff;
   border: 1px solid var(--line);
@@ -77,6 +80,7 @@
   margin-top: 14px;
 }
 
+/* 좋아요·댓글·삭제 작은 버튼 */
 .pbtn {
   border: 1px solid var(--line);
   border-radius: 99px;
@@ -99,6 +103,7 @@
   color: var(--pink);
 }
 
+/* 댓글 목록과 댓글 입력 폼 */
 .cmt {
   background: #f7f8fc;
   border-radius: 10px;

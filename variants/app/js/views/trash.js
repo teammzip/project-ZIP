@@ -3,6 +3,7 @@ import { $, el, today } from '../core/utils.js';
 import { TRASH, DOW, trashIco } from '../data/trash.js';
 import { registerView } from '../core/router.js';
 
+// 오늘의 배출 종류를 홈 카드·쓰레기 화면에 그리고, 요일별 배출표와 오른쪽 패널의 "다가오는 알림" 줄도 같이 갱신
 export function renderTrash() {
   var td = TRASH[today.getDay()];
   $('trashToday').textContent = td ? '오늘은 ' + td.t : '오늘은 배출 없음';
@@ -10,6 +11,7 @@ export function renderTrash() {
   var box = $('trashBox'); box.textContent = '';
   box.appendChild(el('b', null, td ? td.t : '배출 없음'));
   box.appendChild(document.createTextNode(td ? td.d : '오늘은 배출하는 날이 아니에요. 쓰레기는 모아 두세요.'));
+  // 쓰레기 화면의 "요일별 배출표" (오늘 요일은 강조)
   var wk = $('trashWeek'); wk.textContent = '';
   TRASH.forEach(function (x, i) {
     var row = el('div', 'week-row' + (i === today.getDay() ? ' today' : ''));
@@ -26,6 +28,7 @@ export function renderTrash() {
   $('pTrashIco').textContent = td ? trashIco(td.t) : '🗑️';
   $('pTrashT').textContent = td ? td.t + ' 배출' : '오늘은 배출 없음';
   $('pTrashS').textContent = td ? '오늘 ' + td.d : '쓰레기는 모아 두세요';
+  // 다음 재활용 배출 요일을 오늘부터 7일 안에서 찾음
   var nextR = null;
   for (var k = 1; k <= 7; k++) {
     var idx = (today.getDay() + k) % 7;

@@ -5,13 +5,17 @@ import { state, settings } from '../core/state.js';
 import { registerView } from '../core/router.js';
 import { demoSpends } from '../data/demo.js';
 
+// 기타 지출 분류와 표시 색
 var CATS = [   // [분류, 색]
   ['식비', 'var(--teal)'], ['생활용품', 'var(--pink)'], ['교통', 'var(--purple)'],
   ['건강·의료', 'var(--orange)'], ['문화·여가', '#f5a623'], ['기타', '#8a90a2']
 ];
+// 요일 이름
 var DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+// 분류에 맞는 색
 function colorOf(cat) { for (var i = 0; i < CATS.length; i++) if (CATS[i][0] === cat) return CATS[i][1]; return '#8a90a2'; }
 
+// 기타 지출 기록 (처음에는 이번 달 예시 5건 + 지난 달 예시)
 var spends = load('zip-spends', null);
 if (!Array.isArray(spends)) {   // 처음 열 때만 보여줄 예시 기록 (지우거나 새로 기록하면 됨)
   spends = [
@@ -27,8 +31,10 @@ if (!load('zip-demo-spend', false)) {   // 둘러보기용: 지난 달들의 지
   spends = spends.concat(demoSpends());
   store('zip-demo-spend', true); store('zip-spends', spends);
 }
+// 지금 보고 있는 달 (YYYY-MM)
 var monthKey = fmt(today).slice(0, 7);   // 지금 보고 있는 달 (YYYY-MM)
 
+// 지출 기록을 저장하고 화면을 다시 그림
 function save() { store('zip-spends', spends); renderSpend(); }
 
 /* 홈의 "이번 달 지출 구성" 도넛: 월세 + 공과금(고정 지출) + 기타 지출 기록을 분류별로 합쳐 비율로 보여 줌.
@@ -78,6 +84,7 @@ export function renderSpendChart() {
 }
 $('spendRange').addEventListener('change', renderSpendChart);
 
+// 기타 지출 화면: 월 선택, 합계·가장 큰 분류, 분류별 막대, 날짜순 기록 목록. 홈 도넛도 같이 갱신
 export function renderSpend() {
   renderSpendChart();
   // 월 선택: 기록이 있는 달 + 이번 달
@@ -129,6 +136,7 @@ export function renderSpend() {
 CATS.forEach(function (c) { var o = el('option', null, c[0]); o.value = c[0]; $('spendCat').appendChild(o); });
 $('spendDate').value = fmt(today);
 $('spendMonth').addEventListener('change', function () { monthKey = $('spendMonth').value; renderSpend(); });
+// 지출 기록 폼: 날짜, 분류, 금액, 메모
 $('spendForm').addEventListener('submit', function (e) {
   e.preventDefault();
   var date = $('spendDate').value, amount = Math.round(Number($('spendAmount').value));

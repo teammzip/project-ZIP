@@ -30,6 +30,7 @@ input {
   display: none !important;
 }
 
+/* 위쪽 줄: 로고(왼쪽)와 로그인 링크(오른쪽) — 모바일에서는 숨김 */
 .top {
   display: flex;
   align-items: center;
@@ -54,6 +55,7 @@ input {
   color: var(--accent);
 }
 
+/* 가운데 흰 카드 (회원가입·찾기 내용이 들어가는 상자) */
 .card {
   width: min(540px, 100%);
   margin: 0 auto;
@@ -86,6 +88,7 @@ input {
   border-bottom-color: var(--ink);
 }
 
+/* 큰 제목과 안내문, 구역 제목(.sec-title) */
 h1 {
   margin: 34px 0 30px;
   font-size: 32px;
@@ -132,6 +135,7 @@ h1+form .sec-title:first-child {
   color: var(--muted);
 }
 
+/* 입력칸이 들어가는 칸 (입력 + 오른쪽 버튼을 한 줄에) */
 .cell {
   flex: 1;
   display: flex;
@@ -158,10 +162,12 @@ h1+form .sec-title:first-child {
   border-bottom-color: var(--ink);
 }
 
+/* 휴대전화 앞의 "010 -" 표시 */
 .prefix {
   font-size: 14px;
 }
 
+/* 테두리 버튼 (인증, 확인 등) */
 .line-btn {
   flex: none;
   padding: 9px 14px;
@@ -234,12 +240,14 @@ h1+form .sec-title:first-child {
   font-size: 14px;
 }
 
+/* 개인정보 처리방침 아래 한 줄 안내 */
 .notice {
   padding: 8px 0 0 28px;
   font-size: 13px;
   color: #5b6272;
 }
 
+/* 약관 체크박스 줄 (모두 동의 .all, 개별 항목) */
 .chk {
   flex: 1;
   display: flex;
@@ -277,18 +285,14 @@ h1+form .sec-title:first-child {
   outline-offset: 2px;
 }
 
+/* [필수] 표시 색 */
 .req {
   font-style: normal;
   font-weight: 400;
   color: var(--accent);
 }
 
-.info {
-  font-style: normal;
-  font-weight: 400;
-  color: var(--muted);
-}
-
+/* "상세보기" 버튼 (누르면 약관이 펼쳐지는 화살표) */
 .more {
   flex: none;
   display: inline-flex;
@@ -317,6 +321,7 @@ h1+form .sec-title:first-child {
   transform: rotate(225deg);
 }
 
+/* 펼쳐진 약관 내용 상자 (길면 안에서 스크롤) */
 .terms-box {
   flex-basis: 100%;
   max-height: 170px;
@@ -345,6 +350,7 @@ h1+form .sec-title:first-child {
   margin: 0;
 }
 
+/* "14세 미만은 회원 가입이 제한됩니다" 안내 */
 .age-note {
   margin: 10px 0 0;
   padding: 14px 0 0;
@@ -386,6 +392,7 @@ h1+form .sec-title:first-child {
   cursor: default;
 }
 
+/* 찾기 결과 상자 (아이디 찾기 결과, 재설정 안내 보냄) */
 .result {
   margin: 16px 0 0;
   padding: 14px 16px;
@@ -403,6 +410,7 @@ h1+form .sec-title:first-child {
   color: #5b8a83;
 }
 
+/* 카드 아래 링크 줄 (로그인, 아이디/비밀번호 찾기 등) */
 .foot {
   margin-top: 22px;
   font-size: 13px;
@@ -416,6 +424,7 @@ h1+form .sec-title:first-child {
   text-decoration: none;
 }
 
+/* 작은 폰: 라벨이 입력칸 위로 올라가고 입력칸이 한 줄을 다 씀 */
 @media (max-width: 560px) {
   .card {
     padding: 8px 18px 36px;
@@ -477,4 +486,22 @@ h1+form .sec-title:first-child {
     padding: 8px 20px 44px;
     border: 0;
   }
+}
+
+/* 아이디/비밀번호 찾기: 가입 기록이 없을 때 보이는 체험용 안내, 결과 상자 안의 링크 */
+.demo-guide {
+  margin: -14px 0 22px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  color: #5b6272;
+  background: #f6f7f9;
+  border-radius: 6px;
+}
+
+.result small a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
 }

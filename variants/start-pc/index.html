@@ -605,6 +605,7 @@
 </head>
 
 <body>
+  <!-- 위쪽 고정 메뉴: 로고, 로그인 · 회원가입 버튼 -->
   <header class="nav">
     <button class="logo-mark" type="button" data-go="0" aria-label="맨 처음 화면으로"><img class="logo-img" src="../../images/logo-zip.png" alt="ZIP"><small>자취생 생활 도우미</small></button>
     <div class="nav-actions">
@@ -613,11 +614,13 @@
     </div>
   </header>
 
+  <!-- 오른쪽 점: 몇 번째 화면인지 보여 주고, 누르면 그 화면으로 이동 (점은 아래 스크립트가 만듦) -->
   <nav class="dots" id="dots" aria-label="화면 이동"></nav>
   <button class="chev" id="chev" type="button" aria-label="다음 화면">
     <svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7" /></svg>
   </button>
 
+  <!-- 7장짜리 풀페이지 소개: 한 장씩 위로 밀려 올라가며 보임 (이동은 아래 스크립트) -->
   <main id="track">
     <!-- 1. 첫 화면 -->
     <section class="sec">
@@ -744,23 +747,15 @@
   <!-- 로그인 모달: "로그인", "로그인하고 시작" 버튼을 누르면 열림 -->
   <div class="modal" id="loginModal" aria-hidden="true">
     <div class="modal-backdrop" id="loginBackdrop"></div>
-    <div class="login-card" role="dialog" aria-modal="true" aria-labelledby="title">
+    <div class="login-card" role="dialog" aria-modal="true" aria-label="로그인">
       <button class="close" id="loginClose" type="button" aria-label="닫기">×</button>
       <div class="logo"><img src="../../images/logo-zip.png" alt="ZIP"></div>
-      <h2 id="title"></h2>
-      <p class="lead" id="lead"></p>
       <form id="loginForm" novalidate>
-        <label class="field" id="nickField" hidden><span>닉네임</span><input name="nick" placeholder="예: 지기"></label>
         <label class="field"><span>이메일</span><input name="email" type="email" placeholder="you@example.com" autocomplete="username"></label>
         <label class="field"><span>비밀번호</span>
           <div class="pw-row"><input name="pw" type="password" placeholder="4자 이상" autocomplete="current-password"><button type="button" id="pwToggle">보기</button></div>
         </label>
-        <label class="field" id="addrField" hidden><span>주소</span><input name="addr" placeholder="예: 서울시 마포구 합정동 123-4" autocomplete="street-address"></label>
-        <div class="terms" id="termsField" hidden>
-          <p class="terms-text">[약관] ZIP 서비스 이용을 위해 이메일·주소 등 최소한의 개인정보를 수집·이용하며, 탈퇴 시 즉시 삭제합니다.</p>
-          <label><input type="checkbox" name="agree"> <b>[필수]</b> 위 약관에 동의합니다</label>
-        </div>
-        <div class="row" id="loginOnly"><label><input type="checkbox"> 로그인 유지</label><span class="find-links"><a href="../account/find.html#id">아이디 찾기</a><i>/</i><a href="../account/find.html#pw">비밀번호 찾기</a></span></div>
+        <div class="row"><label><input type="checkbox"> 로그인 유지</label><span class="find-links"><a href="../account/find.html#id">아이디 찾기</a><i>/</i><a href="../account/find.html#pw">비밀번호 찾기</a></span></div>
         <div class="error" id="error"></div>
         <button class="btn btn-main" id="submitBtn" type="submit">로그인</button>
       </form>
@@ -779,10 +774,11 @@
     window.LOGIN_NEXT = '../app/index.html';   // 로그인에 성공하면 이동할 화면
     window.SIGNUP_URL = '../account/signup.html';          // 로그인 창 아래 "회원가입" 링크가 이동할 별도 페이지
   </script>
-  <script src="../../login/terms.js"></script>
   <script src="../../login/login.js"></script>
+  <!-- 풀페이지 스크롤 동작: 마우스 휠·키보드·스와이프로 한 화면씩 이동, 로그인 모달 열고 닫기, 회원가입 버튼은 가입 페이지로 이동 -->
   <script>
     (function () {
+      // 화면 목록(secs), 지금 몇 번째인지(idx), 이동 중 잠금(locked)
       var track = document.getElementById('track');
       var secs = [].slice.call(track.querySelectorAll('.sec'));
       var dotsBox = document.getElementById('dots'), chev = document.getElementById('chev');
@@ -790,6 +786,7 @@
       var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (reduce) LOCK_MS = 200;
 
+      // 오른쪽 점 버튼을 화면 개수만큼 만듦
       var dots = secs.map(function (_, i) {
         var b = document.createElement('button');
         b.type = 'button'; b.setAttribute('aria-label', (i + 1) + '번째 화면');
@@ -797,8 +794,10 @@
         dotsBox.appendChild(b); return b;
       });
 
+      // 입력칸에 글을 쓰는 중인지 (그럴 때는 키보드로 화면이 넘어가지 않게)
       function inField(el) { return el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName); }
 
+      // 지금 화면(idx)으로 위치를 옮기고 점·아래 화살표·화면 강조 표시를 갱신
       function render() {
         track.style.transform = 'translateY(' + (-idx * window.innerHeight) + 'px)';
         secs.forEach(function (s, i) { s.classList.toggle('on', i === idx); });
@@ -806,6 +805,7 @@
         chev.classList.toggle('hide', idx === secs.length - 1);
       }
 
+      // i번째 화면으로 이동 (이동하는 동안에는 잠가서 휠을 여러 번 돌려도 한 장씩만 넘어감)
       function go(i) {
         i = Math.max(0, Math.min(secs.length - 1, i));
         if (i === idx || locked) return;
@@ -815,14 +815,15 @@
 
       // 로그인 모달: 열려 있는 동안에는 휠·키보드·스와이프로 화면이 넘어가지 않음
       var modal = document.getElementById('loginModal'), modalOpen = false, lastFocus = null;
-      function openLogin(mode) {
-        if (window.setLoginMode) window.setLoginMode(mode === 'signup' ? 'signup' : 'login');   // 회원가입 버튼이면 가입 모드, 아니면 로그인 모드로 열기
+      // 로그인 모달을 열고 이메일 칸에 커서를 둠
+      function openLogin() {
         lastFocus = document.activeElement;
         modalOpen = true;
         modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false');
         var em = modal.querySelector('input[name=email]');
         setTimeout(function () { if (em) em.focus({ preventScroll: true }); }, 350);
       }
+      // 로그인 모달을 닫고 누르기 전 위치로 포커스를 돌려줌
       function closeLogin() {
         modalOpen = false;
         modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
@@ -858,7 +859,7 @@
 
       // 위쪽 메뉴·버튼·화살표
       chev.addEventListener('click', function () { go(idx + 1); });
-      [].forEach.call(document.querySelectorAll('[data-login]'), function (b) { b.addEventListener('click', function () { openLogin('login'); }); });
+      [].forEach.call(document.querySelectorAll('[data-login]'), function (b) { b.addEventListener('click', function () { openLogin(); }); });
       [].forEach.call(document.querySelectorAll('[data-signup]'), function (b) { b.addEventListener('click', function () { location.href = '../account/signup.html'; }); });   // 회원가입은 모달이 아니라 별도 페이지로 이동
       document.getElementById('loginClose').addEventListener('click', closeLogin);
       document.getElementById('loginBackdrop').addEventListener('click', closeLogin);
@@ -866,7 +867,8 @@
         b.addEventListener('click', function () { var v = b.getAttribute('data-go'); go(v === 'last' ? secs.length - 1 : Number(v)); });
       });
 
-      if (location.hash === '#login') openLogin('login');   // 가입 화면의 "로그인" 링크로 돌아오면 로그인 창을 바로 열어 줌
+      if (location.hash === '#login') openLogin();   // 가입 화면의 "로그인" 링크로 돌아오면 로그인 창을 바로 열어 줌
+      // 창 크기가 바뀌면 화면 위치를 애니메이션 없이 다시 맞춤
       window.addEventListener('resize', function () { track.style.transition = 'none'; render(); void track.offsetHeight; track.style.transition = ''; });
       render();
     })();

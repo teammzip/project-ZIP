@@ -9,6 +9,7 @@
   var form = $('signupForm'), submit = $('submitBtn');
   var verified = false, touched = {};
 
+  // 칸마다 입력 검사 규칙 (틀리면 안내 문구를 돌려줌)
   var RULES = {
     uid: function (v) { return /^[a-z0-9]{6,16}$/.test(v) ? '' : '아이디는 6~16자 영문 소문자, 숫자만 쓸 수 있어요.'; },
     pw: function (v) { return v.length >= 8 && v.length <= 16 ? '' : '비밀번호는 8~16자로 입력해 주세요.'; },
@@ -21,19 +22,23 @@
   var hints = {};
   [].forEach.call(document.querySelectorAll('.hint[data-for]'), function (h) { hints[h.getAttribute('data-for')] = h; });
 
+  // 칸 아래 안내·오류 한 줄을 바꿈
   function setHint(name, msg, ok) {
     var h = hints[name]; if (!h) return;
     h.textContent = msg; h.classList.toggle('ok', !!ok);
   }
+  // 모든 칸을 검사해 오류 모음을 만듦
   function errors() {
     var out = {};
     Object.keys(RULES).forEach(function (k) { var m = RULES[k](form[k].value); if (m) out[k] = m; });
     return out;
   }
+  // 필수 약관 세 가지에 모두 동의했는지
   function agreedAll() {
     var need = [].slice.call(form.querySelectorAll('input[data-need]'));
     return need.every(function (c) { return c.checked; });
   }
+  // 오류 안내를 갱신하고, 모든 조건이 맞아야 가입하기 버튼을 켬
   function refresh() {
     var errs = errors();
     Object.keys(RULES).forEach(function (k) {
@@ -78,8 +83,9 @@
     refresh();
   });
 
-  /* ---------- 약관: 전체 동의 + 상세보기(우리 약관 내용은 login/terms.js) ---------- */
+  /* ---------- 약관: 전체 동의 + 상세보기(우리 약관 내용은 terms.js) ---------- */
   var T = window.ZIP_TERMS;
+  // 약관 상자(상세보기)에 조항을 채움
   function fillTerms(box, items) {
     items.forEach(function (it) {
       if (it.title) { var h = document.createElement('h3'); h.textContent = it.title; box.appendChild(h); }
@@ -87,10 +93,12 @@
     });
   }
   if (T) {
-    var pick = function (idx) { return idx.map(function (i) { return { title: T.sections[i][0], lines: T.sections[i][1] }; }); };
-    fillTerms(document.querySelector('[data-terms=service] .terms-box'), pick(T.groups.service));
-    fillTerms(document.querySelector('[data-terms=privacy] .terms-box'), pick(T.groups.privacy));
-    fillTerms(document.querySelector('[data-terms=policy] .terms-box'), T.policy.map(function (s) { return { title: s[0], lines: s[1] }; }));
+    var fill = function (key, list) {
+      fillTerms(document.querySelector('[data-terms=' + key + '] .terms-box'), list.map(function (x) { return { title: x[0], lines: x[1] }; }));
+    };
+    fill('service', T.service);
+    fill('privacy', T.privacy);
+    fill('policy', T.policy);
   }
   [].forEach.call(document.querySelectorAll('.agree-item .more'), function (b) {
     b.addEventListener('click', function () {
@@ -126,7 +134,9 @@
       st.name = form.nick.value.trim().slice(0, 12);
       localStorage.setItem('zip-settings', JSON.stringify(st));
     } catch (err) { }
-    location.href = NEXT;
+    var go = function () { location.href = NEXT; };
+    if (window.ZipPassword) window.ZipPassword.set(form.pw.value, form.uid.value, { nick: form.nick.value.trim(), phone: form.phone.value }).then(go, go);   // 아이디·닉네임·휴대전화·비밀번호를 (해시로) 저장해 두면 내 정보에서 바꾸거나 아이디/비밀번호 찾기에서 본인 확인에 쓸 수 있음
+    else go();
   });
 
   refresh();

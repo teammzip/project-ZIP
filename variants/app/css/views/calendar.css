@@ -1,5 +1,6 @@
 /* 캘린더 */
 
+/* 달 이동 줄 (‹ 2026년 10월 › 와 "오늘" 버튼) */
 .cal-nav {
   display: flex;
   align-items: center;
@@ -27,6 +28,7 @@
   font-size: 12px;
 }
 
+/* 달력 칸 (7열). 오늘·선택한 날 강조, 일정이 있는 날은 점 */
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -93,6 +95,7 @@
   visibility: hidden;
 }
 
+/* 일정 목록 한 줄 (시간, 제목, 수정·삭제 버튼) */
 .ev-list {
   list-style: none;
   display: grid;

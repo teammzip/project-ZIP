@@ -251,6 +251,7 @@
 
 /* ---------- 모바일 하단 메뉴: 5칸 (홈 · 일정 · 사진 · AI · 동네) ---------- */
 .mob-icons,
+/* 지도 | 이야기 처럼 한 화면 안에서 두 가지를 오가는 작은 탭 */
 .sub-tabs {
   display: none;
 }
@@ -301,6 +302,7 @@
   font-size: 14px;
 }
 
+/* 넓지 않은 화면(태블릿): 오른쪽 패널을 본문 아래로 내리고 격자를 2열로 */
 @media (max-width: 1200px) {
   .app {
     grid-template-columns: 72px minmax(0, 1fr);
@@ -317,6 +319,7 @@
   }
 }
 
+/* 모바일: 왼쪽 사이드바가 아래 고정 메뉴로 바뀌고, 위쪽 바와 여백이 좁아짐 */
 @media (max-width: 900px) {
   .app {
     grid-template-columns: minmax(0, 1fr);
@@ -395,6 +398,7 @@
   }
 }
 
+/* 모바일: 상단바(인사말·검색·+ 버튼)와 본문 배치 */
 @media (max-width: 900px) {
   .topbar {
     position: relative;

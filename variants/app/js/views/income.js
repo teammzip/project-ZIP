@@ -4,13 +4,17 @@ import { load, store } from '../core/storage.js';
 import { registerView } from '../core/router.js';
 import { demoIncomes } from '../data/demo.js';
 
+// 수입 종류와 표시 색
 var CATS = [   // [수입 종류, 색]
   ['월급', 'var(--teal)'], ['아르바이트', 'var(--orange)'], ['용돈', 'var(--pink)'],
   ['부수입', '#f5a623'], ['환급·정산', 'var(--purple)'], ['기타', '#8a90a2']
 ];
+// 요일 이름
 var DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+// 수입 종류에 맞는 색
 function colorOf(cat) { for (var i = 0; i < CATS.length; i++) if (CATS[i][0] === cat) return CATS[i][1]; return '#8a90a2'; }
 
+// 수입 기록 (처음에는 이번 달 예시 3건 + 지난 달 예시)
 var incomes = load('zip-incomes', null);
 if (!Array.isArray(incomes)) {   // 처음 열 때만 보여줄 예시 기록 (지우거나 새로 기록하면 됨)
   incomes = [
@@ -24,8 +28,10 @@ if (!load('zip-demo-income', false)) {   // 둘러보기용: 지난 달들의 �
   incomes = incomes.concat(demoIncomes());
   store('zip-demo-income', true); store('zip-incomes', incomes);
 }
+// 지금 보고 있는 달 (YYYY-MM)
 var monthKey = fmt(today).slice(0, 7);   // 지금 보고 있는 달 (YYYY-MM)
 
+// 수입 기록을 저장하고 화면을 다시 그림
 function save() { store('zip-incomes', incomes); renderIncome(); }
 
 /* 홈의 "월별 수입" 막대 그래프: 최근 6·12개월의 달별 수입 합계 (기록이 바뀔 때마다 다시 그림) */
@@ -59,6 +65,7 @@ function renderIncomeChart() {
 }
 $('incRange').addEventListener('change', renderIncomeChart);
 
+// 수입 화면: 월 선택, 이번 달 합계·가장 큰 종류, 종류별 막대, 날짜순 기록 목록. 홈 그래프도 같이 갱신
 export function renderIncome() {
   renderIncomeChart();
   var keys = {}; keys[fmt(today).slice(0, 7)] = 1;
@@ -109,6 +116,7 @@ export function renderIncome() {
 CATS.forEach(function (c) { var o = el('option', null, c[0]); o.value = c[0]; $('incomeCat').appendChild(o); });
 $('incomeDate').value = fmt(today);
 $('incomeMonth').addEventListener('change', function () { monthKey = $('incomeMonth').value; renderIncome(); });
+// 수입 기록 폼: 날짜, 종류, 금액, 메모 → 그 달로 이동해서 바로 보이게 함
 $('incomeForm').addEventListener('submit', function (e) {
   e.preventDefault();
   var date = $('incomeDate').value, amount = Math.round(Number($('incomeAmount').value));

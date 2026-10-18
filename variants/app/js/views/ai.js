@@ -6,15 +6,19 @@ import { registerView, showView } from '../core/router.js';
 import { focusCategory } from './map.js';
 import { spendBreakdown } from './spend.js';
 
+// 사진(임시 주소), 지금 고른 분야, 질문 초안을 직접 고쳤는지, 답변 순번(오래된 답변이 늦게 와서 덮어쓰는 것을 막음)
 var photoUrl = null, curTopic = null, draftDirty = false, answerSeq = 0;
+// 분야별 정해진 답변 (데모: 실제 AI 연결 전까지 이 문장들을 보여줌)
 var R_TRASH = '분리배출 기본 원칙이에요.\n\n• 플라스틱·캔·유리병: 내용물 비우고 헹군 뒤 라벨 제거\n• 종이: 테이프·스테이플러 제거 후 펼쳐서 묶기\n• 음식물: 종량제(음식물) 봉투나 전용 용기 사용\n• 배달 용기: 기름기가 남으면 일반쓰레기\n\n배출 요일과 시간은 지역마다 달라서, 사는 동네 구청 안내를 꼭 확인하세요.';
 var R_COOK = '임박 재료를 기준으로 추천해요.\n\n1) 두부 샐러드: 두부 + 방울토마토 + 올리브유, 5분\n2) 계란 볶음밥: 남은 밥 + 계란 + 대파, 15분\n3) 우유 계란찜: 우유를 섞으면 더 부드러워요\n\n임박 재료부터 먼저 쓰는 걸 추천해요.';
 var R_MOLD = '곰팡이 대처 순서예요.\n\n1) 창문을 열어 환기하고 가구를 벽에서 5cm 이상 띄워요\n2) 곰팡이 제거제를 뿌리고 10분 뒤 닦아요\n3) 완전히 말린 뒤 제습제를 두세요\n\n⚠️ 락스와 산성 세제를 절대 섞지 마세요. 유해가스가 나와요. 벽 안쪽 누수가 원인이면 집주인에게 수리를 요청해야 해요.';
 var R_CONTRACT = '계약과 보증금 기본 체크리스트예요.\n\n• 입주 당일 전입신고 + 확정일자 받기\n• 계약 전 등기부등본으로 근저당·소유자 확인\n• 입주 때 집 상태를 사진·영상으로 기록해 두기\n• 퇴거 전 집주인에게 미리 통보하고 보증금 반환 일정 확인\n\n법률 자문이 아니라 일반 정보예요. 큰 금액이 걸리면 전문가나 공공기관 상담을 받으세요.';
 var R_BILL = '공과금은 납부일을 캘린더에 등록해 두면 편해요. 자동이체를 걸어 두면 연체를 막을 수 있고, 겨울철 가스비는 외출 모드와 단열 뽁뽁이로 줄일 수 있어요.';
 
+// 답변에 넣을 동네 이름 / 사진 첨부 안내 줄
 function regionText() { return settings.region || '자취방'; }
 function photoLine() { return photoUrl ? '\n(사진을 함께 첨부했어요.)' : ''; }
+// 자유 질문: 입력한 글에서 키워드를 찾아 알맞은 정해진 답변을 고름
 function keywordReply(q) {
   var s = q.replace(/\s/g, '');
   if (/분리|배출|쓰레기|재활용/.test(s)) return R_TRASH;
@@ -24,12 +28,14 @@ function keywordReply(q) {
   if (/공과금|전기|가스|수도|관리비/.test(s)) return R_BILL;
   return '아직 데모 버전이라 몇 가지 주제만 답할 수 있어요.\n\n분리배출, 냉장고 요리, 곰팡이, 보증금·계약, 공과금, 집주인 문자, 근처 탐색 분야를 골라보세요.';
 }
+// "세탁방 어디?" 같은 질문에서 장소 종류를 알아냄
 function placeKey(what) {
   var keys = Object.keys(PLACES);
   for (var i = 0; i < keys.length; i++) { if (what.indexOf(keys[i].slice(0, 2)) !== -1) return keys[i]; }
   return null;
 }
 
+// 분야 목록: 이름·설명, 입력칸(fields), 질문 초안을 만드는 draft, 답변을 만드는 reply, 답변 아래 버튼(action)
 var TOPICS = [
   {
     id: 'qna', ico: '💬', name: '자유 질문', desc: '자취 관련 궁금한 것', photo: false,
@@ -117,14 +123,18 @@ function spendSummaryText() {
   lines.push('', '고정 지출(월세·공과금)이 ' + pct + '%, 변동 지출이 ' + (100 - pct) + '%예요.');
   return lines.join('\n');
 }
+// 분야 번호로 분야 찾기
 function topicById(id) { for (var i = 0; i < TOPICS.length; i++) { if (TOPICS[i].id === id) return TOPICS[i]; } return null; }
+// 입력칸에 적은 값 모으기
 function fieldValues() {
   var v = {};
   $('draftFields').querySelectorAll('input[data-k]').forEach(function (i) { v[i.getAttribute('data-k')] = i.value.trim(); });
   return v;
 }
+// 입력칸이 바뀌면 질문 초안을 다시 만듦 (초안을 직접 고쳤다면 그대로 둠)
 function refreshDraft() { if (curTopic && !draftDirty) $('draftText').value = curTopic.draft(fieldValues()); }
 
+// 분야 카드 목록 (사진을 올리면 사진에 어울리는 분야에 "추천" 표시)
 function renderTopics() {
   var grid = $('topicGrid'); grid.textContent = '';
   TOPICS.forEach(function (t) {
@@ -137,10 +147,12 @@ function renderTopics() {
     grid.appendChild(b);
   });
 }
+// 올린 사진 미리보기
 function renderPhoto() {
   $('photoBox').hidden = !photoUrl;
   if (photoUrl) $('photoImg').src = photoUrl;
 }
+// 분야를 고르면 입력칸과 질문 초안을 펼침
 function openTopic(id, fill) {
   var t = topicById(id);
   if (!t) return;
@@ -159,6 +171,7 @@ function openTopic(id, fill) {
   refreshDraft(); renderTopics();
   var first = box.querySelector('input'); if (first) first.focus();
 }
+// 분야 선택을 닫고 처음 모습으로
 function closeTopic() {
   curTopic = null; answerSeq++;
   $('draftTitle').textContent = '질문 초안';
@@ -166,11 +179,13 @@ function closeTopic() {
   $('aiAnswer').hidden = true; $('answerActions').hidden = true;
   renderTopics();
 }
+// AI 화면을 열 때 사진과 분야 목록을 그림
 function initAI() { renderPhoto(); renderTopics(); }
 
 $('draftFields').addEventListener('input', refreshDraft);
 $('draftText').addEventListener('input', function () { draftDirty = true; });
 $('draftBack').addEventListener('click', function () { closeTopic(); window.scrollTo(0, 0); });
+// "질문하기": 잠깐 기다린 뒤 정해진 답변과 버튼을 보여줌
 $('draftForm').addEventListener('submit', function (e) {
   e.preventDefault();
   var text = $('draftText').value.trim();
@@ -200,6 +215,7 @@ document.querySelectorAll('[data-action="photo"]').forEach(function (button) {
     $('photoInput').click();
   });
 });
+// 사진을 고르면 AI 화면으로 보내 분야 선택부터 시작 (사진 내용은 분석하지 않음)
 $('photoInput').addEventListener('change', function () {
   var f = this.files && this.files[0];
   this.value = '';
@@ -210,6 +226,7 @@ $('photoInput').addEventListener('change', function () {
   showView('ai');
   closeTopic();
 });
+// 사진 빼기
 $('photoRemove').addEventListener('click', function () {
   if (photoUrl) URL.revokeObjectURL(photoUrl);
   photoUrl = null; renderPhoto(); renderTopics(); refreshDraft();
@@ -230,6 +247,7 @@ export var CHAT_TOPICS = {   // 분야 칩을 눌렀을 때 보낼 질문
   contract: '보증금이랑 계약 때 뭘 확인해야 해요?', bill: '공과금 아끼는 방법이 궁금해요',
   summary: '이번 달 지출 요약해 줘'
 };
+// 홈 AI 대화 모달이 쓰는 답변 (같은 정해진 답변을 재사용)
 export function chatReply(text, topicId) {
   var t = topicId && topicById(topicId);
   var out = t ? t.reply({}, text) : keywordReply(text);

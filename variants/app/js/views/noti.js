@@ -6,8 +6,10 @@ import { nextRentDate } from '../core/rentdate.js';
 import { TRASH, trashIco } from '../data/trash.js';
 import { registerView } from '../core/router.js';
 
+// 알림 화면의 보기 방식: all(전체) 또는 unread(안 읽음)
 var notiMode = 'all';
 
+// 지금 보여줄 알림 목록을 만듦: 3일 안 일정, 오늘 쓰레기 배출, 월세 D-day, 예시 알림(냉장고·댓글)
 function buildNotis() {
   var list = [];
   sortEvents(state.events).forEach(function (ev) {
@@ -26,9 +28,12 @@ function buildNotis() {
   );
   return list;
 }
+// 안 읽은 알림 개수
 function unreadCount() { return buildNotis().filter(function (n) { return !readMap[n.id]; }).length; }
+// 안 읽은 알림이 있으면 메뉴·상단 종·마이페이지 탭의 빨간 점을 보이고, 없거나 알림을 껐으면 숨김
 export function updateDot() { var off = !(settings.notiOn && unreadCount() > 0); $('navDot').hidden = off; $('bellDot').hidden = off; $('myNotiDot').hidden = off; }
 
+// 알림 화면을 그림: 알림을 누르면 읽음 처리(zip-noti-read에 저장)
 function renderNotiCenter() {
   var box = $('notiCenter');
   box.textContent = '';
@@ -56,6 +61,7 @@ function renderNotiCenter() {
     box.appendChild(row);
   });
 }
+// 알림 화면의 "전체 / 안 읽음 / 모두 읽음" 버튼
 $('nAll').addEventListener('click', function () { notiMode = 'all'; renderNotiCenter(); });
 $('nUnread').addEventListener('click', function () { notiMode = 'unread'; renderNotiCenter(); });
 $('nReadAll').addEventListener('click', function () {

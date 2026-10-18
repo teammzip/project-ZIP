@@ -69,6 +69,7 @@
 
     <!-- 가운데 영역 -->
     <main class="main">
+      <!-- 상단바: 모바일 아이콘(알림·내 정보·☰ 전체 메뉴), 오늘 인사말, 일정 검색, + 일정 추가 버튼 -->
       <header class="topbar">
         <div class="mob-icons">
           <a class="mob-icon" href="#" data-view="noti" aria-label="알림" title="알림">
@@ -102,6 +103,7 @@
 
       <!-- ===== 홈 ===== -->
       <div id="view-home">
+        <!-- 홈 맨 위: "사진으로 상담 시작" 카드 (PC 전용, 모바일은 하단 메뉴의 사진 버튼을 씀) -->
         <section class="home-photo card" aria-labelledby="homePhotoTitle">
           <div class="home-photo-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24">
@@ -119,6 +121,7 @@
             <span class="photo-mobile-label">사진 찍고 상담 시작</span>
           </button>
         </section>
+        <!-- 홈 요약 카드 4개: 이번 주 할 일 · 이번 달 공과금 · 쓰레기 배출 · 월세 납부일 (누르면 각 상세 화면) -->
         <section class="stat-grid">
           <article class="stat teal" data-go="todo" tabindex="0" role="button" aria-label="이번 주 할 일 자세히 보기">
             <div class="label">이번 주 할 일</div>
@@ -144,6 +147,7 @@
           </article>
         </section>
 
+        <!-- 홈 1줄: 월별 수입 그래프 | 이번 달 지출 구성 도넛 (둘 다 가계부 기록으로 그려짐) -->
         <section class="row">
           <article class="card">
             <div class="card-head">
@@ -173,6 +177,7 @@
           </article>
         </section>
 
+        <!-- 홈 2줄: 자취 꿀팁 글 | AI와 대화 카드 (AI 카드는 PC에서만 보임) -->
         <section class="row">
           <article class="card">
             <div class="card-head">
@@ -633,6 +638,17 @@
             <div class="saved" id="setSaved"></div>
           </form>
           <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+          <h3 class="sub-title">비밀번호 변경</h3>
+          <form class="form" id="pwForm" novalidate>
+            <label>현재 비밀번호 <input type="password" id="pwCur" autocomplete="current-password"></label>
+            <label>새 비밀번호 <input type="password" id="pwNew" maxlength="16" placeholder="8~16자" autocomplete="new-password"></label>
+            <label>새 비밀번호 확인 <input type="password" id="pwNew2" maxlength="16" placeholder="새 비밀번호를 한 번 더 입력" autocomplete="new-password"></label>
+            <label class="check"><input type="checkbox" id="pwShow"> 비밀번호 보기</label>
+            <p class="form-msg" id="pwMsg" role="status"></p>
+            <p class="demo-hint" id="pwDemo" hidden>시안이라 처음 비밀번호는 <b>zip12345</b> 예요. 가입 페이지에서 가입했다면 그때 정한 비밀번호를 입력하세요.</p>
+            <button class="btn-primary" type="submit">비밀번호 변경</button>
+          </form>
+          <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
           <p style="font-size:13px;color:var(--muted);margin-bottom:10px">일정, 알림 읽음 상태, 커뮤니티 글, 설정을 이 브라우저에서 모두 지웁니다.
           </p>
           <button type="button" class="btn-danger" id="btnReset">모든 데이터 초기화</button>
@@ -728,6 +744,7 @@
   </div>
 
   <div class="menu-backdrop" id="menuBackdrop" hidden></div>
+  <!-- 모바일 ☰ 전체 메뉴 패널: PC 왼쪽 사이드바와 같은 6개 항목 (열기·닫기는 js/components/menu-panel.js) -->
   <aside class="menu-panel" id="menuPanel" hidden aria-label="전체 메뉴">
     <div class="menu-head"><img class="menu-logo" src="../../images/logo-zip.png" alt="ZIP"><b>전체 메뉴</b><button type="button" id="menuClose" aria-label="메뉴 닫기">×</button></div>
     <section>
@@ -743,7 +760,9 @@
   </aside>
 
   <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
-  <!-- ES 모듈: Live Server 같은 서버로 열어야 동작함 (파일을 더블클릭해서 열면 안 됨) -->
+  <!-- 스크립트: ① zip-password.js = 내 정보의 비밀번호 변경이 쓰는 시안용 비밀번호 보관 ② js/main.js = 앱 본체(ES 모듈이라 Live Server 같은 서버로 열어야 동작함, 파일을 더블클릭해서 열면 안 됨)
+       ③ mobile-scroll.js = 모바일 전용 얇은 스크롤바 -->
+  <script src="../../shared/zip-password.js"></script>
   <script type="module" src="js/main.js"></script>
   <script src="../../shared/mobile-scroll.js"></script>
 </body>
