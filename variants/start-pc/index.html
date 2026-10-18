@@ -760,7 +760,7 @@
           <p class="terms-text">[약관] ZIP 서비스 이용을 위해 이메일·주소 등 최소한의 개인정보를 수집·이용하며, 탈퇴 시 즉시 삭제합니다.</p>
           <label><input type="checkbox" name="agree"> <b>[필수]</b> 위 약관에 동의합니다</label>
         </div>
-        <div class="row" id="loginOnly"><label><input type="checkbox"> 로그인 유지</label><a>비밀번호 찾기</a></div>
+        <div class="row" id="loginOnly"><label><input type="checkbox"> 로그인 유지</label><span class="find-links"><a href="../account/find.html#id">아이디 찾기</a><i>/</i><a href="../account/find.html#pw">비밀번호 찾기</a></span></div>
         <div class="error" id="error"></div>
         <button class="btn btn-main" id="submitBtn" type="submit">로그인</button>
       </form>
@@ -777,6 +777,7 @@
 
   <script>
     window.LOGIN_NEXT = '../app/index.html';   // 로그인에 성공하면 이동할 화면
+    window.SIGNUP_URL = '../account/signup.html';          // 로그인 창 아래 "회원가입" 링크가 이동할 별도 페이지
   </script>
   <script src="../../login/terms.js"></script>
   <script src="../../login/login.js"></script>
@@ -858,13 +859,14 @@
       // 위쪽 메뉴·버튼·화살표
       chev.addEventListener('click', function () { go(idx + 1); });
       [].forEach.call(document.querySelectorAll('[data-login]'), function (b) { b.addEventListener('click', function () { openLogin('login'); }); });
-      [].forEach.call(document.querySelectorAll('[data-signup]'), function (b) { b.addEventListener('click', function () { openLogin('signup'); }); });
+      [].forEach.call(document.querySelectorAll('[data-signup]'), function (b) { b.addEventListener('click', function () { location.href = '../account/signup.html'; }); });   // 회원가입은 모달이 아니라 별도 페이지로 이동
       document.getElementById('loginClose').addEventListener('click', closeLogin);
       document.getElementById('loginBackdrop').addEventListener('click', closeLogin);
       [].forEach.call(document.querySelectorAll('[data-go]'), function (b) {
         b.addEventListener('click', function () { var v = b.getAttribute('data-go'); go(v === 'last' ? secs.length - 1 : Number(v)); });
       });
 
+      if (location.hash === '#login') openLogin('login');   // 가입 화면의 "로그인" 링크로 돌아오면 로그인 창을 바로 열어 줌
       window.addEventListener('resize', function () { track.style.transition = 'none'; render(); void track.offsetHeight; track.style.transition = ''; });
       render();
     })();

@@ -18,7 +18,10 @@
     var link = document.createElement('a');
     link.id = 'swLink';
     link.textContent = m === 'login' ? '회원가입' : '로그인';
-    link.addEventListener('click', function () { setMode(m === 'login' ? 'signup' : 'login'); });
+    link.addEventListener('click', function () {
+      if (m === 'login' && window.SIGNUP_URL) { location.href = window.SIGNUP_URL; return; }   // 시작 화면에서는 가입을 별도 페이지로 보냄
+      setMode(m === 'login' ? 'signup' : 'login');
+    });
     sw.textContent = (m === 'login' ? '아직 계정이 없나요? ' : '이미 계정이 있나요? ');
     sw.appendChild(link);
     document.getElementById('error').textContent = '';

@@ -350,3 +350,15 @@ body {
   background: #f1f3f6;
   color: var(--ink);
 }
+
+/* 로그인 창의 "아이디 찾기 / 비밀번호 찾기" 링크 두 개 */
+.find-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.find-links i {
+  font-style: normal;
+  color: #c5cad3;
+}

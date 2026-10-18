@@ -1,0 +1,83 @@
+/* 모바일(폭 900px 이하) 화면 공통: 가로 이동 막기 + 스크롤바를 얇은 반투명 알약 모양으로
+ * 짝이 되는 동작은 mobile-scroll.js (스크롤하면 잠깐 보였다가 사라지고, 잡고 끌면 화면이 같이 움직임)
+ * 각 페이지는 자기 CSS 보다 "나중에" 불러와야 한다. 페이지마다 아래 값을 바꿀 수 있음:
+ *   --ms-top / --ms-bottom : 스크롤바가 움직이는 범위의 위·아래 여백 (예: 아래 고정 메뉴 높이만큼) */
+.ms-thumb {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  html {
+    overflow-x: hidden;
+    overflow-y: auto;                  /* 데스크톱용 "항상 보이는 스크롤바"는 모바일에서 끔 */
+    overscroll-behavior-x: none;
+    scrollbar-width: none;             /* 기본 스크롤바는 숨기고 mobile-scroll.js 의 스크롤바를 씀 */
+  }
+
+  html::-webkit-scrollbar {
+    display: none;
+  }
+
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+    touch-action: pan-y pinch-zoom;    /* 손가락으로 좌우로 밀리지 않게 (안쪽의 가로 스크롤 영역은 그대로 동작) */
+  }
+
+  /* 화면 안의 작은 스크롤 영역(채팅, 약관 상세 등): 얇은 반투명 막대 */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(110, 116, 128, .45) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgba(110, 116, 128, .45);
+    border-radius: 4px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* 화면 오른쪽에 뜨는 스크롤바: 눈에 보이는 건 가는 알약 모양, 누르기 쉽게 터치 영역은 넓게 */
+  .ms-thumb {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 2147483000;
+    display: block;
+    width: 26px;
+    height: 40px;
+    opacity: 0;
+    pointer-events: none;
+    touch-action: none;
+    transition: opacity .25s ease;
+  }
+
+  .ms-thumb::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 3px;
+    bottom: 0;
+    width: 6px;
+    background: rgba(98, 104, 116, .55);
+    border-radius: 6px;
+    transition: width .15s ease, background .15s ease;
+  }
+
+  .ms-thumb.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .ms-thumb.drag::before {
+    width: 9px;
+    background: rgba(78, 84, 98, .7);
+  }
+}
