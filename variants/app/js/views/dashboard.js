@@ -1,5 +1,5 @@
 /* 대시보드(기존 홈): 정적인 부분이 대부분이라 연결할 동작만 있다.
- * 할 일·공과금·쓰레기·월세 카드의 내용은 각 화면 파일(todo, bills, trash, rent)이 그린다. */
+ * 할 일·쓰레기·월세 카드의 내용은 각 화면 파일(todo, trash, rent)이 그린다. */
 import { openTipDetail } from './community.js';
 
 // 꿀팁 글 줄: 누르면 커뮤니티의 해당 글 상세로

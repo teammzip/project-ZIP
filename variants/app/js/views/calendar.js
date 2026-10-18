@@ -3,12 +3,65 @@ import { $, el, pad, fmt, today, todayStr, dayDiff, sortEvents } from '../core/u
 import { store } from '../core/storage.js';
 import { state, settings } from '../core/state.js';
 import { nextRentDate } from '../core/rentdate.js';
-import { TRASH, trashIco } from '../data/trash.js';
+import { trashIco, trashEventsBetween } from '../data/trash.js';
 import { registerView, showView } from '../core/router.js';
 import { updateDot } from './noti.js';
 
-// 달력이 보여주는 연·월, 선택한 날, 목록 보기 방식(day=선택한 날, all=전체), 검색어, 수정 중인 일정 번호
-var viewY = today.getFullYear(), viewM = today.getMonth(), selected = todayStr, mode = 'day', query = '', editingId = null;   // editingId: 지금 수정 중인 일정
+// 달력이 보여주는 연·월, 선택한 날, 목록 보기 방식, 검색어, 수정 중인 일정 번호
+var viewY = today.getFullYear(), viewM = today.getMonth(), selected = todayStr, mode = 'today', query = '', editingId = null;
+
+function weekRange(date) {
+  var start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  start.setDate(start.getDate() - (start.getDay() + 6) % 7);
+  var end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  return { start: fmt(start), end: fmt(end) };
+}
+
+function eventsForWeek() {
+  var range = weekRange(today);
+  var events = state.events.filter(function (ev) { return ev.date >= range.start && ev.date <= range.end; });
+  return events.concat(trashEventsBetween(range.start, range.end));
+}
+
+function trashEventsForMonth() {
+  var start = viewY + '-' + pad(viewM + 1) + '-01';
+  var end = viewY + '-' + pad(viewM + 1) + '-' + pad(new Date(viewY, viewM + 1, 0).getDate());
+  return trashEventsBetween(start, end);
+}
+
+function eventsForSelectedDay() {
+  return state.events.filter(function (ev) { return ev.date === selected; })
+    .concat(trashEventsBetween(selected, selected));
+}
+
+function eventsForToday() {
+  return state.events.filter(function (ev) { return ev.date === todayStr; })
+    .concat(trashEventsBetween(todayStr, todayStr));
+}
+
+function renderEventSummary() {
+  var pending = state.events.filter(function (ev) { return !ev.done; });
+  var allToday = state.events.filter(function (ev) { return ev.date === todayStr; });
+  var todayPending = allToday.filter(function (ev) { return !ev.done; });
+  var doneCount = state.events.length - pending.length;
+  var todayDone = allToday.length - todayPending.length;
+  var pct = state.events.length ? Math.round(doneCount / state.events.length * 100) : 0;
+  var summary = todayPending.length
+    ? todayPending.slice(0, 2).map(function (ev) { return ev.title; }).join(' · ')
+    : allToday.length ? '오늘 할 일을 모두 완료했어요!' : '오늘 등록된 할 일이 없어요.';
+  if (todayPending.length > 2) summary += ' 외 ' + (todayPending.length - 2) + '개';
+  $('eventLeft').textContent = pending.length;
+  $('eventBar').style.width = pct + '%';
+  $('eventSub').textContent = state.events.length
+    ? '전체 ' + state.events.length + '개 중 ' + doneCount + '개 완료'
+    : '일정을 추가해 보세요.';
+  $('todayTodoLeft').textContent = todayPending.length;
+  $('todayTodoBar').style.width = allToday.length ? Math.round(todayDone / allToday.length * 100) + '%' : '0%';
+  $('todayTodoSub').textContent = summary;
+  $('todayTodoSub').title = summary;
+  $('todayTodoSub').parentElement.setAttribute('aria-label', '오늘 할 일 ' + todayPending.length + '개. ' + summary);
+}
 
 // 달력 칸을 그림: 오늘·선택한 날 표시, 일정이 있는 날은 점(최대 3개)
 function renderGrid() {
@@ -28,7 +81,8 @@ function renderGrid() {
     if (ds === selected) btn.classList.add('sel');
     btn.appendChild(el('span', null, String(d)));
     var mark = el('span', 'mark');
-    var count = state.events.filter(function (ev) { return ev.date === ds; }).length;
+    var count = state.events.filter(function (ev) { return ev.date === ds; }).length
+      + trashEventsBetween(ds, ds).length;
     for (var k = 0; k < Math.min(count, 3); k++) mark.appendChild(el('i'));
     btn.appendChild(mark);
     grid.appendChild(btn);
@@ -54,22 +108,50 @@ $('calToday').addEventListener('click', function () {
 function renderEvList() {
   var list = $('evList');
   list.textContent = '';
-  var items = mode === 'day' ? state.events.filter(function (ev) { return ev.date === selected; }) : state.events;
+  var items = mode === 'today' ? eventsForToday()
+    : mode === 'week' ? eventsForWeek()
+      : mode === 'day' ? eventsForSelectedDay()
+        : state.events.concat(trashEventsForMonth());
   if (query) {
     var q = query.toLowerCase();
     items = items.filter(function (ev) { return ev.title.toLowerCase().indexOf(q) !== -1; });
   }
   items = sortEvents(items);
-  var title = mode === 'day' ? selected.slice(5).replace('-', '월 ') + '일 일정' : '전체 일정';
+  var title = mode === 'today' ? '오늘 할 일'
+    : mode === 'week' ? '이번 주 할 일'
+      : mode === 'day' ? selected.slice(5).replace('-', '월 ') + '일 일정' : '전체 일정';
   if (query) title += ' · 검색: ' + query;
   $('listTitle').textContent = title;
+  $('modeToday').classList.toggle('on', mode === 'today');
+  $('modeWeek').classList.toggle('on', mode === 'week');
   $('modeDay').classList.toggle('on', mode === 'day');
   $('modeAll').classList.toggle('on', mode === 'all');
   if (!items.length) { list.appendChild(el('li', 'empty', query ? '검색 결과가 없어요.' : '등록된 일정이 없어요.')); return; }
   items.forEach(function (ev) {
+    if (ev.kind === 'trash') {
+      var trashRow = el('li', 'ev trash-event');
+      trashRow.appendChild(el('span', 'when', ev.time));
+      var trashName = el('span', 'name', ev.title);
+      trashName.title = ev.detail;
+      trashRow.appendChild(trashName);
+      trashRow.appendChild(el('small', 'trash-detail', ev.detail));
+      list.appendChild(trashRow);
+      return;
+    }
     if (ev.id === editingId) { list.appendChild(editRow(ev)); return; }
-    var li = el('li', 'ev');
-    li.appendChild(el('span', 'when', (mode === 'all' ? ev.date.slice(5).replace('-', '/') + ' ' : '') + (ev.time || '종일')));
+    var li = el('li', 'ev' + (ev.done ? ' completed' : ''));
+    var cb = el('input', 'ev-check');
+    cb.type = 'checkbox';
+    cb.checked = !!ev.done;
+    cb.setAttribute('aria-label', ev.title + ' 완료');
+    cb.addEventListener('change', function () {
+      ev.done = cb.checked;
+      store('zip-events', state.events);
+      renderCalendarAll();
+      updateDot();
+    });
+    li.appendChild(cb);
+    li.appendChild(el('span', 'when', (mode === 'all' || mode === 'week' ? ev.date.slice(5).replace('-', '/') + ' ' : '') + (ev.time || '종일')));
     li.appendChild(el('span', 'name', ev.title));
     var edit = el('button', 'edit', '수정');
     edit.type = 'button'; edit.title = '일정 수정';
@@ -86,9 +168,50 @@ function renderEvList() {
     list.appendChild(li);
   });
 }
-// "선택한 날 / 전체" 보기 전환
-$('modeDay').addEventListener('click', function () { editingId = null; mode = 'day'; renderEvList(); });
-$('modeAll').addEventListener('click', function () { editingId = null; mode = 'all'; renderEvList(); });
+function setMode(nextMode) {
+  editingId = null;
+  mode = nextMode;
+  if (nextMode === 'today' || nextMode === 'week') {
+    selected = todayStr;
+    viewY = today.getFullYear();
+    viewM = today.getMonth();
+    $('evDate').value = todayStr;
+  }
+  renderCalendarAll();
+}
+
+// 홈 일정 카드는 해당 날짜 범위를 바로 열어 표시
+$('allEventsCard').addEventListener('click', function (e) {
+  e.stopImmediatePropagation();
+  setMode('all');
+  showView('calendar');
+});
+$('todayTasksCard').addEventListener('click', function (e) {
+  e.stopImmediatePropagation();
+  setMode('today');
+  showView('calendar');
+});
+
+// 오늘·이번 주·선택 날짜·전체 일정 필터
+$('modeToday').addEventListener('click', function () { setMode('today'); });
+$('modeWeek').addEventListener('click', function () { setMode('week'); });
+$('modeDay').addEventListener('click', function () { setMode('day'); });
+$('modeAll').addEventListener('click', function () { setMode('all'); });
+
+function quickDate(date, nextMode) {
+  $('evDate').value = date;
+  selected = date;
+  viewY = Number(date.slice(0, 4));
+  viewM = Number(date.slice(5, 7)) - 1;
+  mode = nextMode;
+  query = '';
+  $('searchInput').value = '';
+  editingId = null;
+  renderCalendarAll();
+  $('evTitle').focus();
+}
+$('quickToday').addEventListener('click', function () { quickDate(todayStr, 'today'); });
+$('quickWeek').addEventListener('click', function () { quickDate(weekRange(today).end, 'week'); });
 
 /* 일정 한 줄을 입력칸으로 바꿔 제목·날짜·시간을 고치는 줄 */
 function editRow(ev) {
@@ -127,20 +250,26 @@ function editRow(ev) {
   return li;
 }
 
-// 달력 아래 "다가오는 일정" 알림: 오늘 쓰레기 배출, 월세 D-day, 일주일 안 일정
+// 달력 아래 "다가오는 일정" 알림: 정기 배출 일정, 월세 D-day, 일주일 안 일정
 function renderCalNoti() {
   var box = $('notiList');
   box.textContent = '';
-  var tdc = TRASH[today.getDay()];
-  var rows = [tdc
-    ? { ico: trashIco(tdc.t), t: tdc.t + ' 배출', s: '오늘 ' + tdc.d, b: '오늘', hot: true }
-    : { ico: '🗑️', t: '오늘은 쓰레기 배출 없음', s: '쓰레기는 모아 두세요', b: '오늘', hot: false }];
+  var rows = [];
   var rd = nextRentDate(), rdiff = dayDiff(fmt(rd));
   rows.push({ ico: '💸', t: '월세 납부', s: '매월 ' + settings.rentDay + '일 · ' + settings.rent + '만원', b: rdiff === 0 ? '오늘' : 'D-' + rdiff, hot: rdiff <= 3 });
-  sortEvents(state.events).forEach(function (ev) {
+  var nextWeek = new Date(today); nextWeek.setDate(nextWeek.getDate() + 7);
+  var endDate = fmt(nextWeek);
+  var scheduledEvents = state.events.concat(trashEventsBetween(todayStr, endDate));
+  sortEvents(scheduledEvents).forEach(function (ev) {
     var diff = dayDiff(ev.date);
-    if (diff < 0 || diff > 7) return;
-    rows.push({ ico: '📌', t: ev.title, s: ev.date.slice(5).replace('-', '월 ') + '일 ' + (ev.time || '종일'), b: diff === 0 ? '오늘' : 'D-' + diff, hot: diff <= 1 });
+    if (diff < 0 || diff > 7 || ev.done) return;
+    rows.push({
+      ico: ev.kind === 'trash' ? trashIco(ev.title) : '📌',
+      t: ev.title,
+      s: ev.date.slice(5).replace('-', '월 ') + '일 ' + (ev.time || '종일') + (ev.detail ? ' · ' + ev.detail : ''),
+      b: diff === 0 ? '오늘' : 'D-' + diff,
+      hot: diff <= 1
+    });
   });
   rows.forEach(function (r) {
     var n = el('div', 'noti');
@@ -153,8 +282,13 @@ function renderCalNoti() {
     box.appendChild(n);
   });
 }
-// 달력·일정 목록·알림을 한 번에 다시 그림
-export function renderCalendarAll() { renderGrid(); renderEvList(); renderCalNoti(); }
+// 달력·일정 목록·알림과 할 일 요약을 한 번에 다시 그림
+export function renderCalendarAll() {
+  renderGrid();
+  renderEvList();
+  renderCalNoti();
+  renderEventSummary();
+}
 
 $('evDate').value = selected;
 // 일정 추가 폼: 제목, 날짜, 시간(선택)
@@ -162,10 +296,12 @@ $('evForm').addEventListener('submit', function (e) {
   e.preventDefault();
   var title = $('evTitle').value.trim(), date = $('evDate').value;
   if (!title || !date) return;
-  state.events.push({ id: Date.now(), date: date, time: $('evTime').value, title: title });
+  state.events.push({ id: Date.now(), date: date, time: $('evTime').value, title: title, done: false });
   store('zip-events', state.events);
   selected = date; viewY = Number(date.slice(0, 4)); viewM = Number(date.slice(5, 7)) - 1;
-  mode = 'day'; query = ''; $('searchInput').value = '';
+  var range = weekRange(today);
+  mode = date === todayStr ? 'today' : mode === 'week' && date >= range.start && date <= range.end ? 'week' : 'day';
+  query = ''; $('searchInput').value = '';
   $('evTitle').value = ''; $('evTime').value = '';
   renderCalendarAll(); updateDot();
 });

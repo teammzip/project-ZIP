@@ -2,16 +2,16 @@
  * (router가 화면 파일들을 직접 가져오지 않게 해서 서로 얽히지 않도록 함) */
 import { $ } from './utils.js';
 
-var VIEWS = ['home', 'calendar', 'ai', 'map', 'noti', 'community', 'settings', 'todo', 'bills', 'trash', 'rent', 'spend', 'income'];
+var VIEWS = ['home', 'calendar', 'ai', 'map', 'noti', 'community', 'settings', 'bills', 'rent', 'spend', 'income'];
 var onShow = {};
 
 /* 월세·공과금은 "고정 지출" 한 화면에 합쳐서 보여준다 (PC·모바일 같음) */
 var FIXED = ['bills', 'rent'];
 
-/* 마이페이지: 사이드바·전체 메뉴에서는 "마이페이지" 한 항목(todo 자리)이 켜지고,
- * 안의 화면마다 위쪽 1단계 탭(할 일 | 일정 | 가계부 | 알림 | 내 정보)이 정해져 있다 */
-var MY_NAV = 'todo';
-var MY_TAB = { todo: 'todo', trash: 'todo', calendar: 'calendar', income: 'income', bills: 'income', rent: 'income', spend: 'income', noti: 'noti', settings: 'settings' };
+/* 마이페이지: 사이드바·전체 메뉴에서는 "마이페이지" 한 항목이 켜지고,
+ * 안의 화면마다 위쪽 1단계 탭(일정 | 가계부 | 알림 | 내 정보)이 정해져 있다 */
+var MY_NAV = 'calendar';
+var MY_TAB = { calendar: 'calendar', income: 'income', bills: 'income', rent: 'income', spend: 'income', noti: 'noti', settings: 'settings' };
 
 export function registerView(name, render) { onShow[name] = render; }
 
@@ -36,8 +36,8 @@ export function showView(name) {
   mark('.menu-tile[data-go]', 'data-go', inMy ? MY_NAV : name, 'on');         // 모바일 ☰ 전체 메뉴
   mark('.mob-icon[data-view]', 'data-view', name, 'active');                  // 모바일 상단 아이콘
   mark('.sub-tabs button', 'data-go', name, 'on');                            // 지도 | 이야기
-  mark('.my-tab', 'data-go', MY_TAB[name], 'on');                             // 마이페이지 1단계: 할 일 | 일정 | 가계부 | 알림 | 내 정보
-  mark('.exp-tab', 'data-go', inExpense ? 'bills' : name, 'on');              // 2단계: 이번 주 할 일 | 쓰레기 배출, 수입 | 지출
+  mark('.my-tab', 'data-go', MY_TAB[name], 'on');                             // 마이페이지 1단계: 일정 | 가계부 | 알림 | 내 정보
+  mark('.exp-tab', 'data-go', inExpense ? 'bills' : name, 'on');              // 가계부: 수입 | 지출
   mark('.exp-subtab', 'data-go', merged ? 'bills' : name, 'on');              // 3단계: 고정 지출 | 기타 지출
 
   if (merged) {

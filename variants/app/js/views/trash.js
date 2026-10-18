@@ -1,33 +1,26 @@
-/* 쓰레기 배출: 홈 카드, 오른쪽 패널의 배출 줄, 상세 화면 */
-import { $, el, today } from '../core/utils.js';
+/* 쓰레기 배출: 홈 카드와 오른쪽 패널 요약 */
+import { $, today } from '../core/utils.js';
 import { TRASH, DOW, trashIco } from '../data/trash.js';
-import { registerView } from '../core/router.js';
 
-// 오늘의 배출 종류를 홈 카드·쓰레기 화면에 그리고, 요일별 배출표와 오른쪽 패널의 "다가오는 알림" 줄도 같이 갱신
+// 오늘 배출 정보와 다음 배출 정보를 홈 카드 및 오른쪽 패널에 표시
 export function renderTrash() {
   var td = TRASH[today.getDay()];
   $('trashToday').textContent = td ? '오늘은 ' + td.t : '오늘은 배출 없음';
   $('trashSub').textContent = td ? td.d : '내일 배출을 준비하세요';
-  var box = $('trashBox'); box.textContent = '';
-  box.appendChild(el('b', null, td ? td.t : '배출 없음'));
-  box.appendChild(document.createTextNode(td ? td.d : '오늘은 배출하는 날이 아니에요. 쓰레기는 모아 두세요.'));
-  // 쓰레기 화면의 "요일별 배출표" (오늘 요일은 강조)
-  var wk = $('trashWeek'); wk.textContent = '';
-  TRASH.forEach(function (x, i) {
-    var row = el('div', 'week-row' + (i === today.getDay() ? ' today' : ''));
-    row.appendChild(el('span', 'dw', DOW[i]));
-    var it = el('div', 'it');
-    it.appendChild(document.createTextNode(x ? x.t : '배출 없음'));
-    if (x) it.appendChild(el('small', null, x.d));
-    row.appendChild(it);
-    if (i === today.getDay()) row.appendChild(el('span', 'tag warn', '오늘'));
-    wk.appendChild(row);
-  });
-
-  // 오른쪽 패널 "다가오는 알림": 오늘 배출 + 다음 재활용 요일
-  $('pTrashIco').textContent = td ? trashIco(td.t) : '🗑️';
-  $('pTrashT').textContent = td ? td.t + ' 배출' : '오늘은 배출 없음';
-  $('pTrashS').textContent = td ? '오늘 ' + td.d : '쓰레기는 모아 두세요';
+  // 오른쪽 패널에는 가장 가까운 배출과 다음 재활용 일정을 표시
+  var nextTrash = { k: 0, idx: today.getDay() };
+  if (!TRASH[nextTrash.idx]) {
+    for (var day = 1; day <= 7; day++) {
+      var nextIdx = (today.getDay() + day) % 7;
+      if (TRASH[nextIdx]) { nextTrash = { k: day, idx: nextIdx }; break; }
+    }
+  }
+  var nextTrashData = TRASH[nextTrash.idx];
+  if (!td) $('trashSub').textContent = '다음 배출은 ' + (nextTrash.k === 1 ? '내일' : DOW[nextTrash.idx] + '요일') + '이에요';
+  $('pTrashIco').textContent = trashIco(nextTrashData.t);
+  $('pTrashT').textContent = nextTrashData.t + ' 배출';
+  $('pTrashS').textContent = nextTrash.k ? nextTrashData.d : '오늘 ' + nextTrashData.d;
+  $('pTrashTime').textContent = nextTrash.k === 0 ? '오늘' : nextTrash.k === 1 ? '내일' : DOW[nextTrash.idx] + '요일';
   // 다음 재활용 배출 요일을 오늘부터 7일 안에서 찾음
   var nextR = null;
   for (var k = 1; k <= 7; k++) {
@@ -37,5 +30,3 @@ export function renderTrash() {
   $('pRecyS').textContent = nextR ? TRASH[nextR.idx].d : '배출 일정 없음';
   $('pRecyTime').textContent = nextR ? (nextR.k === 1 ? '내일' : DOW[nextR.idx] + '요일') : '';
 }
-
-registerView('trash', renderTrash);
