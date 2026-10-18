@@ -230,6 +230,27 @@
       font-weight: 800;
     }
 
+    /* 모션 건너뛰기: 모션이 도는 동안만 왼쪽 위에 보임 (화면 아무 곳이나 눌러도 건너뛰어짐) */
+    .skip {
+      position: absolute;
+      left: 14px;
+      top: 8px;
+      z-index: 5;
+      padding: 6px 14px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      background: rgba(31, 36, 48, .55);
+      border: 0;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    .skip[hidden] {
+      display: none;
+    }
+
     .replay {
       position: absolute;
       right: 14px;
@@ -397,6 +418,7 @@
     <!-- 확대되지 않는 글자와 버튼 -->
     <span class="tag">모바일 시작</span>
     <button class="replay" id="replay" type="button">다시 보기</button>
+    <button class="skip" id="skip" type="button" hidden>건너뛰기 ›</button>
     <p class="caption" id="caption"></p>
     <button class="signup-btn" id="btnSignup" type="button">처음이세요? <b>회원가입</b></button>
   </div>
@@ -425,7 +447,7 @@
           <p class="terms-text">[약관] ZIP 서비스 이용을 위해 이메일·주소 등 최소한의 개인정보를 수집·이용하며, 탈퇴 시 즉시 삭제합니다.</p>
           <label><input type="checkbox" name="agree"> <b>[필수]</b> 위 약관에 동의합니다</label>
         </div>
-        <div class="row" id="loginOnly"><label><input type="checkbox"> 로그인 유지</label><a>비밀번호 찾기</a></div>
+        <div class="row" id="loginOnly"><label><input type="checkbox"> 로그인 유지</label><span class="find-links"><a href="../account/find.html#id">아이디 찾기</a><i>/</i><a href="../account/find.html#pw">비밀번호 찾기</a></span></div>
         <div class="error" id="error"></div>
         <button class="btn btn-main" id="submitBtn" type="submit">로그인</button>
       </form>
@@ -442,6 +464,7 @@
 
   <script>
     window.LOGIN_NEXT = '../app/index.html';   // 로그인에 성공하면 이동할 화면 (주소 끝에 ?next=... 로 바꿀 수 있음)
+    window.SIGNUP_URL = '../account/signup.html';   // 회원가입은 모달이 아니라 별도 페이지(흰 화면)로 이동
   </script>
   <script src="../../login/terms.js"></script>
   <script src="../../login/login.js"></script>
@@ -458,10 +481,10 @@
 
       var $ = function (id) { return document.getElementById(id); };
       var world = $('world'), img = $('houseImg'), robot = $('robot'), cap = $('caption'), door = $('door'), modal = $('modal');
-      var doorway = $('doorway'), panel = $('doorPanel');
+      var doorway = $('doorway'), panel = $('doorPanel'), skipBtn = $('skip');
       var wglows = WINDOWS.map(function () { var e = document.createElement('div'); e.className = 'wglow'; world.insertBefore(e, door); return e; });
       var vw, vh, s, ox, oy, groundY, R, RH, Z = 2.6, mx = 0, my = 0, capKey = '';
-      var tStart = 0, tClick = -1, opened = false, raf = 0;
+      var tStart = 0, tClick = -1, opened = false, raf = 0, splashTimer = 0;
       var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       var clamp = function (v) { return Math.max(0, Math.min(1, v)); };
@@ -533,6 +556,7 @@
         world.style.setProperty('--z', z);
         var flick = glowW * (.9 + Math.sin(t * 5) * .05);
         wglows.forEach(function (e) { e.style.opacity = flick; });
+        skipBtn.hidden = opened || (tClick < 0 && t >= T_ENTER + T_ZOOM);   // 모션이 도는 동안만 건너뛰기 표시
       }
 
       function loop(now) { frame((now - tStart) / 1000); raf = requestAnimationFrame(loop); }
@@ -559,21 +583,43 @@
         raf = requestAnimationFrame(loop);
       }
 
+      /* 건너뛰기: 시작 화면 → 바로 모션 / 로봇 등장·줌인 → 문 앞 대기 상태 / 문 열림·입장 → 바로 로그인 창 */
+      function skip() {
+        if (opened) return;
+        var now = (performance.now() - tStart) / 1000;
+        if (splash && splash.parentNode && !splash.classList.contains('hide')) { clearTimeout(splashTimer); endSplash(); return; }
+        if (tClick < 0) { if (now < T_ENTER + T_ZOOM) tStart = performance.now() - (T_ENTER + T_ZOOM) * 1000; }
+        else { tClick = now - (T_CLOSE_AT + T_OPEN + T_LIGHT); }          // 문이 닫히고 창문에 불이 켜진 뒤 모습으로 바로 넘어가 로그인 창을 띄움
+      }
+      skipBtn.addEventListener('click', function (e) { e.stopPropagation(); skip(); });
+      document.addEventListener('click', function (e) {                    // 화면 아무 곳이나 누르면 건너뜀 (문·버튼·로그인 창은 제외)
+        if (e.target.closest('#door, #btnSignup, #replay, #skip, #modal')) return;
+        skip();
+      });
       door.addEventListener('click', onDoor);
-      $('btnSignup').addEventListener('click', function () { openModal('signup'); });
+      $('btnSignup').addEventListener('click', function () { location.href = '../account/signup.html'; });   // 회원가입은 별도 페이지로
       $('replay').addEventListener('click', function () { modal.classList.remove('open'); play(); });
       $('closeBtn').addEventListener('click', closeModal);
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && opened) closeModal(); });
       window.addEventListener('resize', layout);
       // 처음 열 때만 시작 화면(아이콘 + 이름)을 SPLASH_MS 동안 보여 준 뒤, 사라지는 동안 모션을 시작. '다시 보기'는 시작 화면 없이 모션만 다시 재생
       var SPLASH_MS = 2000, splash = $('splash');
+      // 가입·찾기 화면에서 "로그인"으로 돌아오면(#login) 시작 화면은 건너뛰고, 로봇이 나타나 줌인된 뒤 문이 저절로 열리고 로봇이 들어가며 로그인 창이 뜸
+      var AUTO_DOOR_S = T_ENTER + T_ZOOM + 0.2;
       function begin() {
         layout(); robot.style.opacity = 0;
+        if (location.hash === '#login') {
+          splash.remove(); play();
+          setTimeout(onDoor, reduce ? 0 : AUTO_DOOR_S * 1000);
+          try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }   // 새로고침해도 또 자동으로 열리지 않게 #login 을 지움
+          return;
+        }
         if (reduce) { splash.remove(); play(); return; }               // 움직임 줄이기 설정이면 시작 화면 생략
-        setTimeout(function () {
-          splash.classList.add('hide'); play();
-          setTimeout(function () { splash.remove(); }, 700);
-        }, SPLASH_MS);
+        splashTimer = setTimeout(endSplash, SPLASH_MS);
+      }
+      function endSplash() {
+        splash.classList.add('hide'); play();
+        setTimeout(function () { splash.remove(); }, 700);
       }
       layout();
       if (img.complete) begin(); else img.onload = begin;

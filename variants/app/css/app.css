@@ -306,7 +306,7 @@ body.merged-fixed #view-rent .back {
 
 .fixed-sum {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -463,7 +463,7 @@ body.merged-fixed #view-rent .back {
 /* 모바일: 고정지출 합계 카드(합계·월세·공과금)를 한 줄에 하나씩 */
 @media (max-width: 900px) {
   .fixed-sum {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
   }
 
@@ -1104,7 +1104,7 @@ body[data-view="settings"] .my-head {
 
 .sum-row {
   display: grid;
-  grid-template-columns: 54px 1fr 58px;
+  grid-template-columns: 54px minmax(0, 1fr) 58px;
   align-items: center;
   gap: 8px;
   font-size: 12px;
@@ -1145,4 +1145,11 @@ body[data-view="settings"] .my-head {
   border-radius: 8px;
   background: #fff;
   cursor: pointer;
+}
+
+/* 모바일: 스크롤바(shared/mobile-scroll.js)가 아래 고정 메뉴와 겹치지 않게 범위를 줄임 */
+@media (max-width: 900px) {
+  :root {
+    --ms-bottom: 74px;
+  }
 }

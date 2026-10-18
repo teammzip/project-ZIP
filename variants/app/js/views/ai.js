@@ -4,6 +4,7 @@ import { settings } from '../core/state.js';
 import { PLACES } from '../data/places.js';
 import { registerView, showView } from '../core/router.js';
 import { focusCategory } from './map.js';
+import { spendBreakdown } from './spend.js';
 
 var photoUrl = null, curTopic = null, draftDirty = false, answerSeq = 0;
 var R_TRASH = '분리배출 기본 원칙이에요.\n\n• 플라스틱·캔·유리병: 내용물 비우고 헹군 뒤 라벨 제거\n• 종이: 테이프·스테이플러 제거 후 펼쳐서 묶기\n• 음식물: 종량제(음식물) 봉투나 전용 용기 사용\n• 배달 용기: 기름기가 남으면 일반쓰레기\n\n배출 요일과 시간은 지역마다 달라서, 사는 동네 구청 안내를 꼭 확인하세요.';
@@ -94,8 +95,28 @@ var TOPICS = [
     fields: [{ k: 'q', label: '궁금한 점', ph: '예) 겨울 가스비를 줄이고 싶어요' }],
     draft: function (v) { return '자취방 생활비 관련 질문이에요.\n질문: ' + (v.q || '(궁금한 점)') + '\n\n바로 할 수 있는 절약 방법과 납부를 놓치지 않는 방법을 알려주세요.'; },
     reply: function () { return R_BILL; }
+  },
+  {
+    id: 'summary', ico: '📊', name: '이번 달 지출 요약', desc: '가계부 기록으로 정리', photo: false,
+    fields: [],
+    draft: function () { return '이번 달 지출을 분류별로 요약해 주세요.'; },
+    reply: function () { return spendSummaryText(); },
+    action: function () { return { label: '가계부에서 보기', run: function () { showView('spend'); } }; }
   }
 ];
+
+/* 가계부 기록(월세·공과금·기타 지출)으로 이번 달 지출을 글로 요약 (홈 대화 모달은 같은 내용을 카드로 보여 줌) */
+function spendSummaryText() {
+  var cur = spendBreakdown(0), prev = spendBreakdown(1);
+  function man(n) { return n >= 10000 ? (Math.round(n / 1000) / 10) + '만원' : Number(n).toLocaleString('ko-KR') + '원'; }
+  var lines = [cur.month + '월 지출은 모두 ' + man(cur.total) + '이에요.'];
+  if (prev.total) { var d = cur.total - prev.total; lines.push('지난달(' + man(prev.total) + ')보다 ' + (d === 0 ? '같아요.' : man(Math.abs(d)) + (d > 0 ? ' 더 썼어요.' : ' 덜 썼어요.'))); }
+  lines.push('');
+  cur.rows.forEach(function (r) { lines.push('• ' + r[0] + ' ' + man(r[1]) + ' (' + Math.round(r[1] / cur.total * 100) + '%)'); });
+  var pct = cur.total ? Math.round(cur.fixed / cur.total * 100) : 0;
+  lines.push('', '고정 지출(월세·공과금)이 ' + pct + '%, 변동 지출이 ' + (100 - pct) + '%예요.');
+  return lines.join('\n');
+}
 function topicById(id) { for (var i = 0; i < TOPICS.length; i++) { if (TOPICS[i].id === id) return TOPICS[i]; } return null; }
 function fieldValues() {
   var v = {};
