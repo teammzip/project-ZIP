@@ -1,0 +1,100 @@
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+  background: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* 화면에는 안 보이고 스크린리더만 읽는 글자 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 모바일(900px 이하): 가로로 밀리지 않게 + 스크롤바는 얇은 반투명 막대 (팀 시안 shared/mobile-scroll.css 와 같은 기준) */
+@media (max-width: 900px) {
+  html {
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    scrollbar-width: none;
+  }
+
+  html::-webkit-scrollbar {
+    display: none;
+  }
+
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+    touch-action: pan-y pinch-zoom; /* 손가락으로 좌우로 밀리지 않게 (안쪽의 가로 스크롤 영역은 그대로 동작) */
+  }
+
+  /* 화면 안의 작은 스크롤 영역(채팅, 약관 상세 등) */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(110, 116, 128, 0.45) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background: rgba(110, 116, 128, 0.45);
+  }
+}

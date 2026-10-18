@@ -1,0 +1,14 @@
+.wrap {
+  display: grid;
+  gap: 16px;
+}
+
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: var(--color-pink);
+  vertical-align: top;
+}

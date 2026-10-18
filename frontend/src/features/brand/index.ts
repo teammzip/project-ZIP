@@ -1,0 +1,10 @@
+/* 브랜드 스토리(시작 화면) 섹션들. 순서·구성은 pages/start/StartPage.tsx 에서 조립합니다. */
+export { BrandFooter } from './components/BrandFooter'
+export { BrandHeader } from './components/BrandHeader'
+export { CtaSection } from './components/CtaSection'
+export { HeroSection } from './components/HeroSection'
+export { IntroSection } from './components/IntroSection'
+export { MobileIntro } from './components/MobileIntro'
+export { ShowcaseSection } from './components/ShowcaseSection'
+export { StoriesSection } from './components/StoriesSection'
+export { ValuesSection } from './components/ValuesSection'

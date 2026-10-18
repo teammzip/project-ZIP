@@ -1,0 +1,41 @@
+.head {
+  display: grid;
+  gap: 14px;
+  max-width: 720px;
+}
+
+.center {
+  margin: 0 auto;
+  text-align: center;
+}
+
+.kicker {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.title {
+  font-size: clamp(30px, 5vw, 52px);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+}
+
+.body {
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--color-muted);
+}
+
+.inverse .title {
+  color: #fff;
+}
+
+.inverse .kicker {
+  color: #8fbaf7;
+}
+
+.inverse .body {
+  color: rgba(255, 255, 255, 0.7);
+}

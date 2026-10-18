@@ -1,0 +1,90 @@
+/* TextField · PasswordField · Checkbox 가 같이 쓰는 스타일 */
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.control {
+  position: relative;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: #fff;
+  font-size: 15px;
+}
+
+.input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -1px;
+  border-color: var(--color-primary);
+}
+
+.input::placeholder {
+  color: #b4b9c6;
+}
+
+.invalid {
+  border-color: var(--color-danger);
+}
+
+.withSuffix {
+  padding-right: 72px;
+}
+
+.suffix {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+}
+
+.suffixButton {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.suffixButton:hover {
+  color: var(--color-text);
+}
+
+.hint,
+.error {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.hint {
+  color: var(--color-muted);
+}
+
+.error {
+  color: var(--color-danger);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--color-primary);
+}
+
+.checkError {
+  margin-top: 4px;
+}

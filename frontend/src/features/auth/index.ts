@@ -1,0 +1,11 @@
+/* auth 기능의 바깥 창구. 다른 폴더에서는 '@/features/auth' 에서만 가져다 쓰세요. (안쪽 파일 구조는 바뀔 수 있음) */
+export { AuthModal } from './components/AuthModal'
+export { FindAccount } from './components/FindAccount'
+export { ConsentOnboarding } from './components/ConsentOnboarding'
+export { LoginForm } from './components/LoginForm'
+export { SignupForm } from './components/SignupForm'
+export { SocialLoginButtons } from './components/SocialLoginButtons'
+export { useFindId, useLogin, useLogout, usePasswordReset, usePhoneVerification, useSignup, useSocialLogin, useUpdateMe, useWithdraw } from './hooks/useAuthMutations'
+export { selectIsLoggedIn, selectNeedsConsent, useAuthStore } from './store/authStore'
+export { authApi, demoAccount, isMockApi } from './api'
+export type { SocialProvider, UpdateMeRequest, User } from './types'

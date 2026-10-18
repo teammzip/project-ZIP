@@ -1,0 +1,64 @@
+.hr {
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid var(--color-line);
+}
+
+.desc {
+  margin-bottom: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+.error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-danger);
+}
+
+.dialog {
+  display: grid;
+  gap: 12px;
+}
+
+.dialog h3 {
+  font-size: 18px;
+}
+
+.dialog p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #3c4254;
+}
+
+.agree {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.solidDanger {
+  background: var(--color-pink);
+}
+
+.account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.account .desc {
+  margin-bottom: 0;
+}
