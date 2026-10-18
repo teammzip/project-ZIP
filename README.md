@@ -27,9 +27,9 @@ npm run dev      # → http://localhost:3000
 ```
 frontend/      ★ 실제 앱 (React + TypeScript)
 variants/      HTML 시안: app(메인 앱) · start-pc · start-mobile · account(회원가입·찾기)
-login/         로그인 화면 시안 3종 + 약관 문구(terms.js)
+login/         시작 화면의 로그인 창 공통 코드 (약관 문구는 variants/account/terms.js)
 shared/        시안 공통: 모바일 스크롤
-db/            DB 구조 그림(ERD) 3장
+db/            DB 설계: 구조 그림(ERD) 5장 + 표 만드는 SQL(schema.sql) + 한글 설명서(README.md)
 images/        로고 · 아이콘 · 로봇 · 집 그림
 compare.html   시안을 버튼으로 골라 보는 미리보기 (개발용)
 ```
@@ -44,7 +44,7 @@ compare.html   시안을 버튼으로 골라 보는 미리보기 (개발용)
 | 회원가입 · 로그인 · 아이디/비밀번호 찾기 · 탈퇴 (화면 동작) | 실제 인증 (지금은 가짜 API) |
 | PC · 모바일 화면, 모바일 인트로 | 실제 AI 연동 |
 | 이용약관 · 개인정보 처리방침 (초안) | 약관 법률 검토, `[ ]` 칸 채우기 |
-| | ERD에 수입 · 지출 테이블 추가 |
+| DB 설계 (표 34개 + 집계 VIEW 2개, MySQL 8, `db/`) | `frontend/API.md`와 DB 맞추기 (찾기·가입 흐름 정하기) |
 
 ---
 
