@@ -234,3 +234,19 @@
     padding-left: 0;
   }
 }
+
+/* 결과 아래 "로그인하러 가기" 같은 버튼 모양 링크 */
+.linkBtn {
+  margin-top: 18px;
+  text-align: center;
+}
+
+/* 가짜 API 모드 체험 안내 */
+.demoGuide {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #f6f7f9;
+  font-size: 12px;
+  color: #5b6272;
+}
