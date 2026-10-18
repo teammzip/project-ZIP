@@ -15,15 +15,22 @@
 |---|---|---|---|
 | POST | `/api/auth/signup` | 아래 [회원가입](#회원가입) 참고 | `{ accessToken, user }` |
 | POST | `/api/auth/login` | `{ loginId, password }` (loginId = 아이디 또는 이메일) | `{ accessToken, user }` |
-| POST | `/api/auth/phone/send` | `{ phone }` | — |
-| POST | `/api/auth/phone/verify` | `{ phone, code }` | `{ verificationToken }` |
-| POST | `/api/auth/find-id` | `{ nickname, address }` | `{ maskedUsername }` (예: `zi****12`) |
-| POST | `/api/auth/password-reset` | `{ username, email }` | — (계정이 없어도 같은 응답) |
+| POST | `/api/auth/phone/send` | `{ phone, purpose }` | — |
+| POST | `/api/auth/phone/verify` | `{ phone, code, purpose }` | `{ verificationToken }` |
+| POST | `/api/auth/find-id` | `{ nickname, phone, phoneVerificationToken }` | `{ username }` (가리지 않고 그대로) |
+| POST | `/api/auth/password-reset/verify` | `{ username, phone, phoneVerificationToken }` | `{ resetToken }` |
+| POST | `/api/auth/password-reset` | `{ resetToken, newPassword }` | — (토큰은 한 번만 사용) |
+| PATCH | `/api/auth/me/password` | `{ currentPassword, newPassword }` | — (현재 비밀번호가 틀리면 실패) |
 | GET | `/api/auth/me` | — | `user` |
 | PATCH | `/api/auth/me` | `{ nickname }` 또는 소셜 첫 가입 때 주소 + 동의 | `user` |
 | POST | `/api/auth/logout` | — | — |
 | DELETE | `/api/auth/me` | — (회원 탈퇴) | — |
 | GET | `/api/oauth2/authorization/{kakao\|google\|naver}` | 소셜 로그인 시작 | 끝나면 `/oauth/callback?token=...`으로 보내 주세요 |
+
+### 휴대전화 인증
+- `purpose`: `SIGNUP`(가입) · `FIND_ID`(아이디 찾기) · `RESET_PASSWORD`(비밀번호 찾기) — DB `phone_verifications.purpose`와 같아요.
+- 흐름: `send` → 사용자가 받은 6자리 입력 → `verify` → 받은 `verificationToken`을 가입 · 찾기 요청에 함께 보냄.
+- 비밀번호 찾기는 `password-reset/verify`로 `resetToken`을 받은 뒤, 같은 화면에서 `password-reset`으로 새 비밀번호를 저장해요 (메일 발송 없음).
 
 ### user 모양
 ```json
@@ -43,14 +50,14 @@
 ```
 - **입력 규칙** (`src/features/auth/schema.ts`와 같게 검사해 주세요)
   - 아이디: 6~16자, 영문 소문자·숫자
-  - 비밀번호: 8~16자, 영문·숫자·특수문자 모두 포함
+  - 비밀번호: 8~16자, 영문·숫자·특수문자 모두 포함 (가입 · 비밀번호 찾기 · 변경 모두 같은 규칙)
   - 닉네임: 2~12자
 - **동의 기록**(누가 · 언제 · 어느 `termsVersion`에 동의했는지)은 꼭 서버에 남겨 주세요. 약관 문구는 `src/features/legal/content.ts`에 있어요.
 
 ## 아직 프론트에만 있는 데이터
 
 할 일 · 일정 · 공과금 · 월세 · 수입 · 지출 · 알림 · 설정은 `src/features/life/store.ts`에, 커뮤니티 글은 `features/community/store.ts`에, AI 대화는 `features/ai/store.ts`에 있어요. 지금은 브라우저에 저장돼요.
-데이터 모양은 각 폴더의 `types.ts`를 기준으로 맞춰 주세요. ERD(`../db/`)에는 **수입·지출 테이블이 아직 없어요.**
+데이터 모양은 각 폴더의 `types.ts`를 기준으로 맞춰 주세요. DB 설계는 `../db/schema.sql`과 `../db/README.md`에 있어요 (수입은 `incomes`, 지출은 `expenses` 테이블).
 
 서버를 붙이는 순서 (예: 일정)
 1. `features/life/api/`에 API 함수 만들기

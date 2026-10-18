@@ -61,7 +61,7 @@
     order: 1;
   }
 
-  .sidebar .nav-item[data-view="todo"] {
+  .sidebar .nav-item[data-view="calendar"] {
     order: 2;
   }
 
@@ -226,6 +226,12 @@
   overflow: hidden;
   background: none;
   border-radius: 10px;
+  display: block;
+}
+
+.logo:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: 3px;
 }
 
 .logo img {
@@ -476,7 +482,7 @@ body.merged-fixed #view-rent .back {
   }
 }
 
-/* 2단계 탭 (같은 모양): 할 일 = 이번 주 할 일 | 쓰레기 배출, 가계부 = 수입 | 지출. 해당 화면에서만 보임 */
+/* 가계부 2단계 탭 (수입 | 지출) */
 .exp-tabs {
   display: none;
   gap: 6px;
@@ -490,9 +496,7 @@ body.merged-fixed #view-rent .back {
 body[data-view="income"] #expTabs,
 body[data-view="bills"] #expTabs,
 body[data-view="rent"] #expTabs,
-body[data-view="spend"] #expTabs,
-body[data-view="todo"] #taskTabs,
-body[data-view="trash"] #taskTabs {
+body[data-view="spend"] #expTabs {
   display: flex;
 }
 
@@ -876,14 +880,12 @@ body[data-view="spend"] .exp-sub {
   }
 }
 
-/* 마이페이지 머리말과 1단계 탭 (할 일 | 일정 | 가계부 | 알림 | 내 정보) */
+/* 마이페이지 머리말과 1단계 탭 (일정 | 가계부 | 알림 | 내 정보) */
 .my-head {
   display: none;
   margin: 0 0 6px;
 }
 
-body[data-view="todo"] .my-head,
-body[data-view="trash"] .my-head,
 body[data-view="calendar"] .my-head,
 body[data-view="income"] .my-head,
 body[data-view="bills"] .my-head,

@@ -217,6 +217,15 @@
   margin-bottom: 10px;
 }
 
+.sched[href] {
+  color: inherit;
+  text-decoration: none;
+}
+
+.sched[href]:hover {
+  box-shadow: 0 0 0 2px var(--line);
+}
+
 .sched .ico {
   width: 38px;
   height: 38px;
@@ -462,7 +471,7 @@
   }
 }
 
-/* 모바일: 하단 요약 패널(프로필, 이번 주 할 일, 다가오는 알림)은 홈에서만 보임 */
+/* 모바일: 하단 요약 패널(프로필, 다가오는 알림)은 홈에서만 보임 */
 @media (max-width: 900px) {
   body:not([data-view="home"]) .panel {
     display: none;

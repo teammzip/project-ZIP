@@ -49,13 +49,20 @@ export type UpdateMeRequest = Partial<ConsentRequest> & {
   address?: string
 }
 
-/** POST /auth/find-id — 가입할 때 쓴 닉네임 + 주소 */
-export type FindIdRequest = { nickname: string; address: string }
-/** 일부를 가린 아이디 (예: zi****12) */
-export type FindIdResponse = { maskedUsername: string }
+/** 휴대전화 인증 목적 (DB phone_verifications.purpose 와 같음) */
+export type PhonePurpose = 'SIGNUP' | 'FIND_ID' | 'RESET_PASSWORD'
 
-/** POST /auth/password-reset — 아이디 + 가입한 이메일로 재설정 안내 메일 */
-export type PasswordResetRequest = { username: string; email: string }
+/** POST /auth/find-id — 닉네임 + 휴대전화 인증 */
+export type FindIdRequest = { nickname: string; phone: string; phoneVerificationToken: string }
+export type FindIdResponse = { username: string }
+
+/** POST /auth/password-reset/verify — 아이디 + 휴대전화 인증이 맞으면 재설정 토큰을 줌 */
+export type PasswordResetVerifyRequest = { username: string; phone: string; phoneVerificationToken: string }
+/** POST /auth/password-reset — 재설정 토큰으로 새 비밀번호 저장 (토큰은 한 번만 쓸 수 있음) */
+export type PasswordResetRequest = { resetToken: string; newPassword: string }
+
+/** PATCH /auth/me/password — 내 정보에서 비밀번호 변경 */
+export type ChangePasswordRequest = { currentPassword: string; newPassword: string }
 
 /** 로그인·회원가입 성공 응답 */
 export type AuthResponse = {
@@ -68,12 +75,13 @@ export interface AuthApi {
   login(req: LoginRequest): Promise<AuthResponse>
   signup(req: SignupRequest): Promise<AuthResponse>
   /** POST /auth/phone/send — 휴대전화로 인증번호 보내기 */
-  sendPhoneCode(phone: string): Promise<void>
-  /** POST /auth/phone/verify — 인증번호 확인. 맞으면 가입할 때 함께 보낼 값을 줌 */
-  verifyPhoneCode(phone: string, code: string): Promise<{ verificationToken: string }>
+  sendPhoneCode(phone: string, purpose: PhonePurpose): Promise<void>
+  /** POST /auth/phone/verify — 인증번호 확인. 맞으면 다음 요청에 함께 보낼 값을 줌 */
+  verifyPhoneCode(phone: string, code: string, purpose: PhonePurpose): Promise<{ verificationToken: string }>
   findId(req: FindIdRequest): Promise<FindIdResponse>
-  /** 계정이 있든 없든 같은 응답 (가입 여부를 남이 알아내지 못하게) */
-  requestPasswordReset(req: PasswordResetRequest): Promise<void>
+  verifyPasswordReset(req: PasswordResetVerifyRequest): Promise<{ resetToken: string }>
+  resetPassword(req: PasswordResetRequest): Promise<void>
+  changePassword(req: ChangePasswordRequest): Promise<void>
   /** GET /auth/me — 토큰으로 내 정보 조회 (소셜 로그인 콜백에서 사용) */
   me(): Promise<User>
   logout(): Promise<void>
