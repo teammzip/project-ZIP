@@ -1,0 +1,119 @@
+/* ---------- 약관·처리방침 본문 ---------- */
+.doc {
+  display: grid;
+  gap: 18px;
+}
+
+.updated {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.section h2,
+.section summary {
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.section summary {
+  cursor: pointer;
+}
+
+.section p {
+  font-size: 14px;
+  line-height: 1.75;
+  color: #3c4254;
+  word-break: keep-all;
+}
+
+/* 가입 화면 "상세보기" 안: 작은 글씨 */
+.compact {
+  gap: 8px;
+}
+
+.compact .updated,
+.compact .section p {
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.compact .section h2 {
+  margin-bottom: 2px;
+  font-size: 12px;
+}
+
+/* ---------- /terms, /privacy 페이지 ---------- */
+.page {
+  min-height: 100dvh;
+  padding: 32px 16px 60px;
+  background: var(--color-bg);
+}
+
+.pageCard {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 28px 32px;
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+}
+
+.pageHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.pageHead img {
+  height: 28px;
+  width: auto;
+}
+
+.pageTitle {
+  margin-bottom: 6px;
+  font-size: 24px;
+}
+
+.draft {
+  margin: 12px 0 20px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: #fff8e8;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #9a6a00;
+}
+
+.switch {
+  display: flex;
+  gap: 14px;
+  font-size: 13px;
+}
+
+.switch a {
+  color: var(--color-muted);
+}
+
+.switch a[aria-current='page'] {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* 작은 정책 링크 줄 (푸터·내 정보·가입 화면) */
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.links a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.links a:last-child {
+  font-weight: 700;
+}

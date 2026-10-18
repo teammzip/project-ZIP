@@ -1,0 +1,429 @@
+/* ---------- AI 도우미 화면 ---------- */
+.help {
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.attach {
+  margin-bottom: 14px;
+}
+
+.topicGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.topic {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: #f7f8fc;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.topic:hover {
+  background: #eceefa;
+}
+
+.topic.on {
+  border-color: var(--color-primary);
+  background: #fff;
+}
+
+.topic.suggest {
+  background: #eaf2ff;
+}
+
+.topicIco {
+  font-size: 22px;
+}
+
+.topic b {
+  font-size: 14px;
+}
+
+.topic small {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-muted);
+}
+
+.photoBox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #eaf2ff;
+}
+
+.photoBox img {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+
+.photoInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.photoInfo b {
+  display: block;
+  font-size: 14px;
+}
+
+.photoInfo small {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.pickerBox {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 28px 12px;
+  border: 2px dashed #cfe0fb;
+  border-radius: var(--radius-lg);
+  background: #f7faff;
+  text-align: center;
+}
+
+.pickerIco {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: #eaf2ff;
+  font-size: 32px;
+}
+
+.pickerBox p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.pickerBox small {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.answer {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f1f2f7;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.answerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ---------- 홈 "AI와 대화" 카드 ---------- */
+.homeCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* 카드 제목줄의 아래 여백은 gap 이 대신함 */
+.homeCard > :first-child {
+  margin-bottom: 0;
+}
+
+.linkBtn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-purple);
+}
+
+.bubbleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.bubbleRow p {
+  padding: 11px 14px;
+  border-radius: 4px 16px 16px 16px;
+  background: #f3f4f9;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.face {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #eaf2ff;
+  font-size: 22px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  flex: none;
+  padding: 8px 13px;
+  border: 1.5px solid #cfe0fb;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chip:not(:disabled):hover {
+  border-color: var(--color-primary);
+  background: #eaf2ff;
+}
+
+.ask {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.ask input,
+.chatForm input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+}
+
+.ask input:focus,
+.chatForm input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -1px;
+  border-color: var(--color-primary);
+}
+
+/* ---------- 대화 모달 ---------- */
+.chatWindow {
+  display: flex;
+  flex-direction: column;
+  width: min(480px, 100%);
+  height: min(640px, calc(100dvh - 32px));
+  padding: 0;
+  overflow: hidden;
+}
+
+.chatHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.grow b {
+  display: block;
+  font-size: 16px;
+}
+
+.grow small {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.chatNew {
+  padding: 6px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.chatClose {
+  width: 34px;
+  height: 34px;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--color-muted);
+}
+
+.chatBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  overflow-y: auto;
+  background: #f7f8fc;
+}
+
+.msg {
+  max-width: 84%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bot {
+  align-self: flex-start;
+  border: 1px solid var(--color-line);
+  border-top-left-radius: 4px;
+  background: #fff;
+}
+
+.user {
+  align-self: flex-end;
+  border-top-right-radius: 4px;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.typing {
+  color: var(--color-muted);
+  animation: blink 1s ease-in-out infinite;
+}
+
+.hasCard {
+  width: 84%;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.chatChips {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chatForm {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+}
+
+/* 지출 요약 카드 (말풍선 안) */
+.sumCard {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f7f8fc;
+  white-space: normal;
+}
+
+.sumCard > small {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.sumTotal {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.sumCmp,
+.sumUp {
+  font-size: 12px;
+  color: var(--color-teal);
+}
+
+.sumUp {
+  color: var(--color-pink);
+}
+
+.sumRows {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.sumRow {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.sumName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sumBar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--color-line);
+}
+
+.sumBar i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--color-primary);
+}
+
+.sumVal {
+  font-weight: 700;
+}
+
+.sumNote {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-muted);
+  white-space: pre-line;
+}
+
+.sumGo {
+  justify-self: start;
+  padding: 6px 12px;
+  border: 1px solid #cfe0fb;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+@media (max-width: 900px) {
+  .chatWindow {
+    width: 100%;
+    height: min(86dvh, 720px);
+  }
+}

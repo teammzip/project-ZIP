@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
+import { Link } from 'react-router-dom'
 import { Button, Checkbox, PasswordField, TextField } from '@/components/ui'
 import { getErrorMessage } from '@/lib/apiClient'
 import { useLogin } from '../hooks/useAuthMutations'
@@ -11,12 +12,12 @@ type Props = {
   onSuccess?: () => void
 }
 
-/* 로그인 페이지와 PC 시작 화면의 로그인 모달에서 똑같이 쓰는 폼 */
+/* 로그인 페이지와 시작 화면의 로그인 모달에서 똑같이 쓰는 폼 (아이디 또는 이메일로 로그인) */
 export function LoginForm({ onSuccess }: Props) {
   const login = useLogin()
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '', remember: true },
+    defaultValues: { loginId: '', password: '', remember: true },
   })
 
   const onSubmit = handleSubmit((values) => login.mutate(values, { onSuccess }))
@@ -24,12 +25,12 @@ export function LoginForm({ onSuccess }: Props) {
   return (
     <form className={styles.form} onSubmit={onSubmit} noValidate>
       <TextField
-        label="이메일"
-        type="email"
-        placeholder="you@example.com"
+        label="아이디 또는 이메일"
+        placeholder="아이디 또는 you@example.com"
         autoComplete="username"
-        error={errors.email?.message}
-        {...register('email')}
+        autoCapitalize="none"
+        error={errors.loginId?.message}
+        {...register('loginId')}
       />
       <PasswordField
         label="비밀번호"
@@ -41,10 +42,11 @@ export function LoginForm({ onSuccess }: Props) {
 
       <div className={styles.row}>
         <Checkbox label="로그인 유지" {...register('remember')} />
-        {/* TODO: 비밀번호 찾기 화면 (백엔드 메일 발송 API 필요) */}
-        <button type="button" className={styles.textLink} disabled title="준비 중">
-          비밀번호 찾기
-        </button>
+        <span className={styles.findLinks}>
+          <Link to="/find#id">아이디 찾기</Link>
+          <i aria-hidden="true">/</i>
+          <Link to="/find#pw">비밀번호 찾기</Link>
+        </span>
       </div>
 
       {login.isError && (

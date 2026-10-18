@@ -22,7 +22,7 @@ export function LoginPage() {
       </p>
       {demoAccount && (
         <p className={styles.mockNote}>
-          가짜 API 모드 · 데모 계정 {demoAccount.email} / {demoAccount.password}
+          가짜 API 모드 · 데모 계정 {demoAccount.username} (또는 {demoAccount.email}) / {demoAccount.password}
         </p>
       )}
     </>

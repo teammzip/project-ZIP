@@ -1,0 +1,161 @@
+/* 가입 약관 동의 (팀 시안 variants/account/account.css 의 .agree 모양) */
+.agree {
+  padding: 6px 14px 0;
+  border: 0;
+}
+
+.item {
+  padding: 14px 0 6px;
+  border-top: 1px solid #eceef2;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.head b {
+  font-size: 14px;
+}
+
+.req {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--color-primary);
+}
+
+.notice {
+  padding: 8px 0 6px 28px;
+  font-size: 13px;
+  color: #5b6272;
+}
+
+.chk {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 11px 0;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.all {
+  font-weight: 700;
+}
+
+.chk input {
+  flex: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 1.5px solid #b8bec9;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.chk input:checked {
+  border-color: var(--color-primary);
+  background: var(--color-primary) center / 12px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+}
+
+.chk input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.chk input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.more {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 12px;
+  color: #5b6272;
+}
+
+.more i {
+  width: 7px;
+  height: 7px;
+  margin-top: -3px;
+  border-right: 1.5px solid #5b6272;
+  border-bottom: 1.5px solid #5b6272;
+  transform: rotate(45deg);
+  transition: transform 0.15s;
+}
+
+.more[aria-expanded='true'] i {
+  margin-top: 3px;
+  transform: rotate(225deg);
+}
+
+.box {
+  max-height: 200px;
+  margin: 0 0 8px;
+  padding: 12px 14px;
+  overflow-y: auto;
+  border-radius: 6px;
+  background: #f6f7f9;
+  overscroll-behavior: contain;
+}
+
+.table {
+  width: calc(100% - 28px);
+  margin-left: 28px;
+  border-collapse: collapse;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.table th,
+.table td {
+  padding: 5px 6px;
+  border: 1px solid #e3e6eb;
+  text-align: left;
+  vertical-align: top;
+  word-break: keep-all;
+}
+
+.table th {
+  background: #f1f2f7;
+  font-weight: 600;
+}
+
+.refuse {
+  margin: 6px 0 0 28px;
+  font-size: 11.5px;
+  color: var(--color-muted);
+}
+
+.ageNote {
+  margin-top: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #e3e6eb;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.ageNote::before {
+  content: '• ';
+}
+
+.error {
+  padding-bottom: 4px;
+  font-size: 12px;
+  color: var(--color-danger);
+}
+
+@media (max-width: 560px) {
+  .agree {
+    padding: 6px 0 0;
+  }
+}

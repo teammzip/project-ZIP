@@ -1,0 +1,266 @@
+/* 모바일 시작 화면 (기존 시안 variants/start-mobile/index.html 의 스타일) */
+.scene {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: rgb(221, 235, 217); /* 집 그림 배경색과 같게 해서 그림 가장자리가 티 나지 않음 */
+}
+
+/* 줌인할 때 함께 확대되는 풍경(집·로봇) */
+.world {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.house {
+  position: absolute;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.doorway,
+.doorPanel,
+.glow,
+.door {
+  position: absolute;
+}
+
+/* 문이 열릴 때만 보이는 것: 문 뒤의 따뜻한 실내, 왼쪽 경첩으로 안쪽으로 열리는 문짝 */
+.doorway,
+.doorPanel {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.doorway {
+  background: radial-gradient(ellipse at 50% 92%, #ffe2a8 0%, #e3a050 30%, #8a4f22 62%, #3a2214 100%);
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.55);
+}
+
+.doorPanel {
+  background-repeat: no-repeat;
+  transform-origin: left center;
+  backface-visibility: hidden;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.25);
+}
+
+/* 로봇이 들어간 뒤 켜지는 창문 불빛 */
+.glow {
+  opacity: 0;
+  border-radius: 4px;
+  background: rgba(255, 226, 120, 0.6);
+  box-shadow: 0 0 22px 8px rgba(255, 210, 90, 0.65);
+  pointer-events: none;
+}
+
+/* 문 누르기 유도: 반짝이는 테두리 + "눌러서 입장" */
+.door {
+  display: block;
+  padding: 0;
+  background: transparent;
+  animation: ring 1.6s ease-out infinite;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.door:focus-visible {
+  outline: 3px solid var(--color-text);
+  outline-offset: 3px;
+}
+
+.off {
+  animation: none;
+  pointer-events: none;
+}
+
+@keyframes ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 122, 69, 0.8);
+  }
+
+  70%,
+  100% {
+    box-shadow: 0 0 0 16px rgba(255, 122, 69, 0);
+  }
+}
+
+.doorLabel {
+  position: absolute;
+  left: 50%;
+  bottom: 22%;
+  padding: 0.55em 0.9em;
+  border-radius: 999px;
+  background: #fff;
+  font-size: calc(13px / var(--z, 1)); /* 줌인해도 글자 크기는 그대로 */
+  font-weight: 800;
+  color: #ff5a1f;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  animation: bounce 1s ease-in-out infinite;
+  transform: translateX(-50%);
+}
+
+.doorLabel::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-left: -6px;
+  border: 6px solid transparent;
+  border-top-color: #fff;
+}
+
+.off .doorLabel {
+  display: none;
+}
+
+@keyframes bounce {
+  50% {
+    transform: translate(-50%, -8px);
+  }
+}
+
+.robot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: none;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* ---------- 확대되지 않는 글자·버튼 ---------- */
+.caption {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 52px;
+  font-size: clamp(18px, 5.4vw, 26px);
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: -0.3px;
+  color: #123b5c;
+  text-align: center;
+  animation: pop 0.5s ease-out;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.replay {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  right: 14px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #ff7a45;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* 모션 건너뛰기: 모션이 도는 동안만 왼쪽 위에 (화면 아무 곳이나 눌러도 건너뜀) */
+.skip {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: 14px;
+  z-index: 5;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(31, 36, 48, 0.55);
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.signup {
+  position: absolute;
+  left: 50%;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(31, 36, 48, 0.18);
+  transform: translateX(-50%);
+}
+
+.signup b {
+  margin-left: 4px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+/* ---------- 앱 시작 화면(스플래시) ---------- */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #fff;
+  transition: opacity 0.55s ease;
+}
+
+.splashHide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sIcon {
+  width: clamp(96px, 30vw, 132px);
+  height: auto;
+  border-radius: 28%;
+  box-shadow: 0 14px 30px rgba(47, 128, 237, 0.35);
+  animation: sIcon 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+
+.sName {
+  margin-top: 18px;
+  font-size: clamp(38px, 12vw, 52px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: #1f2a44;
+  animation: sUp 0.6s ease 0.45s both;
+}
+
+.sSub {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+  animation: sUp 0.6s ease 0.7s both;
+}
+
+.sTag {
+  margin-top: 4px;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: #6b7280;
+  animation: sUp 0.6s ease 0.95s both;
+}
+
+@keyframes sIcon {
+  from {
+    opacity: 0;
+    transform: scale(0.55) rotate(-8deg);
+  }
+}
+
+@keyframes sUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}

@@ -1,46 +1,69 @@
 import { MotionConfig } from 'motion/react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useRedirectAfterAuth } from '@/app/useRedirectAfterAuth'
-import { AuthModal, type AuthMode } from '@/features/auth'
+import { AuthModal } from '@/features/auth'
 import {
   BrandFooter,
   BrandHeader,
   CtaSection,
   HeroSection,
   IntroSection,
+  MobileIntro,
   ShowcaseSection,
   StoriesSection,
   ValuesSection,
 } from '@/features/brand'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import styles from './StartPage.module.css'
 
-/* 시작 화면 = 브랜드 스토리. 섹션 순서를 바꾸거나 빼려면 여기서 줄만 옮기면 됩니다.
- * 로그인·회원가입은 AuthModal 로 띄웁니다. (/login, /signup 페이지도 같은 폼 컴포넌트를 씀) */
+/* 시작 화면
+ * - PC: 브랜드 스토리 (섹션 순서를 바꾸거나 빼려면 여기서 줄만 옮기면 됩니다)
+ * - 모바일(900px 이하): 앱 시작 → 로봇 → 문 → 로그인 인트로 (팀 시안 variants/start-mobile)
+ * 로그인은 AuthModal, 회원가입·아이디/비밀번호 찾기는 별도 페이지(/signup, /find).
+ * /start#login 으로 오면(가입·찾기 페이지의 "로그인") PC 는 로그인 창을 바로 열고, 모바일은 문이 저절로 열린 뒤 로그인 창이 뜸 */
 export function StartPage() {
-  const [mode, setMode] = useState<AuthMode | null>(null)
   const navigate = useNavigate()
+  const { hash, pathname, search, state } = useLocation()
   const redirectTo = useRedirectAfterAuth()
+  const isMobile = useMediaQuery('(max-width: 900px)')
+  const fromLogin = hash === '#login'
+  const [loginOpen, setLoginOpen] = useState(fromLogin && !isMobile)
+  // #login 은 한 번만 쓰고 지움 (새로고침해도 또 자동으로 열리지 않게)
+  const [autoDoor] = useState(fromLogin && isMobile)
+  useEffect(() => {
+    if (fromLogin) navigate({ pathname, search }, { replace: true, state })
+  }, [fromLogin, navigate, pathname, search, state])
 
-  const openLogin = () => setMode('login')
-  const openSignup = () => setMode('signup')
+  const openLogin = () => setLoginOpen(true)
+  const goSignup = () => navigate('/signup', { state })
+  const modal = <AuthModal open={loginOpen} onClose={() => setLoginOpen(false)} onSuccess={() => navigate(redirectTo, { replace: true })} />
+
+  if (isMobile) {
+    return (
+      <MotionConfig reducedMotion="user">
+        <MobileIntro onEnter={openLogin} onSignup={goSignup} paused={loginOpen} autoDoor={autoDoor} />
+        {modal}
+      </MotionConfig>
+    )
+  }
 
   return (
     // reducedMotion="user": 기기에서 '동작 줄이기'를 켠 사람에게는 움직임을 끔
     <MotionConfig reducedMotion="user">
       <div className={styles.page}>
-        <BrandHeader onLogin={openLogin} onSignup={openSignup} />
+        <BrandHeader onLogin={openLogin} onSignup={goSignup} />
         <main>
           <HeroSection />
           <IntroSection />
           <ValuesSection />
           <ShowcaseSection />
           <StoriesSection />
-          <CtaSection onLogin={openLogin} onSignup={openSignup} />
+          <CtaSection onLogin={openLogin} onSignup={goSignup} />
         </main>
         <BrandFooter />
       </div>
-      <AuthModal mode={mode} onModeChange={setMode} onSuccess={() => navigate(redirectTo, { replace: true })} />
+      {modal}
     </MotionConfig>
   )
 }
