@@ -61,6 +61,7 @@
   window.ZipPassword = {
     DEMO_ACCOUNT: DEMO_ACCOUNT,
     DEMO: DEMO_ACCOUNT.password,
+    hashPhone: function (phone, salt) { return hash(digits(phone), salt); },   // 정지 기록과 휴대전화 비교용 (zip-ban.js)
     hasCustom: function () { var a = read(); return !!(a && a.hash); },   // 가입 등으로 정한 계정이 있는지
     set: save,                                                            // 가입, 비밀번호 변경
     verify: function (pw) {                                               // 지금 비밀번호가 맞는지

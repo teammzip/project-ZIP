@@ -7,7 +7,12 @@
   var next = params.get('next') || window.LOGIN_NEXT || '../app/index.html';
   var form = document.getElementById('loginForm');
 
-  function enter() { location.href = next; }
+  // 이 브라우저의 내 계정이 이용 정지 중이면 입장하지 않고 안내만 보여 줌 (정지 기록: shared/zip-ban.js)
+  function enter() {
+    var ban = window.ZipBan && window.ZipBan.meActive();
+    if (ban) { document.getElementById('error').textContent = window.ZipBan.message(ban); return; }
+    location.href = next;
+  }
 
   // 로그인 버튼
   form.addEventListener('submit', function (e) {

@@ -58,7 +58,9 @@ if (!load('zip-todos-migrated', false)) {
 var posts = load('zip-posts', null);
 if (!Array.isArray(posts)) posts = [];
 posts.forEach(function (p) { if (!p.region) p.region = p.mine ? settings.region : HOME; });
-SEED_POSTS.forEach(function (sp) { if (!posts.some(function (p) { return p.id === sp.id; })) posts.push(sp); });
+// 관리자 화면에서 지운 기본 글(zip-posts-removed)은 다시 채우지 않음
+var removedSeeds = load('zip-posts-removed', []);
+SEED_POSTS.forEach(function (sp) { if (removedSeeds.indexOf(sp.id) < 0 && !posts.some(function (p) { return p.id === sp.id; })) posts.push(sp); });
 store('zip-posts', posts);
 
 // 공과금 항목 (처음에는 가스·전기·수도 예시)

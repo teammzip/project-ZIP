@@ -1,7 +1,7 @@
 -- ============================================================================
 -- ZIP – 자취생 생활 도우미 : 데이터베이스 (MySQL 8.0 이상)
 -- 현재 프로그램(variants/app, variants/account, 시작 화면)의 기능 기준으로 다시 설계한 구조입니다.
---   · 표 33개 + 집계용 VIEW 2개
+--   · 표 34개 + 집계용 VIEW 2개
 --   · 그림: db/erd-1 ~ erd-5 PNG, 한글 설명: db/README.md
 -- 사용법:  mysql -u root -p < db/schema.sql      (zip 데이터베이스가 새로 만들어집니다)
 -- 규칙:   금액은 원 단위 정수(INT), 날짜·시간은 DATE/TIME/DATETIME, 글자는 utf8mb4,
@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `phone_verified_at` DATETIME NULL COMMENT '휴대전화 인증 일시 — 가입 때 인증을 마친 시각',
   `region_id` BIGINT UNSIGNED NULL COMMENT '사는 동네 아이디 — 내 정보의 "우리 동네"',
   `address` VARCHAR(200) NULL COMMENT '입력한 주소 — 가입할 때 쓴 주소 글자',
+  `age_confirmed_at` DATETIME NULL COMMENT '만 14세 이상 확인 일시 — 가입 때 "만 14세 이상" 체크한 시각',
+  `signup_provider` ENUM('EMAIL','KAKAO','GOOGLE','NAVER') NOT NULL DEFAULT 'EMAIL' COMMENT '가입 경로 — 화면의 provider 값. 소셜 첫 가입자는 약관·주소를 나중에 받음',
   `role` ENUM('USER','ADMIN') NOT NULL DEFAULT 'USER' COMMENT '사용자 권한 — 운영자만 ADMIN',
   `status` ENUM('ACTIVE','SUSPENDED') NOT NULL DEFAULT 'ACTIVE' COMMENT '이용 상태 — 이용 제한 중이면 SUSPENDED',
   `password_changed_at` DATETIME NULL COMMENT '비밀번호 변경 일시 — 내 정보·비밀번호 찾기로 바꾼 시각',
@@ -88,7 +90,7 @@ CREATE TABLE IF NOT EXISTS `auth_sessions` (
   CONSTRAINT `fk_auth_sessions_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='로그인 세션: 로그인한 기기마다 한 줄.';
 
--- 휴대전화 인증: 문자로 보낸 인증번호 기록. 가입, 아이디 찾기, 비밀번호 찾기에서 같은 방식으로 씁니다. 비밀번호 찾기는 메일 대신 이 인증을 통과하면 1회용 재설정 토큰이 발급되고, 그 토큰으로 바로 새 비밀번호를 정합니다.
+-- 휴대전화 인증: 문자로 보낸 인증번호 기록. 가입, 아이디 찾기, 비밀번호 찾기에서 같은 방식으로 씁니다. 인증에 성공하면 "인증 완료 값"이 발급되고, 가입 요청(가입 화면의 휴대전화 인증)이나 비밀번호 재설정(password_resets)에 그 값을 함께 보냅니다.
 CREATE TABLE IF NOT EXISTS `phone_verifications` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '인증 아이디 — 자동 증가',
   `purpose` ENUM('SIGNUP','FIND_ID','RESET_PASSWORD') NOT NULL COMMENT '인증 목적 — 가입 / 아이디 찾기 / 비밀번호 찾기',
@@ -99,14 +101,27 @@ CREATE TABLE IF NOT EXISTS `phone_verifications` (
   `requested_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '인증번호 요청 일시',
   `expires_at` DATETIME NOT NULL COMMENT '인증번호 만료 일시 — 보통 3분',
   `verified_at` DATETIME NULL COMMENT '인증 성공 일시',
-  `reset_token_hash` CHAR(64) NULL COMMENT '재설정 토큰(해시) — 비밀번호 찾기 인증 성공 때 발급',
-  `reset_token_expires_at` DATETIME NULL COMMENT '재설정 토큰 만료 일시',
-  `consumed_at` DATETIME NULL COMMENT '재설정 완료 일시 — 토큰을 쓴 시각(한 번만 사용)',
+  `verified_token_hash` CHAR(64) NULL COMMENT '인증 완료 값(해시) — 인증 성공 때 발급. 가입·찾기 요청에 함께 보내는 값',
+  `consumed_at` DATETIME NULL COMMENT '사용 일시 — 인증 완료 값을 가입·재설정에 쓴 시각(한 번만 사용)',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_phone_verifications_reset_token_hash` (`reset_token_hash`),
+  UNIQUE KEY `uk_phone_verifications_verified_token_hash` (`verified_token_hash`),
   KEY `idx_phone_verifications_phone_requested_at` (`phone`, `requested_at`),
   CONSTRAINT `fk_phone_verifications_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='휴대전화 인증: 문자로 보낸 인증번호 기록.';
+
+-- 비밀번호 재설정 토큰: 비밀번호를 다시 정하도록 허락하는 1회용 토큰. 휴대전화 인증을 통과했을 때(시안의 바로 재설정)와 이메일로 재설정 링크를 보냈을 때(React 앱의 현재 방식) 둘 다 이 표 한 줄로 처리합니다. 토큰은 해시만 저장하고, 한 번 쓰면 used_at 이 채워져 다시 쓸 수 없습니다.
+CREATE TABLE IF NOT EXISTS `password_resets` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '재설정 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '재설정하는 사용자 아이디',
+  `method` ENUM('PHONE','EMAIL') NOT NULL COMMENT '본인 확인 방법 — 휴대전화 인증 / 이메일 링크',
+  `token_hash` CHAR(64) NOT NULL COMMENT '재설정 토큰(해시) — 원문은 저장 안 함',
+  `requested_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '요청 일시',
+  `expires_at` DATETIME NOT NULL COMMENT '만료 일시 — 보통 10~30분',
+  `used_at` DATETIME NULL COMMENT '사용 일시 — 비어 있으면 아직 안 씀',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_password_resets_token_hash` (`token_hash`),
+  CONSTRAINT `fk_password_resets_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='비밀번호 재설정 토큰: 비밀번호를 다시 정하도록 허락하는 1회용 토큰.';
 
 -- 약관 문서: 가입 화면에 보이는 약관의 본문과 버전. 서비스 이용약관, 개인정보 처리방침, 커뮤니티·AI 운영 정책 세 종류이고, 내용이 바뀌면 새 버전 줄을 추가합니다.
 CREATE TABLE IF NOT EXISTS `terms_documents` (
@@ -147,16 +162,18 @@ CREATE TABLE IF NOT EXISTS `withdrawal_logs` (
 -- 2. 마이페이지 · 생활 관리
 -- ----------------------------------------------------------------------------
 
--- 사용자 설정: 내 정보 화면의 설정값(월세·월세 납부일·알림 수신). 사용자 한 명당 한 줄. 이름(닉네임)과 동네는 users 에 있습니다.
+-- 사용자 설정: 내 정보 화면의 설정값(월세·월세 납부일·입주한 달·계약 끝나는 달·알림 수신). 사용자 한 명당 한 줄. 이름(닉네임)과 동네는 users 에 있습니다.
 CREATE TABLE IF NOT EXISTS `user_settings` (
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '사용자 아이디',
   `rent_amount` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '월세 금액 — 만원 단위 (55 = 55만원)',
   `rent_day` TINYINT UNSIGNED NOT NULL DEFAULT 15 COMMENT '월세 납부일 — 매월 며칠 (1~31)',
+  `move_in_ym` CHAR(7) NULL COMMENT '입주한 달 — 오른쪽 패널의 "거주 N개월" 계산 (예: 2026-02)',
+  `contract_end_ym` CHAR(7) NULL COMMENT '계약 끝나는 달 — "계약 N개월 남음" 계산',
   `noti_on` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '알림 수신 여부 — 끄면 빨간 점·알림을 숨김',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '설정 수정 일시',
   PRIMARY KEY (`user_id`),
   CONSTRAINT `fk_user_settings_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자 설정: 내 정보 화면의 설정값(월세·월세 납부일·알림 수신).';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자 설정: 내 정보 화면의 설정값(월세·월세 납부일·입주한 달·계약 끝나는 달·알림 수신).';
 
 -- 할 일: 마이페이지 "할 일" 탭과 오른쪽 패널의 이번 주 할 일 목록. 체크하면 완료 처리되고, 홈 카드의 남은 개수와 진행 막대가 여기서 계산됩니다.
 CREATE TABLE IF NOT EXISTS `todos` (
@@ -427,7 +444,7 @@ CREATE TABLE IF NOT EXISTS `ai_messages` (
   `role` ENUM('USER','ASSISTANT') NOT NULL COMMENT '보낸 쪽 — 사용자 / AI',
   `content` TEXT NOT NULL COMMENT '메시지 내용',
   `card_type` ENUM('SPEND_SUMMARY') NULL COMMENT '카드 종류 — 카드로 보이는 답일 때',
-  `card_data` JSON NULL COMMENT '카드 내용 — 카드에 보이는 숫자 스냅샷',
+  `card_data` JSON NULL COMMENT '카드 내용 — 카드에 보이는 숫자. 예: {month,total,prevTotal,fixed,rows,top}',
   `attachment_id` BIGINT UNSIGNED NULL COMMENT '첨부 파일 아이디 — 사진 첨부(선택)',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
   PRIMARY KEY (`id`),
