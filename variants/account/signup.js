@@ -129,6 +129,8 @@
       if (first) form[first].focus();
       return;
     }
+    // 이용 정지 중인 계정과 같은 아이디·닉네임·휴대전화로는 재가입할 수 없음 (정지 기록: shared/zip-ban.js)
+    var proceed = function () {
     try {
       var st = JSON.parse(localStorage.getItem('zip-settings')) || {};
       st.name = form.nick.value.trim().slice(0, 12);
@@ -137,6 +139,12 @@
     var go = function () { location.href = NEXT; };
     if (window.ZipPassword) window.ZipPassword.set(form.pw.value, form.uid.value, { nick: form.nick.value.trim(), phone: form.phone.value }).then(go, go);   // 아이디·닉네임·휴대전화·비밀번호를 (해시로) 저장해 두면 내 정보에서 바꾸거나 아이디/비밀번호 찾기에서 본인 확인에 쓸 수 있음
     else go();
+    };
+    if (!window.ZipBan) return proceed();
+    window.ZipBan.checkSignup(form.nick.value.trim(), form.uid.value.trim(), form.phone.value).then(function (hit) {
+      if (hit) $('formError').textContent = '가입할 수 없어요. ' + window.ZipBan.message(hit);
+      else proceed();
+    });
   });
 
   refresh();

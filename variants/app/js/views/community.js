@@ -21,6 +21,12 @@ function rel(ts) {
   if (h < 24) return h + '시간 전';
   return Math.floor(h / 24) + '일 전';
 }
+// 내 계정이 이용 정지 중이면 안내를 띄우고 true (글쓰기·댓글·좋아요를 막는 데 씀. 정지 기록: shared/zip-ban.js)
+function blocked() {
+  var ban = window.ZipBan && window.ZipBan.meActive();
+  if (ban) alert(window.ZipBan.message(ban));
+  return !!ban;
+}
 // 글·좋아요·댓글 변경을 저장
 function savePosts() { store('zip-posts', state.posts); }
 
@@ -49,6 +55,7 @@ function renderPostDetail(post, box) {
   var like = el('button', 'pbtn' + (post.liked ? ' on' : ''), '♥ ' + post.likes);
   like.type = 'button';
   like.addEventListener('click', function () {
+    if (blocked()) return;
     post.liked = !post.liked;
     post.likes += post.liked ? 1 : -1;
     savePosts();
@@ -75,6 +82,7 @@ function renderPostDetail(post, box) {
     form.appendChild(inp); form.appendChild(btn);
     form.addEventListener('submit', function (e) {
       e.preventDefault();
+      if (blocked()) return;
       var v = inp.value.trim();
       if (!v) return;
       post.comments.push({ author: settings.name, text: v });
@@ -150,7 +158,7 @@ function renderPosts() {
     var act = el('div', 'post-actions');
     var like = el('button', 'pbtn' + (p.liked ? ' on' : ''), '♥ ' + p.likes);
     like.type = 'button';
-    like.addEventListener('click', function () { p.liked = !p.liked; p.likes += p.liked ? 1 : -1; savePosts(); renderPosts(); });
+    like.addEventListener('click', function () { if (blocked()) return; p.liked = !p.liked; p.likes += p.liked ? 1 : -1; savePosts(); renderPosts(); });
     var cm = el('button', 'pbtn', '💬 ' + p.comments.length);
     cm.type = 'button';
     cm.addEventListener('click', function () { openCmt[p.id] = !openCmt[p.id]; renderPosts(); });
@@ -177,6 +185,7 @@ function renderPosts() {
       form.appendChild(inp); form.appendChild(btn);
       form.addEventListener('submit', function (e) {
         e.preventDefault();
+        if (blocked()) return;
         var v = inp.value.trim();
         if (!v) return;
         p.comments.push({ author: settings.name, text: v });
@@ -191,6 +200,7 @@ function renderPosts() {
 // 글쓰기 폼: 새 글을 맨 위에 추가 (동네는 내 정보의 "우리 동네")
 $('postForm').addEventListener('submit', function (e) {
   e.preventDefault();
+  if (blocked()) return;
   var title = $('postTitle').value.trim(), body = $('postBody').value.trim();
   if (!title || !body) return;
   state.posts.unshift({ id: Date.now(), region: settings.region || HOME, cat: $('postCat').value, title: title, body: body, author: settings.name, mine: true, ts: Date.now(), likes: 0, liked: false, comments: [] });
