@@ -1,12 +1,26 @@
 # ZIP 데이터베이스 설계 (현재 프로그램 기준)
 
+> **2026-10-21 SQL 갱신**: 현재 정의는 `schema.sql`이 기준입니다. 기존 ERD PNG에는 아래 변경이 아직 반영되지 않았습니다.
+>
+> - 소셜 회원의 `users.login_id`에 NULL 허용. 일반 가입 아이디 필수·형식 검사는 서버에서 수행합니다.
+> - `post_attachments(post_id, file_id, sort_order)` 추가. `uploaded_files`를 게시글 첨부에도 사용합니다. 최대 5개·합계 2MB와 파일 소유권은 서버에서 검사합니다.
+> - `comments.updated_at` 추가, 쓰레기 배출 중복 키를 동네·요일·종류로 확장했습니다.
+> - 약관 3종의 제목·본문·버전을 React `frontend/src/features/legal/content.ts`와 통일했습니다. 버전은 `2026-10-18`입니다. 이전 버전의 동의 이력은 보존합니다.
+> - 월세 설정은 화면과 같은 **만원 단위**, 월별 납부 금액은 **원 단위**를 유지합니다.
+> - AI 사진은 현재 처리 후 보관하지 않습니다. 파일 표·AI 첨부 FK는 향후 저장 기능을 위한 구조이며 현재 사진을 영구 저장하라는 의미가 아닙니다. 실제 저장소 파일 삭제는 서버가 별도로 처리해야 합니다.
+>
+> **기존 DB 적용**: `schema.sql`의 CREATE TABLE IF NOT EXISTS는 기존 테이블을 변경하지 않습니다. 기존 34개 테이블 설계를 적용한 DB에는 `migrations/20261021_align_current_project.sql`을 **한 번만** 실행하세요. 새 DB에는 `schema.sql`만 실행합니다.
+>
+> **서버·프론트 연결 시 남은 작업**: 로그인 요청에 remember 전달 및 세션 정책 적용, 월별 월세·공과금 행의 중복 없는 생성(월 중 가입 포함), 과거 지출을 월별 저장 금액으로 계산, React 게시글 타입·API에 첨부파일 연결. DB BIGINT ID는 API에서 문자열로 반환합니다. 아래 기존 설명의 이메일 재설정 흐름은 과거 설명이며, 현재 React는 휴대전화 인증 후 재설정 토큰을 발급받는 방식입니다.
+
+
 지금 만들어 둔 화면과 기능(`variants/app`, `variants/account`, 시작 화면)이 **실제로 쓰는 데이터**를 기준으로 다시 설계한 DB 입니다.
 옛 설계(로그인·커뮤니티 / 생활 관리 / 공용·AI, 표 약 20개)는 아이디·휴대전화 인증, 약관 동의, 가계부, 신고·이용 제한, 지출 요약 카드 같은 지금 기능이 빠져 있어서 이 문서로 대체합니다.
 
 | 항목 | 내용 |
 |---|---|
 | DB 종류 | MySQL 8.0 이상 (InnoDB, 글자는 utf8mb4) |
-| 규모 | 표 **34개** + 집계용 VIEW **2개** |
+| 규모 | 표 **35개** + 집계용 VIEW **2개** |
 | 파일 | `schema.sql`(표 만들기 + 기본 데이터), `erd-1 ~ erd-5` PNG(그림), 이 문서(한글 설명) |
 | 만드는 법 | `mysql -u root -p < db/schema.sql` → `zip` 데이터베이스가 만들어짐 |
 
@@ -181,7 +195,7 @@
 | 이름 | 타입 | 키 | 한글 이름 | 설명 | NULL | 기본값 |
 |---|---|---|---|---|---|---|
 | `id` | BIGINT UNSIGNED | PK | 사용자 아이디 | 자동 증가 |  |  |
-| `login_id` | VARCHAR(16) | UK | 로그인 아이디 | 6~16자, 영문 소문자·숫자 |  |  |
+| `login_id` | VARCHAR(16) | UK | 로그인 아이디 | 일반 가입 필수, 소셜 가입 NULL 허용 | ○ |  |
 | `password_hash` | VARCHAR(100) |  | 비밀번호(해시) | 원문은 저장 안 함. 소셜 가입자는 비어 있음 | ○ |  |
 | `nickname` | VARCHAR(12) |  | 닉네임 | 2~12자, 앱 인사말에 쓰임 |  |  |
 | `email` | VARCHAR(100) | UK | 이메일 |  | ○ |  |
@@ -289,7 +303,7 @@
 |---|---|---|---|---|---|---|
 | `id` | BIGINT UNSIGNED | PK | 약관 아이디 | 자동 증가 |  |  |
 | `doc_type` | ENUM('SERVICE','PRIVACY','POLICY') |  | 약관 종류 | 이용약관 / 개인정보 처리방침 / 운영 정책 |  |  |
-| `version` | VARCHAR(20) |  | 약관 버전 | 예: 1.0 |  |  |
+| `version` | VARCHAR(20) |  | 약관 버전 | 예: 2026-10-18 |  |  |
 | `title` | VARCHAR(100) |  | 약관 제목 |  |  |  |
 | `content` | MEDIUMTEXT |  | 약관 본문 | 조항 전체 |  |  |
 | `consent_kind` | ENUM('AGREE','CONFIRM') |  | 받는 방식 | 동의(이용약관·운영정책) / 안내 확인(개인정보 처리방침) |  |  |
@@ -736,7 +750,7 @@ AI와의 대화 한 건(대화방). 홈의 "AI와 대화" 모달에서 시작한
 | `waste_type` | ENUM('GENERAL','RECYCLE','FOOD') |  | 배출 종류 | 일반쓰레기 / 재활용 / 음식물 |  |  |
 | `description` | VARCHAR(100) |  | 배출 안내 | 예: 저녁 6시 ~ 자정, 종량제 봉투 사용 |  |  |
 
-- 중복 불가: region_id + weekday
+- 중복 불가: region_id + weekday + waste_type
 - `region_id` 는 `regions.id` 를 가리키고, 지워질 때 **함께 삭제**
 
 #### `place_categories` — 장소 분류

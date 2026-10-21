@@ -569,6 +569,11 @@
               </label>
               <label>제목 <input type="text" id="postTitle" maxlength="60" required></label>
               <label>내용 <textarea id="postBody" maxlength="500" required></textarea></label>
+              <label>사진·파일 첨부
+                <input type="file" id="postAttachments" multiple>
+                <small class="attachment-hint">최대 5개, 합계 2MB까지 첨부할 수 있어요.</small>
+              </label>
+              <p class="form-msg err" id="postFormMsg" role="alert" hidden></p>
               <button class="btn-primary" type="submit">올리기</button>
             </form>
           </article>
