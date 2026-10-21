@@ -49,26 +49,34 @@ function members() {
   Object.keys(bans).forEach(get);
   return Object.keys(map).filter(function (k) { return k !== ME.nick; }).map(function (k) {
     var m = map[k], r = bans[k];
-    m.count = r ? r.count || 0 : 0; m.rec = r || null; m.active = isBanned(k);
+    m.count = r ? r.count || 0 : 0; m.warns = r ? r.warns || 0 : 0; m.rec = r || null; m.active = isBanned(k);
     return m;
   });
 }
 
-// 정지 걸기
-function doBan(nick, days, reason) { Ban.ban(nick, days, reason); }
-function daysText(d) { return d ? d + '일 정지' : '영구 정지'; }
+// 정지 걸기 또는 경고 주기 (days === 'warn' 이면 경고만)
+function act(nick, days, reason) { if (days === 'warn') Ban.warn(nick, reason); else Ban.ban(nick, days, reason); }
+function daysText(e) { return e.warn ? '경고' : e.days ? e.days + '일 정지' : '영구 정지'; }
+// 가입일 (시안에는 가입 기록이 없어서 닉네임으로 정한 고정 예시 날짜. 실제로는 users.created_at)
+function joinedAt(nick) {
+  var h = 0; for (var i = 0; i < nick.length; i++) h = (h * 31 + nick.charCodeAt(i)) >>> 0;
+  return new Date(2026, 9, 1).getTime() - (20 + h % 380) * 86400000;
+}
+function fmtDate(ts) { var d = new Date(ts); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 
-// ---- 확인창: 정지 기간·사유를 고르고 확인/취소. 취소하면 null, 확인하면 { days: null(정지 안 함) | 0(영구) | 1·3·5·10, reason } ----
+// ---- 확인창: 정지 기간·사유를 고르고 확인/취소. 취소하면 null, 확인하면 { days: null(조치 안 함) | 'warn'(경고) | 0(영구) | 1·3·5·10, reason } ----
 function dialog(o) {
   return new Promise(function (resolve) {
     $('mdTitle').textContent = o.title;
     $('mdMsg').textContent = o.msg;
     var sel = $('mdDays'); sel.textContent = '';
     function opt(v, t) { var x = el('option', null, t); x.value = v; sel.appendChild(x); }
-    if (o.allowNone) opt('none', '정지 안 함');
+    if (o.allowNone) opt('none', '조치 안 함');
+    opt('warn', '경고만 (정지 없음)');
     [1, 3, 5, 10].forEach(function (d) { opt(String(d), d + '일'); });
     opt('perm', '영구');
-    sel.value = o.allowNone ? 'none' : (o.defaultPerm ? 'perm' : '1');
+    sel.value = o.allowNone ? 'none' : (o.defaultPerm ? 'perm' : 'warn');
+    sel.parentNode.hidden = !!o.warnOnly;   // 경고 전용 창에서는 기간 선택을 숨김
     $('mdReason').value = '';
     $('mdOk').textContent = o.okText || '확인';
     $('modal').hidden = false;
@@ -79,7 +87,7 @@ function dialog(o) {
     }
     $('mdOk').onclick = function () {
       var v = sel.value;
-      close({ days: v === 'none' ? null : v === 'perm' ? 0 : Number(v), reason: $('mdReason').value.trim() });
+      close({ days: v === 'none' ? null : v === 'warn' ? 'warn' : v === 'perm' ? 0 : Number(v), reason: $('mdReason').value.trim() });
     };
     $('mdCancel').onclick = function () { close(null); };
     $('modal').onclick = function (e) { if (e.target === $('modal')) close(null); };
@@ -90,27 +98,27 @@ function dialog(o) {
 var tab = 'members', openId = null, openHist = null, selected = {};
 
 function renderStats() {
-  var ms = members(), cm = 0, act = 0, total = 0;
+  var ms = members(), cm = 0, actv = 0, total = 0, warns = 0;
   posts.forEach(function (p) { cm += (p.comments || []).length; });
-  ms.forEach(function (m) { if (m.active) act++; total += m.count; });
-  var items = [[ms.length, '전체 회원'], [act, '지금 정지 중'], [total, '누적 밴 횟수'], [posts.length, '게시글'], [cm, '댓글']];
+  ms.forEach(function (m) { if (m.active) actv++; total += m.count; warns += m.warns; });
+  var items = [[ms.length, '전체 회원'], [actv, '지금 정지 중'], [total, '누적 밴 횟수'], [warns, '누적 경고'], [posts.length, '게시글'], [cm, '댓글']];
   var box = $('stats'); box.textContent = '';
   items.forEach(function (it) { var s = el('div', 'stat'); s.appendChild(el('b', null, String(it[0]))); s.appendChild(el('span', null, it[1])); box.appendChild(s); });
 }
 
 // 지금 조건(검색·상태·밴 횟수·정렬)에 맞는 회원
 function filteredMembers() {
-  var q = $('mSearch').value.trim().toLowerCase(), st = $('mStatus').value, min = Number($('mMinBans').value) || 0;
+  var q = $('mSearch').value.trim().toLowerCase(), st = $('mStatus').value, min = Number($('mMinBans').value) || 0, minW = Number($('mMinWarns').value) || 0;
   var list = members().filter(function (m) {
     if (st === 'ok' && m.active) return false;
     if (st === 'ban' && !m.active) return false;
     if (st === 'temp' && !(m.active && !m.rec.perm)) return false;
     if (st === 'perm' && !(m.active && m.rec.perm)) return false;
-    if (m.count < min) return false;
+    if (m.count < min || m.warns < minW) return false;
     return !q || m.nick.toLowerCase().indexOf(q) >= 0 || m.uid.toLowerCase().indexOf(q) >= 0;
   });
-  var byBans = $('mSort').value === 'bans';
-  return list.sort(function (a, b) { return byBans ? (b.count - a.count) || (b.posts - a.posts) : (b.posts + b.cmts) - (a.posts + a.cmts); });
+  var sort = $('mSort').value;
+  return list.sort(function (a, b) { return sort === 'bans' ? (b.count - a.count) || (b.warns - a.warns) : sort === 'warns' ? (b.warns - a.warns) || (b.count - a.count) : (b.posts + b.cmts) - (a.posts + a.cmts); });
 }
 
 function selectedNicks() { return Object.keys(selected).filter(function (k) { return selected[k]; }); }
@@ -122,7 +130,7 @@ function renderMembers() {
   $('bulk').hidden = !picked.length;
   $('bulkCount').textContent = '선택 ' + picked.length + '명';
   $('mAll').checked = list.length > 0 && list.every(function (m) { return selected[m.nick]; });
-  if (!list.length) { var tr = el('tr'), td = el('td', 'empty', '해당하는 회원이 없습니다.'); td.colSpan = 9; tr.appendChild(td); body.appendChild(tr); return; }
+  if (!list.length) { var tr = el('tr'), td = el('td', 'empty', '해당하는 회원이 없습니다.'); td.colSpan = 10; tr.appendChild(td); body.appendChild(tr); return; }
   list.forEach(function (m) {
     var tr = el('tr');
     var ck = el('td'), cb = el('input'); cb.type = 'checkbox'; cb.checked = !!selected[m.nick];
@@ -130,36 +138,44 @@ function renderMembers() {
     ck.appendChild(cb); tr.appendChild(ck);
     tr.appendChild(el('td', null, m.nick));
     tr.appendChild(el('td', null, m.uid || '-'));
-    var kind = el('td'); kind.appendChild(el('span', 'badge', '이웃')); tr.appendChild(kind);
+    tr.appendChild(el('td', null, fmtDate(joinedAt(m.nick))));
     tr.appendChild(el('td', null, String(m.posts)));
     tr.appendChild(el('td', null, String(m.cmts)));
+    tr.appendChild(el('td', 'cnt' + (m.warns >= 3 ? ' hot' : ''), m.warns + '회'));
     tr.appendChild(el('td', 'cnt' + (m.count >= 3 ? ' hot' : ''), m.count + '회'));
     var s = el('td');
     s.appendChild(el('span', 'badge ' + (m.active ? (m.rec.perm ? 'ban' : 'temp') : 'ok'), m.active ? Ban.label(m.rec) : '정상'));
     if (m.active && !m.rec.perm) s.appendChild(el('div', 'hint', Ban.fmt(m.rec.until) + ' 해제'));
     tr.appendChild(s);
 
-    var act = el('td');
+    var actTd = el('td');
+    var wb = el('button', 'btn', '경고'); wb.type = 'button';
+    wb.addEventListener('click', function () {
+      dialog({ title: '"' + m.nick + '" 회원 경고', msg: '경고만 남기고 정지는 걸지 않습니다. 사유를 적어 주세요. 경고 횟수가 1회 늘어납니다.', okText: '경고하기', warnOnly: true }).then(function (r) {
+        if (!r) return; Ban.warn(m.nick, r.reason); renderAll();
+      });
+    });
+    actTd.appendChild(wb); actTd.appendChild(document.createTextNode(' '));
     var b = el('button', 'btn' + (m.active ? '' : ' danger'), m.active ? '정지 해제' : '정지'); b.type = 'button';
     b.addEventListener('click', function () {
       if (m.active) { Ban.unban(m.nick); renderAll(); return; }
-      dialog({ title: '"' + m.nick + '" 회원 정지', msg: '정지 기간과 사유를 정해 주세요. 정지 횟수가 1회 늘어납니다.', okText: '정지하기' }).then(function (r) {
-        if (!r) return; doBan(m.nick, r.days, r.reason); renderAll();
+      dialog({ title: '"' + m.nick + '" 회원 정지', msg: '정지 기간과 사유를 정해 주세요. 정지 횟수가 1회 늘어납니다. (경고만 고르면 정지 없이 경고 횟수만 늘어납니다)', okText: '확인' }).then(function (r) {
+        if (!r) return; act(m.nick, r.days, r.reason); renderAll();
       });
     });
-    act.appendChild(b); act.appendChild(document.createTextNode(' '));
+    actTd.appendChild(b); actTd.appendChild(document.createTextNode(' '));
     var h = el('button', 'btn', openHist === m.nick ? '기록 닫기' : '기록'); h.type = 'button';
     h.addEventListener('click', function () { openHist = openHist === m.nick ? null : m.nick; renderMembers(); });
-    act.appendChild(h);
-    tr.appendChild(act);
+    actTd.appendChild(h);
+    tr.appendChild(actTd);
     body.appendChild(tr);
 
     if (openHist === m.nick) {
-      var dr = el('tr', 'detail'), dc = el('td'); dc.colSpan = 9;
+      var dr = el('tr', 'detail'), dc = el('td'); dc.colSpan = 10;
       var hist = m.rec ? m.rec.history || [] : [];
       if (!hist.length) dc.appendChild(el('div', 'hint', '정지 기록이 없습니다.'));
       hist.slice().reverse().forEach(function (e, i) {
-        dc.appendChild(el('div', 'hist', (hist.length - i) + '회차 · ' + Ban.fmt(e.at) + ' · ' + daysText(e.days) + (e.reason ? ' · 사유: ' + e.reason : '')));
+        dc.appendChild(el('div', 'hist', (hist.length - i) + '번째 · ' + Ban.fmt(e.at) + ' · ' + daysText(e) + (e.reason ? ' · 사유: ' + e.reason : '')));
       });
       dr.appendChild(dc); body.appendChild(dr);
     }
@@ -180,10 +196,10 @@ function fillFilters() {
 // 글·댓글을 지울 때 작성자 정지 여부를 바로 묻는다
 function askDeleteAndBan(title, msg, author, doDelete) {
   var already = isBanned(author);
-  dialog({ title: title, msg: msg + ' 작성자 "' + author + '"' + (already ? '는 이미 정지 중입니다.' : ' 님도 정지할까요?'), allowNone: true, okText: '삭제' }).then(function (r) {
+  dialog({ title: title, msg: msg + ' 작성자 "' + author + '"' + (already ? '는 이미 정지 중입니다.' : ' 님께 경고나 정지를 줄까요?'), allowNone: true, okText: '삭제' }).then(function (r) {
     if (!r) return;
     doDelete();
-    if (r.days !== null) doBan(author, r.days, r.reason);
+    if (r.days !== null) act(author, r.days, r.reason);
     renderAll();
   });
 }
@@ -254,7 +270,7 @@ function renderAll() {
 document.querySelectorAll('#tabs button').forEach(function (b) {
   b.addEventListener('click', function () { tab = b.getAttribute('data-tab'); renderAll(); });
 });
-['mSearch', 'mStatus', 'mMinBans', 'mSort'].forEach(function (id) { $(id).addEventListener('input', renderMembers); });
+['mSearch', 'mStatus', 'mMinBans', 'mMinWarns', 'mSort'].forEach(function (id) { $(id).addEventListener('input', renderMembers); });
 ['pSearch', 'pCat', 'pRegion'].forEach(function (id) { $(id).addEventListener('input', renderPosts); });
 
 // 맨 위 체크박스: 지금 검색 결과 전체 선택/해제
@@ -270,7 +286,7 @@ $('bulkBan').addEventListener('click', function () {
   if (!targets.length) { alert('정지할 수 있는 회원이 없습니다. (이미 영구 정지 중)'); return; }
   dialog({ title: '선택한 ' + targets.length + '명 정지', msg: '선택한 회원 모두에게 같은 기간으로 정지를 겁니다. 각자 정지 횟수가 1회씩 늘어납니다.' , okText: '일괄 정지', defaultPerm: true }).then(function (r) {
     if (!r) return;
-    targets.forEach(function (n) { doBan(n, r.days, r.reason); });
+    targets.forEach(function (n) { act(n, r.days, r.reason); });
     selected = {}; renderAll();
   });
 });

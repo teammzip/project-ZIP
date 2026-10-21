@@ -4,7 +4,9 @@
  *   기간이 끝난 정지는 자동으로 풀리지만 횟수·이력은 남는다. (관리자가 "해제"해도 횟수는 그대로)
  * - 저장 키는 일부러 zip- 으로 시작하지 않는 'zipban-records' : 데이터 초기화·회원 탈퇴가 zip- 키를 모두 지우므로,
  *   정지당한 사람이 초기화해서 풀고 들어오는 일을 막기 위해서다.
- * - 저장 모양: { "닉네임": { nick, uid, phone, count, perm, until, history:[{at, days, reason}] } }
+ * - 경고(warn)는 정지 없이 기록만 남기는 조치다. 경고 횟수(warns)는 정지 횟수(count)와 따로 센다.
+ * - 저장 모양: { "닉네임": { nick, uid, phone, count(정지 횟수), warns(경고 횟수), perm, until, history:[{at, days, reason, warn}] } }
+ *   history 의 warn:true 는 경고, days 가 null 이면 영구 정지
  *   uid·phone 은 내 계정을 정지할 때만 채워진다. phone = "숫자만" 또는 { psalt, hash } (재가입 확인용)
  * 실제 서비스에서는 서버의 user_sanctions 표(조치 이력)로 대신한다. */
 (function () {
@@ -28,7 +30,8 @@
   }
   // 사용자에게 보여 줄 안내 문구
   function message(rec) {
-    var why = rec.history && rec.history.length && rec.history[rec.history.length - 1].reason;
+    var bans = (rec.history || []).filter(function (e) { return !e.warn; });
+    var why = bans.length && bans[bans.length - 1].reason;
     return '이용이 정지된 계정입니다. ' + (rec.perm ? '(영구 정지)' : '(' + fmt(rec.until) + ' 해제)') + (why ? ' 사유: ' + why : '');
   }
 
@@ -74,6 +77,13 @@
       r.perm = !days;
       r.until = days ? Date.now() + days * DAY : null;
       r.history.push({ at: Date.now(), days: days || null, reason: reason || '' });
+      all[nick] = r; write(all); return r;
+    },
+    // 경고 주기: 정지는 걸지 않고 경고 횟수와 이력만 남김
+    warn: function (nick, reason) {
+      var all = read(), r = all[nick] || { nick: nick, count: 0, perm: false, until: null, history: [] };
+      r.warns = (r.warns || 0) + 1;
+      r.history.push({ at: Date.now(), days: null, reason: reason || '', warn: true });
       all[nick] = r; write(all); return r;
     },
     // 정지 풀기 (횟수·이력은 남김)
