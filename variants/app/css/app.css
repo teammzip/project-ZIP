@@ -51,6 +51,10 @@
 
 /* 태블릿·모바일: 하단 메뉴(홈·마이페이지·사진·AI·동네) 위에 AI 버튼, 상단에 ☰ 전체 메뉴 버튼을 더함 */
 @media (max-width: 900px) {
+  .sidebar .logo {
+    display: none;
+  }
+
   /* 커뮤니티는 하단 메뉴에서 뺀다 (☰ 전체 메뉴에서 열 수 있음) */
   .sidebar .nav-item[data-view="community"] {
     display: none;
