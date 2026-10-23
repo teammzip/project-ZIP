@@ -10,6 +10,8 @@ export type User = {
   nickname: string
   address: string
   provider: 'email' | SocialProvider
+  /** 권한. ADMIN 만 관리자 화면(/admin)에 들어갈 수 있음 (DB users.role) */
+  role?: 'USER' | 'ADMIN'
   /** 약관·개인정보 수집에 동의한 시각 (ISO). 소셜 로그인으로 처음 들어온 사람은 null → 동의 화면(/welcome)으로 보냄 */
   agreedAt?: string | null
 }

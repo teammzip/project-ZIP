@@ -1,0 +1,456 @@
+/* 휴대폰 틀 + 앱 화면 그림 (크기는 font-size 로 한꺼번에 조절: 기본 260 × 540) */
+.phone {
+  position: relative;
+  width: 16.25em;
+  height: 33.75em;
+  padding: 0.6em;
+  border-radius: 2.4em;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(31, 36, 48, 0.08),
+    0 24px 60px rgba(31, 36, 48, 0.18);
+  font-size: 16px;
+  user-select: none;
+}
+
+.notch {
+  position: absolute;
+  top: 0.9em;
+  left: 50%;
+  z-index: 1;
+  width: 5em;
+  height: 1.1em;
+  border-radius: 1em;
+  background: #1f2430;
+  transform: translateX(-50%);
+}
+
+.screen {
+  height: 100%;
+  padding: 2.3em 0.9em 0.9em;
+  overflow: hidden;
+  border-radius: 1.9em;
+  background: var(--color-bg);
+  font-size: 0.7em;
+  color: var(--color-text);
+  text-align: left;
+}
+
+.date {
+  font-size: 0.85em;
+  color: var(--color-muted);
+}
+
+.hello {
+  margin-bottom: 0.9em;
+  font-size: 1.25em;
+}
+
+.title {
+  margin-bottom: 0.8em;
+  font-size: 1.25em;
+  font-weight: 800;
+}
+
+.subTitle {
+  margin: 1em 0 0.5em;
+  font-size: 1.05em;
+  font-weight: 700;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6em;
+}
+
+.stat {
+  display: grid;
+  gap: 0.25em;
+  min-height: 5.4em;
+  padding: 0.8em;
+  border-radius: 1em;
+  color: #fff;
+}
+
+.stat small {
+  font-size: 0.85em;
+  opacity: 0.9;
+}
+
+.stat b {
+  font-size: 1.15em;
+}
+
+.stat i {
+  height: 0.35em;
+  border-radius: 1em;
+  background: #fff;
+  box-shadow: 0 0 0 0.35em rgba(255, 255, 255, 0.25) inset;
+}
+
+.teal {
+  background: var(--color-teal);
+}
+
+.sky {
+  background: #45aaf2;
+}
+
+.pink {
+  background: var(--color-pink);
+}
+
+.purple {
+  background: var(--color-purple);
+}
+
+.card {
+  margin-top: 0.7em;
+  padding: 0.9em;
+  border-radius: 1em;
+  background: #fff;
+}
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6em;
+  height: 6.5em;
+  margin-top: 0.6em;
+}
+
+.bars span {
+  flex: 1;
+  border-radius: 0.4em 0.4em 0 0;
+  background: #e8ecfb;
+}
+
+.bars .barOn {
+  background: var(--color-primary);
+}
+
+/* 달력 */
+.cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.3em;
+  padding: 0.6em;
+  border-radius: 1em;
+  background: #fff;
+}
+
+.cal span {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 0.5em;
+  background: #f7f8fc;
+  font-size: 0.85em;
+}
+
+.cal span i {
+  position: absolute;
+  bottom: 0.2em;
+  width: 0.3em;
+  height: 0.3em;
+  border-radius: 50%;
+  background: var(--color-purple);
+}
+
+.cal .calSel {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.cal .calSel i {
+  background: #fff;
+}
+
+.cal .calEmpty {
+  background: transparent;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  margin-bottom: 0.4em;
+  padding: 0.65em 0.8em;
+  border-radius: 0.8em;
+  background: #fff;
+}
+
+.row small {
+  min-width: 2.8em;
+  color: var(--color-muted);
+}
+
+.rowTrash {
+  background: #fff3f6;
+}
+
+.check {
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+  border: 1.5px solid #b8bec9;
+  border-radius: 0.25em;
+}
+
+.checkOn {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.strike {
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+
+/* 가계부 */
+.donutRow {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  padding: 0.9em;
+  border-radius: 1em;
+  background: #fff;
+}
+
+.donut {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 7em;
+  height: 7em;
+  border-radius: 50%;
+  background: conic-gradient(var(--color-purple) 0 66%, var(--color-teal) 66% 79%, var(--color-primary) 79% 91%, #f5a623 91% 95%, #c9cdd8 95%);
+}
+
+.donut::after {
+  content: '';
+  position: absolute;
+  inset: 1.1em;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.donut b {
+  position: relative;
+  z-index: 1;
+  font-size: 1.1em;
+}
+
+.legend {
+  display: grid;
+  gap: 0.4em;
+  font-size: 0.9em;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.legend li::before {
+  content: '';
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.money {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  margin-bottom: 0.4em;
+  padding: 0.6em 0.8em;
+  border-radius: 0.8em;
+  background: #fff;
+}
+
+.money span:nth-child(2) {
+  flex: 1;
+}
+
+.day {
+  display: grid;
+  place-items: center;
+  width: 2.2em;
+  height: 2.2em;
+  border-radius: 0.6em;
+  background: #f3f4f9;
+  font-weight: 700;
+}
+
+/* AI */
+.bubble {
+  max-width: 85%;
+  margin-bottom: 0.6em;
+  padding: 0.7em 0.9em;
+  border-radius: 1em;
+  line-height: 1.5;
+}
+
+.bot {
+  border: 1px solid var(--color-line);
+  border-top-left-radius: 0.3em;
+  background: #fff;
+}
+
+.user {
+  margin-left: auto;
+  border-top-right-radius: 0.3em;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.photo {
+  display: grid;
+  place-items: center;
+  width: 8em;
+  height: 6em;
+  margin: 0 0 0.6em auto;
+  border-radius: 1em;
+  background: linear-gradient(135deg, #f8e7c9, #e9c58f);
+  font-size: 2.6em;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  margin-top: 0.4em;
+}
+
+.chips span {
+  padding: 0.45em 0.8em;
+  border: 1px solid #cfe0fb;
+  border-radius: 1em;
+  background: #fff;
+  font-weight: 700;
+}
+
+/* 커뮤니티 */
+.tabs {
+  display: flex;
+  gap: 0.4em;
+  margin-bottom: 0.8em;
+}
+
+.tabs span {
+  padding: 0.35em 0.8em;
+  border: 1px solid var(--color-line);
+  border-radius: 1em;
+  background: #fff;
+}
+
+.tabs .tabOn {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.post {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  margin-bottom: 0.5em;
+  padding: 0.6em;
+  border-radius: 0.9em;
+  background: #fff;
+}
+
+.thumb {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3.2em;
+  height: 3.2em;
+  border-radius: 0.8em;
+  font-size: 1.6em;
+}
+
+.postText {
+  display: grid;
+  gap: 0.2em;
+}
+
+.postText small {
+  color: var(--color-muted);
+}
+
+/* 지도 */
+.map {
+  position: relative;
+  height: 15em;
+  margin-bottom: 0.7em;
+  overflow: hidden;
+  border-radius: 1em;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px) 0 0 / 2.2em 2.2em,
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px) 0 0 / 2.2em 2.2em,
+    #eaf3e6;
+}
+
+.road1,
+.road2 {
+  position: absolute;
+  background: #fff;
+}
+
+.road1 {
+  top: 48%;
+  left: -10%;
+  width: 120%;
+  height: 1.4em;
+  transform: rotate(-8deg);
+}
+
+.road2 {
+  top: -10%;
+  left: 52%;
+  width: 1.2em;
+  height: 120%;
+  transform: rotate(12deg);
+}
+
+.pin {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 2.4em;
+  height: 2.4em;
+  border: 0.2em solid #fff;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0.3em 0.8em rgba(0, 0, 0, 0.18);
+  font-size: 1.1em;
+}
+
+.me {
+  position: absolute;
+  width: 1.2em;
+  height: 1.2em;
+  border: 0.25em solid #fff;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 0.6em rgba(47, 128, 237, 0.2);
+}
+
+.place {
+  display: grid;
+  gap: 0.2em;
+  margin-bottom: 0.4em;
+  padding: 0.6em 0.8em;
+  border-radius: 0.8em;
+  background: #fff;
+}
+
+.place small {
+  color: var(--color-muted);
+}

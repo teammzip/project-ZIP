@@ -13,7 +13,7 @@ export const TRASH: TrashDay[] = [
   null,
 ]
 
-export const trashIco = (t: string) => (t === '재활용' ? '♻️' : '🗑️')
+export const trashIco = (t: string) => (t.startsWith('재활용') ? '♻️' : '🗑️')
 
 export type Category = { name: string; color: string }
 

@@ -6,13 +6,14 @@ import { AuthModal } from '@/features/auth'
 import {
   BrandFooter,
   BrandHeader,
+  CinemaSection,
+  CloudSection,
   CtaSection,
+  FocusSection,
   HeroSection,
-  IntroSection,
   MobileIntro,
   ShowcaseSection,
   StoriesSection,
-  ValuesSection,
 } from '@/features/brand'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import styles from './StartPage.module.css'
@@ -54,9 +55,11 @@ export function StartPage() {
       <div className={styles.page}>
         <BrandHeader onLogin={openLogin} onSignup={goSignup} />
         <main>
+          {/* 오늘의집 브랜드 페이지 흐름: 첫 화면 → 카드 구름이 로고로 → 어두운 장면 → 한 줄씩 강조 → 앱 화면 → 이야기 */}
           <HeroSection />
-          <IntroSection />
-          <ValuesSection />
+          <CloudSection />
+          <CinemaSection />
+          <FocusSection />
           <ShowcaseSection />
           <StoriesSection />
           <CtaSection onLogin={openLogin} onSignup={goSignup} />

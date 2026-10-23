@@ -4,11 +4,10 @@ import { useNotis } from '@/features/life'
 import common from '@/styles/common.module.css'
 import styles from './MyLayout.module.css'
 
-/* 마이페이지: 할 일 | 일정 | 가계부 | 알림 | 내 정보 를 위쪽 탭으로 오감. 탭마다 주소가 따로 있음 (/my/todo 등) */
+/* 마이페이지: 일정 | 가계부 | 알림 | 내 정보 를 위쪽 탭으로 오감 (할 일은 일정에 합쳐짐). 탭마다 주소가 따로 있음 */
 export function MyLayout() {
   const { showDot } = useNotis()
   const tabs: TabItem[] = [
-    { to: '/my/todo', label: '할 일' },
     { to: '/my/calendar', label: '일정' },
     { to: '/my/budget', label: '가계부' },
     {
@@ -25,7 +24,7 @@ export function MyLayout() {
   return (
     <div className={styles.wrap}>
       <h1 className={common.pageTitle}>
-        마이페이지 <small>할 일 · 일정 · 가계부 · 알림 · 내 정보</small>
+        마이페이지 <small>일정 · 가계부 · 알림 · 내 정보</small>
       </h1>
       <TabNav items={tabs} label="마이페이지 메뉴" />
       <Outlet />

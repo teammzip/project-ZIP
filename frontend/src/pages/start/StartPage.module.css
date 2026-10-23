@@ -1,4 +1,4 @@
 .page {
-  background: linear-gradient(180deg, rgb(229, 255, 255) 0, #fff 100vh);
+  background: #fff;
   overflow-x: clip;
 }

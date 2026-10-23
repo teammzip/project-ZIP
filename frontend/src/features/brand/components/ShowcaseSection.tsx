@@ -1,59 +1,49 @@
 import { motion, useScroll, useTransform } from 'motion/react'
 import { useRef } from 'react'
+import { Reveal } from '@/components/ui'
+import { cx } from '@/lib/cx'
+import { SHOWCASE_ROWS, type ShowcaseRow } from '../content'
+import { Phone } from './Phone'
 import { Lines } from './SectionHead'
-import { SHOWCASE } from '../content'
 import styles from './ShowcaseSection.module.css'
 
-/** 스크롤하면 작은 카드가 화면을 꽉 채우도록 커지면서 앱 홈 화면 미리보기가 나타남
- * TODO: 실제 앱 화면 캡처(또는 영상)가 생기면 MockDashboard 대신 넣기 */
+/** 회색 판 위 휴대폰 두 대(앱 화면) + 큰 제목과 설명. 줄마다 좌우를 바꿔 가며 (사용자가 보내 준 참고 이미지 구성) */
 export function ShowcaseSection() {
-  const ref = useRef<HTMLElement>(null)
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end end'] })
-  const scale = useTransform(scrollYProgress, [0, 0.7], [0.72, 1])
-  const radius = useTransform(scrollYProgress, [0, 0.7], [48, 0])
-  const textY = useTransform(scrollYProgress, [0.3, 0.8], [40, 0])
-  const textOpacity = useTransform(scrollYProgress, [0.3, 0.8], [0, 1])
-
   return (
-    <section ref={ref} className={styles.section}>
-      <div className={styles.sticky}>
-        <motion.div className={styles.stage} style={{ scale, borderRadius: radius }}>
-          <motion.div className={styles.copy} style={{ y: textY, opacity: textOpacity }}>
-            <p className={styles.kicker}>{SHOWCASE.kicker}</p>
-            <h2 className={styles.title}>
-              <Lines text={SHOWCASE.title} />
-            </h2>
-          </motion.div>
-          <MockDashboard />
-        </motion.div>
-      </div>
+    <section className={styles.section}>
+      {SHOWCASE_ROWS.map((row, i) => (
+        <Row key={row.title} row={row} flip={i % 2 === 1} />
+      ))}
     </section>
   )
 }
 
-function MockDashboard() {
+function Row({ row, flip }: { row: ShowcaseRow; flip: boolean }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
+  // 두 휴대폰이 서로 다른 속도로 움직여 입체감
+  const y1 = useTransform(scrollYProgress, [0, 1], [80, -40])
+  const y2 = useTransform(scrollYProgress, [0, 1], [-20, 60])
+
   return (
-    <div className={styles.mock} aria-hidden="true">
-      <p className={styles.mockHello}>
-        안녕하세요, <b>지기</b>님
-      </p>
-      <div className={styles.mockGrid}>
-        <div className={styles.mockCard}>
-          <span>📅 오늘 할 일</span>
-          <b>3개 남음</b>
-        </div>
-        <div className={styles.mockCard}>
-          <span>💸 월세</span>
-          <b>D-3</b>
-        </div>
-        <div className={styles.mockCard}>
-          <span>🗑️ 오늘 배출</span>
-          <b>플라스틱</b>
-        </div>
-        <div className={styles.mockCard}>
-          <span>🤖 AI 도우미</span>
-          <b>사진으로 물어보기</b>
-        </div>
+    <div ref={ref} className={cx(styles.row, flip && styles.flip)}>
+      <Reveal className={styles.panel} y={48}>
+        <motion.div className={cx(styles.phoneWrap, styles.p1)} style={{ y: y1 }}>
+          <Phone screen={row.screens[0]} />
+        </motion.div>
+        <motion.div className={cx(styles.phoneWrap, styles.p2)} style={{ y: y2 }}>
+          <Phone screen={row.screens[1]} />
+        </motion.div>
+      </Reveal>
+      <div className={styles.copy}>
+        <Reveal>
+          <h2 className={styles.title}>{row.title}</h2>
+        </Reveal>
+        <Reveal delay={0.1}>
+          <p className={styles.body}>
+            <Lines text={row.body} />
+          </p>
+        </Reveal>
       </div>
     </div>
   )

@@ -7,13 +7,13 @@ import { useNotis } from '../derive'
 import { useLifeStore } from '../store'
 import styles from './life.module.css'
 
-/** 알림 화면: 전체 | 안 읽음, 누르면 읽음, 모두 읽음 */
+/** 알림 화면: 전체 | 안 읽음 | 읽음, 누르면 읽음 처리 후 '읽음' 보기로, 모두 읽음 (팀 시안과 같음) */
 export function NotiCenter() {
   const { notis, notiRead, unread } = useNotis()
   const notiOn = useLifeStore((s) => s.settings.notiOn)
   const markRead = useLifeStore((s) => s.markRead)
-  const [mode, setMode] = useState<'all' | 'unread'>('all')
-  const items = mode === 'unread' ? notis.filter((n) => !notiRead[n.id]) : notis
+  const [mode, setMode] = useState<'all' | 'unread' | 'read'>('all')
+  const items = mode === 'unread' ? notis.filter((n) => !notiRead[n.id]) : mode === 'read' ? notis.filter((n) => notiRead[n.id]) : notis
 
   return (
     <Card
@@ -31,6 +31,7 @@ export function NotiCenter() {
             options={[
               { value: 'all', label: '전체' },
               { value: 'unread', label: '안 읽음' },
+              { value: 'read', label: '읽음' },
             ]}
           />
           <Button variant="line" onClick={() => markRead(notis.map((n) => n.id))} disabled={unread === 0}>
@@ -47,7 +48,10 @@ export function NotiCenter() {
       {items.map((n) => {
         const isUnread = !notiRead[n.id]
         return (
-          <button key={n.id} type="button" className={cx(common.noti, styles.notiBtn, isUnread && styles.unread)} onClick={() => markRead([n.id])}>
+          <button key={n.id} type="button" className={cx(common.noti, styles.notiBtn, isUnread && styles.unread)} onClick={() => {
+              markRead([n.id])
+              setMode('read')
+            }}>
             <div className={common.notiIco}>{n.ico}</div>
             <div className={common.notiText}>
               <b>{n.t}</b>
@@ -59,7 +63,7 @@ export function NotiCenter() {
           </button>
         )
       })}
-      {!items.length && <p className={common.empty}>알림이 없어요.</p>}
+      {!items.length && <p className={common.empty}>{mode === 'read' ? '읽은 알림이 없어요.' : '알림이 없어요.'}</p>}
     </Card>
   )
 }

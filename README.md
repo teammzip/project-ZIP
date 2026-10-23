@@ -10,12 +10,18 @@
 ## 바로 실행하기
 
 **실제 앱 (React)**: 앞으로 계속 만들어 갈 쪽이에요.
+
+준비물: **Node.js 22** (20.19 이상이면 돼요). 터미널에서 `node -v`로 확인하고, 낮으면 [nodejs.org](https://nodejs.org)에서 LTS를 설치하세요.
+
 ```bash
-cd frontend
-npm install      # 처음 한 번만
-npm run dev      # → http://localhost:3000
+git clone https://github.com/teammzip/project-ZIP.git   # 처음 한 번만 (이미 받았으면 git pull)
+cd project-ZIP/frontend
+npm install      # 처음 받았을 때, package.json 이 바뀌었을 때
+npm run dev      # → 브라우저에서 http://localhost:3000
 ```
-데모 계정 `zipdemo` / `zip12345` 로 바로 둘러볼 수 있어요. 자세한 내용은 [frontend/README.md](frontend/README.md)를 보세요.
+- 끌 때는 터미널에서 `Ctrl + C`
+- 데모 계정 `zipdemo` / `zip12345` 로 바로 둘러볼 수 있어요. 서버·DB 없이 동작해요.
+- 자세한 내용은 [frontend/README.md](frontend/README.md)를 보세요.
 
 **HTML 시안 (참고용)**: VS Code의 `Live Server`(Go Live)로 `compare.html`을 열면 위쪽 버튼으로 화면을 골라 볼 수 있어요.
 파일을 더블클릭해서 열면 동작하지 않아요.
@@ -44,7 +50,8 @@ compare.html   시안을 버튼으로 골라 보는 미리보기 (개발용)
 | 회원가입 · 로그인 · 아이디/비밀번호 찾기 · 탈퇴 (화면 동작) | 실제 인증 (지금은 가짜 API) |
 | PC · 모바일 화면, 모바일 인트로 | 실제 AI 연동 |
 | 이용약관 · 개인정보 처리방침 (초안) | 약관 법률 검토, `[ ]` 칸 채우기 |
-| DB 설계 (표 34개 + 집계 VIEW 2개, MySQL 8, `db/`) | `frontend/API.md`와 DB 맞추기 (찾기·가입 흐름 정하기) |
+| DB 설계 (표 34개 + 집계 VIEW 2개, MySQL 8, `db/`) | `frontend/API.md`와 DB 맞추기 (찾기·가입 흐름, 할 일→일정 합치기) |
+| 관리자 화면 · 이용 정지 (React `/admin`, 시안 `variants/admin`) | 관리자 기능을 서버로 옮기기 |
 
 ---
 

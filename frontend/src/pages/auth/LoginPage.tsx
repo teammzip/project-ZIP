@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useRedirectAfterAuth } from '@/app/useRedirectAfterAuth'
-import { demoAccount, LoginForm, SocialLoginButtons } from '@/features/auth'
+import { demoAccount, demoAdmin, LoginForm, SocialLoginButtons } from '@/features/auth'
 import styles from './AuthPage.module.css'
 
 export function LoginPage() {
@@ -23,6 +23,7 @@ export function LoginPage() {
       {demoAccount && (
         <p className={styles.mockNote}>
           가짜 API 모드 · 데모 계정 {demoAccount.username} (또는 {demoAccount.email}) / {demoAccount.password}
+          {demoAdmin && ` · 관리자 ${demoAdmin.username} / ${demoAdmin.password}`}
         </p>
       )}
     </>

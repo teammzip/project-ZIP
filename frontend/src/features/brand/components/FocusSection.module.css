@@ -1,0 +1,101 @@
+.section {
+  position: relative;
+  background: #fff;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 40px;
+  width: min(1160px, 100%);
+  height: 100dvh;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+.lines {
+  display: grid;
+  gap: 14px;
+}
+
+.lines li {
+  font-size: clamp(24px, 2.6vw, 40px);
+  white-space: nowrap;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #dfe2e8;
+  transition: color 0.35s ease;
+}
+
+.lines .on {
+  color: var(--color-text);
+}
+
+.lines .last.on {
+  color: var(--color-primary);
+}
+
+/* ---------- 겹친 카드 ---------- */
+.stack {
+  position: relative;
+  justify-self: center;
+  width: 420px;
+  height: 520px;
+}
+
+.back,
+.front {
+  position: absolute;
+  inset: 0;
+  border-radius: 28px;
+}
+
+.back {
+  box-shadow: 0 16px 40px rgba(31, 36, 48, 0.08);
+  transition: background 0.4s ease;
+}
+
+.back1 {
+  transform: rotate(6deg) translate(18px, 6px);
+}
+
+.back2 {
+  transform: rotate(-7deg) translate(-16px, 10px);
+  opacity: 0.8;
+}
+
+.front {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(31, 36, 48, 0.16);
+}
+
+.phone {
+  margin-top: 70px;
+  font-size: 15px;
+}
+
+.caption {
+  position: absolute;
+  bottom: 28px;
+  left: 28px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(31, 36, 48, 0.82);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+
+@media (max-width: 1100px) {
+  .stack {
+    width: 360px;
+    height: 460px;
+  }
+}

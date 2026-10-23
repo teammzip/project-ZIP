@@ -1,16 +1,22 @@
 /* 처음 열었을 때 보여줄 예시 기록 (기존 시안 variants/app/js/core/state.js, data/demo.js 와 같은 내용).
  * "오늘" 기준으로 만들어지고, 데이터 초기화하면 다시 생깁니다. */
 import { dateOfMonthsAgo, dayOffset } from '@/lib/date'
-import type { Bill, CalEvent, MoneyRecord, Todo } from '../types'
+import { todayStr } from '@/lib/date'
+import type { Bill, CalEvent, MoneyRecord } from '../types'
 
-export const seedTodos = (): Todo[] => [
-  { id: 1, text: '임박 재료 소진하기', done: false },
-  { id: 2, text: '욕실 청소', done: true },
-  { id: 3, text: '바닥 청소', done: true },
-  { id: 4, text: '쓰레기통 비우기', done: true },
-  { id: 5, text: '수도요금 납부', done: false },
-  { id: 6, text: '재활용 분리배출', done: false },
+/** 예전 "할 일" 예시: 오늘 날짜의 일정으로 들어감 (팀 시안과 같은 내용) */
+const TODO_SEED: Array<[number, string, boolean]> = [
+  [1, '임박 재료 소진하기', false],
+  [2, '욕실 청소', true],
+  [3, '바닥 청소', true],
+  [4, '쓰레기통 비우기', true],
+  [5, '수도요금 납부', false],
+  [6, '재활용 분리배출', false],
 ]
+
+/** 예전에 따로 저장하던 할 일 → 오늘 날짜 일정 (기록이 사라지지 않게) */
+export const todosToEvents = (todos: Array<{ id: number; text: string; done: boolean }>): CalEvent[] =>
+  todos.filter((t) => t?.text?.trim()).map((t) => ({ id: `todo-${t.id}`, date: todayStr(), time: '', title: t.text, done: !!t.done }))
 
 export const seedBills = (): Bill[] => [
   { id: 1, name: '가스', amount: 28000, paid: true },
@@ -26,7 +32,10 @@ export function seedEvents(): CalEvent[] {
     [6, '18:30', '친구 저녁 약속'], [9, '', '교통카드 충전'], [13, '11:00', '이사 간 친구 집들이'],
     [18, '', '관리비 정산 확인'], [24, '20:00', '온라인 스터디'],
   ]
-  return rows.map(([off, time, title], i) => ({ id: 3000 + i, date: dayOffset(off), time, title }))
+  return [
+    ...rows.map(([off, time, title], i) => ({ id: 3000 + i, date: dayOffset(off), time, title, done: false })),
+    ...todosToEvents(TODO_SEED.map(([id, text, done]) => ({ id, text, done }))),
+  ]
 }
 
 // 달마다 조금씩 다르게 보이도록 쓰는 값 (1달 전, 2달 전, ... 순서)
