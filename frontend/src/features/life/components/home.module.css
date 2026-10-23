@@ -97,9 +97,13 @@
 }
 
 .statSub {
+  max-width: 100%;
   margin-top: 8px;
+  overflow: hidden;
   font-size: 12px;
   opacity: 0.95;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------- 월별 수입 막대 ---------- */

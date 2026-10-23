@@ -1,106 +1,67 @@
-/* 섹션은 화면 2배 높이, 안쪽은 화면에 고정된 채로 커짐 */
 .section {
-  height: 200vh;
+  display: grid;
+  gap: 140px;
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: 160px 32px;
+  background: #fff;
 }
 
-.sticky {
-  position: sticky;
-  top: 0;
+.row {
   display: grid;
-  place-items: center;
-  height: 100dvh;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 64px;
+}
+
+.flip .panel {
+  order: 2;
+}
+
+/* 회색 판: 휴대폰 아래쪽은 판 밖으로 살짝 잘림 */
+.panel {
+  position: relative;
+  height: 520px;
   overflow: hidden;
+  border-radius: 20px;
+  background: #eef0f4;
 }
 
-.stage {
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: 40px;
-  width: 100%;
-  height: 100%;
-  padding: 32px;
-  background: linear-gradient(160deg, #2f80ed 0%, #1d4fa0 100%);
-  color: #fff;
-  overflow: hidden;
-}
-
-.copy {
-  display: grid;
-  gap: 12px;
-  text-align: center;
-}
-
-.kicker {
+.phoneWrap {
+  position: absolute;
   font-size: 15px;
-  font-weight: 700;
-  color: #cfe3ff;
+}
+
+.p1 {
+  top: 70px;
+  left: 9%;
+}
+
+.p2 {
+  top: 8px;
+  right: 9%;
 }
 
 .title {
-  font-size: clamp(30px, 5vw, 56px);
+  font-size: clamp(32px, 3.2vw, 48px);
   font-weight: 800;
   line-height: 1.25;
   letter-spacing: -0.03em;
 }
 
-.mock {
-  width: min(720px, 100%);
-  padding: 24px;
-  border-radius: 28px;
-  background: var(--color-bg);
-  color: var(--color-text);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+.body {
+  margin-top: 26px;
+  font-size: clamp(16px, 1.4vw, 20px);
+  line-height: 1.9;
+  color: #3c4254;
 }
 
-.mockHello {
-  margin-bottom: 16px;
-  font-size: 18px;
-}
-
-.mockGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.mockCard {
-  display: grid;
-  gap: 8px;
-  padding: 18px;
-  border-radius: 18px;
-  background: #fff;
-}
-
-.mockCard span {
-  font-size: 14px;
-  color: var(--color-muted);
-}
-
-.mockCard b {
-  font-size: 20px;
-}
-
-@media (max-width: 900px) {
-  .section {
-    height: 160vh;
+@media (max-width: 1100px) {
+  .row {
+    gap: 36px;
   }
 
-  .stage {
-    padding: 24px 16px;
-    gap: 24px;
-  }
-
-  .mock {
-    padding: 16px;
-    border-radius: 20px;
-  }
-
-  .mockCard {
-    padding: 14px;
-  }
-
-  .mockCard b {
-    font-size: 16px;
+  .phoneWrap {
+    font-size: 13px;
   }
 }

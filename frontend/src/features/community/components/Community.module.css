@@ -110,12 +110,79 @@
 }
 
 .cmtItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   word-break: break-word;
 }
 
-.cmtItem b {
-  margin-right: 6px;
+.cmtText {
+  flex: 1;
+  min-width: 0;
+}
+
+.cmtActions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.pbtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.banNotice {
+  margin-bottom: 12px;
+  background: #fff0f3;
+  color: var(--color-pink);
+}
+
+.editTitle {
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.grow {
+  flex: 1;
+}
+
+/* ---------- 첨부 ---------- */
+.attachments {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.attachment {
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 12px;
+}
+
+.attachment img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.attachment a {
+  overflow: hidden;
+  color: var(--color-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------- 홈 꿀팁 카드 ---------- */

@@ -1,0 +1,69 @@
+/* 어두운 화면: 화면 3.4장 길이 동안 가운데 고정 */
+.section {
+  position: relative;
+  height: 340vh;
+  background: #000;
+}
+
+.sticky {
+  position: sticky;
+  top: 0;
+  display: grid;
+  place-items: center;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.card {
+  position: relative;
+  overflow: hidden;
+  background: #0d1424;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 70%;
+}
+
+.dim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(5, 10, 25, 0.82), rgba(5, 10, 25, 0.96));
+}
+
+.robot {
+  position: absolute;
+  right: 8%;
+  bottom: 10%;
+  width: clamp(120px, 14vw, 220px);
+  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.5)) brightness(0.92);
+}
+
+.line {
+  position: absolute;
+  top: 50%;
+  left: 7%;
+  margin-top: -1.3em;
+  font-size: clamp(30px, 3.6vw, 52px);
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.03em;
+  color: #fff;
+}
+
+.final {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  font-size: clamp(54px, 7vw, 108px);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+  text-align: center;
+  color: #fff;
+}

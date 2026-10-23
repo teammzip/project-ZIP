@@ -1,3 +1,4 @@
+import { banMessage, findActiveBan } from '@/features/moderation'
 import { readJSON, writeJSON } from '@/lib/storage'
 import type { AuthApi, AuthResponse, SocialProvider, User } from '../types'
 
@@ -19,6 +20,21 @@ const DEMO: MockAccount = {
   ...DEMO_ACCOUNT,
   address: '서울시 마포구 합정동',
   provider: 'email',
+  role: 'USER',
+  agreedAt: '2026-10-18T00:00:00.000Z',
+}
+
+/** 관리자 데모 계정: 관리자 화면(/admin)을 둘러볼 때 (가짜 API 모드에서만 있음) */
+export const ADMIN_ACCOUNT = { username: 'zipadmin', password: 'admin1234!' }
+const ADMIN: MockAccount = {
+  id: 'admin',
+  ...ADMIN_ACCOUNT,
+  email: 'admin@zip.com',
+  nickname: '관리자',
+  phone: '010-0000-0000',
+  address: '',
+  provider: 'email',
+  role: 'ADMIN',
   agreedAt: '2026-10-18T00:00:00.000Z',
 }
 
@@ -27,7 +43,7 @@ const loadAccounts = () => {
   const list = readJSON<MockAccount[]>(USERS_KEY) ?? []
   // 데모 계정은 저장된 게 있으면 그걸 씀 (비밀번호를 바꿨을 수 있어서). 예전 형식(아이디 없음)이면 새로
   const saved = list.find((a) => a.id === DEMO.id && a.username)
-  return [saved ?? DEMO, ...list.filter((a) => a.id !== DEMO.id)]
+  return [saved ?? DEMO, list.find((a) => a.id === ADMIN.id) ?? ADMIN, ...list.filter((a) => a.id !== DEMO.id && a.id !== ADMIN.id)]
 }
 const saveAccounts = (list: MockAccount[]) => writeJSON(USERS_KEY, list)
 
@@ -56,6 +72,9 @@ export const mockAuthApi: AuthApi = {
     const id = loginId.trim().toLowerCase()
     const account = loadAccounts().find((a) => a.email === id || a.username === id)
     if (!account || account.password !== password) throw new Error('아이디(이메일) 또는 비밀번호가 맞지 않아요.')
+    // 이용 정지 중이면 로그인 막기 (실제로는 서버가 user_sanctions 로 확인)
+    const ban = findActiveBan({ nicks: [account.nickname], uid: account.username })
+    if (ban) throw new Error(banMessage(ban))
     currentId = account.id
     return toResponse(account)
   },
@@ -79,6 +98,9 @@ export const mockAuthApi: AuthApi = {
     if (accounts.some((a) => a.username === req.username)) throw new Error('이미 쓰고 있는 아이디예요.')
     if (accounts.some((a) => a.email === email)) throw new Error('이미 가입된 이메일이에요.')
     if (!req.phoneVerificationToken) throw new Error('휴대전화 인증을 해 주세요.')
+    // 정지 중인 계정과 같은 닉네임 · 아이디 · 휴대전화로는 재가입 못 함
+    const ban = findActiveBan({ nicks: [req.nickname], uid: req.username, phone: req.phone })
+    if (ban) throw new Error(`가입할 수 없어요. ${banMessage(ban)}`)
     const account: MockAccount = {
       id: crypto.randomUUID(),
       username: req.username,
@@ -88,6 +110,7 @@ export const mockAuthApi: AuthApi = {
       phone: req.phone,
       address: req.address,
       provider: 'email',
+      role: 'USER',
       agreedAt: new Date().toISOString(),
     }
     saveAccounts([...accounts, account])

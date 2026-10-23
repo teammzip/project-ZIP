@@ -8,10 +8,6 @@
   margin-top: 14px;
 }
 
-.subHead {
-  margin: 18px 0 10px;
-  font-size: 17px;
-}
 
 /* 테두리 버튼처럼 보이는 링크 */
 .lineLink {
@@ -33,88 +29,15 @@
   margin-top: 0;
 }
 
-/* ---------- 할 일 ---------- */
-.todo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #f7f8fc;
-  cursor: pointer;
-}
 
-.todo span {
-  flex: 1;
-  min-width: 0;
-  font-size: 14px;
-  word-break: break-all;
-}
 
-.done span {
-  color: var(--color-muted);
-  text-decoration: line-through;
-}
 
-.addRow {
-  margin-top: 12px;
-}
 
-/* ---------- 쓰레기 배출 ---------- */
-.weekRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 6px;
-  padding: 10px 12px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  background: #f7f8fc;
-}
 
-.weekToday {
-  border-color: #ffd3dc;
-  background: #fff0f3;
-}
 
-.dow {
-  width: 28px;
-  font-weight: 700;
-}
 
-.weekItem {
-  flex: 1;
-  font-size: 14px;
-}
 
-.weekItem small {
-  display: block;
-  font-size: 12px;
-  color: var(--color-muted);
-}
 
-.todayBox {
-  padding: 14px;
-  border-radius: 12px;
-  background: #fff0f3;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.todayBox b {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 18px;
-}
-
-.tipList {
-  padding-left: 18px;
-  list-style: disc;
-  font-size: 13px;
-  line-height: 1.8;
-  color: #3c4254;
-}
 
 /* ---------- 고정 지출 ---------- */
 .fixedSum {
@@ -428,7 +351,7 @@
 }
 
 .search {
-  margin-bottom: 10px;
+  margin: 12px 0 4px;
 }
 
 .evList {
@@ -468,6 +391,24 @@
 .evEdit:hover {
   background: #eaf2fe;
   color: var(--color-primary);
+}
+
+.evDone .evName {
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+
+/* 쓰레기 배출: 읽기 전용 정기 일정 */
+.evTrash {
+  flex-wrap: wrap;
+  background: #fff6f8;
+}
+
+.evDetail {
+  flex-basis: 100%;
+  padding-left: 72px;
+  font-size: 12px;
+  color: var(--color-muted);
 }
 
 .evEditing {

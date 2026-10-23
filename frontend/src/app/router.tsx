@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { AccountLayout } from '@/components/layout/AccountLayout'
 import { AuthLayout } from '@/components/layout/AuthLayout'
+import { AdminPage } from '@/pages/admin/AdminPage'
 import { AiPage } from '@/pages/ai/AiPage'
 import { FindPage } from '@/pages/auth/FindPage'
 import { LoginPage } from '@/pages/auth/LoginPage'
@@ -22,9 +23,6 @@ import { MyLayout } from '@/pages/my/MyLayout'
 import { NotiPage } from '@/pages/my/NotiPage'
 import { SettingsPage } from '@/pages/my/SettingsPage'
 import { SpendPage } from '@/pages/my/SpendPage'
-import { TodoPage } from '@/pages/my/TodoPage'
-import { TrashPage } from '@/pages/my/TrashPage'
-import { WeekTodoPage } from '@/pages/my/WeekTodoPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { PhotoPage } from '@/pages/photo/PhotoPage'
 import { StartPage } from '@/pages/start/StartPage'
@@ -59,6 +57,8 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
+      // 관리자 화면: 앱 틀 없이 전체 화면 (관리자 계정만, AdminPage 가 확인)
+      { path: '/admin', element: <AdminPage /> },
       // 소셜 첫 가입: 약관 동의 + 주소 입력
       { element: <AuthLayout />, children: [{ path: '/welcome', element: <WelcomePage /> }] },
       {
@@ -73,15 +73,9 @@ export const router = createBrowserRouter([
             path: '/my',
             element: <MyLayout />,
             children: [
-              { index: true, element: <Navigate to="todo" replace /> },
-              {
-                path: 'todo',
-                element: <TodoPage />,
-                children: [
-                  { index: true, element: <WeekTodoPage /> },
-                  { path: 'trash', element: <TrashPage /> },
-                ],
-              },
+              { index: true, element: <Navigate to="calendar" replace /> },
+              // 할 일 · 쓰레기 배출은 일정으로 합쳐짐 (예전 주소로 와도 일정으로)
+              { path: 'todo/*', element: <Navigate to="/my/calendar" replace /> },
               { path: 'calendar', element: <CalendarPage /> },
               {
                 path: 'budget',

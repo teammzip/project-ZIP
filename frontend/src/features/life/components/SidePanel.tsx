@@ -1,12 +1,10 @@
-import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
-import { Button } from '@/components/ui'
 import { cx } from '@/lib/cx'
-import { DOW, monthKeyOf } from '@/lib/date'
+import { monthKeyOf } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
-import common from '@/styles/common.module.css'
-import { TRASH, trashIco } from '../data/catalog'
-import { monthsBetween, nextRentDate } from '../derive'
+import { trashIco } from '../data/catalog'
+import { dayWord, monthsBetween, nextRentDate, nextTrashDay } from '../derive'
 import { useLifeStore } from '../store'
 import styles from './SidePanel.module.css'
 
@@ -18,30 +16,17 @@ type Props = {
   className?: string
 }
 
-/** 오른쪽 패널: 프로필 · 월세/거주/계약 남음 · 이번 주 할 일 · 다가오는 알림 (기존 시안의 .panel) */
+/** 오른쪽 패널: 프로필 · 월세/거주/계약 남음 · 다가오는 알림 (팀 시안의 .panel. 할 일 목록은 일정으로 합쳐져서 빠짐) */
 export function SidePanel({ name, onLogout, logoutPending, className }: Props) {
-  const { settings, todos, addTodo, toggleTodo, removeTodo } = useLifeStore(
-    useShallow((s) => ({ settings: s.settings, todos: s.todos, addTodo: s.addTodo, toggleTodo: s.toggleTodo, removeTodo: s.removeTodo })),
-  )
+  const { settings } = useLifeStore(useShallow((s) => ({ settings: s.settings })))
   const now = useToday()
-  const [text, setText] = useState('')
   const thisMonth = monthKeyOf(now)
   const lived = Math.max(0, monthsBetween(settings.moveIn, thisMonth))
   const left = Math.max(0, monthsBetween(thisMonth, settings.contractEnd))
-  const done = todos.filter((t) => t.done).length
 
-  const td = TRASH[now.getDay()]
   const rent = nextRentDate(settings.rentDay)
-  // 다음 재활용 배출 요일 (내일부터 7일 안)
-  const nextRecycle = [1, 2, 3, 4, 5, 6, 7].map((k) => ({ k, idx: (now.getDay() + k) % 7 })).find(({ idx }) => TRASH[idx]?.t === '재활용')
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
-    const v = text.trim()
-    if (!v) return
-    addTodo(v)
-    setText('')
-  }
+  const nextTrash = nextTrashDay() // 가장 가까운 배출 (오늘 포함)
+  const nextRecycle = nextTrashDay('재활용', true) // 내일부터 다음 재활용
 
   return (
     <aside className={cx(styles.panel, className)} aria-label="내 요약">
@@ -74,35 +59,15 @@ export function SidePanel({ name, onLogout, logoutPending, className }: Props) {
       </div>
 
       <section>
-        <h3>
-          이번 주 할 일 {todos.length > 0 && <span className={common.count}>{done}/{todos.length}</span>}
-        </h3>
-        {todos.map((t) => (
-          <label key={t.id} className={cx(styles.todo, t.done && styles.done)}>
-            <input type="checkbox" className={common.checkbox} checked={t.done} onChange={(e) => toggleTodo(t.id, e.target.checked)} />
-            <span>{t.text}</span>
-            <button type="button" className={common.del} onClick={() => removeTodo(t.id)} aria-label={`${t.text} 삭제`} title="삭제">
-              ×
-            </button>
-          </label>
-        ))}
-        {!todos.length && <p className={common.empty}>할 일이 없어요.</p>}
-        <form className={common.inline} onSubmit={submit}>
-          <input className={common.input} value={text} onChange={(e) => setText(e.target.value)} maxLength={40} placeholder="할 일 추가" aria-label="할 일 추가" />
-          <Button type="submit">추가</Button>
-        </form>
-      </section>
-
-      <section>
         <h3>다가오는 알림</h3>
-        <div className={styles.sched}>
-          <span className={styles.ico}>{td ? trashIco(td.t) : '🗑️'}</span>
+        <Link to="/my/calendar?mode=week" className={styles.sched} aria-label="쓰레기 배출 일정 달력에서 보기">
+          <span className={styles.ico}>{nextTrash ? trashIco(nextTrash.t.t) : '🗑️'}</span>
           <div className={styles.t}>
-            <b>{td ? `${td.t} 배출` : '오늘은 배출 없음'}</b>
-            <small>{td ? `오늘 ${td.d}` : '쓰레기는 모아 두세요'}</small>
+            <b>{nextTrash ? `${nextTrash.t.t} 배출` : '배출 일정 없음'}</b>
+            <small>{nextTrash ? `${nextTrash.k === 0 ? '오늘 ' : ''}${nextTrash.t.d}` : ''}</small>
           </div>
-          <time>오늘</time>
-        </div>
+          <time>{nextTrash ? dayWord(nextTrash.k, nextTrash.idx) : ''}</time>
+        </Link>
         <div className={styles.sched}>
           <span className={styles.ico}>💸</span>
           <div className={styles.t}>
@@ -113,14 +78,14 @@ export function SidePanel({ name, onLogout, logoutPending, className }: Props) {
             {rent.getMonth() + 1}/{rent.getDate()}
           </time>
         </div>
-        <div className={styles.sched}>
+        <Link to="/my/calendar?mode=week" className={styles.sched} aria-label="재활용 배출 일정 달력에서 보기">
           <span className={styles.ico}>♻️</span>
           <div className={styles.t}>
             <b>재활용 배출</b>
-            <small>{nextRecycle ? TRASH[nextRecycle.idx]!.d : '배출 일정 없음'}</small>
+            <small>{nextRecycle ? nextRecycle.t.d : '배출 일정 없음'}</small>
           </div>
-          <time>{nextRecycle ? (nextRecycle.k === 1 ? '내일' : `${DOW[nextRecycle.idx]}요일`) : ''}</time>
-        </div>
+          <time>{nextRecycle ? dayWord(nextRecycle.k, nextRecycle.idx) : ''}</time>
+        </Link>
       </section>
     </aside>
   )

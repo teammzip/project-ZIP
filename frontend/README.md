@@ -13,6 +13,7 @@ npm run lint     # 코드 검사
 ```
 
 - **데모 계정:** `zipdemo`(또는 `demo@zip.com`) / `zip12345`
+- **관리자 데모:** `zipadmin` / `admin1234!` → 로그인하면 위쪽 "관리자 화면" 버튼
 - **서버 없이 동작해요.** 로그인·가입·찾기는 가짜 API, 그 밖의 기록은 브라우저(localStorage)에 저장돼요. 휴대전화 인증은 아무 6자리면 통과해요.
 - **찾기 체험:** 닉네임 `지기` · 아이디 `zipdemo` · 휴대전화 `010-1234-5678`
 - **실제 서버에 붙일 때:** `.env.example`을 `.env.local`로 복사하고 `VITE_USE_MOCK=false`로 바꿔요.
@@ -26,7 +27,8 @@ npm run lint     # 코드 검사
 | `/terms` · `/privacy` | 이용약관 · 개인정보 처리방침 |
 | `/` | 홈 |
 | `/photo` · `/ai` · `/map` · `/community` | 사진 · AI · 동네 · 커뮤니티 |
-| `/my/todo` · `/my/calendar` · `/my/budget` · `/my/noti` · `/my/settings` | 마이페이지: 할 일 · 일정 · 가계부 · 알림 · 내 정보 |
+| `/my/calendar` · `/my/budget` · `/my/noti` · `/my/settings` | 마이페이지: 일정(할 일 포함) · 가계부 · 알림 · 내 정보 |
+| `/admin` | 관리자 화면: 회원 정지·경고, 게시글 관리 (관리자 계정만) |
 
 로그인 전에 앱 화면으로 가면 `/start`로 보내지고, 로그인하면 원래 가려던 곳으로 돌아와요.
 
@@ -38,9 +40,11 @@ src/
 ├─ pages/        주소 하나 = 파일 하나. 부품을 조립만 해요
 ├─ features/     기능별 묶음
 │   ├─ auth/       로그인 · 가입 · 찾기 · 탈퇴
-│   ├─ life/       할 일 · 일정 · 가계부 · 알림 · 설정 · 오른쪽 패널
+│   ├─ life/       일정(할 일 포함) · 가계부 · 알림 · 설정 · 오른쪽 패널
 │   ├─ ai/         AI 도우미 · 대화 모달
-│   ├─ community/  커뮤니티
+│   ├─ community/  커뮤니티 (글·댓글 수정/삭제, 첨부)
+│   ├─ moderation/ 이용 정지 · 경고 기록
+│   ├─ admin/      관리자 화면
 │   ├─ map/        동네 지도
 │   ├─ legal/      약관 · 처리방침 문구(★ content.ts)
 │   └─ brand/      시작 화면 (문구는 ★ content.ts)

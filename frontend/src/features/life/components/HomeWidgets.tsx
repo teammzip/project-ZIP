@@ -4,44 +4,46 @@ import { useShallow } from 'zustand/react/shallow'
 import { Card } from '@/components/ui'
 import { cssVar } from '@/lib/cssVar'
 import { cx } from '@/lib/cx'
-import { dayDiff, fmt, man, monthKeyOf, won } from '@/lib/date'
+import { dayDiff, fmt, man, monthKeyOf, todayStr, won } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
 import common from '@/styles/common.module.css'
 import { DONUT_COLORS } from '../data/catalog'
-import { ddayText, monthKeyRentPaid, nextRentDate, spendBreakdown, sumAmount, todayTrash } from '../derive'
+import { dayWord, ddayText, monthKeyRentPaid, nextRentDate, nextTrashDay, spendBreakdown, todayTrash } from '../derive'
 import { useLifeStore } from '../store'
 import styles from './home.module.css'
 
-/** 홈 요약 카드 4개: 할 일 · 공과금 · 쓰레기 배출 · 월세. 누르면 해당 화면으로 */
+/** 홈 요약 카드 4개: 전체 일정 · 오늘 할 일 · 쓰레기 배출 · 월세 (백엔드 담당 시안 PR #12). 누르면 해당 화면으로 */
 export function LifeStatGrid() {
   const navigate = useNavigate()
-  const { todos, bills, settings, rentPaid } = useLifeStore(useShallow((s) => ({ todos: s.todos, bills: s.bills, settings: s.settings, rentPaid: s.rentPaid })))
+  const { events, settings, rentPaid } = useLifeStore(useShallow((s) => ({ events: s.events, settings: s.settings, rentPaid: s.rentPaid })))
 
-  const done = todos.filter((t) => t.done).length
-  const todoPct = todos.length ? Math.round((done / todos.length) * 100) : 0
-  const billTotal = sumAmount(bills)
-  const billPct = billTotal ? Math.round((sumAmount(bills.filter((b) => b.paid)) / billTotal) * 100) : 0
-  const paidNames = bills.filter((b) => b.paid).map((b) => b.name)
-  const leftNames = bills.filter((b) => !b.paid).map((b) => b.name)
-  const billSub = [paidNames.length && `${paidNames.join(' · ')} 납부 완료`, leftNames.length && `${leftNames.join(' · ')} 남음`].filter(Boolean).join(', ')
+  const today = todayStr()
+  const doneCount = events.filter((e) => e.done).length
+  const allPct = events.length ? Math.round((doneCount / events.length) * 100) : 0
+  const todays = events.filter((e) => e.date === today)
+  const todayLeft = todays.filter((e) => !e.done)
+  const todayPct = todays.length ? Math.round(((todays.length - todayLeft.length) / todays.length) * 100) : 0
+  let todaySub = todayLeft.length ? todayLeft.slice(0, 2).map((e) => e.title).join(' · ') : todays.length ? '오늘 할 일을 모두 끝냈어요!' : '오늘 등록된 할 일이 없어요.'
+  if (todayLeft.length > 2) todaySub += ` 외 ${todayLeft.length - 2}개`
   const td = todayTrash()
+  const nextTrash = nextTrashDay()
   const next = nextRentDate(settings.rentDay)
 
   const cards = [
     {
-      key: 'todo', tone: styles.teal, to: '/my/todo', label: '이번 주 할 일',
-      value: <>{todos.length - done}<small>개 남음</small></>, pct: todoPct,
-      sub: todos.length ? `전체 ${todos.length}개 중 ${done}개 완료` : '할 일을 추가해 보세요',
+      key: 'all', tone: styles.teal, to: '/my/calendar?mode=all', label: '전체 일정',
+      value: <>{events.length - doneCount}<small>개 남음</small></>, pct: allPct,
+      sub: events.length ? `전체 ${events.length}개 중 ${doneCount}개 완료` : '일정을 추가해 보세요.',
     },
     {
-      key: 'bill', tone: styles.sky, to: '/my/budget/expense', label: '이번 달 공과금',
-      value: <>{billPct}<small>% 납부</small></>, pct: billPct,
-      sub: billSub || '공과금 항목을 추가해 보세요',
+      key: 'today', tone: styles.sky, to: '/my/calendar?mode=today', label: '오늘 할 일',
+      value: <>{todayLeft.length}<small>개 남음</small></>, pct: todayPct,
+      sub: todaySub,
     },
     {
-      key: 'trash', tone: styles.pink, to: '/my/todo/trash', label: '쓰레기 배출',
+      key: 'trash', tone: styles.pink, to: '/my/calendar?mode=week', label: '쓰레기 배출',
       value: <span className={styles.valueSm}>{td ? `오늘은 ${td.t}` : '오늘은 배출 없음'}</span>,
-      sub: td ? td.d : '내일 배출을 준비하세요',
+      sub: td ? td.d : nextTrash ? `다음 배출은 ${dayWord(nextTrash.k, nextTrash.idx)}이에요` : '배출 일정이 없어요',
     },
     {
       key: 'rent', tone: styles.purple, to: '/my/budget/expense', label: '월세 납부일',
@@ -61,7 +63,9 @@ export function LifeStatGrid() {
               <i style={{ width: `${c.pct}%` }} />
             </span>
           )}
-          <span className={styles.statSub}>{c.sub}</span>
+          <span className={styles.statSub} title={c.sub}>
+            {c.sub}
+          </span>
         </button>
       ))}
     </section>

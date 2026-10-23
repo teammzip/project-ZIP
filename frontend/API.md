@@ -54,6 +54,28 @@
   - 닉네임: 2~12자
 - **동의 기록**(누가 · 언제 · 어느 `termsVersion`에 동의했는지)은 꼭 서버에 남겨 주세요. 약관 문구는 `src/features/legal/content.ts`에 있어요.
 
+## 관리자 · 이용 정지 (아직 프론트에만 있음)
+
+- `user.role`: `USER` · `ADMIN` (DB `users.role`). `ADMIN`만 관리자 화면(`/admin`)에 들어가요.
+- 정지된 사람은 **로그인 · 가입 · 글쓰기 · 댓글 · 좋아요**가 막혀야 해요. 지금은 가짜 API가 막고 있어요 (`src/features/moderation`).
+  - 로그인이 막히면 `{ "message": "이용이 정지된 계정이에요. (10/24 18:00 해제) 사유: …" }`처럼 주세요. 그대로 화면에 보여요.
+  - 같은 닉네임 · 아이디 · 휴대전화로 재가입도 막아 주세요.
+- 조치: 경고 / 1 · 3 · 5 · 10일 정지 / 영구 정지 / 해제. 조치마다 이력(시각 · 종류 · 사유)을 남겨요 → DB `user_sanctions`.
+- 화면이 기대하는 API (예시, 정해지면 맞출게요)
+
+| 메서드 | 주소 | 보내는 값 | 받는 값 |
+|---|---|---|---|
+| GET | `/api/admin/members?q=&status=&minBans=&minWarns=&sort=` | — | `[{ nickname, username, joinedAt, posts, comments, warns, bans, status, until, history }]` |
+| POST | `/api/admin/members/{id}/sanctions` | `{ type: 'WARN' \| 'SUSPEND', days: 1\|3\|5\|10\|null(영구), reason }` | — |
+| DELETE | `/api/admin/members/{id}/sanctions/active` | — (정지 해제) | — |
+| DELETE | `/api/admin/posts/{id}` · `/api/admin/comments/{id}` | — | — |
+
+## 일정 · 커뮤니티
+
+- **할 일은 일정에 합쳤어요** (백엔드 담당 시안 PR #12). 일정에 `done`(완료) 칸이 있어요. DB에 `todos` 표가 따로 있다면 `events`에 `is_done`을 두는 쪽으로 정리가 필요해요.
+- 쓰레기 배출은 저장하지 않고 `trash_schedules` 요일표로 달력에 그려요.
+- 커뮤니티: 내 글 수정 · 삭제, 내 댓글 수정 · 삭제, 첨부(최대 5개, 합계 2MB). 첨부는 지금 브라우저에 data URL로 넣지만, 서버가 생기면 업로드 주소(`uploaded_files` + `post_attachments`)로 바꿔요.
+
 ## 아직 프론트에만 있는 데이터
 
 할 일 · 일정 · 공과금 · 월세 · 수입 · 지출 · 알림 · 설정은 `src/features/life/store.ts`에, 커뮤니티 글은 `features/community/store.ts`에, AI 대화는 `features/ai/store.ts`에 있어요. 지금은 브라우저에 저장돼요.

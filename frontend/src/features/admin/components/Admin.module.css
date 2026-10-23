@@ -1,0 +1,303 @@
+/* 관리자 화면: 표 중심의 단순한 관리 화면 (팀장님 시안 variants/admin/admin.css 기준, 색은 앱과 같은 파랑) */
+.page {
+  min-height: 100dvh;
+  padding-bottom: 48px;
+  background: var(--color-bg);
+  font-size: 14px;
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--color-line);
+  background: #fff;
+}
+
+.top h1 {
+  font-size: 18px;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.tabs button {
+  padding: 7px 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.tabs button.on {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  font-weight: 700;
+  color: #fff;
+}
+
+.note {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.backLink {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 18px 24px 4px;
+}
+
+.stat {
+  min-width: 130px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.stat b {
+  display: block;
+  font-size: 22px;
+}
+
+.stat span {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.pane {
+  padding: 14px 24px 0;
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tools input,
+.tools select {
+  padding: 8px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+
+.tools input[type='search'] {
+  min-width: 220px;
+}
+
+.num input {
+  width: 64px;
+  margin: 0 4px;
+}
+
+.bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: #eaf2fe;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.tableWrap table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+}
+
+.tableWrap th,
+.tableWrap td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.tableWrap th {
+  background: #f8f9fb;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 28px !important;
+  text-align: center !important;
+  color: var(--color-muted);
+}
+
+.hot {
+  font-weight: 700;
+  color: var(--color-danger);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f2f7;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ok {
+  background: #eefaf8;
+  color: var(--color-teal);
+}
+
+.temp {
+  background: #fff4e5;
+  color: #b26a00;
+}
+
+.ban {
+  background: #ffe9ee;
+  color: var(--color-danger);
+}
+
+.sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.btns {
+  white-space: nowrap;
+}
+
+.btns > * + * {
+  margin-left: 4px;
+}
+
+.detail td {
+  background: #fafbfd;
+}
+
+.hist {
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.titleBtn {
+  font-weight: 600;
+  text-align: left;
+}
+
+.titleBtn:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.detailBody {
+  margin-bottom: 8px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.cmtRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px dashed var(--color-line);
+}
+
+.cmtRow span {
+  flex: 1;
+}
+
+.hint {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+
+/* ---------- 확인창 ---------- */
+.dialog {
+  display: grid;
+  gap: 12px;
+}
+
+.dialog h3 {
+  font-size: 17px;
+}
+
+.dialog p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #3c4254;
+}
+
+.dialogRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dialogRow label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.dialogRow select,
+.dialogRow input {
+  padding: 8px 10px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.grow {
+  flex: 1;
+  min-width: 160px;
+}
+
+.dialogBtns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 700px) {
+  .top,
+  .stats,
+  .pane {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .note {
+    margin-left: 0;
+  }
+}

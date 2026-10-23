@@ -80,28 +80,8 @@
   color: var(--color-muted);
 }
 
-.todo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #fff;
-  cursor: pointer;
-}
 
-.todo span {
-  flex: 1;
-  min-width: 0;
-  font-size: 14px;
-  word-break: break-all;
-}
 
-.done span {
-  color: var(--color-muted);
-  text-decoration: line-through;
-}
 
 .sched {
   display: flex;

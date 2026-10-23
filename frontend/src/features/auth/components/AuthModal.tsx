@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import logo from '@/assets/images/logo-zip.png'
 import { Modal } from '@/components/ui'
-import { demoAccount } from '../api'
+import { demoAccount, demoAdmin } from '../api'
 import { LoginForm } from './LoginForm'
 import { SocialLoginButtons } from './SocialLoginButtons'
 import styles from './AuthModal.module.css'
@@ -25,6 +25,12 @@ export function AuthModal({ open, onClose, onSuccess }: Props) {
       {demoAccount && (
         <p className={styles.demoNote}>
           데모 계정 {demoAccount.username} (또는 {demoAccount.email}) / {demoAccount.password}
+          {demoAdmin && (
+            <>
+              <br />
+              관리자 {demoAdmin.username} / {demoAdmin.password}
+            </>
+          )}
         </p>
       )}
     </Modal>
