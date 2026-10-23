@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZIP 관리자</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <!-- 관리자 화면: 회원 관리 + 커뮤니티 게시글 관리. 데이터는 앱 화면과 같은 localStorage(zip-posts 등)를 읽고 고친다. -->
+  <header class="top">
+    <h1>ZIP 관리자</h1>
+    <nav class="tabs" id="tabs">
+      <button type="button" data-tab="members" class="on">회원 관리</button>
+      <button type="button" data-tab="posts">게시글 관리</button>
+    </nav>
+    <span class="note">시안용 화면이라 로그인 없이 열립니다. 실제 서비스에서는 role = ADMIN 인 계정만 들어올 수 있어야 합니다.</span>
+  </header>
+
+  <section class="stats" id="stats"></section>
+
+  <!-- 회원 관리 -->
+  <main id="paneMembers" class="pane">
+    <div class="tools">
+      <input id="mSearch" type="search" placeholder="닉네임 · 아이디 검색">
+      <select id="mStatus">
+        <option value="">상태 전체</option>
+        <option value="ok">정상</option>
+        <option value="ban">정지 중 (전체)</option>
+        <option value="temp">정지 중 (기간)</option>
+        <option value="perm">정지 중 (영구)</option>
+      </select>
+      <label class="num">밴 <input id="mMinBans" type="number" min="0" max="999" placeholder="0"> 회 이상</label>
+      <label class="num">경고 <input id="mMinWarns" type="number" min="0" max="999" placeholder="0"> 회 이상</label>
+      <select id="mSort">
+        <option value="">기본 정렬</option>
+        <option value="bans">밴 횟수 많은 순</option>
+        <option value="warns">경고 많은 순</option>
+      </select>
+    </div>
+    <div class="bulk" id="bulk" hidden>
+      <b id="bulkCount"></b>
+      <button type="button" class="btn danger" id="bulkBan">선택한 회원 정지…</button>
+      <button type="button" class="btn" id="bulkUnban">선택한 회원 정지 해제</button>
+      <button type="button" class="btn" id="bulkClear">선택 취소</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th><input type="checkbox" id="mAll" title="검색 결과 전체 선택"></th><th>닉네임</th><th>아이디</th><th>가입일</th><th>쓴 글</th><th>쓴 댓글</th><th>경고</th><th>밴 횟수</th><th>상태</th><th>관리</th></tr></thead>
+        <tbody id="mBody"></tbody>
+      </table>
+    </div>
+    <p class="hint">이 시안에는 회원 목록이 따로 없어서, 커뮤니티 글·댓글에 나온 작성자를 회원으로 모아 보여줍니다(내 계정은 제외). 가입일은 예시 값입니다. 경고는 정지 없이 횟수만 기록하는 조치이고, 정지는 1일·3일·5일·10일 또는 영구로 걸 수 있고, 걸 때마다 밴 횟수가 1씩 늘어 기록됩니다(기간이 끝나 풀려도, 해제해도 횟수는 남습니다). 정지 중인 회원은 앱에서 로그인·글쓰기·댓글·좋아요·재가입이 막힙니다. "밴 N회 이상"으로 찾은 뒤 맨 위 체크박스로 전체 선택해서 한꺼번에 정지할 수 있어요.</p>
+  </main>
+
+  <!-- 게시글 관리 -->
+  <main id="panePosts" class="pane" hidden>
+    <div class="tools">
+      <input id="pSearch" type="search" placeholder="제목 · 내용 · 작성자 검색">
+      <select id="pCat"><option value="">분류 전체</option></select>
+      <select id="pRegion"><option value="">동네 전체</option></select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>번호</th><th>분류</th><th>제목</th><th>작성자</th><th>동네</th><th>작성</th><th>♥</th><th>댓글</th><th>관리</th></tr></thead>
+        <tbody id="pBody"></tbody>
+      </table>
+    </div>
+    <p class="hint">제목을 누르면 내용과 댓글이 펼쳐집니다. 삭제한 글은 앱 화면의 커뮤니티에서도 사라지고, 기본 예시 글도 다시 채워지지 않습니다.</p>
+  </main>
+
+  <!-- 정지 / 글 삭제 확인창 -->
+  <div class="modal" id="modal" hidden>
+    <div class="box" role="dialog" aria-modal="true">
+      <h3 id="mdTitle"></h3>
+      <p id="mdMsg"></p>
+      <div class="mrow">
+        <label>정지 <select id="mdDays"></select></label>
+        <label class="grow">사유 <input id="mdReason" maxlength="60" placeholder="예: 운영 정책 위반 (선택)"></label>
+      </div>
+      <div class="btns">
+        <button type="button" class="btn" id="mdCancel">취소</button>
+        <button type="button" class="btn ok" id="mdOk">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../shared/zip-password.js"></script>
+  <script src="../../shared/zip-ban.js"></script>
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

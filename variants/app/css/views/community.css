@@ -76,6 +76,62 @@
   line-height: 1.8;
 }
 
+.post-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.post-attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 12px;
+}
+
+.post-attachment img {
+  display: block;
+  width: 88px;
+  height: 72px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.post-attachment a,
+.post-attachment span {
+  overflow-wrap: anywhere;
+}
+
+.attachment-hint {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.form input[type="file"] {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+}
+
+.post-editor {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.post-editor .btn-line {
+  width: 100%;
+}
+
 .detail-cmt {
   margin-top: 14px;
 }
@@ -116,10 +172,29 @@
 .cmt-item {
   font-size: 13px;
   word-break: break-word;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .cmt-item b {
-  margin-right: 6px;
+  flex: none;
+}
+
+.cmt-item > span:first-of-type {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-wrap;
+}
+
+.cmt-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.cmt-actions .pbtn {
+  padding: 3px 8px;
 }
 
 .cmt-form {

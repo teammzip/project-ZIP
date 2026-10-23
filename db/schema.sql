@@ -1,10 +1,10 @@
 -- ============================================================================
 -- ZIP – 자취생 생활 도우미 : 데이터베이스 (MySQL 8.0 이상)
 -- 현재 프로그램(variants/app, variants/account, 시작 화면)의 기능 기준으로 다시 설계한 구조입니다.
---   · 표 33개 + 집계용 VIEW 2개
+--   · 표 35개 + 집계용 VIEW 2개
 --   · 그림: db/erd-1 ~ erd-5 PNG, 한글 설명: db/README.md
 -- 사용법:  mysql -u root -p < db/schema.sql      (zip 데이터베이스가 새로 만들어집니다)
--- 규칙:   금액은 원 단위 정수(INT), 날짜·시간은 DATE/TIME/DATETIME, 글자는 utf8mb4,
+-- 규칙:   금액은 원 단위 정수(INT), 단 user_settings.rent_amount는 화면과 같은 만원 단위, 날짜·시간은 DATE/TIME/DATETIME, 글자는 utf8mb4,
 --         비밀번호·인증번호·토큰은 원문 대신 해시만 저장, 회원 탈퇴 시 사용자의 개인 데이터는 CASCADE 로 함께 삭제
 -- ============================================================================
 SET NAMES utf8mb4;
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS `region_neighbors` (
 -- 사용자: 가입한 사람 한 명당 한 줄. 로그인 정보(아이디·비밀번호), 본인 확인 정보(휴대전화·이메일), 닉네임과 사는 동네를 담습니다. 모든 개인 데이터(일정·할 일·가계부·글 등)가 이 표의 id 를 따라갑니다. 회원 탈퇴를 하면 이 줄과 딸린 데이터가 모두 지워집니다.
 CREATE TABLE IF NOT EXISTS `users` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '사용자 아이디 — 자동 증가',
-  `login_id` VARCHAR(16) NOT NULL COMMENT '로그인 아이디 — 6~16자, 영문 소문자·숫자',
+  `login_id` VARCHAR(16) NULL COMMENT '로그인 아이디 — 일반 가입은 6~16자 영문 소문자·숫자 필수, 소셜 가입은 NULL 허용',
   `password_hash` VARCHAR(100) NULL COMMENT '비밀번호(해시) — 원문은 저장 안 함. 소셜 가입자는 비어 있음',
   `nickname` VARCHAR(12) NOT NULL COMMENT '닉네임 — 2~12자, 앱 인사말에 쓰임',
   `email` VARCHAR(100) NULL COMMENT '이메일',
@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `phone_verified_at` DATETIME NULL COMMENT '휴대전화 인증 일시 — 가입 때 인증을 마친 시각',
   `region_id` BIGINT UNSIGNED NULL COMMENT '사는 동네 아이디 — 내 정보의 "우리 동네"',
   `address` VARCHAR(200) NULL COMMENT '입력한 주소 — 가입할 때 쓴 주소 글자',
+  `age_confirmed_at` DATETIME NULL COMMENT '만 14세 이상 확인 일시 — 가입 때 "만 14세 이상" 체크한 시각',
+  `signup_provider` ENUM('EMAIL','KAKAO','GOOGLE','NAVER') NOT NULL DEFAULT 'EMAIL' COMMENT '가입 경로 — 화면의 provider 값. 소셜 첫 가입자는 약관·주소를 나중에 받음',
   `role` ENUM('USER','ADMIN') NOT NULL DEFAULT 'USER' COMMENT '사용자 권한 — 운영자만 ADMIN',
   `status` ENUM('ACTIVE','SUSPENDED') NOT NULL DEFAULT 'ACTIVE' COMMENT '이용 상태 — 이용 제한 중이면 SUSPENDED',
   `password_changed_at` DATETIME NULL COMMENT '비밀번호 변경 일시 — 내 정보·비밀번호 찾기로 바꾼 시각',
@@ -88,7 +90,7 @@ CREATE TABLE IF NOT EXISTS `auth_sessions` (
   CONSTRAINT `fk_auth_sessions_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='로그인 세션: 로그인한 기기마다 한 줄.';
 
--- 휴대전화 인증: 문자로 보낸 인증번호 기록. 가입, 아이디 찾기, 비밀번호 찾기에서 같은 방식으로 씁니다. 비밀번호 찾기는 메일 대신 이 인증을 통과하면 1회용 재설정 토큰이 발급되고, 그 토큰으로 바로 새 비밀번호를 정합니다.
+-- 휴대전화 인증: 문자로 보낸 인증번호 기록. 가입, 아이디 찾기, 비밀번호 찾기에서 같은 방식으로 씁니다. 인증에 성공하면 "인증 완료 값"이 발급되고, 가입 요청(가입 화면의 휴대전화 인증)이나 비밀번호 재설정(password_resets)에 그 값을 함께 보냅니다.
 CREATE TABLE IF NOT EXISTS `phone_verifications` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '인증 아이디 — 자동 증가',
   `purpose` ENUM('SIGNUP','FIND_ID','RESET_PASSWORD') NOT NULL COMMENT '인증 목적 — 가입 / 아이디 찾기 / 비밀번호 찾기',
@@ -99,20 +101,33 @@ CREATE TABLE IF NOT EXISTS `phone_verifications` (
   `requested_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '인증번호 요청 일시',
   `expires_at` DATETIME NOT NULL COMMENT '인증번호 만료 일시 — 보통 3분',
   `verified_at` DATETIME NULL COMMENT '인증 성공 일시',
-  `reset_token_hash` CHAR(64) NULL COMMENT '재설정 토큰(해시) — 비밀번호 찾기 인증 성공 때 발급',
-  `reset_token_expires_at` DATETIME NULL COMMENT '재설정 토큰 만료 일시',
-  `consumed_at` DATETIME NULL COMMENT '재설정 완료 일시 — 토큰을 쓴 시각(한 번만 사용)',
+  `verified_token_hash` CHAR(64) NULL COMMENT '인증 완료 값(해시) — 인증 성공 때 발급. 가입·찾기 요청에 함께 보내는 값',
+  `consumed_at` DATETIME NULL COMMENT '사용 일시 — 인증 완료 값을 가입·재설정에 쓴 시각(한 번만 사용)',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_phone_verifications_reset_token_hash` (`reset_token_hash`),
+  UNIQUE KEY `uk_phone_verifications_verified_token_hash` (`verified_token_hash`),
   KEY `idx_phone_verifications_phone_requested_at` (`phone`, `requested_at`),
   CONSTRAINT `fk_phone_verifications_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='휴대전화 인증: 문자로 보낸 인증번호 기록.';
+
+-- 비밀번호 재설정 토큰: 비밀번호를 다시 정하도록 허락하는 1회용 토큰. 휴대전화 인증을 통과했을 때(시안의 바로 재설정)와 이메일로 재설정 링크를 보냈을 때(React 앱의 현재 방식) 둘 다 이 표 한 줄로 처리합니다. 토큰은 해시만 저장하고, 한 번 쓰면 used_at 이 채워져 다시 쓸 수 없습니다.
+CREATE TABLE IF NOT EXISTS `password_resets` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '재설정 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '재설정하는 사용자 아이디',
+  `method` ENUM('PHONE','EMAIL') NOT NULL COMMENT '본인 확인 방법 — 휴대전화 인증 / 이메일 링크',
+  `token_hash` CHAR(64) NOT NULL COMMENT '재설정 토큰(해시) — 원문은 저장 안 함',
+  `requested_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '요청 일시',
+  `expires_at` DATETIME NOT NULL COMMENT '만료 일시 — 보통 10~30분',
+  `used_at` DATETIME NULL COMMENT '사용 일시 — 비어 있으면 아직 안 씀',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_password_resets_token_hash` (`token_hash`),
+  CONSTRAINT `fk_password_resets_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='비밀번호 재설정 토큰: 비밀번호를 다시 정하도록 허락하는 1회용 토큰.';
 
 -- 약관 문서: 가입 화면에 보이는 약관의 본문과 버전. 서비스 이용약관, 개인정보 처리방침, 커뮤니티·AI 운영 정책 세 종류이고, 내용이 바뀌면 새 버전 줄을 추가합니다.
 CREATE TABLE IF NOT EXISTS `terms_documents` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '약관 아이디 — 자동 증가',
   `doc_type` ENUM('SERVICE','PRIVACY','POLICY') NOT NULL COMMENT '약관 종류 — 이용약관 / 개인정보 처리방침 / 운영 정책',
-  `version` VARCHAR(20) NOT NULL COMMENT '약관 버전 — 예: 1.0',
+  `version` VARCHAR(20) NOT NULL COMMENT '약관 버전 — frontend LEGAL_VERSION과 동일 (예: 2026-10-18)',
   `title` VARCHAR(100) NOT NULL COMMENT '약관 제목',
   `content` MEDIUMTEXT NOT NULL COMMENT '약관 본문 — 조항 전체',
   `consent_kind` ENUM('AGREE','CONFIRM') NOT NULL COMMENT '받는 방식 — 동의(이용약관·운영정책) / 안내 확인(개인정보 처리방침)',
@@ -147,16 +162,18 @@ CREATE TABLE IF NOT EXISTS `withdrawal_logs` (
 -- 2. 마이페이지 · 생활 관리
 -- ----------------------------------------------------------------------------
 
--- 사용자 설정: 내 정보 화면의 설정값(월세·월세 납부일·알림 수신). 사용자 한 명당 한 줄. 이름(닉네임)과 동네는 users 에 있습니다.
+-- 사용자 설정: 내 정보 화면의 설정값(월세·월세 납부일·입주한 달·계약 끝나는 달·알림 수신). 사용자 한 명당 한 줄. 이름(닉네임)과 동네는 users 에 있습니다.
 CREATE TABLE IF NOT EXISTS `user_settings` (
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '사용자 아이디',
   `rent_amount` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '월세 금액 — 만원 단위 (55 = 55만원)',
   `rent_day` TINYINT UNSIGNED NOT NULL DEFAULT 15 COMMENT '월세 납부일 — 매월 며칠 (1~31)',
+  `move_in_ym` CHAR(7) NULL COMMENT '입주한 달 — 오른쪽 패널의 "거주 N개월" 계산 (예: 2026-02)',
+  `contract_end_ym` CHAR(7) NULL COMMENT '계약 끝나는 달 — "계약 N개월 남음" 계산',
   `noti_on` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '알림 수신 여부 — 끄면 빨간 점·알림을 숨김',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '설정 수정 일시',
   PRIMARY KEY (`user_id`),
   CONSTRAINT `fk_user_settings_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자 설정: 내 정보 화면의 설정값(월세·월세 납부일·알림 수신).';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자 설정: 내 정보 화면의 설정값(월세·월세 납부일·입주한 달·계약 끝나는 달·알림 수신).';
 
 -- 할 일: 마이페이지 "할 일" 탭과 오른쪽 패널의 이번 주 할 일 목록. 체크하면 완료 처리되고, 홈 카드의 남은 개수와 진행 막대가 여기서 계산됩니다.
 CREATE TABLE IF NOT EXISTS `todos` (
@@ -331,6 +348,7 @@ CREATE TABLE IF NOT EXISTS `comments` (
   `body` VARCHAR(200) NOT NULL COMMENT '댓글 내용',
   `status` ENUM('VISIBLE','HIDDEN','DELETED') NOT NULL DEFAULT 'VISIBLE' COMMENT '댓글 상태',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '댓글 수정 일시',
   `deleted_at` DATETIME NULL COMMENT '삭제 일시 — 소프트 삭제',
   PRIMARY KEY (`id`),
   KEY `idx_comments_post_id_created_at` (`post_id`, `created_at`),
@@ -391,7 +409,7 @@ CREATE TABLE IF NOT EXISTS `ai_topics` (
   UNIQUE KEY `uk_ai_topics_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 분야: AI 화면의 분야 카드와 홈 AI 대화 칩의 목록(자유 질문·근처 탐색·분리배출·냉장고 요리·청소·계약·집주인 문자·공과금·지출 요약).';
 
--- 업로드 파일: 사용자가 올린 사진(AI 상담용). 파일 자체는 파일 저장소에 두고 여기에는 주소와 정보만 적습니다. 탈퇴하면 파일도 함께 지웁니다.
+-- 업로드 파일: 커뮤니티 첨부파일과 향후 파일 저장 기능의 메타데이터. 파일 자체는 파일 저장소에 두고 여기에는 주소와 정보만 적습니다. 탈퇴·첨부 삭제 시 실제 저장소 파일 삭제는 서버가 별도로 처리합니다. 현재 AI 사진은 처리 후 저장하지 않습니다.
 CREATE TABLE IF NOT EXISTS `uploaded_files` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '파일 아이디 — 자동 증가',
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '올린 사용자 아이디',
@@ -403,7 +421,20 @@ CREATE TABLE IF NOT EXISTS `uploaded_files` (
   `deleted_at` DATETIME NULL COMMENT '삭제 일시',
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_uploaded_files_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='업로드 파일: 사용자가 올린 사진(AI 상담용).';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='커뮤니티 첨부파일 및 파일 저장 메타데이터';
+
+-- 게시글 첨부: 시안의 attachments 배열에 대응. 파일 원문은 저장소에 두고 연결과 표시 순서만 저장합니다.
+-- 최대 5개·합계 2MB, 파일 소유자 일치, MIME 검증은 서버 트랜잭션에서 검사합니다.
+CREATE TABLE IF NOT EXISTS `post_attachments` (
+  `post_id` BIGINT UNSIGNED NOT NULL COMMENT '첨부한 게시글 아이디',
+  `file_id` BIGINT UNSIGNED NOT NULL COMMENT '업로드 파일 아이디',
+  `sort_order` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '게시글 안의 표시 순서 — 0부터',
+  PRIMARY KEY (`post_id`, `file_id`),
+  UNIQUE KEY `uk_post_attachments_file_id` (`file_id`),
+  UNIQUE KEY `uk_post_attachments_post_sort` (`post_id`, `sort_order`),
+  CONSTRAINT `fk_post_attachments_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_post_attachments_file_id` FOREIGN KEY (`file_id`) REFERENCES `uploaded_files` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='게시글과 첨부파일 연결';
 
 -- AI 대화: AI와의 대화 한 건(대화방). 홈의 "AI와 대화" 모달에서 시작한 대화와 AI 메뉴 화면에서 시작한 대화를 구분하고, "새 대화"를 누르면 새 줄이 생깁니다.
 CREATE TABLE IF NOT EXISTS `ai_conversations` (
@@ -427,7 +458,7 @@ CREATE TABLE IF NOT EXISTS `ai_messages` (
   `role` ENUM('USER','ASSISTANT') NOT NULL COMMENT '보낸 쪽 — 사용자 / AI',
   `content` TEXT NOT NULL COMMENT '메시지 내용',
   `card_type` ENUM('SPEND_SUMMARY') NULL COMMENT '카드 종류 — 카드로 보이는 답일 때',
-  `card_data` JSON NULL COMMENT '카드 내용 — 카드에 보이는 숫자 스냅샷',
+  `card_data` JSON NULL COMMENT '카드 내용 — 카드에 보이는 숫자. 예: {month,total,prevTotal,fixed,rows,top}',
   `attachment_id` BIGINT UNSIGNED NULL COMMENT '첨부 파일 아이디 — 사진 첨부(선택)',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
   PRIMARY KEY (`id`),
@@ -453,7 +484,7 @@ CREATE TABLE IF NOT EXISTS `trash_schedules` (
   `waste_type` ENUM('GENERAL','RECYCLE','FOOD') NOT NULL COMMENT '배출 종류 — 일반쓰레기 / 재활용 / 음식물',
   `description` VARCHAR(100) NOT NULL COMMENT '배출 안내 — 예: 저녁 6시 ~ 자정, 종량제 봉투 사용',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_trash_schedules_region_id_weekday` (`region_id`, `weekday`),
+  UNIQUE KEY `uk_trash_schedules_region_weekday_type` (`region_id`, `weekday`, `waste_type`),
   CONSTRAINT `fk_trash_schedules_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='쓰레기 배출 일정: 동네별 요일 배출표.';
 
@@ -574,9 +605,10 @@ INSERT IGNORE INTO `trash_schedules` (`region_id`, `weekday`, `waste_type`, `des
   (2, 4, 'GENERAL', '저녁 6시 ~ 자정, 종량제 봉투 사용'),
   (2, 5, 'RECYCLE', '저녁 6시 ~ 자정, 플라스틱 · 캔 · 종이 분리');
 
--- 약관 본문 (예시 문구: 실제 서비스 전에 법률 검토 필요. 원본은 variants/account/terms.js)
+-- 약관 본문: frontend/src/features/legal/content.ts의 제목·본문·LEGAL_VERSION과 동일
+-- 이미 동의한 이전 버전은 보존하며, 본문 변경 시 프론트와 함께 새 버전을 추가합니다.
 INSERT IGNORE INTO `terms_documents` (`doc_type`, `version`, `title`, `content`, `consent_kind`, `is_required`, `effective_at`) VALUES
-  ('SERVICE', '1.0', '서비스 이용약관', '제1조 (목적)
+  ('SERVICE', '2026-10-18', 'ZIP 이용약관', '제1조 (목적)
 이 약관은 ZIP(이하 "서비스")이 제공하는 자취 생활 관리 서비스의 이용과 관련하여 서비스와 이용자 사이의 권리, 의무 및 책임사항을 정하는 것을 목적으로 합니다.
 
 제2조 (서비스 내용)
@@ -587,26 +619,88 @@ INSERT IGNORE INTO `terms_documents` (`doc_type`, `version`, `title`, `content`,
 서비스의 내용은 운영상 필요에 따라 변경될 수 있으며, 중요한 변경은 사전에 알립니다.
 
 제3조 (회원가입과 계정)
-① 이용자는 아이디, 비밀번호, 닉네임, 휴대전화, 이메일, 주소를 입력하고 이 약관에 동의하여 가입할 수 있습니다.
+① 만 14세 이상인 이용자는 아이디, 닉네임, 휴대전화 번호, 이메일, 주소를 입력하고 이 약관과 개인정보 수집·이용에 동의하여 가입할 수 있습니다.
 ② 이용자는 계정 정보를 직접 관리해야 하며, 타인에게 양도하거나 대여할 수 없습니다.
 ③ 허위 정보를 입력한 경우 서비스 이용이 제한될 수 있습니다.
 
-제4조 (약관의 변경)
+제4조 (개인정보 보호)
+서비스는 이용자의 개인정보를 별도의 「개인정보 처리방침」에 따라 처리하며, 처리방침은 서비스 화면에서 언제든 확인할 수 있습니다.
+
+제5조 (회원 탈퇴)
+이용자는 언제든지 마이페이지 > 내 정보에서 회원 탈퇴를 할 수 있으며, 탈퇴하면 계정과 이용 기록은 개인정보 처리방침에 따라 삭제됩니다.
+
+제6조 (게시물)
+① 이용자가 커뮤니티에 올린 글과 댓글의 권리와 책임은 작성자에게 있습니다.
+② 다른 사람의 개인정보(이름, 연락처, 집 주소 등)가 담긴 게시물은 올릴 수 없으며, 발견 시 서비스가 삭제할 수 있습니다.
+
+제7조 (금지 행위)
+다음 행위는 금지되며, 위반 시 게시글 삭제 및 이용 제한이 있을 수 있습니다.
+1. 타인의 개인정보 도용 또는 허위 사실 게시
+2. 욕설, 비방, 광고성 게시물의 반복 등록
+3. 서비스의 정상적인 운영을 방해하는 행위
+
+제8조 (책임의 제한)
+서비스는 AI 답변과 지도·가게 정보의 정확성을 보장하지 않으며, 중요한 결정(금융·법률·의료 등)은 반드시 전문가나 공식 자료로 확인해야 합니다.
+
+제9조 (약관의 변경)
 약관을 변경하는 경우 시행 7일 전(이용자에게 불리한 변경은 30일 전)에 서비스 내 공지로 알립니다.', 'AGREE', 1, '2026-10-18 00:00:00'),
-  ('PRIVACY', '1.0', '개인정보 처리방침', '제1조 (수집하는 개인정보)
-서비스는 회원가입과 이용을 위해 아래 정보를 수집합니다.
-· 필수: 아이디, 비밀번호, 닉네임, 휴대전화, 이메일, 주소(동네 정보 제공 목적)
-· 이용 중 생성: 할 일, 일정, 가계부 기록, AI 대화 내용, 커뮤니티 게시글
-소셜 로그인 이용 시 해당 제공자가 전달하는 이름·이메일 등 최소한의 정보를 받습니다.
+  ('PRIVACY', '2026-10-18', 'ZIP 개인정보 처리방침', '1. 처리하는 개인정보 항목
+· 회원가입(필수): 아이디, 비밀번호, 닉네임, 휴대전화 번호, 이메일, 주소
+· 소셜 로그인(필수): 카카오·구글·네이버가 전달하는 식별값, 이메일, 이름(닉네임)
+· 서비스 이용 중 이용자가 입력하는 정보: 할 일, 일정, 가계부(수입·지출·월세·공과금) 기록, 커뮤니티 글·댓글, AI 대화 내용, AI에 첨부한 사진
+· 자동 수집: 접속 기록, 기기·브라우저 정보, 로그인 유지를 위한 정보(브라우저 저장소)
 
-제2조 (개인정보의 이용 목적과 보유 기간)
-① 수집한 정보는 회원 식별, 맞춤형 동네 정보 제공, 서비스 개선, 문의 응대에 사용합니다.
-② 개인정보는 회원 탈퇴 시 지체 없이 삭제합니다. 다만 관련 법령에 따라 보관해야 하는 정보는 해당 기간 동안 별도로 보관합니다.
-③ 동의를 거부할 수 있으나, 필수 항목에 동의하지 않으면 가입할 수 없습니다.
+2. 처리 목적
+· 회원 식별, 가입·로그인, 본인 확인(휴대전화 인증), 아이디·비밀번호 찾기, 부정 이용 방지
+· 주소: 우리 동네 커뮤니티·지도·쓰레기 배출 정보 제공
+· 이용 기록: 일정·가계부·알림 등 서비스 기능 제공
+· AI 대화·사진: 질문에 대한 답변 생성
+· 문의 응대, 공지 전달, 서비스 개선을 위한 통계(개인을 알아볼 수 없는 형태)
 
-제3조 (이용자의 권리)
-이용자는 언제든지 내 정보에서 개인정보를 열람·수정할 수 있고, 회원 탈퇴를 통해 모든 데이터의 삭제를 요청할 수 있습니다.', 'CONFIRM', 1, '2026-10-18 00:00:00'),
-  ('POLICY', '1.0', '커뮤니티·AI 운영 정책', '제1조 (목적)
+3. 보유 및 이용 기간
+· 회원 정보와 이용 기록: 회원 탈퇴 시까지. 탈퇴하면 지체 없이 파기합니다.
+· AI에 첨부한 사진: 답변 생성 후 저장하지 않습니다.
+· 관련 법령에 따라 보관이 필요한 경우 해당 기간 동안 분리 보관합니다. (예: 「통신비밀보호법」에 따른 접속 기록 3개월)
+· 1년 이상 로그인하지 않은 계정은 미리 알린 뒤 분리 보관하거나 파기할 수 있습니다.
+
+4. 제3자 제공
+서비스는 이용자의 개인정보를 제3자에게 제공하지 않습니다. 다만 이용자가 미리 동의한 경우나 법령에 특별한 규정이 있는 경우는 예외로 합니다.
+
+5. 처리 위탁 및 국외 이전
+서비스 운영을 위해 아래 업무를 외부에 맡길 수 있으며, 실제 업체가 정해지면 이 표를 업데이트하고 알립니다.
+· 서버·데이터 보관: [클라우드 업체명, 보관 국가]
+· AI 답변 생성(실제 AI 연결 시): [AI 업체명, 이전 국가, 이전 항목(질문 내용·첨부 사진), 이전 시점·방법, 보유 기간]
+현재 데모 버전에서는 AI 답변을 서비스 안에서 만들며, 질문·사진을 외부로 보내지 않습니다.
+
+6. 파기 절차 및 방법
+보유 기간이 끝나거나 처리 목적을 이룬 개인정보는 지체 없이 파기합니다.
+· 전자 파일: 복구할 수 없는 방법으로 삭제
+· 종이 문서: 분쇄하거나 소각
+
+7. 이용자의 권리와 행사 방법
+이용자는 언제든지 자신의 개인정보를 열람·정정·삭제하거나 처리 정지를 요구할 수 있습니다.
+· 열람·정정: 마이페이지 > 내 정보
+· 삭제(회원 탈퇴): 마이페이지 > 내 정보 > 회원 탈퇴
+· 그 밖의 요청: 아래 개인정보 보호책임자에게 연락
+만 14세 미만은 가입할 수 없습니다.
+
+8. 안전성 확보 조치
+· 비밀번호 암호화 저장
+· 전송 구간 암호화(HTTPS)
+· 개인정보 접근 권한 최소화 및 접근 기록 관리
+
+9. 브라우저 저장소(쿠키 등) 사용
+서비스는 로그인 유지와 화면 설정을 위해 브라우저 저장소(localStorage·sessionStorage)를 사용합니다.
+브라우저 설정에서 저장된 정보를 지울 수 있으며, 지우면 다시 로그인해야 합니다.
+
+10. 개인정보 보호책임자
+· 책임자: [이름 / 직책]
+· 연락처: [이메일]
+개인정보 침해에 대한 신고·상담은 개인정보침해신고센터(국번 없이 118, privacy.kisa.or.kr)에도 할 수 있습니다.
+
+11. 처리방침의 변경
+이 처리방침을 변경하면 시행 7일 전(중요한 변경은 30일 전)에 서비스 내 공지로 알립니다.', 'CONFIRM', 1, '2026-10-18 00:00:00'),
+  ('POLICY', '2026-10-18', 'ZIP 커뮤니티·AI 운영 정책', '제1조 (목적)
 이 정책은 ZIP 커뮤니티와 AI 도우미를 모두가 안전하고 기분 좋게 쓸 수 있도록 지켜야 할 기준과, 지키지 않았을 때의 조치를 정하는 것을 목적으로 합니다.
 
 제2조 (커뮤니티 이용 원칙)

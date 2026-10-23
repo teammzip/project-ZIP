@@ -556,6 +556,10 @@
 
     /* 좁은 화면: 위에 글, 아래에 그림 */
     @media (max-width: 860px) {
+      .hero-logo {
+        display: none;
+      }
+
       .sec {
         grid-template-columns: 1fr;
         align-content: center;
@@ -774,6 +778,8 @@
     window.LOGIN_NEXT = '../app/index.html';   // 로그인에 성공하면 이동할 화면
     window.SIGNUP_URL = '../account/signup.html';          // 로그인 창 아래 "회원가입" 링크가 이동할 별도 페이지
   </script>
+  <script src="../../shared/zip-password.js"></script>
+  <script src="../../shared/zip-ban.js"></script>
   <script src="../../login/login.js"></script>
   <!-- 풀페이지 스크롤 동작: 마우스 휠·키보드·스와이프로 한 화면씩 이동, 로그인 모달 열고 닫기, 회원가입 버튼은 가입 페이지로 이동 -->
   <script>

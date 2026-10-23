@@ -66,6 +66,17 @@
       font-size: 13px;
     }
 
+    /* 관리자 버튼: 상단 바 오른쪽 끝 */
+    .admin-btn {
+      margin-left: auto;
+      border-color: #7c6cf5;
+    }
+
+    .admin-btn.on {
+      background: #7c6cf5;
+      border-color: #7c6cf5;
+    }
+
     .stage {
       flex: 1;
       min-height: 0;
@@ -157,6 +168,7 @@
     <div class="group" id="vars"><span>시안</span></div>
     <div class="group" id="sizes"><span>화면</span></div>
     <a id="open" href="#" target="_blank" rel="noopener">새 탭에서 열기</a>
+    <button type="button" class="admin-btn" id="adminBtn" data-v="admin">관리자</button>
   </div>
   <div class="stage">
     <iframe id="frame" title="시안 미리보기"></iframe>
@@ -164,7 +176,7 @@
     <!-- DB 예시: db/ 폴더의 ERD 그림 5장 (한글 설명은 db/README.md, 표 만들기는 db/schema.sql) -->
     <div class="dbview" id="dbview" hidden>
       <h2>DB 구조 (ERD)</h2>
-      <p class="hint">그림을 누르면 원래 크기로 커지고, 다시 누르면 화면 폭에 맞게 줄어듭니다. 커졌을 때는 옆으로 밀어서 볼 수 있어요. 표마다 한글 설명은 <a href="db/README.md" target="_blank" rel="noopener">db/README.md</a>, 표를 만드는 SQL 은 <a href="db/schema.sql" target="_blank" rel="noopener">db/schema.sql</a> 에 있습니다.</p>
+      <p class="hint">그림을 누르면 원래 크기로 커지고, 다시 누르면 화면 폭에 맞게 줄어듭니다. 커졌을 때는 옆으로 밀어서 볼 수 있어요. 표마다 한글 설명은 <a href="db/README.md" target="_blank" rel="noopener">db/README.md</a>, 표를 만드는 SQL 은 <a href="db/schema.sql" target="_blank" rel="noopener">db/schema.sql</a> 에 있습니다. 표 머리 색: 주황 = 지금 화면이 쓰는 데이터, 파랑 = 서버를 붙일 때 필요, 회색 = 확장, 초록 = 집계 VIEW.</p>
       <figure>
         <figcaption>1. 계정 · 인증 · 약관</figcaption>
         <div class="scroll"><img src="db/erd-1-accounts.png" alt="계정·인증·약관 ERD"></div>
@@ -198,7 +210,8 @@
     var VARIANTS = [
       ['app', '앱 화면', null],
       ['start-mobile', '모바일시작', 2],
-      ['start-pc', 'PC시작', 0]
+      ['start-pc', 'PC시작', 0],
+      ['admin', '관리자', 0]   // 오른쪽 끝 버튼(#adminBtn)으로 따로 만들어서 목록에는 이름만 등록
     ];
     // [이름, 폭, 높이]  태블릿·모바일은 실제 기기 비율(768×1024, 375×812)로 맞추고, 창이 작으면 높이만 창에 맞춰 줄어듦
     var SIZES = [['데스크톱', '100%', '100%'], ['태블릿', '768px', 'min(1024px, 100%)'], ['모바일', '375px', 'min(812px, 100%)']];
@@ -217,7 +230,7 @@
 
     function render() {
       var isDb = cur === 'db';
-      document.querySelectorAll('#vars button[data-v]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === cur); });
+      document.querySelectorAll('button[data-v]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === cur); });
       document.querySelectorAll('#sizes button').forEach(function (b, i) { b.classList.toggle('on', i === size); });
       frame.hidden = isDb;                                        // DB 예시를 보는 동안에는 화면 미리보기를 숨김
       document.getElementById('dbview').hidden = !isDb;
@@ -232,6 +245,7 @@
     }
 
     VARIANTS.forEach(function (v) {
+      if (v[0] === 'admin') return;
       var b = document.createElement('button');
       b.type = 'button'; b.textContent = v[1]; b.setAttribute('data-v', v[0]);
       b.addEventListener('click', function () {
@@ -246,6 +260,9 @@
     dbBtn.type = 'button'; dbBtn.className = 'db-btn'; dbBtn.textContent = 'DB 예시'; dbBtn.setAttribute('data-v', 'db');
     dbBtn.addEventListener('click', function () { cur = 'db'; write('compare-v', 'db'); render(); });
     document.getElementById('vars').appendChild(dbBtn);
+    document.getElementById('adminBtn').addEventListener('click', function () {
+      cur = 'admin'; write('compare-v', cur); size = 0; write('compare-size', '0'); render();   // 관리자는 데스크톱 화면으로
+    });
 
     // 그림을 누르면 원래 크기로 확대(옆으로 밀어서 보기), 다시 누르면 화면 폭에 맞게 축소
     document.querySelectorAll('#dbview img').forEach(function (img) {
