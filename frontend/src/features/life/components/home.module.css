@@ -249,4 +249,9 @@
   .statGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  /* 월세 카드와 사진 상담 카드는 한 줄을 다 씀 (시안과 같게) */
+  .statGrid .purple {
+    grid-column: 1 / -1;
+  }
 }

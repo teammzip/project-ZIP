@@ -1,0 +1,191 @@
+/* 홈 4번째 카드: 사진 상담 + 알림 회전창 (시안 dashboard.css 의 .photo-card · .home-noti) */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #cfe0fb;
+  border-radius: var(--radius-lg);
+  background: #fff;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.head h3 {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #eaf2ff;
+  color: var(--color-primary);
+}
+
+.icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cta {
+  display: block;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  text-decoration: none;
+}
+
+.cta:hover {
+  filter: brightness(1.05);
+}
+
+.moLabel {
+  display: none;
+}
+
+/* 알림 회전창 */
+.noti {
+  padding: 10px 12px 8px;
+  border: 1px solid #ffe0cf;
+  border-radius: 12px;
+  background: #fff8f3;
+}
+
+.notiHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+.notiHead b {
+  font-size: 13px;
+}
+
+.count {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.all {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-purple);
+}
+
+.view {
+  overflow: hidden;
+}
+
+.track {
+  display: flex;
+  transition: transform 0.45s ease;
+}
+
+.slide {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 0 0 100%;
+  min-width: 0;
+  padding: 2px;
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
+.text b {
+  display: block;
+  font-size: 13px;
+}
+
+.text small {
+  display: block;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.close {
+  flex: none;
+  padding: 4px 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.close:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border-radius: 99px;
+  background: #e5d9d1;
+  transition:
+    width 0.2s,
+    background 0.2s;
+}
+
+.dotOn {
+  width: 18px;
+  background: var(--color-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track {
+    transition: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .card {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 700px) {
+  .pcLabel {
+    display: none;
+  }
+
+  .moLabel {
+    display: inline;
+  }
+}

@@ -115,6 +115,11 @@
   "agreeTerms": true, "agreePrivacy": true, "agreePolicy": true, "ageOver14": true, "termsVersion": "2026-10-18" }
 ```
 
+### 프로필 꾸미기 (사진 · 한 줄 소개)
+- 내 정보의 "프로필 편집"에서 **프로필 사진**(또는 캐릭터 · 배경 색)과 **한 줄 소개**를 바꿔요. 지금은 브라우저(`zip-profile`)에 저장해요.
+- 서버가 생기면: 사진은 `POST /api/files`로 올리고 `PATCH /api/auth/me`에 `{ avatarFileId, bio }`를 보내요. 캐릭터를 고르면 `{ avatarEmoji, avatarColor }`.
+- `user`에 `bio`, `avatarUrl`, `avatarEmoji`, `avatarColor`를 같이 주세요. ⚠️ DB `users`에 이 칸이 아직 없어요 (아래 표 7번).
+
 ### 회원 탈퇴
 - `users` 한 줄을 지우면 개인 데이터는 CASCADE로 같이 지워져요. `withdrawal_logs`에는 지워진 번호와 시각만 남겨요.
 - 업로드한 파일의 실제 저장소 파일은 서버가 따로 지워 주세요.
@@ -399,6 +404,7 @@
 | 4 | 첨부 형식 제한이 DB에 없어요 | 서버에서 MIME 검사 (이미지 · PDF 등) |
 | 5 | `user_settings`에 동네가 없고 `users.region_id`에 있어요 | 그대로 두고 설정 API에서 같이 주고받기 (위 2번 참고) |
 | 6 | 메모 기능이 생겼는데 DB에 표가 없어요 | 위 [12번](#12-메모)의 `memos` 표 추가 |
+| 7 | 프로필 사진 · 한 줄 소개 칸이 DB에 없어요 | `users.bio VARCHAR(30)`, `users.avatar_file_id`(→ `uploaded_files`), `avatar_emoji`, `avatar_color` 추가 |
 
 ## 프론트에서 서버를 붙이는 순서 (예: 일정)
 

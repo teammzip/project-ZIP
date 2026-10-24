@@ -27,7 +27,7 @@ npm run lint     # 코드 검사
 | `/terms` · `/privacy` | 이용약관 · 개인정보 처리방침 |
 | `/` | 홈 |
 | `/photo` · `/ai` · `/map` · `/community` | 사진 · AI · 동네 · 커뮤니티 |
-| `/my/calendar` · `/my/budget` · `/my/noti` · `/my/settings` | 마이페이지: 일정(할 일 포함) · 가계부 · 알림 · 내 정보 |
+| `/my/calendar` · `/my/budget` · `/my/memo` · `/my/noti` · `/my/settings` | 마이페이지: 일정(할 일 포함) · 가계부 · 메모장 · 알림 · 내 정보(프로필 · 로그인 방식 · 설정) |
 | `/admin` | 관리자 화면: 회원 정지·경고, 게시글 관리 (관리자 계정만) |
 
 로그인 전에 앱 화면으로 가면 `/start`로 보내지고, 로그인하면 원래 가려던 곳으로 돌아와요.
@@ -44,6 +44,8 @@ src/
 │   ├─ ai/         AI 도우미 · 대화 모달
 │   ├─ community/  커뮤니티 (글·댓글 수정/삭제, 첨부)
 │   ├─ moderation/ 이용 정지 · 경고 기록
+│   ├─ memo/       메모장 · 홈 메모 위젯
+│   ├─ profile/    프로필 사진 · 캐릭터 · 한 줄 소개
 │   ├─ admin/      관리자 화면
 │   ├─ map/        동네 지도
 │   ├─ legal/      약관 · 처리방침 문구(★ content.ts)

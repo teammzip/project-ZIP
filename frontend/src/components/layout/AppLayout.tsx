@@ -4,40 +4,43 @@ import logoIcon from '@/assets/images/app-icon.png'
 import logo from '@/assets/images/logo-zip.png'
 import { Button } from '@/components/ui'
 import { useAuthStore, useLogout } from '@/features/auth'
-import { SidePanel, useNotis } from '@/features/life'
+import { useNotis } from '@/features/life'
+import { Avatar } from '@/features/profile'
 import { cx } from '@/lib/cx'
 import { DOW } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
 import { NavIcon } from './NavIcon'
+import { ProfileMenu } from './ProfileMenu'
 import { BOTTOM_ITEMS, SIDEBAR_ITEMS, type NavItem } from './navItems'
 import styles from './AppLayout.module.css'
 
-/* 로그인 후 모든 화면의 틀 (기존 시안 variants/app 과 같은 구성)
- * - PC: 왼쪽 좁은 아이콘 메뉴 + 본문 + 오른쪽 요약 패널 (1200px 이하에서 패널은 본문 아래로)
- * - 모바일(900px 이하): 하단 메뉴(홈·마이페이지·사진·AI·동네) + 그 위 AI 버튼 + 오른쪽 위 알림·내 정보·☰ 전체 메뉴,
- *   요약 패널은 홈에서만
+/* 로그인 후 모든 화면의 틀 (팀장님 시안 variants/app 과 같은 구성)
+ * - PC: 왼쪽 좁은 아이콘 메뉴(맨 아래 프로필 사진 → 프로필 메뉴) + 본문. 오른쪽 요약 패널은 시안에서 빠짐
+ * - 모바일(900px 이하): 하단 메뉴(홈·AI·사진·동네·마이페이지) + 그 위 AI 버튼 + 오른쪽 위 알림·프로필·☰ 전체 메뉴
  * 각 화면은 <Outlet /> 자리에 그려집니다. */
 export function AppLayout() {
   const { pathname } = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const toggleProfile = () => setProfileOpen((v) => !v)
 
   // 화면을 옮기면 ☰ 메뉴는 닫힘 (렌더 중에 이전 주소와 비교 — effect 안에서 setState 하지 않으려고)
   const [lastPath, setLastPath] = useState(pathname)
   if (lastPath !== pathname) {
     setLastPath(pathname)
     setMenuOpen(false)
+    setProfileOpen(false)
   }
 
   return (
     <div className={styles.shell}>
-      <Sidebar />
+      <Sidebar onProfile={toggleProfile} profileOpen={profileOpen} />
       <div className={styles.body}>
-        <Header menuOpen={menuOpen} onToggleMenu={() => setMenuOpen((v) => !v)} />
+        <Header menuOpen={menuOpen} onToggleMenu={() => setMenuOpen((v) => !v)} onProfile={toggleProfile} profileOpen={profileOpen} />
         <main className={styles.main}>
           <Outlet />
         </main>
       </div>
-      <Panel onHome={pathname === '/'} />
       <BottomNav />
       {pathname !== '/ai' && (
         <Link to="/ai" className={styles.aiFab} aria-label="AI 도우미 열기" title="AI 도우미">
@@ -50,6 +53,7 @@ export function AppLayout() {
         </Link>
       )}
       <MenuPanel open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <ProfileMenu open={profileOpen} onClose={() => setProfileOpen(false)} />
     </div>
   )
 }
@@ -61,7 +65,19 @@ function NavDot({ item }: { item: NavItem }) {
   return <span className={styles.dot} aria-label="안 읽은 알림 있음" />
 }
 
-function Sidebar() {
+type ProfileProps = { onProfile: () => void; profileOpen: boolean }
+
+/** 프로필 사진 단추 (누르면 프로필 메뉴) */
+function ProfileButton({ onProfile, profileOpen, size, className }: ProfileProps & { size: number; className: string }) {
+  const name = useAuthStore((s) => s.user?.nickname) ?? '자취생'
+  return (
+    <button type="button" className={className} onClick={onProfile} aria-label="프로필 메뉴" title="프로필" aria-haspopup="true" aria-expanded={profileOpen} data-profile-opener>
+      <Avatar name={name} size={size} />
+    </button>
+  )
+}
+
+function Sidebar(props: ProfileProps) {
   return (
     <aside className={styles.sidebar}>
       <NavLink to="/" className={styles.brand} aria-label="ZIP 홈">
@@ -80,13 +96,14 @@ function Sidebar() {
           ))}
         </ul>
       </nav>
+      {/* 맨 아래 프로필 사진: 누르면 프로필 보기 · 설정 · 로그아웃 */}
+      <ProfileButton {...props} size={40} className={styles.sideProfile} />
     </aside>
   )
 }
 
-function Header({ menuOpen, onToggleMenu }: { menuOpen: boolean; onToggleMenu: () => void }) {
+function Header({ menuOpen, onToggleMenu, ...profile }: { menuOpen: boolean; onToggleMenu: () => void } & ProfileProps) {
   const user = useAuthStore((s) => s.user)
-  const logout = useLogout()
   const { showDot } = useNotis()
   const now = useToday()
   const name = user?.nickname ?? '자취생'
@@ -101,19 +118,13 @@ function Header({ menuOpen, onToggleMenu }: { menuOpen: boolean; onToggleMenu: (
           안녕하세요, <b>{name}</b>님
         </p>
       </div>
-      {/* 900~1200px 에서만 보임 (넓은 화면은 오른쪽 패널에 로그아웃이 있고, 모바일은 아이콘 3개) */}
-      <Button variant="line" className={styles.headerLogout} onClick={() => logout.mutate()} loading={logout.isPending}>
-        로그아웃
-      </Button>
-      {/* 모바일: 알림 · 내 정보 · ☰ 전체 메뉴 */}
+      {/* 모바일: 알림 · 프로필(메뉴) · ☰ 전체 메뉴 */}
       <div className={styles.mobIcons}>
         <NavLink to="/my/noti" className={({ isActive }) => cx(styles.mobIcon, isActive && styles.mobOn)} aria-label="알림" title="알림">
           <NavIcon name="bell" size={20} />
           {showDot && <span className={styles.mobDot} aria-label="안 읽은 알림 있음" />}
         </NavLink>
-        <NavLink to="/my/settings" className={({ isActive }) => cx(styles.mobIcon, isActive && styles.mobOn)} aria-label="내 정보" title="내 정보">
-          <span className={styles.avatarSm}>{name.charAt(0)}</span>
-        </NavLink>
+        <ProfileButton {...profile} size={30} className={cx(styles.mobIcon, profile.profileOpen && styles.mobOn)} />
         <button
           type="button"
           className={cx(styles.mobIcon, menuOpen && styles.menuBtnOpen)}
@@ -127,12 +138,6 @@ function Header({ menuOpen, onToggleMenu }: { menuOpen: boolean; onToggleMenu: (
       </div>
     </header>
   )
-}
-
-function Panel({ onHome }: { onHome: boolean }) {
-  const name = useAuthStore((s) => s.user?.nickname) ?? '자취생'
-  const logout = useLogout()
-  return <SidePanel name={name} onLogout={() => logout.mutate()} logoutPending={logout.isPending} className={cx(styles.panel, !onHome && styles.panelNotHome)} />
 }
 
 function BottomNav() {
@@ -203,7 +208,7 @@ function MenuPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
         </div>
         {/* 내 계정: 누구로 로그인했는지 + 로그아웃 */}
         <div className={styles.menuAccount}>
-          <span className={styles.avatarSm}>{name.charAt(0)}</span>
+          <Avatar name={name} size={40} />
           <div className={styles.menuWho}>
             <b>{name}</b>
             <small>{user?.email}</small>

@@ -1,0 +1,117 @@
+/* 내 정보: 월세 카드 · 이번 달 요약 · 알림 스위치 */
+.rent {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 140px;
+  padding: 18px 20px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(150deg, #3d8bf2, #2563d6);
+  color: #fff;
+  text-decoration: none;
+  transition: transform 0.15s;
+}
+
+.rent small {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.rent b {
+  margin-top: 6px;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.rent span {
+  align-self: flex-start;
+  margin-top: 14px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  padding: 16px 18px;
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.15s;
+}
+
+.stat small {
+  display: block;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.stat b {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.rent:hover,
+.stat:hover {
+  transform: translateY(-2px);
+}
+
+/* 알림 받기 스위치 */
+.switch {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 46px;
+  height: 28px;
+  border-radius: 999px;
+  background: #d5d9e2;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s;
+}
+
+.switch:checked {
+  background: var(--color-primary);
+}
+
+.switch:checked::after {
+  transform: translateX(18px);
+}
+
+.switch:focus-visible {
+  outline: 3px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rent b {
+    font-size: 26px;
+  }
+}

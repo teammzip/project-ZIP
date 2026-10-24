@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { Button, Card, Segmented } from '@/components/ui'
@@ -7,17 +7,21 @@ import { DOW, dayDiff, fmt, monthDay, pad, todayStr } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
 import common from '@/styles/common.module.css'
 import { trashIco } from '../data/catalog'
+import { EV_PRESETS, evColor } from '../data/presets'
 import { isTrash, nextRentDate, sortEvents, trashEventsBetween, weekRange } from '../derive'
 import { useLifeStore } from '../store'
 import type { CalEvent, TrashEvent } from '../types'
+import cal from './calendar.module.css'
 import styles from './life.module.css'
 
 /** 목록 보기: 오늘 할 일 · 이번 주 할 일 · 선택한 날 · 전체 (백엔드 담당 시안 PR #12) */
 export type CalMode = 'today' | 'week' | 'day' | 'all'
 const MODES: CalMode[] = ['today', 'week', 'day', 'all']
 
-/** 일정 = 할 일: 달력 · 일정 추가 · 완료 체크 · 수정 · 삭제 · 검색, 쓰레기 배출 정기 일정, 다가오는 일.
- * ?mode=today|week|day|all 로 열면 그 보기로 시작 (홈 카드에서 씀) */
+/** 일정 = 할 일 (팀장님 시안 variants/app 의 캘린더와 같은 구성)
+ * - 왼쪽: 큰 달력(월간 · 주간, 칸 안에 일정 막대) + 알림(다가오는 일)
+ * - 오른쪽: 일정 기록하기(카테고리 항목 버튼 → 달력에서 날짜 누르기 / 직접 입력) + 할 일 목록
+ * ?mode=today|week|day|all 로 열면 그 목록 보기로 시작 (홈 카드에서 씀) */
 export function CalendarBoard() {
   const { events, addEvent } = useLifeStore(useShallow((s) => ({ events: s.events, addEvent: s.addEvent })))
   const now = useToday()
@@ -25,10 +29,15 @@ export function CalendarBoard() {
   const [params] = useSearchParams()
   const initialMode = params.get('mode') as CalMode | null
   const [view, setView] = useState({ y: now.getFullYear(), m: now.getMonth() })
+  const [calView, setCalView] = useState<'month' | 'week'>('month')
   const [selected, setSelected] = useState(today)
   const [mode, setMode] = useState<CalMode>(initialMode && MODES.includes(initialMode) ? initialMode : 'today')
   const [query, setQuery] = useState('')
   const [form, setForm] = useState({ title: '', date: today, time: '' })
+  // 일정 기록하기에서 골라 둔 항목 (달력에서 날짜를 누르면 이 이름으로 추가)
+  const [picked, setPicked] = useState<string | null>(null)
+  const [pickTime, setPickTime] = useState('')
+  const [pickNote, setPickNote] = useState('')
 
   /** 날짜를 고르면 그 달로 이동하고 '선택한 날' 목록을 보여줌 */
   const pick = (date: string, nextMode: CalMode = 'day') => {
@@ -46,53 +55,125 @@ export function CalendarBoard() {
       setQuery('')
     }
   }
+  /** 일정 하나 저장 후 그 날짜로 달력 · 목록을 맞춤 (직접 입력과 항목 버튼이 같이 씀) */
+  const add = (title: string, date: string, time: string) => {
+    addEvent({ title, date, time })
+    const week = weekRange(now)
+    pick(date, date === today ? 'today' : mode === 'week' && date >= week.start && date <= week.end ? 'week' : 'day')
+  }
+  const addPicked = (date: string) => {
+    if (!picked) return
+    const label = `${Number(date.slice(5, 7))}월 ${Number(date.slice(8))}일`
+    if (events.some((ev) => ev.date === date && ev.title === picked)) return setPickNote(`${label}에 이미 있어요.`)
+    add(picked, date, pickTime)
+    setPickNote(`${label}에 추가했어요. 다른 날짜도 눌러 추가할 수 있어요.`)
+  }
+  const choose = (name: string | null) => {
+    setPicked(name)
+    setPickNote('')
+  }
+  /** 이전 · 다음: 월간은 한 달, 주간은 한 주 */
+  const shift = (dir: number) => {
+    if (calView === 'week') {
+      const d = new Date(`${selected}T00:00:00`)
+      d.setDate(d.getDate() + 7 * dir)
+      setSelected(fmt(d))
+      setView({ y: d.getFullYear(), m: d.getMonth() })
+    } else {
+      const d = new Date(view.y, view.m + dir, 1)
+      setView({ y: d.getFullYear(), m: d.getMonth() })
+    }
+  }
+  const changeCalView = (v: 'month' | 'week') => {
+    setCalView(v)
+    if (v === 'month') setView({ y: Number(selected.slice(0, 4)), m: Number(selected.slice(5, 7)) - 1 })
+  }
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const title = form.title.trim()
     if (!title || !form.date) return
-    addEvent({ title, date: form.date, time: form.time })
-    const week = weekRange(now)
-    pick(form.date, form.date === today ? 'today' : mode === 'week' && form.date >= week.start && form.date <= week.end ? 'week' : 'day')
+    add(title, form.date, form.time)
     setForm((f) => ({ ...f, title: '', time: '' }))
   }
 
   return (
-    <div className={common.layout}>
+    <div className={cal.layout}>
       <div className={common.col}>
-        <MonthGrid events={events} view={view} setView={setView} selected={selected} onPick={(d) => pick(d)} />
+        <BigCalendar
+          events={events}
+          view={view}
+          calView={calView}
+          onCalView={changeCalView}
+          selected={selected}
+          picking={!!picked}
+          onDay={(d) => (picked ? addPicked(d) : pick(d))}
+          onShift={shift}
+          onToday={() => pick(today)}
+        />
         <UpcomingCard />
       </div>
       <div className={common.col}>
         <Card title="일정 기록하기">
-          <form className={common.form} onSubmit={submit}>
-            <label>
-              일정 제목
-              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={60} placeholder="예) 월세 이체, 집주인 통화, 장보기" required />
-            </label>
-            <div className={common.two}>
-              <label>
-                날짜
-                <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
-              </label>
-              <label>
-                시간 (선택)
-                <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
-              </label>
+          <p className={cal.help}>항목을 누른 다음, 달력에서 날짜를 누르면 일정이 추가돼요.</p>
+          {EV_PRESETS.map((cat) => (
+            <div key={cat.name} className={cal.cat}>
+              <h3>
+                {cat.ico} {cat.name}
+              </h3>
+              <div className={common.chips}>
+                {cat.items.map((name) => (
+                  <button key={name} type="button" className={cx(common.chip, picked === name && common.chipOn)} aria-pressed={picked === name} onClick={() => choose(picked === name ? null : name)}>
+                    {name}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className={common.actions} aria-label="빠른 날짜 설정">
-              <Button variant="line" onClick={() => setForm({ ...form, date: today })}>
-                오늘 할 일
-              </Button>
-              <Button variant="line" onClick={() => setForm({ ...form, date: weekRange(now).end })}>
-                이번 주 할 일
-              </Button>
+          ))}
+          {picked && (
+            <div className={cal.pickBar}>
+              <p className={cal.pickMsg} aria-live="polite">
+                <b>「{picked}」</b> <span>{pickNote || '달력에서 날짜를 눌러 주세요.'}</span>
+              </p>
+              <div className={cal.pickRow}>
+                <label>
+                  시간 (선택) <input type="time" className={common.input} value={pickTime} onChange={(e) => setPickTime(e.target.value)} />
+                </label>
+                <Button variant="line" onClick={() => addPicked(today)}>
+                  오늘로 추가
+                </Button>
+                <Button variant="line" onClick={() => addPicked(weekRange(now).end)}>
+                  이번 주(일요일)로 추가
+                </Button>
+                <Button variant="line" onClick={() => choose(null)}>
+                  선택 해제
+                </Button>
+              </div>
             </div>
-            <small className={common.note}>이번 주 할 일은 이번 주 일요일을 날짜로 정해요.</small>
-            <Button type="submit" block>
-              일정 추가
-            </Button>
-          </form>
+          )}
+          {/* 목록에 없는 일정은 직접 입력 */}
+          <details className={cal.custom}>
+            <summary>직접 입력하기</summary>
+            <form className={common.form} onSubmit={submit}>
+              <label>
+                일정 제목
+                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={60} placeholder="예) 월세 이체, 집주인 통화, 장보기" required />
+              </label>
+              <div className={common.two}>
+                <label>
+                  날짜
+                  <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+                </label>
+                <label>
+                  시간 (선택)
+                  <input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
+                </label>
+              </div>
+              <Button type="submit" block>
+                일정 추가
+              </Button>
+            </form>
+          </details>
         </Card>
         <EventList events={events} selected={selected} mode={mode} setMode={changeMode} query={query} setQuery={setQuery} onMoved={(d) => pick(d)} viewMonth={view} />
       </div>
@@ -103,67 +184,109 @@ export function CalendarBoard() {
 type GridProps = {
   events: CalEvent[]
   view: { y: number; m: number }
-  setView: (v: { y: number; m: number }) => void
+  calView: 'month' | 'week'
+  onCalView: (v: 'month' | 'week') => void
   selected: string
-  onPick: (date: string) => void
+  picking: boolean
+  onDay: (date: string) => void
+  onShift: (dir: number) => void
+  onToday: () => void
 }
 
-function MonthGrid({ events, view, setView, selected, onPick }: GridProps) {
+/** 큰 달력: 월간은 그 달 전체(앞뒤 달 날짜는 흐리게), 주간은 선택한 날이 든 한 주.
+ * 칸마다 날짜 + 일정 막대(월간 최대 3개, 넘으면 "+N개 더", 주간은 전부). 좁은 화면은 막대 대신 점 */
+function BigCalendar({ events, view, calView, onCalView, selected, picking, onDay, onShift, onToday }: GridProps) {
   const { y, m } = view
-  const first = new Date(y, m, 1).getDay()
-  const days = new Date(y, m + 1, 0).getDate()
   const today = todayStr()
-  const trash = trashEventsBetween(`${y}-${pad(m + 1)}-01`, `${y}-${pad(m + 1)}-${pad(days)}`)
-  const move = (delta: number) => {
-    const d = new Date(y, m + delta, 1)
-    setView({ y: d.getFullYear(), m: d.getMonth() })
+  let start: Date
+  let count: number
+  let title: string
+  if (calView === 'week') {
+    start = new Date(`${selected}T00:00:00`)
+    start.setDate(start.getDate() - start.getDay())
+    count = 7
+    const end = new Date(start)
+    end.setDate(end.getDate() + 6)
+    title = `${start.getFullYear()}.${pad(start.getMonth() + 1)}.${pad(start.getDate())} ~ ${pad(end.getMonth() + 1)}.${pad(end.getDate())}`
+  } else {
+    const first = new Date(y, m, 1)
+    start = new Date(y, m, 1 - first.getDay())
+    count = Math.ceil((first.getDay() + new Date(y, m + 1, 0).getDate()) / 7) * 7
+    title = `${y}.${pad(m + 1)}`
   }
+  const days = Array.from({ length: count }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i))
+  const trash = trashEventsBetween(fmt(days[0]), fmt(days[days.length - 1]))
+  const maxChips = calView === 'week' ? 12 : 3
 
   return (
-    <Card
-      title={`${y}년 ${m + 1}월`}
-      actions={
-        <div className={styles.calNav}>
-          <button type="button" onClick={() => move(-1)} aria-label="이전 달">
+    <Card>
+      <h2 className={cal.heading}>내 일정</h2>
+      <div className={cal.toolbar}>
+        <div className={cal.pills} role="group" aria-label="보기 방식">
+          <button type="button" className={cx(cal.pill, calView === 'week' && cal.pillOn)} aria-pressed={calView === 'week'} onClick={() => onCalView('week')}>
+            주간
+          </button>
+          <button type="button" className={cx(cal.pill, calView === 'month' && cal.pillOn)} aria-pressed={calView === 'month'} onClick={() => onCalView('month')}>
+            월간
+          </button>
+        </div>
+        <div className={cal.nav}>
+          <button type="button" onClick={() => onShift(-1)} aria-label="이전">
             ‹
           </button>
-          <button type="button" className={styles.todayBtn} onClick={() => onPick(today)}>
-            오늘
-          </button>
-          <button type="button" onClick={() => move(1)} aria-label="다음 달">
+          <span className={cal.ym}>{title}</span>
+          <button type="button" onClick={() => onShift(1)} aria-label="다음">
             ›
           </button>
         </div>
-      }
-    >
-      <div className={styles.calGrid}>
-        {DOW.map((d) => (
-          <div key={d} className={styles.calDow}>
+        <button type="button" className={cal.todayBtn} onClick={onToday}>
+          오늘
+        </button>
+      </div>
+      <div className={cx(cal.grid, calView === 'week' && cal.week, picking && cal.picking)}>
+        {DOW.map((d, i) => (
+          <div key={d} className={cx(cal.dow, i === 0 && cal.sun)}>
             {d}
           </div>
         ))}
-        {Array.from({ length: first }, (_, i) => (
-          <div key={`e${i}`} />
-        ))}
-        {Array.from({ length: days }, (_, i) => {
-          const ds = `${y}-${pad(m + 1)}-${pad(i + 1)}`
-          const count = events.filter((ev) => ev.date === ds).length + trash.filter((t) => t.date === ds).length
+        {days.map((d) => {
+          const ds = fmt(d)
+          const evs: Array<CalEvent | TrashEvent> = [...sortEvents(events.filter((ev) => ev.date === ds)), ...trash.filter((t) => t.date === ds)]
           return (
-            <button
+            <div
               key={ds}
-              type="button"
-              className={cx(styles.calDay, ds === today && styles.calToday, ds === selected && styles.calSel)}
-              onClick={() => onPick(ds)}
-              aria-label={`${m + 1}월 ${i + 1}일${count ? `, 일정 ${count}개` : ''}`}
+              role="button"
+              tabIndex={0}
+              className={cx(cal.day, calView === 'month' && d.getMonth() !== m && cal.out, d.getDay() === 0 && cal.sun, ds === today && cal.today, ds === selected && cal.sel)}
+              onClick={() => onDay(ds)}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onDay(ds))}
+              aria-label={`${d.getMonth() + 1}월 ${d.getDate()}일${evs.length ? `, 일정 ${evs.length}개` : ''}${picking ? ', 눌러서 추가' : ''}`}
               aria-pressed={ds === selected}
             >
-              <span>{i + 1}</span>
-              <span className={styles.mark}>
-                {Array.from({ length: Math.min(count, 3) }, (_, k) => (
-                  <i key={k} />
+              <span className={cal.dn}>{d.getDate()}</span>
+              <div className={cal.chips}>
+                {evs.slice(0, maxChips).map((ev) => {
+                  const trashEv = isTrash(ev)
+                  return (
+                    <div
+                      key={ev.id}
+                      className={cx(cal.cev, !trashEv && ev.done && cal.cevDone)}
+                      style={{ '--c': evColor(ev.title, trashEv) } as CSSProperties}
+                      title={`${ev.time ? `${ev.time} ` : ''}${ev.title}`}
+                    >
+                      {ev.time && !trashEv && <i>{ev.time}</i>}
+                      {ev.title}
+                    </div>
+                  )
+                })}
+                {evs.length > maxChips && <div className={cal.more}>+{evs.length - maxChips}개 더</div>}
+              </div>
+              <span className={cal.mark}>
+                {evs.slice(0, 3).map((ev) => (
+                  <i key={ev.id} />
                 ))}
               </span>
-            </button>
+            </div>
           )
         })}
       </div>
@@ -311,7 +434,7 @@ function EditRow({ ev, onDone }: { ev: CalEvent; onDone: (saved: CalEvent | null
   )
 }
 
-/** 달력 아래 "다가오는 일": 월세 + 7일 안의 일정(끝낸 건 빼고) · 쓰레기 배출 */
+/** 달력 아래 "알림"(다가오는 일): 월세 + 7일 안의 일정(끝낸 건 빼고) · 쓰레기 배출 */
 function UpcomingCard() {
   const { events, settings } = useLifeStore(useShallow((s) => ({ events: s.events, settings: s.settings })))
   const now = useToday()
@@ -334,7 +457,7 @@ function UpcomingCard() {
   ]
 
   return (
-    <Card title="다가오는 일">
+    <Card title="알림">
       {rows.map((r) => (
         <div key={r.key} className={common.noti}>
           <div className={common.notiIco}>{r.ico}</div>

@@ -1,0 +1,101 @@
+/* 로그인 방식 표시: 브랜드 로고 · 배지 · 계정 줄 */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 2px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
+.text small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-muted);
+}
+
+.ico {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.ico svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ico.email {
+  background: var(--color-primary);
+}
+
+.ico.kakao {
+  background: var(--color-kakao);
+}
+
+.ico.google {
+  border: 1px solid var(--color-line);
+  background: #fff;
+}
+
+.ico.naver {
+  background: var(--color-naver);
+}
+
+.tag {
+  flex: none;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--color-bg);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge.email {
+  background: #eaf2fe;
+  color: var(--color-primary);
+}
+
+.badge.kakao {
+  background: #fff7c2;
+  color: #6b5a00;
+}
+
+.badge.google {
+  background: #eef3fe;
+  color: #3367d6;
+}
+
+.badge.naver {
+  background: #e3f8eb;
+  color: #03a94d;
+}

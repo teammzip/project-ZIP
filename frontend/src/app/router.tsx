@@ -19,6 +19,7 @@ import { CalendarPage } from '@/pages/my/CalendarPage'
 import { ExpensePage } from '@/pages/my/ExpensePage'
 import { FixedExpensePage } from '@/pages/my/FixedExpensePage'
 import { IncomePage } from '@/pages/my/IncomePage'
+import { MemoPage } from '@/pages/my/MemoPage'
 import { MyLayout } from '@/pages/my/MyLayout'
 import { NotiPage } from '@/pages/my/NotiPage'
 import { SettingsPage } from '@/pages/my/SettingsPage'
@@ -93,6 +94,7 @@ export const router = createBrowserRouter([
                   },
                 ],
               },
+              { path: 'memo', element: <MemoPage /> },
               { path: 'noti', element: <NotiPage /> },
               { path: 'settings', element: <SettingsPage /> },
             ],

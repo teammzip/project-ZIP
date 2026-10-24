@@ -1,87 +1,179 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button, Card, Modal } from '@/components/ui'
 import { useChatStore } from '@/features/ai'
-import { PasswordChangeForm, useAuthStore, useLogout, useUpdateMe, useWithdraw } from '@/features/auth'
+import { LoginBadge, LoginMethod, PasswordChangeForm, useAuthStore, useLogout, useUpdateMe, useWithdraw } from '@/features/auth'
 import { useCommunityStore } from '@/features/community'
 import { LegalLinks } from '@/features/legal'
-import { SettingsForm, useLifeStore } from '@/features/life'
+import { LifeInfoForm, LifeStats, NotiSwitch, RentCard, useLifeStore, useLifeSummary } from '@/features/life'
+import { useMemoStore } from '@/features/memo'
+import { ProfileEditor, ProfileHero, useProfileStore } from '@/features/profile'
 import { getErrorMessage } from '@/lib/apiClient'
 import { remove } from '@/lib/storage'
 import common from '@/styles/common.module.css'
 import styles from './SettingsPage.module.css'
 
-/** 이 기기에 저장된 앱 기록(일정·할 일·가계부·알림·커뮤니티 글·AI 대화·설정)을 처음 상태로 */
+/** 이 기기에 저장된 앱 기록(일정·가계부·알림·커뮤니티 글·AI 대화·메모·프로필·설정)을 처음 상태로 */
 function resetAppData() {
   useLifeStore.getState().reset()
   useCommunityStore.getState().reset()
   useChatStore.getState().reset()
+  useMemoStore.getState().reset()
+  useProfileStore.getState().reset()
 }
 
-/* 내 정보: 설정 저장, 데이터 초기화, 회원 탈퇴 */
+const TILES = [
+  { to: '/my/calendar', ico: '📅', label: '일정' },
+  { to: '/my/budget', ico: '💰', label: '가계부' },
+  { to: '/my/memo', ico: '📝', label: '메모' },
+  { to: '/community', ico: '💬', label: '동네 이야기' },
+]
+
+type Sheet = 'profile' | 'life' | 'password' | 'reset' | 'withdraw' | null
+
+/* 내 정보 (compare.html 시안과 같은 구성)
+ * - PC(1100px 이상): 왼쪽 = 프로필 · 월세 카드 / 오른쪽 = 이번 달 요약 · 바로 가기 · 계정·설정
+ * - 모바일: 위에서부터 한 줄로
+ * 프로필 편집 · 생활 정보 · 비밀번호 변경은 창으로 열고, 로그아웃 · 초기화 · 탈퇴는 계정·설정 맨 아래 작은 글씨 */
 export function SettingsPage() {
   const user = useAuthStore((s) => s.user)
+  const region = useLifeStore((s) => s.settings.region)
+  const postCount = useCommunityStore((s) => s.posts.filter((p) => p.mine).length)
+  const lifeSummary = useLifeSummary()
   const updateMe = useUpdateMe()
   const logout = useLogout()
-  const [confirmReset, setConfirmReset] = useState(false)
-  const [withdrawOpen, setWithdrawOpen] = useState(false)
+  const [sheet, setSheet] = useState<Sheet>(null)
+  const [toast, setToast] = useState('')
+  const name = user?.nickname ?? '자취생'
+  const close = () => setSheet(null)
+  const notify = (text: string) => {
+    setToast(text)
+    setTimeout(() => setToast((t) => (t === text ? '' : t)), 1800)
+  }
 
   return (
-    <Card title="내 정보 · 설정" className={common.narrow}>
-      <SettingsForm name={user?.nickname ?? ''} onSaveName={(nickname) => updateMe.mutate({ nickname })} />
-      {updateMe.isError && <p className={styles.error}>{getErrorMessage(updateMe.error)}</p>}
-
-      {user?.provider === 'email' && (
-        <>
-          <hr className={styles.hr} />
-          <h3 className={styles.subTitle}>비밀번호 변경</h3>
-          <PasswordChangeForm />
-        </>
-      )}
-
-      <hr className={styles.hr} />
-      <div className={styles.account}>
-        <p className={styles.desc}>
-          <b>{user?.email}</b> 로 로그인했어요.
-        </p>
-        <Button variant="line" onClick={() => logout.mutate()} loading={logout.isPending}>
-          로그아웃
-        </Button>
+    <div className={styles.wrap}>
+      <div className={styles.side}>
+        <ProfileHero name={name} region={region} badge={<LoginBadge />} onEdit={() => setSheet('profile')} />
+        <RentCard />
       </div>
 
-      <hr className={styles.hr} />
-      <p className={styles.desc}>일정, 할 일, 가계부, 알림 읽음 상태, 커뮤니티 글, AI 대화, 설정을 이 기기에서 처음 상태로 되돌립니다.</p>
-      {confirmReset ? (
-        <div className={common.actions}>
-          <Button
-            variant="danger"
-            onClick={() => {
-              resetAppData()
-              setConfirmReset(false)
-            }}
-          >
-            정말 초기화하기
-          </Button>
-          <Button variant="line" onClick={() => setConfirmReset(false)}>
-            취소
-          </Button>
+      <div className={styles.main}>
+        <LifeStats postCount={postCount} />
+
+        <Card title="나의 자취 관리">
+          <div className={styles.tiles}>
+            {TILES.map((t) => (
+              <Link key={t.to} to={t.to} className={styles.tile}>
+                <span aria-hidden="true">{t.ico}</span>
+                {t.label}
+              </Link>
+            ))}
+          </div>
+        </Card>
+
+        <Card title="계정 · 설정">
+          <ul className={styles.list}>
+            <li>
+              <LoginMethod />
+            </li>
+            {user?.provider === 'email' && (
+              <li>
+                <button type="button" className={styles.row} onClick={() => setSheet('password')}>
+                  <span className={styles.ico}>🔒</span>
+                  <span className={styles.grow}>비밀번호 변경</span>
+                  <i className={styles.chev} aria-hidden="true" />
+                </button>
+              </li>
+            )}
+            <li>
+              <button type="button" className={styles.row} onClick={() => setSheet('life')}>
+                <span className={styles.ico}>🏠</span>
+                <span className={styles.grow}>
+                  생활 정보<small>{lifeSummary}</small>
+                </span>
+                <i className={styles.chev} aria-hidden="true" />
+              </button>
+            </li>
+            <li>
+              <label className={styles.row}>
+                <span className={styles.ico}>🔔</span>
+                <span className={styles.grow}>
+                  알림 받기<small>일정 · 쓰레기 배출 · 월세 알림</small>
+                </span>
+                <NotiSwitch onChange={(on) => notify(on ? '알림을 켰어요.' : '알림을 껐어요.')} />
+              </label>
+            </li>
+          </ul>
+          {updateMe.isError && <p className={styles.error}>{getErrorMessage(updateMe.error)}</p>}
+          <div className={styles.foot}>
+            <button type="button" onClick={() => logout.mutate()} disabled={logout.isPending}>
+              로그아웃
+            </button>
+            <button type="button" onClick={() => setSheet('reset')} title="이 기기에 저장된 기록을 처음 상태로">
+              데이터 초기화
+            </button>
+            <button type="button" className={styles.danger} onClick={() => setSheet('withdraw')}>
+              회원 탈퇴
+            </button>
+          </div>
+          <LegalLinks className={styles.legal} />
+        </Card>
+      </div>
+
+      <ProfileEditor
+        open={sheet === 'profile'}
+        onClose={close}
+        name={name}
+        onSaveName={(nickname) => updateMe.mutate({ nickname })}
+        onSaved={() => notify('프로필을 바꿨어요.')}
+      />
+
+      <Modal open={sheet === 'life'} onClose={close} title="생활 정보">
+        <h3 className={styles.sheetTitle}>생활 정보</h3>
+        <LifeInfoForm
+          onSaved={() => {
+            close()
+            notify('저장됐어요.')
+          }}
+        />
+      </Modal>
+
+      <Modal open={sheet === 'password'} onClose={close} title="비밀번호 변경">
+        <h3 className={styles.sheetTitle}>비밀번호 변경</h3>
+        <PasswordChangeForm />
+      </Modal>
+
+      <Modal open={sheet === 'reset'} onClose={close} title="데이터 초기화">
+        <div className={styles.dialog}>
+          <h3>모든 데이터를 초기화할까요?</h3>
+          <p>일정, 가계부, 알림 읽음 상태, 커뮤니티 글, AI 대화, 메모, 프로필, 설정을 이 기기에서 처음 상태로 되돌려요.</p>
+          <div className={styles.dialogActions}>
+            <Button variant="line" onClick={close}>
+              취소
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                resetAppData()
+                close()
+                notify('처음 상태로 되돌렸어요.')
+              }}
+            >
+              초기화하기
+            </Button>
+          </div>
         </div>
-      ) : (
-        <Button variant="danger" onClick={() => setConfirmReset(true)}>
-          모든 데이터 초기화
-        </Button>
+      </Modal>
+
+      <WithdrawDialog open={sheet === 'withdraw'} onClose={close} />
+
+      {toast && (
+        <div className={styles.toast} role="status">
+          {toast}
+        </div>
       )}
-
-      <hr className={styles.hr} />
-      <p className={styles.desc}>회원 탈퇴를 하면 계정과 이 기기에 저장된 모든 정보가 삭제되고, 처음 화면으로 돌아가요.</p>
-      <Button variant="danger" onClick={() => setWithdrawOpen(true)}>
-        회원 탈퇴
-      </Button>
-      <WithdrawDialog open={withdrawOpen} onClose={() => setWithdrawOpen(false)} />
-
-      <hr className={styles.hr} />
-      <LegalLinks className={styles.desc} />
-    </Card>
+    </div>
   )
 }
 
@@ -97,7 +189,7 @@ function WithdrawDialog({ open, onClose }: { open: boolean; onClose: () => void 
     withdraw.mutate(undefined, {
       onSuccess: () => {
         resetAppData()
-        for (const key of ['zip-life', 'zip-posts', 'zip-ai-chat']) remove(key)
+        for (const key of ['zip-life', 'zip-posts', 'zip-ai-chat', 'zip-memos', 'zip-profile']) remove(key)
       },
     })
   const finish = () => {
@@ -117,7 +209,7 @@ function WithdrawDialog({ open, onClose }: { open: boolean; onClose: () => void 
         <p>
           {done
             ? '이용해 주셔서 감사합니다. 저장된 정보를 모두 삭제했어요. 언제든 다시 가입할 수 있어요.'
-            : '탈퇴하면 계정과 이 기기에 저장된 일정, 할 일, 가계부(수입·지출), 알림 상태, 커뮤니티 글, AI 대화, 설정이 모두 삭제되고 되돌릴 수 없어요.'}
+            : '탈퇴하면 계정과 이 기기에 저장된 일정, 가계부(수입·지출), 알림 상태, 커뮤니티 글, AI 대화, 메모, 프로필, 설정이 모두 삭제되고 되돌릴 수 없어요.'}
         </p>
         {!done && (
           <label className={styles.agree}>
