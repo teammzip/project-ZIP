@@ -2,7 +2,7 @@
  * - 메모 한 개: { id, title, body, color, pinned, checklist, items: [{ text, done }], createdAt, updatedAt }
  *   checklist 가 true 면 items(줄마다 체크) 를, 아니면 body(글) 를 씀. 바꾸면 서로 변환 (글 한 줄 = 항목 하나)
  * - 쓰는 대로 자동 저장 (localStorage 'zip-memos'), 고정한 메모가 맨 위, 그다음 최근 수정 순
- * - 홈 메모 위젯: 대표 메모(고정 또는 최근) 한 장 + 그다음 메모 3개 목록 + 빠른 메모. 누르면 메모장에서 그 메모를 엶
+ * - 홈 메모 위젯: 내가 고른 메모 최대 3개(zip-home-memos, 안 고르면 최근 3개)를 쪽지로 나란히 + 빠른 메모. 누르면 메모장에서 그 메모를 엶
  * 서버를 붙이면 DB 의 memos 표 (frontend/API.md 참고) */
 import { $, el } from '../core/utils.js';
 import { load, store } from '../core/storage.js';
@@ -154,66 +154,144 @@ $('memoDel').addEventListener('click', function () {
   save(); openMemo(null);
 });
 
-/* ---------- 홈 메모 카드 ---------- */
+/* ---------- 홈 메모 위젯: 고른 메모 최대 3개를 쪽지로 ---------- */
+var HOME_KEY = 'zip-home-memos', HOME_MAX = 3;
 function goMemo(id) { showView('memo'); openMemo(id); }
+// 홈에 보여 줄 메모: 고른 게 없으면(자동) 맨 위 3개. 지워진 메모는 뺌
+function homeMemos() {
+  var ids = load(HOME_KEY, null);
+  if (!Array.isArray(ids)) return sorted(memos).slice(0, HOME_MAX);
+  return ids.map(find).filter(Boolean).slice(0, HOME_MAX);
+}
 function renderHome() {
-  var all = sorted(memos), top = all[0];
   $('homeMemoCount').textContent = memos.length + '개';
-  var feat = $('homeMemoFeature'); feat.textContent = '';
-  var list = $('homeMemoList'); list.textContent = '';
-  list.hidden = all.length < 2;
-  if (!top) {
-    feat.style.removeProperty('--memo-bg');
-    feat.appendChild(el('p', 'mw-none', '아직 메모가 없어요.\n아래 칸에 적고 Enter 를 눌러 보세요.'));
-    return;
-  }
-  // 대표 메모: 줄 노트 모양. 체크리스트면 여기서 바로 체크
-  var c = colorOf(top.color);
-  feat.style.setProperty('--memo-bg', c[1]); feat.style.setProperty('--memo-line', c[2]);
-  var head = el('button', 'mw-feature-head'); head.type = 'button';
-  head.appendChild(el('b', null, (top.pinned ? '📌 ' : '') + titleOf(top)));
-  head.appendChild(el('time', null, when(top.updatedAt)));
-  head.addEventListener('click', function () { goMemo(top.id); });
-  feat.appendChild(head);
-  if (top.checklist) {
-    var ul = el('ul', 'mw-checks');
-    top.items.slice(0, 5).forEach(function (it) {
-      if (!it.text) return;
-      var li = el('li', it.done ? 'done' : null), lb = el('label'), cb = el('input');
-      cb.type = 'checkbox'; cb.checked = it.done;
-      cb.addEventListener('change', function () { it.done = cb.checked; top.updatedAt = Date.now(); save(); if (currentId === top.id) openMemo(top.id); });
-      lb.appendChild(cb); lb.appendChild(el('span', null, it.text));
-      li.appendChild(lb); ul.appendChild(li);
-    });
-    feat.appendChild(ul);
-    var left = top.items.filter(function (i) { return i.text && !i.done; }).length;
-    feat.appendChild(el('small', 'mw-left', left ? left + '개 남았어요' : '모두 끝냈어요 🎉'));
-  } else {
-    var p = el('p', 'mw-text', previewLines(top, function () { return ''; }).join('\n') || titleOf(top));
-    p.addEventListener('click', function () { goMemo(top.id); });
-    feat.appendChild(p);
-  }
-  // 그다음 메모 3개
-  all.slice(1, 4).forEach(function (m) {
-    var li = el('li'), b = el('button', 'mw-item'); b.type = 'button';
-    b.style.setProperty('--memo-line', colorOf(m.color)[2]);
-    var t = el('span', 'mw-item-t');
-    t.appendChild(el('b', null, (m.pinned ? '📌 ' : '') + titleOf(m)));
-    var pv = previewLines(m, function (it) { return it.done ? '✓ ' : ''; }).filter(Boolean).join(' · ');
-    if (pv) t.appendChild(el('small', null, pv));
-    b.appendChild(t);
-    b.appendChild(el('time', null, when(m.updatedAt)));
-    b.addEventListener('click', function () { goMemo(m.id); });
-    li.appendChild(b); list.appendChild(li);
+  var grid = $('homeMemoGrid'); grid.textContent = '';
+  var shown = homeMemos();
+  shown.forEach(function (m) {
+    var c = colorOf(m.color);
+    var note = el('article', 'mw-note');
+    note.style.setProperty('--memo-bg', c[1]); note.style.setProperty('--memo-line', c[2]);
+    var head = el('button', 'mw-note-head'); head.type = 'button';
+    head.appendChild(el('b', null, (m.pinned ? '📌 ' : '') + titleOf(m)));
+    head.appendChild(el('time', null, when(m.updatedAt)));
+    head.addEventListener('click', function () { goMemo(m.id); });
+    note.appendChild(head);
+    if (m.checklist) {   // 체크리스트면 여기서 바로 체크
+      var ul = el('ul', 'mw-checks');
+      m.items.filter(function (it) { return it.text; }).slice(0, 5).forEach(function (it) {
+        var li = el('li', it.done ? 'done' : null), lb = el('label'), cb = el('input');
+        cb.type = 'checkbox'; cb.checked = it.done;
+        cb.addEventListener('change', function () { it.done = cb.checked; m.updatedAt = Date.now(); save(); if (currentId === m.id) openMemo(m.id); });
+        lb.appendChild(cb); lb.appendChild(el('span', null, it.text));
+        li.appendChild(lb); ul.appendChild(li);
+      });
+      note.appendChild(ul);
+      var left = m.items.filter(function (i) { return i.text && !i.done; }).length;
+      note.appendChild(el('small', 'mw-left', left ? left + '개 남았어요' : '모두 끝냈어요 🎉'));
+    } else {
+      var p = el('p', 'mw-text', previewLines(m, function () { return ''; }).join('\n') || titleOf(m));
+      p.addEventListener('click', function () { goMemo(m.id); });
+      note.appendChild(p);
+    }
+    enableReorder(note, m.id, grid);
+    grid.appendChild(note);
   });
+  // 남는 칸은 눌러서 메모를 고르는 빈 쪽지
+  for (var i = shown.length; i < HOME_MAX; i++) {
+    var empty = el('button', 'mw-empty'); empty.type = 'button';
+    empty.appendChild(el('span', null, '＋'));
+    empty.appendChild(document.createTextNode(memos.length ? '메모 고르기' : '메모 만들기'));
+    empty.addEventListener('click', function () { if (memos.length) openPicker(); else $('homeMemoInput').focus(); });
+    grid.appendChild(empty);
+  }
+}
+/* 쪽지를 꾹 눌렀다가(0.35초) 옆 쪽지 위로 끌어다 놓으면 두 쪽지의 자리가 바뀜 (마우스·터치 모두).
+ * 바뀐 순서는 zip-home-memos 에 저장되고, 자동 상태였다면 이때부터 직접 고른 상태가 됨 */
+var dragged = false;   // 끌고 난 직후의 클릭(메모 열기)을 막기 위한 표시
+function enableReorder(note, id, grid) {
+  var timer = 0, active = false, sx = 0, sy = 0, pid = 0, target = null;
+  var block = function (e) { e.preventDefault(); };   // 끄는 동안 터치 화면이 스크롤되지 않게
+  function reset() {
+    clearTimeout(timer); active = false; target = null;
+    document.removeEventListener('touchmove', block);
+    note.classList.remove('lifting'); note.style.transform = '';
+    [].forEach.call(grid.querySelectorAll('.drop'), function (n) { n.classList.remove('drop'); });
+  }
+  note.addEventListener('pointerdown', function (e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.target.closest('input, label')) return;   // 체크박스는 그대로 체크
+    sx = e.clientX; sy = e.clientY; pid = e.pointerId;
+    timer = setTimeout(function () {
+      active = true; note.classList.add('lifting');
+      try { note.setPointerCapture(pid); } catch (err) { }
+      document.addEventListener('touchmove', block, { passive: false });
+    }, 350);
+  });
+  note.addEventListener('pointermove', function (e) {
+    if (!active) { if (Math.hypot(e.clientX - sx, e.clientY - sy) > 8) clearTimeout(timer); return; }
+    note.style.transform = 'translate(' + (e.clientX - sx) + 'px, ' + (e.clientY - sy) + 'px) scale(1.04)';
+    target = null;
+    [].forEach.call(grid.querySelectorAll('.mw-note'), function (n) {
+      if (n === note) return;
+      var r = n.getBoundingClientRect(), hit = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      n.classList.toggle('drop', hit);
+      if (hit) target = n;
+    });
+  });
+  function end() {
+    var was = active, to = target;
+    var notes = [].slice.call(grid.querySelectorAll('.mw-note'));
+    var ids = homeMemos().map(function (m) { return m.id; });
+    var from = notes.indexOf(note), dest = to ? notes.indexOf(to) : -1;
+    reset();
+    if (!was) return;
+    dragged = true; setTimeout(function () { dragged = false; }, 0);
+    if (dest >= 0 && from >= 0 && dest !== from) {
+      var t = ids[from]; ids[from] = ids[dest]; ids[dest] = t;
+      store(HOME_KEY, ids); renderHome();
+    }
+  }
+  note.addEventListener('pointerup', end);
+  note.addEventListener('pointercancel', end);
+  note.addEventListener('click', function (e) { if (dragged) { e.stopPropagation(); e.preventDefault(); } }, true);
+  note.addEventListener('contextmenu', function (e) { if (active) e.preventDefault(); });   // 터치 길게 누름 메뉴 막기
 }
 $('homeMemoForm').addEventListener('submit', function (e) {
   e.preventDefault();
   var v = $('homeMemoInput').value.trim();
   if (!v) return;
-  newMemo(v);
+  var m = newMemo(v);
+  var ids = load(HOME_KEY, null);   // 직접 고른 상태에서 자리가 남아 있으면 새 메모도 홈에 보여 줌
+  if (Array.isArray(ids) && ids.length < HOME_MAX) { ids.push(m.id); store(HOME_KEY, ids); renderHome(); }
   $('homeMemoInput').value = '';
 });
+
+/* 메모 고르기 창: 체크한 순서대로 최대 3개 (홈에는 이 순서로 나옴) */
+var pickIds = [], pickModal = $('memoPickModal');
+function renderPicker() {
+  $('memoPickCount').textContent = pickIds.length;
+  var box = $('memoPickList'); box.textContent = '';
+  sorted(memos).forEach(function (m) {
+    var c = colorOf(m.color), on = pickIds.indexOf(m.id) >= 0, full = !on && pickIds.length >= HOME_MAX;
+    var row = el('label', 'mp-item' + (full ? ' off' : ''));
+    row.style.setProperty('--memo-bg', c[1]); row.style.setProperty('--memo-line', c[2]);
+    var cb = el('input'); cb.type = 'checkbox'; cb.checked = on; cb.disabled = full;
+    cb.addEventListener('change', function () {
+      pickIds = cb.checked ? pickIds.concat(m.id) : pickIds.filter(function (x) { return x !== m.id; });
+      renderPicker();
+    });
+    row.appendChild(cb);
+    row.appendChild(el('span', null, (m.pinned ? '📌 ' : '') + titleOf(m)));
+    box.appendChild(row);
+  });
+}
+function openPicker() { pickIds = homeMemos().map(function (m) { return m.id; }); renderPicker(); pickModal.hidden = false; }
+function closePicker() { pickModal.hidden = true; }
+$('homeMemoPick').addEventListener('click', openPicker);
+$('memoPickOk').addEventListener('click', function () { store(HOME_KEY, pickIds); closePicker(); renderHome(); });
+$('memoPickAuto').addEventListener('click', function () { store(HOME_KEY, null); closePicker(); renderHome(); });   // 직접 고른 걸 풀고 최근 메모 3개로
+$('memoPickBackdrop').addEventListener('click', closePicker);
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePicker(); });
 
 registerView('memo', function () {
   // PC 는 처음 들어오면 맨 위 메모를 바로 엶, 모바일은 목록부터

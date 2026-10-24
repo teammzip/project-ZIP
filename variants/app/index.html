@@ -111,40 +111,40 @@
 
       <!-- ===== 홈 ===== -->
       <div id="view-home">
-        <!-- 홈 맨 위 줄: 왼쪽 메모 | 오른쪽 알림 회전창 (알림 개수만큼 슬라이드가 돌고, 닫기를 누르면 하나씩 닫히며 다 닫으면 알림 칸만 없어짐: js/components/home-noti.js) -->
+        <!-- 홈 맨 위 줄: 왼쪽 메모 | 오른쪽 알림 (세로로 쌓이고 맨 위를 닫으면 아래 알림이 올라옴, 다 닫아도 알림 칸은 남고 안이 "새 알림이 없어요"로 바뀜: js/components/home-noti.js) -->
         <div class="home-top">
-          <!-- 홈 메모 위젯 (js/views/memo.js): 노란 머리줄 + 줄 노트에 대표 메모(고정 또는 최근) + 최근 메모 목록 + 빠른 메모
-               대표 메모가 체크리스트면 위젯에서 바로 체크할 수 있음 -->
+          <!-- 홈 메모 위젯 (js/views/memo.js): 내가 고른 메모를 최대 3개까지 쪽지(스티커) 모양으로 보여 줌. "메모 고르기"로 바꿈
+               체크리스트 메모는 위젯에서 바로 체크할 수 있음 -->
           <section class="memo-widget" aria-labelledby="homeMemoTitle">
             <header class="mw-head">
               <span class="mw-ico" aria-hidden="true">📝</span>
               <h2 id="homeMemoTitle">메모</h2>
               <small id="homeMemoCount">0개</small>
-              <a class="mw-open" href="#" data-go="memo">전체 보기 ›</a>
+              <button type="button" class="mw-open" id="homeMemoPick">메모 고르기</button>
+              <a class="mw-open mw-all" href="#" data-go="memo">전체 보기 ›</a>
             </header>
-            <div class="mw-body">
-              <div class="mw-feature" id="homeMemoFeature"></div>
-              <ul class="mw-list" id="homeMemoList" aria-label="최근 메모"></ul>
-            </div>
+            <div class="mw-grid" id="homeMemoGrid"></div>
             <form class="mw-add" id="homeMemoForm">
               <span aria-hidden="true">✏️</span>
               <input type="text" id="homeMemoInput" maxlength="200" placeholder="빠른 메모 남기기" aria-label="빠른 메모" autocomplete="off">
               <button type="submit" aria-label="메모 저장">＋</button>
             </form>
           </section>
-          <!-- 알림 회전창 -->
-          <section class="home-noti card" id="homeNoti" aria-label="알림" hidden>
+          <!-- 알림 -->
+          <section class="home-noti card" id="homeNoti" aria-label="알림">
             <div class="hn-head">
               <b>🔔 알림</b>
               <span class="hn-count" id="hnCount"></span>
               <a class="link" href="#" id="hnAll">알림 전체 보기</a>
             </div>
-            <div class="hn-stage">
-              <button type="button" class="hn-nav" id="hnPrev" aria-label="이전 알림">‹</button>
-              <div class="hn-view" aria-live="polite"><div class="hn-track" id="hnTrack"></div></div>
-              <button type="button" class="hn-nav" id="hnNext" aria-label="다음 알림">›</button>
+            <div class="hn-stack" id="hnStack" aria-live="polite"></div>
+            <div class="hn-empty" id="hnEmpty" hidden>
+              <span aria-hidden="true">🔔</span>
+              <b id="hnEmptyTitle">새 알림이 없어요</b>
+              <small id="hnEmptySub">알림이 생기면 여기에 쌓여요.</small>
+              <button type="button" class="btn-line" id="hnRestore">닫은 알림 다시 보기</button>
             </div>
-            <div class="hn-dots" id="hnDots"></div>
+            <button type="button" class="hn-more" id="hnMore" hidden></button>
           </section>
         </div>
         <!-- 홈 요약 카드 4개: 전체 일정 · 오늘 할 일 · 월세 납부일 · 사진으로 생활 고민 상담 -->
@@ -902,6 +902,19 @@
     <button type="button" role="menuitem" id="pmProfile">프로필 보기</button>
     <button type="button" role="menuitem" id="pmSettings">설정</button>
     <button type="button" role="menuitem" class="pm-out" id="pmLogout">로그아웃</button>
+  </div>
+  <!-- 홈 메모 위젯에 보여 줄 메모 고르기 (최대 3개, js/views/memo.js) -->
+  <div class="confirm-modal" id="memoPickModal" hidden>
+    <div class="confirm-backdrop" id="memoPickBackdrop"></div>
+    <section class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="memoPickTitle">
+      <h3 id="memoPickTitle">홈에 보여 줄 메모</h3>
+      <p>최대 3개까지 골라요. <b id="memoPickCount">0</b>/3</p>
+      <div class="mp-list" id="memoPickList"></div>
+      <div class="confirm-actions">
+        <button type="button" class="btn-line" id="memoPickAuto">최근 메모로 자동</button>
+        <button type="button" class="btn-primary" id="memoPickOk">완료</button>
+      </div>
+    </section>
   </div>
   <!-- 프로필 보기 창 -->
   <div class="confirm-modal" id="profileModal" hidden>
