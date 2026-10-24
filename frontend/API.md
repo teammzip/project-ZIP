@@ -3,22 +3,25 @@
 프론트(React)와 백엔드가 주고받을 API를 정리한 문서예요. **DB는 [`../db/schema.sql`](../db/schema.sql)(2026-10-21 설계)이 기준**이고, 표마다 어느 API가 쓰는지 같이 적었어요.
 
 - ✅ **프론트 코드 있음**: `src/features/auth/api/realAuthApi.ts`가 이미 이 주소로 요청해요. 백엔드만 만들면 바로 연결돼요.
-- 📝 **약속만 있음**: 아직 프론트는 브라우저(localStorage)에 저장해요. 백엔드가 만들면 프론트가 이 모양대로 붙일게요.
+- 📝 **약속만 있음**: 화면은 다 만들어져 있고 지금은 브라우저(localStorage)에 저장해요. 백엔드가 만들면 프론트가 이 모양대로 붙일게요.
+- ⚠️ 표시는 **DB(`schema.sql`)에 아직 칸·표가 없는 것**이에요. 맨 아래 [DB와 아직 안 맞는 곳](#db와-아직-안-맞는-곳-백엔드-확인-필요)에 모아 뒀어요.
+
+> 마지막 정리: 2026-10-24 (React 화면 기준 — 메모장 · 홈 메모 위젯, 지도 AI 찾기 · 즐겨찾기, 일정 빠른 항목, 프로필 꾸미기, 경고 창 · 정지 화면까지 반영)
 
 | 영역 | 상태 | DB 표 |
 |---|---|---|
-| [인증 · 내 정보](#1-인증--내-정보) | ✅ | `users` `social_accounts` `auth_sessions` `phone_verifications` `password_resets` `user_term_agreements` `withdrawal_logs` |
-| [설정 · 동네](#2-설정--동네) | 📝 | `user_settings` `regions` `region_neighbors` |
-| [일정 · 쓰레기 배출](#3-일정--쓰레기-배출) | 📝 | `events` `trash_schedules` |
-| [월세 · 공과금](#4-월세--공과금) | 📝 | `rent_payments` `bill_items` `bill_payments` |
-| [가계부](#5-가계부-수입--기타-지출) | 📝 | `ledger_categories` `incomes` `expenses` + VIEW 2개 |
-| [알림](#6-알림) | 📝 | `notifications` |
-| [커뮤니티 · 첨부 · 신고](#7-커뮤니티--첨부--신고) | 📝 | `posts` `post_likes` `comments` `uploaded_files` `post_attachments` `reports` |
-| [AI](#8-ai) | 📝 | `ai_topics` `ai_conversations` `ai_messages` `ai_usage_daily` |
-| [지도](#9-지도) | 📝 | `places` `place_categories` `place_reviews` |
-| [약관](#10-약관) | 📝 | `terms_documents` |
-| [메모](#12-메모) | 📝 | `memos` (**DB에 아직 없음**) |
-| [관리자 · 이용 정지](#11-관리자--이용-정지) | 📝 | `user_sanctions` `users.status` `reports` |
+| [인증 · 내 정보](#1-인증--내-정보-) | ✅ | `users` `social_accounts` `auth_sessions` `phone_verifications` `password_resets` `user_term_agreements` `withdrawal_logs` |
+| [설정 · 동네](#2-설정--동네-) | 📝 | `user_settings` `regions` `region_neighbors` |
+| [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | 📝 | `events`(⚠️ 완료 칸) `trash_schedules` |
+| [월세 · 공과금](#4-월세--공과금-) | 📝 | `rent_payments` `bill_items` `bill_payments` |
+| [가계부](#5-가계부-수입--기타-지출-) | 📝 | `ledger_categories` `incomes` `expenses` + VIEW 2개 |
+| [알림](#6-알림-) | 📝 | `notifications` |
+| [커뮤니티 · 첨부 · 신고](#7-커뮤니티--첨부--신고-) | 📝 | `posts` `post_likes` `comments` `uploaded_files` `post_attachments` `reports` |
+| [AI](#8-ai-) | 📝 | `ai_topics` `ai_conversations` `ai_messages` `ai_usage_daily` |
+| [지도](#9-지도-) | 📝 | `places` `place_categories` `place_reviews` · ⚠️ 즐겨찾기 표 |
+| [약관](#10-약관-) | 📝 | `terms_documents` |
+| [관리자 · 이용 정지 · 경고](#11-관리자--이용-정지-) | 📝 | `user_sanctions`(⚠️ 확인 시각) `users.status` `reports` |
+| [메모](#12-메모-) | 📝 | ⚠️ `memos` (DB에 아직 없음) |
 
 ---
 
@@ -65,7 +68,9 @@
   "id": "1", "username": "zipdemo", "email": "demo@zip.com", "nickname": "지기",
   "address": "서울시 마포구 합정동", "region": { "id": "2", "name": "마포구" },
   "provider": "email", "role": "USER", "status": "ACTIVE",
-  "agreedAt": "2026-10-18T00:00:00+09:00"
+  "agreedAt": "2026-10-18T00:00:00+09:00", "lastLoginAt": "2026-10-24T11:33:00+09:00",
+  "bio": "요리 연습 중", "avatarUrl": null, "avatarEmoji": "🐻", "avatarColor": "#ffd6a5",
+  "suspension": null, "warnCount": 0, "unseenWarnings": []
 }
 ```
 | 키 | DB | 설명 |
@@ -76,6 +81,9 @@
 | `role` | `users.role` | `ADMIN`은 로그인하면 관리자 화면(`/admin`)만 보여요 |
 | `status` | `users.status` | 정지된 계정은 로그인이 막히니 보통 `ACTIVE` |
 | `agreedAt` | `user_term_agreements.agreed_at` | 소셜로 처음 들어온 사람은 `null` → 프론트가 동의 화면(`/welcome`)을 띄워요 |
+| `lastLoginAt` | `users.last_login_at` | 내 정보에 "구글로 로그인했어요 · 10월 24일 11:33 로그인"처럼 보여요 (지금은 브라우저가 로그인한 시각을 기억) |
+| `bio` · `avatar*` | ⚠️ 없음 | [프로필 꾸미기](#프로필-꾸미기-사진--한-줄-소개) |
+| `suspension` · `warnCount` · `unseenWarnings` | `user_sanctions` | [11번 화면](#11-관리자--이용-정지-) — 정지 화면 · 경고 창 |
 
 ### 로그인
 - `loginId`는 **아이디 또는 이메일** (`users.login_id` 또는 `users.email`로 찾기).
@@ -98,7 +106,7 @@
   - `phone`은 숫자만 (`01012345678`), `phone_verified_at` = 인증 시각
   - `ageOver14` → `users.age_confirmed_at`
   - `agreeTerms` · `agreePrivacy` · `agreePolicy` → `termsVersion`의 `terms_documents` 3줄(SERVICE · PRIVACY · POLICY)을 `user_term_agreements`에 기록
-  - 정지 기록이 있는 아이디 · 닉네임 · 휴대전화로는 가입을 막아 주세요 ([관리자](#11-관리자--이용-정지))
+  - 정지 기록이 있는 아이디 · 닉네임 · 휴대전화로는 가입을 막아 주세요 ([관리자](#11-관리자--이용-정지-))
 
 ### 휴대전화 인증
 - `purpose`: `SIGNUP` · `FIND_ID` · `RESET_PASSWORD` (`phone_verifications.purpose`)
@@ -117,13 +125,15 @@
 
 ### 프로필 꾸미기 (사진 · 한 줄 소개)
 - 내 정보의 "프로필 편집"에서 **프로필 사진**(또는 캐릭터 · 배경 색)과 **한 줄 소개**를 바꿔요. 지금은 브라우저(`zip-profile`)에 저장해요.
-- 서버가 생기면: 사진은 `POST /api/files`로 올리고 `PATCH /api/auth/me`에 `{ avatarFileId, bio }`를 보내요. 캐릭터를 고르면 `{ avatarEmoji, avatarColor }`.
+- 사진은 프론트가 가운데를 정사각형으로 잘라 **240px JPEG**로 줄여서 보내요 (약 15~30KB).
+- 서버가 생기면: 사진은 `POST /api/files`로 올리고 `PATCH /api/auth/me`에 `{ avatarFileId, bio }`를 보내요. 캐릭터를 고르면 `{ avatarEmoji, avatarColor, avatarFileId: null }`, "기본으로"는 셋 다 `null`.
+- 한 줄 소개 최대 30자, 닉네임 2~12자 (닉네임은 같은 `PATCH /api/auth/me`)
 - `user`에 `bio`, `avatarUrl`, `avatarEmoji`, `avatarColor`를 같이 주세요. ⚠️ DB `users`에 이 칸이 아직 없어요 (아래 표 7번).
 
 ### 회원 탈퇴
 - `users` 한 줄을 지우면 개인 데이터는 CASCADE로 같이 지워져요. `withdrawal_logs`에는 지워진 번호와 시각만 남겨요.
 - 업로드한 파일의 실제 저장소 파일은 서버가 따로 지워 주세요.
-- 이용 정지 기록은 탈퇴해도 남겨야 재가입을 막을 수 있어요 (아래 [11번](#11-관리자--이용-정지) 참고).
+- 이용 정지 기록은 탈퇴해도 남겨야 재가입을 막을 수 있어요 (아래 [11번](#11-관리자--이용-정지-) 참고).
 
 ---
 
@@ -172,6 +182,10 @@
 - `source`: `USER`(직접 입력) · `RENT`("월세 캘린더에 추가"로 자동 등록).
 - **할 일은 일정에 합쳤어요** (백엔드 담당 시안 PR #12와 같은 방식). 체크한 일정은 `done: true`.
   - ⚠️ 지금 `schema.sql`에는 `events`에 완료 칸이 없고 `todos` 표가 따로 있어요. **`events.is_done`(+ `done_at`)을 추가**하고 `todos`는 빼는 걸 제안해요.
+- **일정 기록하기의 빠른 항목**(집 관리 · 청소·빨래 · 돈·계약 · 건강·생활 · 연락·행정, 30개)은 프론트 목록이에요 (`features/life/data/presets.ts`). 고른 항목은 그냥 `POST /api/events`의 `title`로 보내요.
+  - 달력 막대 색도 프론트가 제목으로 정해요 (항목 카테고리별 색 · 직접 입력은 파랑 · 쓰레기 배출은 초록). 같은 제목이 며칠 이어지면 막대를 이어 그려요. 서버가 할 일은 없어요.
+  - 나중에 사용자가 항목을 직접 만들게 하려면 `event_presets` 표 + `GET/POST /api/event-presets`가 필요해요 (지금은 안 해도 돼요).
+- 같은 날 · 같은 제목 일정은 프론트가 한 번 더 추가하지 않게 막아요 (서버도 막으면 좋아요).
 - 쓰레기 배출은 일정으로 저장하지 않고, 프론트가 `trash_schedules` 요일표로 달력에 그려요.
   - `weekday` 0=일 ~ 6=토, `wasteType`: `GENERAL`(일반) · `RECYCLE`(재활용) · `FOOD`(음식물)
 
@@ -237,6 +251,7 @@
 - `read`는 `read_at`이 있으면 `true`. `unreadCount`가 메뉴·종의 빨간 점이 돼요.
 - 설정에서 알림을 끄면(`notiOn: false`) 만들지 않거나 빈 목록을 주세요.
 - 지금 프론트는 일정·쓰레기·월세로 알림을 직접 계산해요(`features/life/derive.ts`의 `buildNotis`). 서버가 알림을 만들기 시작하면 이 API로 바꿀게요.
+- **홈 알림 회전창**: 메모 옆에서 알림이 하나씩 돌아가요. "닫기"는 **그날 하루만 숨김**이라 브라우저에만 저장해요(`zip-home-noti-closed`). 읽음 처리와는 달라서 서버 API는 필요 없어요.
 
 ---
 
@@ -306,18 +321,30 @@
 
 ## 9. 지도 📝
 
+동네 화면: OpenStreetMap 지도 + 주변 장소 목록 + **AI 장소 찾기** + **★ 즐겨찾기** + **카테고리 편집**(종류 켜기·끄기, 직접 검색어 추가).
+
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
-| GET | `/api/places/categories` | — | `[{ id, name }]` (세탁방 · 편의점 · 약국 · 마트) |
-| GET | `/api/places?regionId=2&categoryId=1` | — | `[place]` |
-| GET | `/api/places/{id}/reviews` | — | `[{ id, rating, body, author, createdAt }]` (확장 기능) |
+| GET | `/api/places/categories` | — | `[{ id, name, icon }]` (15종류) |
+| GET | `/api/places?regionId=2&category=세탁방` | — | `[place]` (가까운 순) |
+| GET | `/api/places?regionId=2&q=빵집` | — | `[place]` (직접 추가한 검색어 칩: 이름 · 설명 · 종류에 글자 포함) |
+| POST | `/api/places/ai-search` | `{ q: "밤에 갈 수 있는 약국", regionId }` | `[{ place, reasons: ["약국", "24시간·심야 운영"], walkMin }]` (최대 5곳) |
+| GET | `/api/me/place-favorites` | — | `[placeId]` |
+| PUT · DELETE | `/api/me/place-favorites/{placeId}` | — | — (★ 누르기 · 풀기) |
+| GET · PUT | `/api/me/map-settings` | `{ categories: ["세탁방", …], keywords: ["빵집"] }` | 같은 모양 (칩에 보일 종류 · 직접 추가한 검색어) |
+| GET | `/api/places/{id}/reviews` | — | `[{ id, rating, body, author, createdAt }]` (확장 기능, 화면 없음) |
 | POST | `/api/places/{id}/reviews` | `{ rating, body }` | — (한 사람당 한 장소 하나) |
 
 ```json
 { "id": "3", "category": "세탁방", "name": "코인빨래방 합정점", "description": "도보 약 3분 · 24시간",
-  "lat": 37.5496, "lon": 126.9137, "address": null, "phone": null, "openHours": "24시간", "rating": 4.5, "reviewCount": 12 }
+  "lat": 37.5496, "lon": 126.9137, "walkMin": 3, "address": null, "phone": null, "openHours": "24시간", "rating": 4.5, "reviewCount": 12 }
 ```
-- 프론트 대응: `Place { n: name, d: description, lat, lon }` (`features/map/data/places.ts`)
+- **종류 15개**: 세탁방 · 편의점 · 약국 · 마트 · 카페 · 병원 · 헬스장 · 은행 · 미용실 · 다이소 · 공원 · 식당 · 반찬가게 · 세탁소 · 주민센터. 처음 칩에는 앞의 4개만 보여요.
+  - ⚠️ `schema.sql`의 `place_categories` 기본 데이터는 4개(세탁방 · 편의점 · 약국 · 마트)뿐이에요. 11개를 더 넣어 주세요.
+- **AI 장소 찾기**: 지금은 프론트가 예시 데이터 안에서 말을 읽어 골라요 (`features/map/aiFind.ts` — "빨래·이불 → 세탁방", "밤·24 → 24시간 운영 가산점" 같은 규칙). 서버가 생기면 AI + 지도 검색 API(예: 카카오 로컬)로 바꾸고, 화면에 보일 **추천 이유**(`reasons`)를 같이 주세요.
+- **도보 시간**: 프론트는 설명의 "도보 약 N분"을 읽어 써요. 서버는 `walkMin`(사용자 동네 · 주소 기준)을 따로 주면 좋아요.
+- **즐겨찾기 번호**: 지금은 `"종류:이름"`을 써요. 서버가 생기면 `places.id`로 바꿔요. ⚠️ 즐겨찾기 표가 없어요 (아래 표 8번).
+- 프론트 대응: `Place { n: name, d: description, lat, lon }` (`features/map/data/places.ts`), 지도 설정 저장 `zip-map` (`features/map/store.ts`)
 
 ---
 
@@ -367,8 +394,10 @@
 - 정지 기간이 끝나면 `users.status`를 `ACTIVE`로 돌려 주세요 (로그인할 때 확인해도 돼요).
 - 정지 중이면: 로그인 · 글쓰기 · 댓글 · 좋아요 막기, 같은 **아이디 · 닉네임 · 휴대전화로 재가입** 막기.
   - ⚠️ 탈퇴하면 `user_sanctions`도 CASCADE로 지워져서 재가입을 못 막아요. 정지된 사람의 아이디·휴대전화(해시)를 따로 남기는 표가 필요해요.
-- **화면**: 정지된 계정은 앱 대신 **이용 정지 안내(`/suspended`)**만 보고, 아직 확인 안 한 **경고**가 있으면 앱에 들어올 때 **경고 안내 창**이 한 번 떠요.
+- **화면**: 정지된 계정은 앱 대신 **이용 정지 안내(`/suspended`)**만 보고(정지 기간 · 사유 · 횟수 · 문의하기 · 로그아웃), 아직 확인 안 한 **경고**가 있으면 앱에 들어올 때 **경고 안내 창**(사유 · 누적 경고)이 한 번 떠요.
+  - 예시 보기: `/suspended?demo`, 아무 화면 주소 뒤 `?demo=warn`
   - 서버가 생기면 `GET /api/auth/me`의 `user`에 `suspension: { until, permanent, reason, count } | null`, `warnCount`, `unseenWarnings: [{ id, reason, at }]`를 같이 주세요.
+  - 정지 중인 사람의 다른 API 요청은 **403** + `{ "message": "이용이 정지된 계정이에요. …", "code": "SUSPENDED" }`로 주시면 프론트가 정지 화면으로 보낼게요.
   - 경고 창에서 "확인했어요"를 누르면 `POST /api/me/warnings/seen { ids }`로 알려 줄게요 (DB: `user_sanctions`에 확인 시각 칸 `seen_at` 추가 필요).
 - 글 · 댓글 삭제는 `status = DELETED` + 작성자에게 경고/정지를 같이 걸 수 있어요 (위 `sanctions` API를 이어서 호출).
 - 지금은 가짜 API와 `src/features/moderation`이 브라우저(`zipban-records`)에서 이 규칙을 흉내 내요.
@@ -377,13 +406,17 @@
 
 ## 12. 메모 📝
 
-마이페이지 "메모" 탭(메모장)과 홈의 메모 카드가 써요. 지금은 시안(`variants/app/js/views/memo.js`)만 있고 브라우저(`zip-memos`)에 저장해요.
+마이페이지 **"메모" 탭(`/my/memo`, 메모장)**과 **홈 메모 위젯**이 써요. React 화면이 다 있고(`features/memo`), 지금은 브라우저(`zip-memos`)에 저장해요.
+
+- 메모장: 왼쪽 목록(고정 먼저 → 최근 수정 순, 검색) | 오른쪽 쓰기. 제목 · 글, 또는 **체크리스트**(줄마다 체크, Enter로 다음 줄), **📌 고정**, **색 6가지**, 삭제(확인 창). 쓰는 대로 자동 저장.
+- 홈 위젯: 대표 메모(고정 또는 가장 최근) 한 장 + 그다음 3개 + **빠른 메모**(한 줄 적고 Enter → 새 메모). 대표 메모가 체크리스트면 **위젯에서 바로 체크** → `PATCH`로 `items` 전체를 보내요.
+- 홈에서 메모를 누르면 `/my/memo?id=5`로 그 메모를 열어요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
 | GET | `/api/memos?q=` | — | `[memo]` (고정 먼저, 그다음 최근 수정 순) |
 | POST | `/api/memos` | `{ title, body, color, pinned, checklist, items }` (전부 선택) | `memo` |
-| PATCH | `/api/memos/{id}` | 바꾼 칸만 | `memo` (쓰는 대로 자동 저장 → 짧은 간격으로 자주 와요) |
+| PATCH | `/api/memos/{id}` | 바꾼 칸만 (`items`는 배열 통째로) | `memo` (쓰는 대로 자동 저장 → 프론트가 0.5초 정도 모았다가 보낼게요) |
 | DELETE | `/api/memos/{id}` | — | — |
 
 ```json
@@ -391,7 +424,9 @@
   "items": [{ "text": "두부", "done": false }, { "text": "계란 한 판", "done": true }],
   "createdAt": "2026-10-23T10:38:00+09:00", "updatedAt": "2026-10-24T10:38:00+09:00" }
 ```
-- `checklist`가 `true`면 `items`(줄마다 체크), 아니면 `body`(글)를 써요.
+- `checklist`가 `true`면 `items`(줄마다 체크), 아니면 `body`(글)를 써요. 바꿀 때 프론트가 글 한 줄 ↔ 항목 하나로 바꿔서 보내요.
+- 빠른 메모는 `{ body: "택배 반품" }`만 보내요 (제목 없음 → 화면은 첫 줄을 제목처럼 보여 줘요).
+- 길이: 제목 60자, 글 5,000자, 항목 한 줄 100자.
 - `color`: `노랑` · `분홍` · `하늘` · `초록` · `보라` · `흰색` (영문 코드로 바꿔도 돼요: `YELLOW` 등)
 - 제안 표: `memos(id, user_id FK CASCADE, title VARCHAR(60), body TEXT, color, is_pinned, is_checklist, items JSON, created_at, updated_at)` + `(user_id, is_pinned, updated_at)` 인덱스
 
@@ -406,8 +441,11 @@
 | 3 | `password_resets.method`에 `EMAIL`이 남아 있어요 | 지금 화면은 `PHONE`만 써요. 남겨 둬도 되지만 문서에 "미사용" 표시 |
 | 4 | 첨부 형식 제한이 DB에 없어요 | 서버에서 MIME 검사 (이미지 · PDF 등) |
 | 5 | `user_settings`에 동네가 없고 `users.region_id`에 있어요 | 그대로 두고 설정 API에서 같이 주고받기 (위 2번 참고) |
-| 6 | 메모 기능이 생겼는데 DB에 표가 없어요 | 위 [12번](#12-메모)의 `memos` 표 추가 |
+| 6 | 메모 기능이 생겼는데 DB에 표가 없어요 | 위 [12번](#12-메모-)의 `memos` 표 추가 |
 | 7 | 프로필 사진 · 한 줄 소개 칸이 DB에 없어요 | `users.bio VARCHAR(30)`, `users.avatar_file_id`(→ `uploaded_files`), `avatar_emoji`, `avatar_color` 추가 |
+| 8 | 지도 즐겨찾기 · 칩 설정을 둘 곳이 없어요 | `place_favorites(user_id, place_id, created_at)` 표 + `user_settings.map_categories JSON`(보일 종류 · 직접 검색어) |
+| 9 | `place_categories` 기본 데이터가 4개뿐이에요 | 카페 · 병원 · 헬스장 · 은행 · 미용실 · 다이소 · 공원 · 식당 · 반찬가게 · 세탁소 · 주민센터 추가 (+ `icon` 칸) |
+| 10 | 경고를 확인했는지 남길 칸이 없어요 | `user_sanctions.seen_at DATETIME NULL` 추가 (경고 창 "확인했어요") |
 
 ## 프론트에서 서버를 붙이는 순서 (예: 일정)
 
@@ -416,4 +454,16 @@
 3. 화면이 `useLifeStore` 대신 그 훅을 쓰게 바꾸기
 4. 다 옮기면 localStorage 저장(`zip-life` 등)을 지우기
 
-지금 브라우저에 저장하는 곳: 일정 · 월세 · 공과금 · 수입 · 지출 · 알림 읽음 · 설정 → `features/life/store.ts`, 커뮤니티 → `features/community/store.ts`, AI 대화 → `features/ai/store.ts`, 정지 기록 → `features/moderation/store.ts`.
+지금 브라우저에 저장하는 곳 (서버가 생기면 차례로 옮겨요)
+
+| 저장 키 | 들어 있는 것 | 파일 | 옮겨 갈 API |
+|---|---|---|---|
+| `zip-auth` | 로그인 토큰 · 내 정보 · 로그인한 시각 | `features/auth/store/authStore.ts` | 1번 |
+| `zip-life` | 일정 · 월세 · 공과금 · 수입 · 지출 · 알림 읽음 · 설정 | `features/life/store.ts` | 2 ~ 6번 |
+| `zip-posts` | 커뮤니티 글 · 댓글 · 좋아요 · 첨부 | `features/community/store.ts` | 7번 |
+| `zip-ai-chat` | 홈 AI 대화 (최근 40개) | `features/ai/store.ts` | 8번 |
+| `zip-map` | 지도 칩에 보일 종류 · 직접 검색어 · 즐겨찾기 | `features/map/store.ts` | 9번 |
+| `zip-memos` | 메모 | `features/memo/store.ts` | 12번 |
+| `zip-profile` | 프로필 사진 · 캐릭터 · 배경 색 · 한 줄 소개 | `features/profile/store.ts` | 1번 (프로필 꾸미기) |
+| `zip-home-noti-closed` | 홈 알림 회전창에서 오늘 닫은 알림 | `features/life/components/HomePhotoCard.tsx` | (서버 필요 없음) |
+| `zipban-records` · `zipban-warn-seen` | 정지 · 경고 기록, 확인한 경고 횟수 (데이터 초기화로 안 지워지게 `zip-`로 시작하지 않음) | `features/moderation` | 11번 |
