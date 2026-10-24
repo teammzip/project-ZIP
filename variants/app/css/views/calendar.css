@@ -483,31 +483,3 @@
   color: var(--purple);
   margin-bottom: 8px;
 }
-
-.ev .ev-category {
-  display: block;
-  width: fit-content;
-  max-width: 100%;
-  margin-bottom: 4px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: #fff0e6;
-  color: #9a4815;
-  font-size: 11px;
-}
-
-.ev-preset-item { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; max-width: 100%; }
-.ev-preset-action { background: transparent; color: var(--muted); font-size: 11px; padding: 6px; border-radius: 6px; }
-.ev-preset-action:hover { background: #fff0e6; color: #9a4815; }
-.ev-preset-item .chip { overflow-wrap: anywhere; white-space: normal; }
-
-/* 일정 행: 마우스·키보드·터치로 선택했을 때만 작업 버튼을 표시합니다. */
-.ev .ev-actions { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; opacity: 0; pointer-events: none; }
-.ev:focus-within .ev-actions, .ev.show-actions .ev-actions { opacity: 1; pointer-events: auto; }
-@media (hover: hover) { .ev:hover .ev-actions { opacity: 1; pointer-events: auto; } }
-.ev:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
-.ev.editing select { width: 100%; padding: 7px 9px; font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
-
-.ev-preset-item .ev-preset-action { opacity: 0; pointer-events: none; }
-.ev-preset-item:focus-within .ev-preset-action, .ev-preset-item.show-actions .ev-preset-action { opacity: 1; pointer-events: auto; }
-@media (hover: hover) { .ev-preset-item:hover .ev-preset-action { opacity: 1; pointer-events: auto; } }

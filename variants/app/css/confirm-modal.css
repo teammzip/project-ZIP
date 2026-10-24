@@ -1,0 +1,81 @@
+/* 가운데에 뜨는 확인 창의 공통 틀(.confirm-modal) + 회원 탈퇴 확인 창
+ * 쓰는 곳: index.html 의 #withdrawModal 등 (동작: js/views/settings.js) */
+/* 회원 탈퇴 확인 창 */
+.btn-danger {
+  cursor: pointer;
+}
+
+.btn-danger.solid {
+  border-color: var(--pink);
+  background: var(--pink);
+  color: #fff;
+  font-weight: 700;
+}
+
+.btn-danger.solid:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.confirm-modal[hidden] {
+  display: none;
+}
+
+.confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(31, 36, 48, .5);
+}
+
+.confirm-box {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  padding: 24px 22px 20px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+}
+
+.confirm-box h3 {
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.confirm-box p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.confirm-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.confirm-actions button {
+  padding: 10px 18px;
+  font-size: 14px;
+}
+
