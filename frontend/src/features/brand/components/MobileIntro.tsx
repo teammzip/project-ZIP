@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import appIcon from '@/assets/images/app-icon.png'
-import house from '@/assets/images/house-intro.png'
+import house from '@/assets/images/house-mobile.png'
 import robotImg from '@/assets/images/robot-cut.png'
 import styles from './MobileIntro.module.css'
 
@@ -14,18 +14,17 @@ type Props = {
   autoDoor?: boolean
 }
 
-// 집 그림(1448×1086) 안의 위치 (그림 기준 픽셀)
-const IMG_W = 1448
-const IMG_H = 1086
-const GROUND_Y = 950 // 집이 서 있는 바닥 아래 끝
-const HOUSE_W = 830 // 지붕 끝에서 끝까지(여유 포함): 이 폭이 화면 폭에 맞음
-const DOOR = { x1: 672, y1: 608, x2: 777, y2: 830 }
-const WINDOWS = [
-  [427, 596, 558, 792],
-  [888, 596, 1022, 792],
-  [673, 368, 776, 458],
-]
-// 시간(초): 로봇 등장 → 줌인 → (문 클릭) 문 열림 + 로봇이 문 앞으로 → 안으로 들어감 → 문 닫힘 → 창문 불빛 → 로그인 창
+// 집 그림(1024×1024, 하얀 집 + 파란 문) 안의 위치 (그림 기준 픽셀)
+const IMG_W = 1024
+const IMG_H = 1024
+const GROUND_Y = 800 // 집이 서 있는 계단 아래 끝
+const HOUSE_W = 960 // 화분까지 포함한 폭(여유 포함): 이 폭이 화면 폭에 맞음
+const HOUSE_CX = 484 // 집 가운데 (그림 가운데보다 조금 왼쪽): 이 폭이 화면 폭에 맞음
+const HOUSE_H = 760 // 지붕 위부터 계단 아래까지
+const DOOR = { x1: 354, y1: 340, x2: 480, y2: 708 } // 비스듬한 윗변은 CSS clip-path 로 맞춤
+// 거실 통유리창: 처음엔 불이 꺼져 있다가 로봇이 들어가면 켜짐
+const WINDOWS = [[484, 370, 764, 706]]
+// 시간(초): 로봇 등장 → 줌인 → (문 클릭) 문 열림(오른쪽 경첩) + 로봇이 문 앞으로 → 안으로 들어감 → 문 닫힘 → 창문 불빛 → 로그인 창
 const T_ENTER = 1.3
 const T_ZOOM = 1.5
 const T_DESC = 1.2
@@ -58,6 +57,7 @@ export function MobileIntro({ onEnter, onSignup, paused, autoDoor = false }: Pro
   const doorway = useRef<HTMLDivElement>(null)
   const panel = useRef<HTMLDivElement>(null)
   const glows = useRef<Array<HTMLDivElement | null>>([])
+  const dims = useRef<Array<HTMLDivElement | null>>([])
   const [caption, setCaption] = useState({ key: '', text: '' })
   const [splash, setSplash] = useState<'show' | 'hide' | 'gone'>(autoDoor ? 'gone' : 'show')
   const [skipShown, setSkipShown] = useState(false)
@@ -77,6 +77,7 @@ export function MobileIntro({ onEnter, onSignup, paused, autoDoor = false }: Pro
     const dw0 = doorway.current!
     const pn = panel.current!
     const wg = glows.current.filter((g): g is HTMLDivElement => !!g)
+    const wd = dims.current.filter((g): g is HTMLDivElement => !!g)
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     let vw = 0, vh = 0, s = 1, ox = 0, oy = 0, R = 0, RH = 0, Z = 2.6, mx = 0, my = 0
@@ -92,9 +93,9 @@ export function MobileIntro({ onEnter, onSignup, paused, autoDoor = false }: Pro
     function layout() {
       vw = window.innerWidth
       vh = window.innerHeight
-      s = Math.min(vw / HOUSE_W, (vh * 0.62) / 700) // 집 폭이 화면 폭에 맞게 (너무 크면 높이 기준)
-      const groundY = vh * 0.8
-      ox = vw / 2 - (IMG_W / 2) * s
+      s = Math.min(vw / HOUSE_W, (vh * 0.62) / HOUSE_H) // 집 폭이 화면 폭에 맞게 (너무 크면 높이 기준)
+      const groundY = vh * 0.76
+      ox = vw / 2 - HOUSE_CX * s
       oy = groundY - GROUND_Y * s
       place(im, ox, oy, IMG_W * s, IMG_H * s)
       const dx = ox + DOOR.x1 * s, dy = oy + DOOR.y1 * s, dw = (DOOR.x2 - DOOR.x1) * s, dh = (DOOR.y2 - DOOR.y1) * s
@@ -103,7 +104,9 @@ export function MobileIntro({ onEnter, onSignup, paused, autoDoor = false }: Pro
       pn.style.backgroundImage = `url("${house}")`
       pn.style.backgroundSize = `${IMG_W * s}px ${IMG_H * s}px`
       pn.style.backgroundPosition = `${-DOOR.x1 * s}px ${-DOOR.y1 * s}px`
-      WINDOWS.forEach((win, i) => wg[i] && place(wg[i], ox + win[0] * s, oy + win[1] * s, (win[2] - win[0]) * s, (win[3] - win[1]) * s))
+      WINDOWS.forEach((win, i) => {
+        for (const e of [wg[i], wd[i]]) if (e) place(e, ox + win[0] * s, oy + win[1] * s, (win[2] - win[0]) * s, (win[3] - win[1]) * s)
+      })
       R = Math.max(46, Math.min(110, dw * 1.3)) // 로봇은 문 폭의 1.3배 정도
       RH = (R * 498) / 473
       rb.style.width = `${R}px`
@@ -162,7 +165,7 @@ export function MobileIntro({ onEnter, onSignup, paused, autoDoor = false }: Pro
         }
         const openP = easeInOut(clamp((u0 - T_OPEN_AT) / T_OPEN))
         const closeP = easeInOut(clamp((u0 - T_CLOSE_AT) / T_OPEN))
-        pn.style.transform = `perspective(${700 * s}px) rotateY(${82 * openP * (1 - closeP)}deg)`
+        pn.style.transform = `perspective(${700 * s}px) rotateY(${-82 * openP * (1 - closeP)}deg)`
         glowW = clamp((u0 - T_CLOSE_AT - T_OPEN) / T_LIGHT)
         if (!opened && u0 > T_CLOSE_AT + T_OPEN + T_LIGHT * 0.7) {
           opened = true
@@ -179,6 +182,7 @@ export function MobileIntro({ onEnter, onSignup, paused, autoDoor = false }: Pro
       w.style.setProperty('--z', String(z))
       const flick = glowW * (0.9 + Math.sin(t * 5) * 0.05)
       for (const e of wg) e.style.opacity = String(flick)
+      for (const e of wd) e.style.opacity = String(1 - glowW)
       // 모션이 도는 동안만 "건너뛰기" 표시 (바뀔 때만 다시 그림)
       const showSkip = !opened && !(tClick < 0 && t >= T_ENTER + T_ZOOM)
       if (showSkip !== skipOn) {
@@ -212,6 +216,7 @@ export function MobileIntro({ onEnter, onSignup, paused, autoDoor = false }: Pro
       if (reduce) {
         opened = true
         for (const e of wg) e.style.opacity = '1'
+        for (const e of wd) e.style.opacity = '0'
         onEnterRef.current()
       }
     }
@@ -283,6 +288,15 @@ export function MobileIntro({ onEnter, onSignup, paused, autoDoor = false }: Pro
     <div className={styles.scene} onClick={(e) => !(e.target as HTMLElement).closest('button') && api.current.skip()}>
       <div ref={world} className={styles.world}>
         <img ref={img} src={house} alt="ZIP 집" className={styles.house} draggable={false} />
+        {WINDOWS.map((_, i) => (
+          <div
+            key={`d${i}`}
+            ref={(el) => {
+              dims.current[i] = el
+            }}
+            className={styles.dim}
+          />
+        ))}
         {WINDOWS.map((_, i) => (
           <div
             key={i}

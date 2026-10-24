@@ -1,18 +1,10 @@
-import { Link } from 'react-router-dom'
 import { AdminConsole } from '@/features/admin'
-import { useAuthStore } from '@/features/auth'
-import styles from './AdminPage.module.css'
+import { useAuthStore, useLogout } from '@/features/auth'
 
-/* 관리자 화면 (/admin): 로그인 + 관리자(ADMIN) 계정만. 일반 회원이 들어오면 안내만 보여 줌 */
+/* 관리자 화면 (/admin): 관리자(ADMIN) 계정은 로그인하면 이 화면만 보임.
+ * 누가 들어올 수 있는지는 ProtectedRoute 가 정함 (일반 회원은 홈으로, 관리자는 앱 화면 대신 여기로) */
 export function AdminPage() {
-  const user = useAuthStore((s) => s.user)
-  if (user?.role !== 'ADMIN')
-    return (
-      <div className={styles.denied}>
-        <h1>관리자만 들어올 수 있어요</h1>
-        <p>관리자 계정으로 로그인해 주세요.</p>
-        <Link to="/">홈으로 가기</Link>
-      </div>
-    )
-  return <AdminConsole me={user.nickname} />
+  const nickname = useAuthStore((s) => s.user?.nickname ?? '관리자')
+  const logout = useLogout()
+  return <AdminConsole me={nickname} onLogout={() => logout.mutate()} logoutPending={logout.isPending} />
 }

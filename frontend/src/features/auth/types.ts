@@ -2,6 +2,7 @@
 
 export type SocialProvider = 'kakao' | 'google' | 'naver'
 
+/** 내 정보. 서버의 users 표 한 줄 (DB 의 BIGINT id 는 API 에서 문자열로 줌) */
 export type User = {
   id: string
   /** 로그인 아이디 (6~16자 영문 소문자·숫자). 소셜 가입자는 없을 수 있음 */
@@ -9,9 +10,14 @@ export type User = {
   email: string
   nickname: string
   address: string
+  /** 사는 동네 (DB users.region_id → regions). 주소에서 동네를 못 찾으면 없음 */
+  region?: { id: string; name: string } | null
+  /** 가입 경로 (DB users.signup_provider 의 소문자) */
   provider: 'email' | SocialProvider
   /** 권한. ADMIN 만 관리자 화면(/admin)에 들어갈 수 있음 (DB users.role) */
   role?: 'USER' | 'ADMIN'
+  /** 이용 상태 (DB users.status). 정지된 계정은 로그인 자체가 막히므로 보통 ACTIVE */
+  status?: 'ACTIVE' | 'SUSPENDED'
   /** 약관·개인정보 수집에 동의한 시각 (ISO). 소셜 로그인으로 처음 들어온 사람은 null → 동의 화면(/welcome)으로 보냄 */
   agreedAt?: string | null
 }
@@ -20,6 +26,8 @@ export type User = {
 export type LoginRequest = {
   loginId: string
   password: string
+  /** "로그인 유지" 체크 (DB auth_sessions.remember). 켜면 세션 만료가 길어짐 */
+  remember?: boolean
 }
 
 /** 가입 약관 동의 (모두 필수) */

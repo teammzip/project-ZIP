@@ -124,10 +124,12 @@
 
 | React 저장 위치 | 들어 있는 것 | 옮겨 갈 DB 표 |
 |---|---|---|
-| `zip-life` (한 곳에 모아 저장) | 할 일, 공과금, 일정, 수입, 지출, 월세 납부 체크, 알림 읽음, 설정(동네·월세·납부일·알림·입주한 달·계약 끝나는 달) | `todos`, `bill_items` + `bill_payments`, `events`, `incomes`, `expenses`, `rent_payments`, `notifications.read_at`, `user_settings` |
-| `zip-auth` | 로그인 토큰과 내 정보 (`id, username, email, nickname, address, provider, agreedAt`) | `auth_sessions`, `users` (`provider` = `users.signup_provider`, `agreedAt` = `user_term_agreements`) |
+| `zip-life` (한 곳에 모아 저장) | 일정(할 일은 일정의 `done` 체크로 합침), 공과금, 수입, 지출, 월세 납부 체크, 알림 읽음, 설정(동네·월세·납부일·알림·입주한 달·계약 끝나는 달) | `events`(완료 칸 `is_done` 추가 필요), `bill_items` + `bill_payments`, `incomes`, `expenses`, `rent_payments`, `notifications.read_at`, `users.region_id` + `user_settings` |
+| `zip-auth` | 로그인 토큰과 내 정보 (`id, username, email, nickname, address, region, provider, role, status, agreedAt`) | `auth_sessions`, `users` (`provider` = `users.signup_provider` 소문자, `agreedAt` = `user_term_agreements`) |
 | `zip-mock-users` | 가짜 API가 저장한 가입 계정 | `users` (+ 휴대전화는 `phone_verifications` 로 확인) |
 | `zip-posts` | 커뮤니티 글·좋아요·댓글·첨부 | `posts`, `post_likes`, `comments`, `post_attachments`, `uploaded_files` |
+| `zip-posts` | 커뮤니티 글·좋아요·댓글·첨부 | `posts`, `post_likes`, `comments`, `uploaded_files` + `post_attachments` |
+| `zipban-records` | 이용 정지·경고 기록 (데이터 초기화로 안 지워지게 `zip-`로 시작하지 않음) | `user_sanctions`, `users.status` |
 | `zip-ai-chat` | AI 대화 말풍선 (지출 요약 카드 `{month,total,prevTotal,fixed,rows,top}` 포함) | `ai_conversations`, `ai_messages` (카드는 `card_data` JSON) |
 ## 4. 표마다 자세한 설명
 
@@ -846,3 +848,48 @@ schema.sql은 테이블·VIEW 외에 다음 기본 데이터를 INSERT IGNORE로
 - 약관 3종: SERVICE·PRIVACY·POLICY, 버전 2026-10-18
 
 배출 일정·지역 목록 등은 서비스 전체 지역을 포괄하는 실제 운영 데이터가 아니라 초기 예시입니다. 약관도 현재 프론트의 초안입니다. INSERT IGNORE는 같은 고유 키가 있으면 기존 행을 갱신하지 않으므로, 재실행만으로 기존 데이터가 새 내용으로 덮어써지지는 않습니다.
+| 이름 | 타입 | 한글 이름 | 설명 |
+|---|---|---|---|
+| `user_id` | BIGINT UNSIGNED | 사용자 아이디 |  |
+| `period_ym` | CHAR(7) | 연월 |  |
+| `label` | VARCHAR(30) | 구성 이름 | 월세 / 공과금 / 식비 … |
+| `amount` | BIGINT | 금액 합계 | 원 단위 |
+
+## 5. 설계 규칙과 알아 둘 점
+
+- **개인정보**: 비밀번호·인증번호·재설정 토큰·로그인 토큰은 **해시만** 저장합니다. 휴대전화는 숫자만 저장하고(`01012345678`), 실서비스에서는 암호화를 권장합니다.
+- **인증 기록 정리**: `phone_verifications` 에는 휴대전화 번호가 들어 있으므로, 만료된 기록(가입 때처럼 사용자와 연결되지 않은 줄 포함)은 며칠 뒤 정기 작업으로 삭제합니다.
+- **회원 탈퇴**: `users` 줄을 지우면 일정·할 일·가계부·글·AI 대화 등이 `ON DELETE CASCADE` 로 함께 지워집니다. 남기는 것은 `withdrawal_logs`(탈퇴했다는 사실과 시각만)뿐입니다.
+- **돈 단위**: 금액은 모두 **원 단위 정수**입니다. 단, `user_settings.rent_amount` 는 화면 입력과 같이 **만원 단위**(55 = 55만원)이고 `rent_payments.amount` 는 원 단위(550000)입니다.
+- **월세·공과금 행 만들기**: 홈 도넛과 AI 지출 요약이 월세·공과금을 포함하려면 달마다 행이 있어야 합니다. 매달 1일에 `rent_payments`, `bill_payments` 를 미납(`paid_at` 비움)으로 미리 만드는 작업이 필요합니다.
+- **비밀번호 찾기(두 방식 모두 한 표로)**: 1회용 재설정 토큰은 `password_resets` 한 곳에 둡니다. **휴대전화 방식**(HTML 시안)은 `phone_verifications` 인증 통과 → `password_resets(method=PHONE)` → 바로 새 비밀번호, **이메일 방식**(React 앱의 현재 구현)은 `password_resets(method=EMAIL)` 토큰 링크를 메일로 보내고 링크에서 새 비밀번호를 정합니다. 어느 쪽을 쓸지는 팀이 정하면 되고, 표는 그대로입니다.
+- **아이디 찾기**: 별도 표 없이 `users` 에서 찾습니다. 시안은 닉네임 + 휴대전화 인증(아이디를 그대로 보여줌), React 앱은 닉네임 + 주소(일부를 가려서 보여줌)로 찾습니다.
+- **약관**: 이용약관·운영 정책은 "동의", 개인정보 처리방침은 "안내 확인"으로 받습니다(`terms_documents.consent_kind`). 약관이 바뀌면 새 버전 줄을 추가하고 동의 이력은 그대로 둡니다.
+- **글·댓글 삭제**: `status` 와 `deleted_at` 으로 숨기는(소프트 삭제) 방식이라 신고 처리 기록이 남습니다.
+- **미리 열어 둔 확장 칸**: 장소의 전화번호·영업시간·평점·리뷰, 공공데이터 연결(`source`, `source_id`), 대댓글(`comments.parent_id`)은 지금 화면에는 없지만 나중에 쓸 수 있게 열어 둔 것입니다.
+- **가입 동의 4가지**: React 가입의 필수 체크 4개는 서비스 이용약관 · 개인정보 처리방침(안내 확인) · 커뮤니티·AI 운영 정책 · 만 14세 이상입니다. 앞의 셋은 `user_term_agreements`(약관 문서 버전 포함)에, 만 14세 확인은 `users.age_confirmed_at` 에 남깁니다. 소셜로 처음 들어온 사람은 동의가 없는 상태(`agreedAt` 이 null)라서 `user_term_agreements` 줄이 없으면 동의 화면(/welcome)을 띄웁니다.
+- **옛 설계와 달라진 점**: 로그인 아이디(`login_id`)·휴대전화·인증 표 추가, 약관 문서·동의 이력 추가, 가계부(분류·수입·지출)와 집계 VIEW 추가, 일정에 수정 일시·등록 경로 추가, 알림에 종류와 읽음 시각 정리, 신고·이용 제한 추가, AI 분야·카드 저장(JSON)·사진 파일 표 정리, 장소에 전화·영업시간·별점 추가, 쓰레기 배출표를 동네별로 분리.
+
+## 6. 현재 프로그램(HTML 시안 + React 앱)과 맞춘 결과
+
+이 설계를 시안(`variants/`)과 React 앱(`frontend/`)의 실제 데이터 모양과 하나씩 비교해 점검한 기록입니다.
+
+**그대로 맞는 것**
+- 할 일, 일정(날짜·시간·제목), 수입·기타 지출(날짜·분류·금액·메모), 커뮤니티 글(동네·분류·제목·본문·좋아요·댓글), 쓰레기 배출표, 지도 장소(이름·설명·위도·경도)
+- 로그인 아이디·이메일 둘 다로 로그인(`users.login_id`, `users.email` 모두 중복 불가), 소셜 로그인(`social_accounts`), 휴대전화 인증, 약관 버전별 동의
+- AI 지출 요약 카드의 숫자 스냅샷(`ai_messages.card_data`)
+
+**이번 점검에서 고친 것**
+- `users.age_confirmed_at`: React 가입의 필수 항목 "만 14세 이상" 확인 기록 추가
+- `users.signup_provider`: 화면의 `provider`(이메일/카카오/구글/네이버) 값을 바로 줄 수 있게 추가
+- `user_settings.move_in_ym`, `contract_end_ym`: 오른쪽 패널의 "거주 N개월 / 계약 N개월 남음" 계산에 쓰는 값 추가
+- `password_resets`: 비밀번호 재설정 토큰을 한 표로 분리해, 휴대전화 방식과 이메일 방식을 모두 처리
+- `phone_verifications`: 재설정 토큰 칸을 빼고, 가입에 함께 보내는 "인증 완료 값"(`verified_token_hash`)으로 정리
+- 표마다 **사용 상태**(지금 화면이 쓰는 데이터 / 서버를 붙일 때 필요 / 확장)를 표시하고, 그림의 표 머리 색으로도 구분
+
+**알아 둘 차이 (설계 문제는 아니지만 맞춰야 할 것)**
+- **공과금**: 화면은 "이번 달 목록" 하나만 가지고 새 달에 "새 달 시작"으로 미납 처리합니다. DB는 항목(`bill_items`)과 월별 납부(`bill_payments`)로 나눠서 지난 달 기록이 남습니다. 서버를 붙일 때 화면의 "새 달 시작"은 새 달 납부 행을 만드는 동작으로 바꿉니다.
+- **알림**: 화면은 일정·배출·월세로 그때그때 계산하고 읽음 표시만 저장합니다. DB의 `notifications` 는 서버가 알림을 미리 만들어 둘 때를 위한 표입니다.
+- **사진**: 화면은 사진을 저장하지 않고 AI 화면으로 넘기기만 합니다. `uploaded_files` 는 서버에 저장할 때 필요합니다.
+- **찾기 흐름**: HTML 시안과 React 앱 모두 휴대전화 인증 → 재설정 토큰 → 바로 새 비밀번호, 아이디는 그대로 표시하는 방식으로 맞췄습니다 (`password_resets.method = PHONE`).
+- **React 쪽 문서**: `frontend/API.md` 를 이 `schema.sql`(2026-10-21) 기준으로 다시 정리했습니다. 영역별 API 주소·요청·응답과 DB 표 대응, DB와 아직 안 맞는 곳(`events` 완료 칸, 탈퇴 후 재가입 막기 등)이 들어 있습니다.

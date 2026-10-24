@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Button, Modal } from '@/components/ui'
 import { useCommunityStore } from '@/features/community'
 import { banLabel, fmtAt, isActive, useBanStore, type BanRecord } from '@/features/moderation'
@@ -39,7 +38,7 @@ function joinedAt(nick: string) {
 
 const actionText = (e: { warn?: boolean; days: number | null }) => (e.warn ? '경고' : e.days ? `${e.days}일 정지` : '영구 정지')
 
-export function AdminConsole({ me }: { me: string }) {
+export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLogout: () => void; logoutPending?: boolean }) {
   const { posts, removePost, removeComment } = useCommunityStore()
   const { records, ban, warn, unban } = useBanStore()
   const [tab, setTab] = useState<Tab>('members')
@@ -91,9 +90,10 @@ export function AdminConsole({ me }: { me: string }) {
           ))}
         </nav>
         <span className={styles.note}>관리자(ADMIN) 계정으로만 들어올 수 있어요. 서버가 생기면 모든 조치는 서버에 기록돼야 해요.</span>
-        <Link to="/" className={styles.backLink}>
-          ‹ 앱으로 돌아가기
-        </Link>
+        <span className={styles.me}>{me} 님</span>
+        <Button variant="line" onClick={onLogout} loading={logoutPending}>
+          로그아웃
+        </Button>
       </header>
 
       <section className={styles.stats}>
