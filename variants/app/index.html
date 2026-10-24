@@ -67,6 +67,10 @@
         <span class="dot" id="navDot"></span>
         <span class="nav-label">마이페이지</span>
       </a>
+      <!-- 맨 아래 프로필 사진: 누르면 프로필 보기·설정·로그아웃 메뉴 (components/profile-menu.js) -->
+      <button class="side-profile" type="button" id="profileBtn" aria-label="프로필 메뉴" title="프로필" aria-haspopup="true" aria-expanded="false">
+        <span class="avatar js-avatar">지</span>
+      </button>
     </nav>
 
     <!-- 가운데 영역 -->
@@ -80,8 +84,8 @@
             </svg>
             <span class="dot" id="bellDot" hidden></span>
           </a>
-          <a class="mob-icon" href="#" data-view="settings" aria-label="내 정보 · 설정" title="내 정보 · 설정"><span
-              class="avatar-sm" id="pAvatar2">지</span></a>
+          <button class="mob-icon" type="button" id="mobProfileBtn" aria-label="프로필 메뉴" title="프로필" aria-haspopup="true" aria-expanded="false"><span
+              class="avatar-sm js-avatar">지</span></button>
           <button class="mob-icon menu-btn" type="button" id="menuBtn" aria-label="전체 메뉴 열기" aria-haspopup="true" aria-expanded="false">
             <svg class="ico-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
             <svg class="ico-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
@@ -105,25 +109,7 @@
 
       <!-- ===== 홈 ===== -->
       <div id="view-home">
-        <!-- 홈 맨 위: "사진으로 상담 시작" 카드 (PC 전용, 모바일은 하단 메뉴의 사진 버튼을 씀) -->
-        <section class="home-photo card" aria-labelledby="homePhotoTitle">
-          <div class="home-photo-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-3h4l2 3h3a2 2 0 0 1 2 2z" />
-              <circle cx="12" cy="13" r="4" />
-            </svg>
-          </div>
-          <div class="home-photo-copy">
-            <h2 id="homePhotoTitle">사진으로 생활 고민을 물어보세요</h2>
-            <p>사진을 첨부하고 도움받을 분야를 골라보세요.</p>
-            <small>현재는 데모로, 사진 내용을 직접 분석하지 않습니다.</small>
-          </div>
-          <button class="btn-primary home-photo-button" type="button" data-action="photo">
-            <span class="photo-desktop-label">사진 선택하고 상담 시작</span>
-            <span class="photo-mobile-label">사진 찍고 상담 시작</span>
-          </button>
-        </section>
-        <!-- 홈 요약 카드 4개: 전체 일정 · 오늘 할 일 · 쓰레기 배출 · 월세 납부일 -->
+        <!-- 홈 요약 카드 4개: 전체 일정 · 오늘 할 일 · 월세 납부일 · 사진 상담(알림 회전창이 이 카드 안에 들어 있음) -->
         <section class="stat-grid">
           <article class="stat teal" id="allEventsCard" data-go="calendar" tabindex="0" role="button" aria-label="전체 일정 자세히 보기">
             <div class="label">전체 일정</div>
@@ -137,15 +123,39 @@
             <div class="bar"><i id="todayTodoBar" style="width:0%"></i></div>
             <div class="sub today-todo-sub" id="todayTodoSub">오늘 할 일이 없어요.</div>
           </article>
-          <article class="stat pink" data-go="calendar" tabindex="0" role="button" aria-label="쓰레기 배출 일정 보기">
-            <div class="label">쓰레기 배출</div>
-            <div class="value" id="trashToday" style="font-size:20px;line-height:1.3">오늘은 일반쓰레기</div>
-            <div class="sub" id="trashSub">저녁 6시 ~ 자정, 종량제 봉투 사용</div>
-          </article>
           <article class="stat purple" data-go="rent" tabindex="0" role="button" aria-label="월세 납부 정보 보기">
             <div class="label">월세 납부일</div>
             <div class="value" id="rentDday">D-5</div>
             <div class="sub" id="rentSub">매월 15일 · 55만원 · 계좌이체</div>
+          </article>
+          <article class="stat photo-card" aria-labelledby="homePhotoTitle">
+            <div class="pc-head">
+              <div class="pc-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-3h4l2 3h3a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </div>
+              <h3 id="homePhotoTitle">사진으로 생활 고민을 물어보세요</h3>
+            </div>
+            <button class="btn-primary" type="button" data-action="photo">
+              <span class="photo-desktop-label">사진 선택하고 상담 시작</span>
+              <span class="photo-mobile-label">사진 찍고 상담 시작</span>
+            </button>
+            <!-- 알림 회전창: 알림 개수만큼 슬라이드가 돌고, 닫기를 누르면 하나씩 닫히며 다 닫으면 이 부분만 없어짐 (js/components/home-noti.js) -->
+            <section class="home-noti" id="homeNoti" aria-label="알림" hidden>
+              <div class="hn-head">
+                <b>🔔 알림</b>
+                <span class="hn-count" id="hnCount"></span>
+                <a class="link" href="#" id="hnAll">전체 보기</a>
+              </div>
+              <div class="hn-stage">
+                <button type="button" class="hn-nav" id="hnPrev" aria-label="이전 알림">‹</button>
+                <div class="hn-view" aria-live="polite"><div class="hn-track" id="hnTrack"></div></div>
+                <button type="button" class="hn-nav" id="hnNext" aria-label="다음 알림">›</button>
+              </div>
+              <div class="hn-dots" id="hnDots"></div>
+            </section>
           </article>
         </section>
 
@@ -396,14 +406,20 @@
       <div id="view-calendar" hidden>
         <div class="cal-layout">
           <div class="cal-col">
-            <article class="card">
-              <div class="card-head">
-                <h2 id="calTitle">캘린더</h2>
-                <div class="cal-nav">
-                  <button type="button" id="calPrev" aria-label="이전 달">‹</button>
-                  <button type="button" id="calToday" class="today-btn">오늘</button>
-                  <button type="button" id="calNext" aria-label="다음 달">›</button>
+            <!-- 큰 달력: 칸 안에 일정이 글자로 보임. 월간/주간 보기 전환 -->
+            <article class="card cal-card">
+              <h2 class="cal-heading">내 일정</h2>
+              <div class="cal-toolbar">
+                <div class="cal-pills" role="group" aria-label="보기 방식">
+                  <button type="button" class="pill" id="viewWeek">주간</button>
+                  <button type="button" class="pill on" id="viewMonth">월간</button>
                 </div>
+                <div class="cal-nav">
+                  <button type="button" id="calPrev" aria-label="이전">‹</button>
+                  <span class="cal-ym" id="calTitle">2026.10</span>
+                  <button type="button" id="calNext" aria-label="다음">›</button>
+                </div>
+                <button type="button" id="calToday" class="today-btn">오늘</button>
               </div>
               <div class="cal-grid" id="calGrid"></div>
             </article>
@@ -644,38 +660,6 @@
       </div>
     </main>
 
-    <!-- 오른쪽 패널 -->
-    <aside class="panel">
-      <div class="profile">
-        <div class="avatar" id="pAvatar">지</div>
-        <div><b id="pName">지기</b><small id="pRegion">📍 서울 마포구</small></div>
-        <button type="button" class="logout-btn" id="btnLogout">로그아웃</button>
-      </div>
-      <div class="mini-stats">
-        <div><b id="pRent">55만</b><small>월세</small></div>
-        <div><b>8개월</b><small>거주</small></div>
-        <div><b>14개월</b><small>계약 남음</small></div>
-      </div>
-      <section class="panel-upcoming">
-        <h3>다가오는 알림</h3>
-        <a class="sched" href="#" data-go="calendar" aria-label="쓰레기 배출 일정 달력에서 보기">
-          <div class="ico" id="pTrashIco">🗑️</div>
-          <div class="t"><b id="pTrashT">일반쓰레기 배출</b><small id="pTrashS">오늘 저녁 6시 이후</small></div>
-          <time id="pTrashTime">오늘</time>
-        </a>
-        <div class="sched">
-          <div class="ico">💸</div>
-          <div class="t"><b>월세 납부</b><small id="pRentSub">55만원 · 이체</small></div>
-          <time id="pRentTime">10/15</time>
-        </div>
-        <a class="sched" href="#" data-go="calendar" aria-label="재활용 배출 일정 달력에서 보기">
-          <div class="ico">♻️</div>
-          <div class="t"><b>재활용 배출</b><small id="pRecyS">플라스틱 · 캔 · 종이</small></div>
-          <time id="pRecyTime">이번 주</time>
-        </a>
-      </section>
-    </aside>
-
   </div>
 
   <button class="ai-fab" type="button" data-go="ai" aria-label="AI 도우미 열기" title="AI 도우미"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z" /><text x="12" y="15" text-anchor="middle">AI</text></svg></button>
@@ -735,6 +719,35 @@
       </div>
     </section>
   </aside>
+
+  <!-- 프로필 메뉴: 프로필 사진(왼쪽 메뉴 맨 아래 / 모바일은 상단)을 누르면 열림 (js/components/profile-menu.js) -->
+  <div class="profile-menu" id="profileMenu" role="menu" hidden>
+    <div class="pm-head">
+      <span class="avatar js-avatar">지</span>
+      <div><b id="pName">지기</b><small id="pRegion">📍 서울 마포구</small></div>
+    </div>
+    <button type="button" role="menuitem" id="pmProfile">프로필 보기</button>
+    <button type="button" role="menuitem" id="pmSettings">설정</button>
+    <button type="button" role="menuitem" class="pm-out" id="pmLogout">로그아웃</button>
+  </div>
+  <!-- 프로필 보기 창 -->
+  <div class="confirm-modal" id="profileModal" hidden>
+    <div class="confirm-backdrop" id="prBackdrop"></div>
+    <section class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="prTitle">
+      <h3 id="prTitle">프로필</h3>
+      <dl class="pr-list">
+        <div><dt>닉네임</dt><dd id="prName"></dd></div>
+        <div><dt>아이디</dt><dd id="prUid"></dd></div>
+        <div><dt>우리 동네</dt><dd id="prRegion"></dd></div>
+        <div><dt>월세</dt><dd id="prRent"></dd></div>
+        <div><dt>알림</dt><dd id="prNoti"></dd></div>
+      </dl>
+      <div class="confirm-actions">
+        <button type="button" class="btn-line" id="prClose">닫기</button>
+        <button type="button" class="btn-primary" id="prEdit">내 정보 수정</button>
+      </div>
+    </section>
+  </div>
 
   <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
   <!-- 스크립트: ① zip-password.js = 내 정보의 비밀번호 변경이 쓰는 시안용 비밀번호 보관 ② js/main.js = 앱 본체(ES 모듈이라 Live Server 같은 서버로 열어야 동작함, 파일을 더블클릭해서 열면 안 됨)

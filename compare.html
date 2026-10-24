@@ -93,73 +93,6 @@
       height: 100%;
       max-width: 100%;
     }
-
-    /* DB 예시 버튼과 그림 보기 */
-    .db-btn {
-      border-style: dashed;
-      margin-left: 8px;
-    }
-
-    .db-btn.on {
-      border-style: solid;
-    }
-
-    .dbview {
-      align-self: stretch;
-      flex: 1;
-      min-width: 0;
-      overflow: auto;
-      background: #fff;
-      color: #1f2430;
-      border-radius: 8px;
-      padding: 16px 20px 28px;
-    }
-
-    .dbview h2 {
-      font-size: 18px;
-      margin-bottom: 4px;
-    }
-
-    .dbview .hint {
-      font-size: 13px;
-      color: #6b7280;
-      margin-bottom: 18px;
-    }
-
-    .dbview figure {
-      margin: 0 0 30px;
-    }
-
-    .dbview figcaption {
-      font-weight: 700;
-      font-size: 15px;
-      margin-bottom: 8px;
-    }
-
-    .dbview .scroll {
-      overflow-x: auto;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-    }
-
-    .dbview img {
-      display: block;
-      width: 100%;
-      height: auto;
-      cursor: zoom-in;
-    }
-
-    .dbview figure.zoom img {
-      max-width: none;
-      cursor: zoom-out;
-    }
-
-    .dbview figure a {
-      display: inline-block;
-      margin-top: 6px;
-      font-size: 13px;
-      color: #7c6cf5;
-    }
   </style>
 </head>
 
@@ -172,37 +105,6 @@
   </div>
   <div class="stage">
     <iframe id="frame" title="시안 미리보기"></iframe>
-
-    <!-- DB 예시: db/ 폴더의 ERD 그림 5장 (한글 설명은 db/README.md, 표 만들기는 db/schema.sql) -->
-    <div class="dbview" id="dbview" hidden>
-      <h2>DB 구조 (ERD)</h2>
-      <p class="hint">그림을 누르면 원래 크기로 커지고, 다시 누르면 화면 폭에 맞게 줄어듭니다. 커졌을 때는 옆으로 밀어서 볼 수 있어요. 표마다 한글 설명은 <a href="db/README.md" target="_blank" rel="noopener">db/README.md</a>, 표를 만드는 SQL 은 <a href="db/schema.sql" target="_blank" rel="noopener">db/schema.sql</a> 에 있습니다. 표 머리 색: 주황 = 지금 화면이 쓰는 데이터, 파랑 = 서버를 붙일 때 필요, 회색 = 확장, 초록 = 집계 VIEW.</p>
-      <figure>
-        <figcaption>1. 계정 · 인증 · 약관</figcaption>
-        <div class="scroll"><img src="db/erd-1-accounts.png" alt="계정·인증·약관 ERD"></div>
-        <a href="db/erd-1-accounts.png" target="_blank" rel="noopener">새 탭에서 크게 보기</a>
-      </figure>
-      <figure>
-        <figcaption>2. 마이페이지 · 생활 관리</figcaption>
-        <div class="scroll"><img src="db/erd-2-life-management.png" alt="생활 관리 ERD"></div>
-        <a href="db/erd-2-life-management.png" target="_blank" rel="noopener">새 탭에서 크게 보기</a>
-      </figure>
-      <figure>
-        <figcaption>3. 가계부 (수입 · 지출) 와 집계</figcaption>
-        <div class="scroll"><img src="db/erd-3-ledger.png" alt="가계부 ERD"></div>
-        <a href="db/erd-3-ledger.png" target="_blank" rel="noopener">새 탭에서 크게 보기</a>
-      </figure>
-      <figure>
-        <figcaption>4. 커뮤니티 · 신고 · 이용 제한</figcaption>
-        <div class="scroll"><img src="db/erd-4-community.png" alt="커뮤니티 ERD"></div>
-        <a href="db/erd-4-community.png" target="_blank" rel="noopener">새 탭에서 크게 보기</a>
-      </figure>
-      <figure>
-        <figcaption>5. AI · 지도 · 공용 데이터</figcaption>
-        <div class="scroll"><img src="db/erd-5-ai-places.png" alt="AI·지도·공용 데이터 ERD"></div>
-        <a href="db/erd-5-ai-places.png" target="_blank" rel="noopener">새 탭에서 크게 보기</a>
-      </figure>
-    </div>
   </div>
 
   <script>
@@ -222,21 +124,15 @@
     function write(key, val) { try { localStorage.setItem(key, val); } catch (e) { } }
     function isVariant(id) { return VARIANTS.some(function (v) { return v[0] === id; }); }
 
-    var fromUrl = new URLSearchParams(location.search).get('v');          // compare.html?v=start-pc 또는 ?v=db 로 바로 열기
+    var fromUrl = new URLSearchParams(location.search).get('v');          // compare.html?v=start-pc 처럼 바로 열기
     var saved = fromUrl || read('compare-v', 'app');
-    var cur = (saved === 'db' || isVariant(saved)) ? saved : 'app';   // 화면 이름 또는 'db'
+    var cur = isVariant(saved) ? saved : 'app';   // 화면 이름
     var size = Number(read('compare-size', '0'));
     if (!(size >= 0 && size < SIZES.length)) size = 0;
 
     function render() {
-      var isDb = cur === 'db';
       document.querySelectorAll('button[data-v]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === cur); });
       document.querySelectorAll('#sizes button').forEach(function (b, i) { b.classList.toggle('on', i === size); });
-      frame.hidden = isDb;                                        // DB 예시를 보는 동안에는 화면 미리보기를 숨김
-      document.getElementById('dbview').hidden = !isDb;
-      document.getElementById('sizes').style.visibility = isDb ? 'hidden' : '';
-      document.getElementById('open').style.visibility = isDb ? 'hidden' : '';
-      if (isDb) { document.title = 'ZIP DB 예시'; return; }
       var src = 'variants/' + cur + '/index.html';
       if (frame.getAttribute('src') !== src) frame.src = src;
       applySize();
@@ -254,22 +150,6 @@
         render();
       });
       document.getElementById('vars').appendChild(b);
-    });
-    // "DB 예시" 버튼: 누르면 db/ 폴더의 ERD 그림을 보여줌
-    var dbBtn = document.createElement('button');
-    dbBtn.type = 'button'; dbBtn.className = 'db-btn'; dbBtn.textContent = 'DB 예시'; dbBtn.setAttribute('data-v', 'db');
-    dbBtn.addEventListener('click', function () { cur = 'db'; write('compare-v', 'db'); render(); });
-    document.getElementById('vars').appendChild(dbBtn);
-    document.getElementById('adminBtn').addEventListener('click', function () {
-      cur = 'admin'; write('compare-v', cur); size = 0; write('compare-size', '0'); render();   // 관리자는 데스크톱 화면으로
-    });
-
-    // 그림을 누르면 원래 크기로 확대(옆으로 밀어서 보기), 다시 누르면 화면 폭에 맞게 축소
-    document.querySelectorAll('#dbview img').forEach(function (img) {
-      img.addEventListener('click', function () {
-        var zoomed = img.closest('figure').classList.toggle('zoom');
-        img.style.width = zoomed ? Math.round(img.naturalWidth / 1.5) + 'px' : '';   // 그림은 1.5배 해상도로 저장됨
-      });
     });
     SIZES.forEach(function (s, i) {
       var b = document.createElement('button');

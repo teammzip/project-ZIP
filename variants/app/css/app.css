@@ -966,30 +966,6 @@ body[data-view="settings"] .my-head {
   }
 }
 
-/* 프로필 카드의 로그아웃 버튼 (이름·사는 곳 오른쪽) */
-.profile > div:nth-child(2) {
-  min-width: 0;
-}
-
-.logout-btn {
-  margin-left: auto;
-  padding: 6px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--muted);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.logout-btn:hover {
-  border-color: var(--orange);   /* 앱 화면에서는 이 값이 파란색 */
-  color: var(--orange);
-}
-
 /* 회원 탈퇴 확인 창 */
 .btn-danger {
   cursor: pointer;

@@ -7,8 +7,8 @@ import { clearAll } from '../core/storage.js';
 // 좁은 화면(모바일)은 모바일 시작, 넓은 화면은 PC 시작으로
 function startUrl() { return window.innerWidth <= 900 ? '../start-mobile/index.html' : '../start-pc/index.html'; }
 
-// 프로필 카드의 로그아웃 버튼
-$('btnLogout').addEventListener('click', function () { location.href = startUrl(); });
+// 프로필 메뉴의 로그아웃
+$('pmLogout').addEventListener('click', function () { location.href = startUrl(); });
 
 // 회원 탈퇴 확인 창의 요소들과 상태(done: 탈퇴 완료 상태)
 var modal = $('confirmModal'), box = $('confirmBox'), check = $('confirmCheck'), okBtn = $('confirmOk'), cancelBtn = $('confirmCancel');

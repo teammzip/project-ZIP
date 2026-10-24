@@ -173,13 +173,19 @@ button {
   min-width: 0;
 }
 
+/* 일정 화면: 큰 달력(왼쪽)을 더 넓게 */
+#view-calendar .cal-layout {
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+}
+
 /* 폭이 좁은 카드(내 정보 등) */
 .narrow {
   max-width: 560px;
 }
 
 @media (max-width: 900px) {
-  .cal-layout {
+  .cal-layout,
+  #view-calendar .cal-layout {
     grid-template-columns: minmax(0, 1fr);
   }
 }

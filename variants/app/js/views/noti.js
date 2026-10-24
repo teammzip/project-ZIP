@@ -10,7 +10,7 @@ import { registerView } from '../core/router.js';
 var notiMode = 'all';
 
 // 지금 보여줄 알림 목록을 만듦: 3일 안 일정·배출, 월세 D-day, 예시 알림(냉장고·댓글)
-function buildNotis() {
+export function buildNotis() {
   var list = [];
   var end = new Date(todayStr + 'T00:00:00');
   end.setDate(end.getDate() + 3);
@@ -38,7 +38,10 @@ function buildNotis() {
 // 안 읽은 알림 개수
 function unreadCount() { return buildNotis().filter(function (n) { return !readMap[n.id]; }).length; }
 // 안 읽은 알림이 있으면 메뉴·상단 종·마이페이지 탭의 빨간 점을 보이고, 없거나 알림을 껐으면 숨김
-export function updateDot() { var off = !(settings.notiOn && unreadCount() > 0); $('navDot').hidden = off; $('bellDot').hidden = off; $('myNotiDot').hidden = off; }
+export function updateDot() {
+  var off = !(settings.notiOn && unreadCount() > 0); $('navDot').hidden = off; $('bellDot').hidden = off; $('myNotiDot').hidden = off;
+  document.dispatchEvent(new Event('zip:noti'));   // 홈 알림 회전창(components/home-noti.js)도 다시 그리게 알림
+}
 
 // 알림 화면을 그림: 알림을 누르면 읽음 처리(zip-noti-read에 저장)
 function renderNotiCenter() {
