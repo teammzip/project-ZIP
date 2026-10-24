@@ -12,7 +12,7 @@ export function useLogin() {
   const setAuth = useAuthStore((s) => s.setAuth)
   return useMutation({
     mutationFn: async ({ loginId, password, remember }: LoginValues) => {
-      const res = await authApi.login({ loginId, password })
+      const res = await authApi.login({ loginId, password, remember })
       setAuth(res.user, res.accessToken, remember)
       return res.user
     },

@@ -45,10 +45,10 @@
   color: var(--color-muted);
 }
 
-.backLink {
+.me {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-primary);
+  color: var(--color-muted);
   white-space: nowrap;
 }
 

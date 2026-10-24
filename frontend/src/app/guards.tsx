@@ -6,8 +6,12 @@ import { useRedirectAfterAuth } from './useRedirectAfterAuth'
 export function ProtectedRoute() {
   const isLoggedIn = useAuthStore(selectIsLoggedIn)
   const needsConsent = useAuthStore(selectNeedsConsent)
+  const isAdmin = useAuthStore((s) => s.user?.role === 'ADMIN')
   const location = useLocation()
   if (!isLoggedIn) return <Navigate to="/start" replace state={{ from: location.pathname + location.search }} />
+  // 관리자 계정은 관리자 화면만, 일반 회원은 관리자 화면 빼고 전부
+  const onAdmin = location.pathname === '/admin'
+  if (isAdmin !== onAdmin) return <Navigate to={isAdmin ? '/admin' : '/'} replace />
   // 소셜 첫 가입: 약관 동의 전에는 앱 화면에 못 들어가고 동의 화면만 보임
   if (needsConsent && location.pathname !== '/welcome') return <Navigate to="/welcome" replace />
   if (!needsConsent && location.pathname === '/welcome') return <Navigate to="/" replace />

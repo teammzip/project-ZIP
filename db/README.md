@@ -144,10 +144,11 @@
 
 | React 저장 위치 | 들어 있는 것 | 옮겨 갈 DB 표 |
 |---|---|---|
-| `zip-life` (한 곳에 모아 저장) | 할 일, 공과금, 일정, 수입, 지출, 월세 납부 체크, 알림 읽음, 설정(동네·월세·납부일·알림·입주한 달·계약 끝나는 달) | `todos`, `bill_items` + `bill_payments`, `events`, `incomes`, `expenses`, `rent_payments`, `notifications.read_at`, `user_settings` |
-| `zip-auth` | 로그인 토큰과 내 정보 (`id, username, email, nickname, address, provider, agreedAt`) | `auth_sessions`, `users` (`provider` = `users.signup_provider`, `agreedAt` = `user_term_agreements`) |
+| `zip-life` (한 곳에 모아 저장) | 일정(할 일은 일정의 `done` 체크로 합침), 공과금, 수입, 지출, 월세 납부 체크, 알림 읽음, 설정(동네·월세·납부일·알림·입주한 달·계약 끝나는 달) | `events`(완료 칸 `is_done` 추가 필요), `bill_items` + `bill_payments`, `incomes`, `expenses`, `rent_payments`, `notifications.read_at`, `users.region_id` + `user_settings` |
+| `zip-auth` | 로그인 토큰과 내 정보 (`id, username, email, nickname, address, region, provider, role, status, agreedAt`) | `auth_sessions`, `users` (`provider` = `users.signup_provider` 소문자, `agreedAt` = `user_term_agreements`) |
 | `zip-mock-users` | 가짜 API가 저장한 가입 계정 | `users` (+ 휴대전화는 `phone_verifications` 로 확인) |
-| `zip-posts` | 커뮤니티 글·좋아요·댓글 | `posts`, `post_likes`, `comments` |
+| `zip-posts` | 커뮤니티 글·좋아요·댓글·첨부 | `posts`, `post_likes`, `comments`, `uploaded_files` + `post_attachments` |
+| `zipban-records` | 이용 정지·경고 기록 (데이터 초기화로 안 지워지게 `zip-`로 시작하지 않음) | `user_sanctions`, `users.status` |
 | `zip-ai-chat` | AI 대화 말풍선 (지출 요약 카드 `{month,total,prevTotal,fixed,rows,top}` 포함) | `ai_conversations`, `ai_messages` (카드는 `card_data` JSON) |
 
 ## 4. 표마다 자세한 설명
@@ -871,5 +872,5 @@ AI와의 대화 한 건(대화방). 홈의 "AI와 대화" 모달에서 시작한
 - **공과금**: 화면은 "이번 달 목록" 하나만 가지고 새 달에 "새 달 시작"으로 미납 처리합니다. DB는 항목(`bill_items`)과 월별 납부(`bill_payments`)로 나눠서 지난 달 기록이 남습니다. 서버를 붙일 때 화면의 "새 달 시작"은 새 달 납부 행을 만드는 동작으로 바꿉니다.
 - **알림**: 화면은 일정·배출·월세로 그때그때 계산하고 읽음 표시만 저장합니다. DB의 `notifications` 는 서버가 알림을 미리 만들어 둘 때를 위한 표입니다.
 - **사진**: 화면은 사진을 저장하지 않고 AI 화면으로 넘기기만 합니다. `uploaded_files` 는 서버에 저장할 때 필요합니다.
-- **찾기 흐름**: HTML 시안(휴대전화 인증 → 바로 재설정, 아이디 그대로 표시)과 React 앱(이메일 안내, 가려서 표시)이 다릅니다. DB는 둘 다 받을 수 있게 열어 뒀으니 팀이 하나를 정하면 됩니다.
-- **React 쪽 문서**: `frontend/API.md` 의 "ERD에는 수입·지출 테이블이 아직 없어요" 문장과, `features/life/types.ts`·`features/community/types.ts` 머리 주석의 옛 그림 이름(`erd-1-accounts-community.png`, `erd-2-life-management.png`)은 이제 맞지 않습니다. (`frontend/` 는 프론트 담당 영역이라 고치지 않았습니다.)
+- **찾기 흐름**: HTML 시안과 React 앱 모두 휴대전화 인증 → 재설정 토큰 → 바로 새 비밀번호, 아이디는 그대로 표시하는 방식으로 맞췄습니다 (`password_resets.method = PHONE`).
+- **React 쪽 문서**: `frontend/API.md` 를 이 `schema.sql`(2026-10-21) 기준으로 다시 정리했습니다. 영역별 API 주소·요청·응답과 DB 표 대응, DB와 아직 안 맞는 곳(`events` 완료 칸, 탈퇴 후 재가입 막기 등)이 들어 있습니다.

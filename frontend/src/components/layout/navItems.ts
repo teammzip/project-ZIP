@@ -1,6 +1,6 @@
 /* 메뉴 목록을 한곳에서 관리. PC 사이드바, 모바일 하단 메뉴, 모바일 ☰ 전체 메뉴가 같은 데이터를 씁니다.
  * (PC 메뉴 = 홈·사진·AI·동네·커뮤니티·마이페이지 / 모바일 하단 = 홈·AI·사진(가운데)·동네·마이페이지,
- *  커뮤니티는 모바일에서 ☰ 전체 메뉴와 동네 화면의 "이야기" 탭으로 들어감) */
+ *  커뮤니티는 모바일에서 ☰ 전체 메뉴로 들어감) */
 import type { IconName } from './NavIcon'
 
 export type NavItem = { to: string; label: string; icon: IconName; end?: boolean }
