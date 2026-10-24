@@ -2,16 +2,16 @@
  * (router가 화면 파일들을 직접 가져오지 않게 해서 서로 얽히지 않도록 함) */
 import { $ } from './utils.js';
 
-var VIEWS = ['home', 'calendar', 'ai', 'map', 'noti', 'community', 'settings', 'bills', 'rent', 'spend', 'income'];
+var VIEWS = ['home', 'calendar', 'ai', 'map', 'noti', 'community', 'settings', 'bills', 'rent', 'spend', 'income', 'memo'];
 var onShow = {};
 
 /* 월세·공과금은 "고정 지출" 한 화면에 합쳐서 보여준다 (PC·모바일 같음) */
 var FIXED = ['bills', 'rent'];
 
 /* 마이페이지: 사이드바·전체 메뉴에서는 "마이페이지" 한 항목이 켜지고,
- * 안의 화면마다 위쪽 1단계 탭(일정 | 가계부 | 알림 | 내 정보)이 정해져 있다 */
+ * 안의 화면마다 위쪽 1단계 탭(일정 | 가계부 | 메모 | 알림 | 내 정보)이 정해져 있다 */
 var MY_NAV = 'calendar';
-var MY_TAB = { calendar: 'calendar', income: 'income', bills: 'income', rent: 'income', spend: 'income', noti: 'noti', settings: 'settings' };
+var MY_TAB = { calendar: 'calendar', income: 'income', bills: 'income', rent: 'income', spend: 'income', memo: 'memo', noti: 'noti', settings: 'settings' };
 
 export function registerView(name, render) { onShow[name] = render; }
 

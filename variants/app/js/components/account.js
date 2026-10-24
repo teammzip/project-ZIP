@@ -8,7 +8,10 @@ import { clearAll } from '../core/storage.js';
 function startUrl() { return window.innerWidth <= 900 ? '../start-mobile/index.html' : '../start-pc/index.html'; }
 
 // 프로필 카드의 로그아웃 버튼
-$('btnLogout').addEventListener('click', function () { location.href = startUrl(); });
+$('btnLogout').addEventListener('click', function () {
+  try { localStorage.removeItem('zip-login'); } catch (e) { }   // 어떤 방식으로 로그인했는지 기록도 지움
+  location.href = startUrl();
+});
 
 // 회원 탈퇴 확인 창의 요소들과 상태(done: 탈퇴 완료 상태)
 var modal = $('confirmModal'), box = $('confirmBox'), check = $('confirmCheck'), okBtn = $('confirmOk'), cancelBtn = $('confirmCancel');

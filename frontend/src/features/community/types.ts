@@ -1,4 +1,4 @@
-/* 커뮤니티 글 모양 (DB 구조: db/erd-4-community.png — posts · comments · post_likes · post_attachments) */
+/* 커뮤니티 글 모양 (DB: db/schema.sql — posts · comments · post_likes · post_attachments) */
 export type Comment = {
   author: string
   text: string

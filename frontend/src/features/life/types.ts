@@ -1,5 +1,5 @@
 /* 생활 관리(일정·가계부·알림·설정) 데이터 모양. 백엔드를 붙일 때 이 타입을 기준으로 API 를 맞추면 됩니다.
- * (DB 구조 그림: db/erd-2-life-management.png)
+ * (DB: db/schema.sql 의 2. 마이페이지 · 생활 관리, 3. 가계부)
  * 할 일은 따로 두지 않고 일정에 "완료" 체크로 합쳤어요 (백엔드 담당 시안 PR #12 와 같은 방식) */
 
 export type Bill = { id: number; name: string; amount: number; paid: boolean }
