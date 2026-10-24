@@ -1,4 +1,4 @@
-/* 월세: 홈 카드, 오른쪽 패널의 월세 줄, 상세 화면 */
+/* 월세: 홈 카드, 상세 화면 */
 import { $, el, pad, fmt, today, dayDiff } from '../core/utils.js';
 import { store } from '../core/storage.js';
 import { state, settings, rentPaid } from '../core/state.js';
@@ -10,14 +10,12 @@ import { updateDot } from './noti.js';
 // 월별 납부 기록의 키 (예: 2026-10)
 function rentKey(y, m) { return y + '-' + pad(m + 1); }
 
-/* 홈의 월세 카드 + 오른쪽 패널의 월세 줄 */
+/* 홈의 월세 카드 */
 export function renderRentSummary() {
   var c = nextRentDate();
   var diff = dayDiff(fmt(c));
   $('rentDday').textContent = diff === 0 ? 'D-Day' : 'D-' + diff;
   $('rentSub').textContent = '매월 ' + settings.rentDay + '일 · ' + settings.rent + '만원 · 계좌이체' + (rentPaid[rentKey(c.getFullYear(), c.getMonth())] ? ' · 납부 완료' : '');
-  $('pRentSub').textContent = settings.rent + '만원 · 이체';
-  $('pRentTime').textContent = (c.getMonth() + 1) + '/' + c.getDate();
 }
 
 // 월세 상세 화면: D-day, 납부 예정일, 금액, 최근 6개월 납부 체크 목록

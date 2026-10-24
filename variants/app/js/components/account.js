@@ -7,8 +7,8 @@ import { clearAll } from '../core/storage.js';
 // 좁은 화면(모바일)은 모바일 시작, 넓은 화면은 PC 시작으로
 function startUrl() { return window.innerWidth <= 900 ? '../start-mobile/index.html' : '../start-pc/index.html'; }
 
-// 프로필 카드의 로그아웃 버튼
-$('btnLogout').addEventListener('click', function () {
+// 프로필 메뉴의 로그아웃 (내 정보의 "로그아웃"도 이 단추를 누름)
+$('pmLogout').addEventListener('click', function () {
   try { localStorage.removeItem('zip-login'); } catch (e) { }   // 어떤 방식으로 로그인했는지 기록도 지움
   location.href = startUrl();
 });

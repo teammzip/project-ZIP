@@ -1,9 +1,9 @@
-/* 레이아웃: 전체 격자, 사이드바(모바일 하단 탭), 상단바, 검색, 오른쪽 패널 */
+/* 레이아웃: 전체 격자, 사이드바(모바일 하단 탭), 상단바, 검색 */
 
 /* ---------- 전체 레이아웃 ---------- */
 .app {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) 300px;
+  grid-template-columns: 72px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -147,117 +147,6 @@
   font-size: 14px;
 }
 
-/* ---------- 오른쪽 패널 ---------- */
-.panel {
-  background: #f0f1f6;
-  padding: 24px 20px 40px;
-  display: grid;
-  gap: 22px;
-  align-content: start;
-}
-
-.profile {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.avatar {
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #8dbaf6, var(--orange));
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font-weight: 700;
-}
-
-.profile b {
-  font-size: 16px;
-  display: block;
-}
-
-.profile small {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.mini-stats {
-  background: #fff;
-  border-radius: 12px;
-  padding: 14px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  text-align: center;
-}
-
-.mini-stats b {
-  font-size: 18px;
-  display: block;
-}
-
-.mini-stats small {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.panel h3 {
-  font-size: 15px;
-  margin-bottom: 10px;
-}
-
-.sched {
-  background: #fff;
-  border-radius: 12px;
-  padding: 12px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.sched[href] {
-  color: inherit;
-  text-decoration: none;
-}
-
-.sched[href]:hover {
-  box-shadow: 0 0 0 2px var(--line);
-}
-
-.sched .ico {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  font-size: 18px;
-  background: #eaf2ff;
-  flex: none;
-}
-
-.sched .t {
-  flex: 1;
-  min-width: 0;
-}
-
-.sched .t b {
-  font-size: 13px;
-  display: block;
-}
-
-.sched .t small {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.sched time {
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
 /* ---------- 모바일 하단 메뉴: 5칸 (홈 · 일정 · 사진 · AI · 동네) ---------- */
 .mob-icons,
 /* 지도 | 이야기 처럼 한 화면 안에서 두 가지를 오가는 작은 탭 */
@@ -309,23 +198,6 @@
   color: #fff;
   font-weight: 700;
   font-size: 14px;
-}
-
-/* 넓지 않은 화면(태블릿): 오른쪽 패널을 본문 아래로 내리고 격자를 2열로 */
-@media (max-width: 1200px) {
-  .app {
-    grid-template-columns: 72px minmax(0, 1fr);
-  }
-
-  .panel {
-    grid-column: 2;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .panel .profile,
-  .panel .mini-stats {
-    grid-column: 1 / -1;
-  }
 }
 
 /* 모바일: 왼쪽 사이드바가 아래 고정 메뉴로 바뀌고, 위쪽 바와 여백이 좁아짐 */
@@ -400,10 +272,8 @@
     min-width: 0;
   }
 
-  .panel {
-    grid-column: 1;
-    grid-template-columns: minmax(0, 1fr);
-    padding: 20px 16px 30px;
+  .side-profile {
+    display: none;
   }
 }
 
@@ -471,9 +341,104 @@
   }
 }
 
-/* 모바일: 하단 요약 패널(프로필, 다가오는 알림)은 홈에서만 보임 */
-@media (max-width: 900px) {
-  body:not([data-view="home"]) .panel {
-    display: none;
-  }
+/* 왼쪽 메뉴 맨 아래 프로필 사진 (모바일에서는 위쪽 프로필 동그라미를 씀) */
+.side-profile {
+  margin-top: auto;
+  border: 0;
+  background: none;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8dbaf6, var(--orange));
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+}
+
+.side-profile:hover .avatar,
+.side-profile[aria-expanded="true"] .avatar {
+  box-shadow: 0 0 0 3px #cfe0fb;
+}
+
+/* 프로필 메뉴(프로필 보기·설정·로그아웃) */
+.profile-menu {
+  position: fixed;
+  z-index: 30;
+  min-width: 220px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .16);
+}
+
+.pm-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px 10px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.pm-head b {
+  display: block;
+  font-size: 14px;
+}
+
+.pm-head small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.profile-menu > button {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.profile-menu > button:hover {
+  background: #f1f2f7;
+}
+
+.profile-menu .pm-out {
+  color: #e5484d;
+}
+
+/* 프로필 보기 창의 항목 */
+.pr-list {
+  margin: 14px 0 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.pr-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.pr-list dt {
+  color: var(--muted);
+}
+
+.pr-list dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
 }

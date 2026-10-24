@@ -191,7 +191,7 @@ $('setNoti').addEventListener('change', function () {
 });
 
 /* ---------- 로그아웃 · 데이터 초기화 ---------- */
-$('meLogout').addEventListener('click', function () { $('btnLogout').click(); });   // 오른쪽 프로필의 로그아웃과 같은 동작
+$('meLogout').addEventListener('click', function () { $('pmLogout').click(); });   // 프로필 메뉴의 로그아웃과 같은 동작
 $('btnReset').addEventListener('click', function () {
   if (!confirm('일정, 할 일, 가계부(수입·지출), 알림 상태, 커뮤니티 글, AI 대화, 설정이 모두 삭제됩니다. 계속할까요?')) return;
   clearAll();
