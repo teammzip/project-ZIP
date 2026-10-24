@@ -1,0 +1,123 @@
+/* 경고 안내 창 · 이용 정지 안내 (팀장님 시안 app.css 의 .warn-box · variants/suspended) */
+.list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  text-align: left;
+}
+
+.list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.list dt {
+  color: var(--color-muted);
+}
+
+.list dd {
+  font-weight: 700;
+  text-align: right;
+}
+
+/* 경고 창 */
+.warnBox {
+  text-align: center;
+}
+
+.warnBox h3 {
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.warnBox p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+
+.warnIco {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  background: #fff4e5;
+  font-size: 28px;
+}
+
+.warnBox .warnNote {
+  margin: 10px 0 16px;
+  font-size: 12px;
+}
+
+/* 이용 정지 안내 */
+.susp {
+  width: min(440px, 100%);
+  padding: 32px 26px 26px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: var(--shadow-modal);
+  text-align: center;
+}
+
+.suspIco {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #ffecee;
+  font-size: 32px;
+}
+
+.susp h1 {
+  font-size: 21px;
+}
+
+.lead {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+
+.bad {
+  color: var(--color-danger);
+}
+
+.note {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.line {
+  display: grid;
+  place-items: center;
+  padding: 11px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.dark {
+  background: var(--color-text);
+}

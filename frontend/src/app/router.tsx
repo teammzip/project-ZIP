@@ -27,6 +27,7 @@ import { SpendPage } from '@/pages/my/SpendPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { PhotoPage } from '@/pages/photo/PhotoPage'
 import { StartPage } from '@/pages/start/StartPage'
+import { SuspendedPage } from '@/pages/suspended/SuspendedPage'
 import { GuestRoute, ProtectedRoute } from './guards'
 
 /* 화면 주소 한눈에 보기. 새 화면을 만들면 여기에 한 줄 추가하세요. */
@@ -60,6 +61,8 @@ export const router = createBrowserRouter([
     children: [
       // 관리자 화면: 앱 틀 없이 전체 화면 (관리자 계정만, AdminPage 가 확인)
       { path: '/admin', element: <AdminPage /> },
+      // 이용 정지 안내: 정지된 계정은 앱 대신 이 화면만 (ProtectedRoute 가 보냄)
+      { path: '/suspended', element: <SuspendedPage /> },
       // 소셜 첫 가입: 약관 동의 + 주소 입력
       { element: <AuthLayout />, children: [{ path: '/welcome', element: <WelcomePage /> }] },
       {

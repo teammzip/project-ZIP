@@ -5,6 +5,7 @@ import logo from '@/assets/images/logo-zip.png'
 import { Button } from '@/components/ui'
 import { useAuthStore, useLogout } from '@/features/auth'
 import { useNotis } from '@/features/life'
+import { WarnNotice } from '@/features/moderation'
 import { Avatar } from '@/features/profile'
 import { cx } from '@/lib/cx'
 import { DOW } from '@/lib/date'
@@ -54,8 +55,15 @@ export function AppLayout() {
       )}
       <MenuPanel open={menuOpen} onClose={() => setMenuOpen(false)} />
       <ProfileMenu open={profileOpen} onClose={() => setProfileOpen(false)} />
+      {/* 운영자에게 받은 경고를 아직 확인 안 했으면 한 번 보여 줌 (?demo=warn 이면 예시) */}
+      <WarnNoticeForMe />
     </div>
   )
+}
+
+function WarnNoticeForMe() {
+  const nick = useAuthStore((s) => s.user?.nickname)
+  return <WarnNotice key={nick} nick={nick} />
 }
 
 /** 마이페이지 메뉴에 안 읽은 알림 빨간 점 */

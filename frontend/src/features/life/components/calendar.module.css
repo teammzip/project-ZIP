@@ -186,6 +186,22 @@
   text-decoration: line-through;
 }
 
+/* 같은 일정이 이어지는 날: 칸 사이(안쪽 여백 6px + 경계선 1px)를 메워 한 줄로 이어 보이게 함 */
+.joinNext {
+  margin-right: -7px;
+  border-radius: 0;
+}
+
+.joinPrev {
+  margin-left: -7px;
+  border-left-color: transparent;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--c) 10%, #fff);
+}
+
+.gap {
+  visibility: hidden;
+}
+
 .more {
   padding-left: 6px;
   font-size: 11px;

@@ -1,4 +1,4 @@
-/* 홈 4번째 카드: 사진 상담 + 알림 회전창 (시안 dashboard.css 의 .photo-card · .home-noti) */
+/* 홈: 사진 상담 카드 · 알림 회전창 (시안 dashboard.css 의 .photo-card · .home-noti) */
 .card {
   display: flex;
   flex-direction: column;
@@ -62,24 +62,27 @@
   display: none;
 }
 
-/* 알림 회전창 */
+/* 메모 옆 알림 회전창 */
 .noti {
-  padding: 10px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 14px 16px 12px;
   border: 1px solid #ffe0cf;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: #fff8f3;
 }
 
 .notiHead {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  white-space: nowrap;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .notiHead b {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .count {
@@ -89,12 +92,20 @@
 
 .all {
   margin-left: auto;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--color-purple);
 }
 
+.stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .view {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -105,11 +116,22 @@
 
 .slide {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   flex: 0 0 100%;
   min-width: 0;
-  padding: 2px;
+  padding: 4px;
+}
+
+.ico {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 22px;
 }
 
 .text {
@@ -117,29 +139,54 @@
   min-width: 0;
 }
 
-.text b {
+.text b,
+.text small {
   display: block;
-  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .text small {
-  display: block;
-  font-size: 11px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.time {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--color-muted);
 }
 
 .close {
   flex: none;
-  padding: 4px 8px;
+  padding: 5px 12px;
   border: 1px solid var(--color-line);
   border-radius: 999px;
   background: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-muted);
 }
 
 .close:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--color-line);
+  border-radius: 50%;
+  background: #fff;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.nav:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
@@ -181,6 +228,11 @@
 }
 
 @media (max-width: 700px) {
+  .time,
+  .nav {
+    display: none;
+  }
+
   .pcLabel {
     display: none;
   }

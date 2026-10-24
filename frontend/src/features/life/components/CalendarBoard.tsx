@@ -214,8 +214,9 @@ function BigCalendar({ events, view, calView, onCalView, selected, picking, onDa
     count = Math.ceil((first.getDay() + new Date(y, m + 1, 0).getDate()) / 7) * 7
     title = `${y}.${pad(m + 1)}`
   }
-  const days = Array.from({ length: count }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i))
-  const trash = trashEventsBetween(fmt(days[0]), fmt(days[days.length - 1]))
+  const dates = Array.from({ length: count }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i))
+  const trash = trashEventsBetween(fmt(dates[0]), fmt(dates[dates.length - 1]))
+  const days = layoutSlots(dates, events, trash)
   const maxChips = calView === 'week' ? 12 : 3
 
   return (
@@ -249,9 +250,7 @@ function BigCalendar({ events, view, calView, onCalView, selected, picking, onDa
             {d}
           </div>
         ))}
-        {days.map((d) => {
-          const ds = fmt(d)
-          const evs: Array<CalEvent | TrashEvent> = [...sortEvents(events.filter((ev) => ev.date === ds)), ...trash.filter((t) => t.date === ds)]
+        {days.map(({ date: d, ds, evs, slots }) => {
           return (
             <div
               key={ds}
@@ -265,21 +264,28 @@ function BigCalendar({ events, view, calView, onCalView, selected, picking, onDa
             >
               <span className={cal.dn}>{d.getDate()}</span>
               <div className={cal.chips}>
-                {evs.slice(0, maxChips).map((ev) => {
+                {slots.slice(0, maxChips).map((slot, q) => {
+                  if (!slot) return <div key={`gap${q}`} className={cx(cal.cev, cal.gap)} aria-hidden="true" />
+                  const { ev, joinPrev, joinNext } = slot
                   const trashEv = isTrash(ev)
                   return (
                     <div
                       key={ev.id}
-                      className={cx(cal.cev, !trashEv && ev.done && cal.cevDone)}
+                      className={cx(cal.cev, !trashEv && ev.done && cal.cevDone, joinPrev && cal.joinPrev, joinNext && cal.joinNext)}
                       style={{ '--c': evColor(ev.title, trashEv) } as CSSProperties}
                       title={`${ev.time ? `${ev.time} ` : ''}${ev.title}`}
                     >
-                      {ev.time && !trashEv && <i>{ev.time}</i>}
-                      {ev.title}
+                      {/* 이어지는 막대에는 제목을 다시 쓰지 않음 */}
+                      {joinPrev ? '\u00a0' : (
+                        <>
+                          {ev.time && !trashEv && <i>{ev.time}</i>}
+                          {ev.title}
+                        </>
+                      )}
                     </div>
                   )
                 })}
-                {evs.length > maxChips && <div className={cal.more}>+{evs.length - maxChips}개 더</div>}
+                {slots.length > maxChips && <div className={cal.more}>+{slots.length - maxChips}개 더</div>}
               </div>
               <span className={cal.mark}>
                 {evs.slice(0, 3).map((ev) => (
@@ -292,6 +298,41 @@ function BigCalendar({ events, view, calView, onCalView, selected, picking, onDa
       </div>
     </Card>
   )
+}
+
+type Slot = { ev: CalEvent | TrashEvent; joinPrev: boolean; joinNext: boolean } | null
+
+/** 달력 칸마다 일정을 줄(slot)에 배치. 같은 제목의 일정이 이어지는 날(예: 병원 예약 8~10일)은
+ * 앞날과 같은 줄에 놓고 막대를 이어 붙임 (일요일은 줄이 바뀌니 잇지 않음, 쓰레기 배출은 잇지 않음) */
+function layoutSlots(dates: Date[], events: CalEvent[], trash: TrashEvent[]) {
+  const out: Array<{ date: Date; ds: string; evs: Array<CalEvent | TrashEvent>; slots: Slot[] }> = []
+  dates.forEach((date, n) => {
+    const ds = fmt(date)
+    const evs: Array<CalEvent | TrashEvent> = [...sortEvents(events.filter((ev) => ev.date === ds)), ...trash.filter((t) => t.date === ds)]
+    const slots: Slot[] = []
+    const prev = out[n - 1]
+    const placed = new Set<CalEvent | TrashEvent>()
+    if (prev && date.getDay() !== 0) {
+      for (const ev of evs) {
+        if (isTrash(ev)) continue
+        const q = prev.slots.findIndex((p) => p && !p.joinNext && !isTrash(p.ev) && p.ev.title === ev.title)
+        if (q >= 0 && !slots[q]) {
+          prev.slots[q] = { ...prev.slots[q]!, joinNext: true }
+          slots[q] = { ev, joinPrev: true, joinNext: false }
+          placed.add(ev)
+        }
+      }
+    }
+    for (const ev of evs) {
+      if (placed.has(ev)) continue
+      let q = 0
+      while (slots[q]) q++
+      slots[q] = { ev, joinPrev: false, joinNext: false }
+    }
+    for (let q = 0; q < slots.length; q++) slots[q] ??= null
+    out.push({ date, ds, evs, slots })
+  })
+  return out
 }
 
 type ListProps = {

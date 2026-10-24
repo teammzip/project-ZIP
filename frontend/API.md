@@ -367,6 +367,9 @@
 - 정지 기간이 끝나면 `users.status`를 `ACTIVE`로 돌려 주세요 (로그인할 때 확인해도 돼요).
 - 정지 중이면: 로그인 · 글쓰기 · 댓글 · 좋아요 막기, 같은 **아이디 · 닉네임 · 휴대전화로 재가입** 막기.
   - ⚠️ 탈퇴하면 `user_sanctions`도 CASCADE로 지워져서 재가입을 못 막아요. 정지된 사람의 아이디·휴대전화(해시)를 따로 남기는 표가 필요해요.
+- **화면**: 정지된 계정은 앱 대신 **이용 정지 안내(`/suspended`)**만 보고, 아직 확인 안 한 **경고**가 있으면 앱에 들어올 때 **경고 안내 창**이 한 번 떠요.
+  - 서버가 생기면 `GET /api/auth/me`의 `user`에 `suspension: { until, permanent, reason, count } | null`, `warnCount`, `unseenWarnings: [{ id, reason, at }]`를 같이 주세요.
+  - 경고 창에서 "확인했어요"를 누르면 `POST /api/me/warnings/seen { ids }`로 알려 줄게요 (DB: `user_sanctions`에 확인 시각 칸 `seen_at` 추가 필요).
 - 글 · 댓글 삭제는 `status = DELETED` + 작성자에게 경고/정지를 같이 걸 수 있어요 (위 `sanctions` API를 이어서 호출).
 - 지금은 가짜 API와 `src/features/moderation`이 브라우저(`zipban-records`)에서 이 규칙을 흉내 내요.
 

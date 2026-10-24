@@ -1,5 +1,7 @@
 /* 홈 메모 위젯 (compare.html 시안과 같은 모양): 노란 머리줄 + 줄 노트(대표 메모) + 최근 메모 목록 + 빠른 메모 ---------- */
 .widget {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border-radius: 22px;
   background: #fff;
@@ -53,7 +55,7 @@
 
 .body {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr); /* 홈 맨 위 줄 왼쪽 반 칸이라 대표 메모 → 목록을 위아래로 */
   gap: 14px;
   padding: 16px 18px 6px;
 }

@@ -1,6 +1,7 @@
 /* 생활 관리 기능의 바깥 창구. 다른 폴더에서는 '@/features/life' 에서만 가져다 쓰세요. */
 export { CalendarBoard } from './components/CalendarBoard'
 export { FixedExpense } from './components/FixedExpense'
+export { HomeNotiCard } from './components/HomePhotoCard'
 export { IncomeChart, LifeStatGrid, SpendDonut } from './components/HomeWidgets'
 export { MoneyLog } from './components/MoneyLog'
 export { NotiCenter } from './components/NotiCenter'
