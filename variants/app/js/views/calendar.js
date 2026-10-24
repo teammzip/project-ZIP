@@ -96,9 +96,33 @@ function renderGrid() {
     $('calTitle').textContent = viewY + '.' + pad(viewM + 1);
   }
   var maxChips = calView === 'week' ? 12 : 3;
-  for (var i = 0; i < count; i++) {
-    var d = new Date(start); d.setDate(start.getDate() + i);
-    var ds = fmt(d);
+  // 같은 제목의 일정이 이어지는 날(예: 병원 예약 8~10일)은 막대가 이어지도록 같은 줄(slot)에 놓고 가운데 경계를 터 줌
+  var days = [];
+  for (var n = 0; n < count; n++) {
+    var dd = new Date(start); dd.setDate(start.getDate() + n);
+    var dstr = fmt(dd);
+    var dayEvs = sortEvents(state.events.filter(function (ev) { return ev.date === dstr; }))
+      .concat(trashEventsBetween(dstr, dstr))   // 내 일정 먼저, 배출 일정은 뒤에
+      .map(function (ev) { return Object.assign({}, ev); });   // 이어짐 표시를 저장된 일정에 남기지 않도록 복사본 사용
+    var slots = [], prev = days[n - 1];
+    if (prev && dd.getDay() !== 0) {              // 일요일은 줄이 바뀌므로 이어붙이지 않음
+      dayEvs.forEach(function (ev) {
+        if (ev.kind === 'trash') return;
+        for (var q = 0; q < prev.slots.length; q++) {
+          var pe = prev.slots[q];
+          if (pe && !pe.linked && pe.kind !== 'trash' && pe.title === ev.title) { slots[q] = ev; ev.joinPrev = true; pe.joinNext = true; pe.linked = true; return; }
+        }
+      });
+    }
+    dayEvs.forEach(function (ev) {
+      if (slots.indexOf(ev) >= 0) return;
+      var q = 0; while (slots[q]) q++;
+      slots[q] = ev;
+    });
+    days.push({ date: dd, ds: dstr, evs: dayEvs, slots: slots });
+  }
+  days.forEach(function (day, i) {
+    var d = day.date, ds = day.ds, evs = day.evs;
     var cell = el('div', 'cal-day');
     cell.tabIndex = 0; cell.setAttribute('role', 'button');
     cell.setAttribute('data-date', ds);
@@ -107,24 +131,27 @@ function renderGrid() {
     if (ds === todayStr) cell.classList.add('today');
     if (ds === selected) cell.classList.add('sel');
     cell.appendChild(el('span', 'dn', String(d.getDate())));
-    var evs = sortEvents(state.events.filter(function (ev) { return ev.date === ds; }))
-      .concat(trashEventsBetween(ds, ds));   // 내 일정 먼저, 배출 일정은 뒤에
     var chips = el('div', 'chips2');
-    evs.slice(0, maxChips).forEach(function (ev) {
-      var c = el('div', 'cev' + (ev.done ? ' done' : ''));
+    for (var q = 0; q < Math.min(day.slots.length, maxChips); q++) {
+      var ev = day.slots[q];
+      if (!ev) { chips.appendChild(el('div', 'cev gap', ' ')); continue; }
+      var c = el('div', 'cev' + (ev.done ? ' done' : '') + (ev.joinPrev ? ' join-prev' : '') + (ev.joinNext ? ' join-next' : ''));
       c.style.setProperty('--c', evColor(ev));
       c.title = (ev.time ? ev.time + ' ' : '') + ev.title;
-      if (ev.time && ev.kind !== 'trash') c.appendChild(el('i', null, ev.time));
-      c.appendChild(document.createTextNode(ev.title));
+      if (ev.joinPrev) c.appendChild(document.createTextNode(' '));   // 이어지는 막대에는 제목을 다시 쓰지 않음
+      else {
+        if (ev.time && ev.kind !== 'trash') c.appendChild(el('i', null, ev.time));
+        c.appendChild(document.createTextNode(ev.title));
+      }
       chips.appendChild(c);
-    });
-    if (evs.length > maxChips) chips.appendChild(el('div', 'cev-more', '+' + (evs.length - maxChips) + '개 더'));
+    }
+    if (day.slots.length > maxChips) chips.appendChild(el('div', 'cev-more', '+' + (day.slots.length - maxChips) + '개 더'));
     cell.appendChild(chips);
     var mark = el('span', 'mark');   // 좁은 화면에서는 글자 대신 점
     for (var k = 0; k < Math.min(evs.length, 3); k++) mark.appendChild(el('i'));
     cell.appendChild(mark);
     grid.appendChild(cell);
-  }
+  });
 }
 // 날짜를 누르면 그 날을 선택하고 일정 목록을 그 날로 바꿈
 $('calGrid').addEventListener('click', function (e) {

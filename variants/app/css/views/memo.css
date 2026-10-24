@@ -376,6 +376,11 @@
 }
 
 /* 대표 메모: 줄 노트 */
+/* 홈 맨 위 줄에서는 폭이 절반이라 대표 메모 아래에 목록을 쌓음 */
+.home-top .mw-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .mw-feature {
   min-height: 190px;
   padding: 12px 16px 14px;
