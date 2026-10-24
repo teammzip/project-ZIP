@@ -6,6 +6,7 @@ import { LoginBadge, LoginMethod, PasswordChangeForm, useAuthStore, useLogout, u
 import { useCommunityStore } from '@/features/community'
 import { LegalLinks } from '@/features/legal'
 import { LifeInfoForm, LifeStats, NotiSwitch, RentCard, useLifeStore, useLifeSummary } from '@/features/life'
+import { useMapStore } from '@/features/map'
 import { useMemoStore } from '@/features/memo'
 import { ProfileEditor, ProfileHero, useProfileStore } from '@/features/profile'
 import { getErrorMessage } from '@/lib/apiClient'
@@ -20,6 +21,7 @@ function resetAppData() {
   useChatStore.getState().reset()
   useMemoStore.getState().reset()
   useProfileStore.getState().reset()
+  useMapStore.getState().resetAll()
 }
 
 const TILES = [
@@ -189,7 +191,7 @@ function WithdrawDialog({ open, onClose }: { open: boolean; onClose: () => void 
     withdraw.mutate(undefined, {
       onSuccess: () => {
         resetAppData()
-        for (const key of ['zip-life', 'zip-posts', 'zip-ai-chat', 'zip-memos', 'zip-profile']) remove(key)
+        for (const key of ['zip-life', 'zip-posts', 'zip-ai-chat', 'zip-memos', 'zip-profile', 'zip-map']) remove(key)
       },
     })
   const finish = () => {
