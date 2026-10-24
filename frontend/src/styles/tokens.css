@@ -27,6 +27,5 @@
 
   /* 레이아웃 (모바일/PC 경계는 900px — 미디어쿼리에는 변수를 못 써서 각 CSS 에 직접 씀) */
   --sidebar-width: 88px;
-  --panel-width: 300px;
   --bottom-nav-height: 64px;
 }

@@ -1,6 +1,6 @@
 .shell {
   display: grid;
-  grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--panel-width);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 100dvh;
 }
 
@@ -108,12 +108,18 @@
   padding: 0 28px 40px;
 }
 
-/* ---------- 오른쪽 요약 패널 ---------- */
-.panel {
-  min-height: 100dvh;
+/* 왼쪽 메뉴 맨 아래 프로필 사진 */
+.sideProfile {
+  margin-top: auto;
+  padding-top: 12px;
+  border-radius: 50%;
 }
 
-.headerLogout,
+.sideProfile:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .mobIcons,
 .bottomNav,
 .aiFab,
@@ -122,31 +128,13 @@
   display: none;
 }
 
-@media (max-width: 1200px) {
-  .shell {
-    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
-  }
-
-  /* 본문 아래로 */
-  .panel {
-    grid-column: 2;
-    min-height: 0;
-    margin: 0 28px 40px;
-  }
-
-  .headerLogout {
-    display: inline-flex;
-  }
-}
-
 /* ---------- 모바일 (900px 이하) ---------- */
 @media (max-width: 900px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .sidebar,
-  .headerLogout {
+  .sidebar {
     display: none;
   }
 
@@ -163,22 +151,9 @@
     font-size: 21px;
   }
 
+  /* 하단 메뉴 + AI 버튼만큼 아래 여백 */
   .main {
-    padding: 0 16px 24px;
-  }
-
-  .panel {
-    grid-column: 1;
-    margin: 0 16px calc(var(--bottom-nav-height) + 84px);
-  }
-
-  /* 요약 패널은 홈에서만. 다른 화면은 하단 메뉴 + AI 버튼만큼 여백 */
-  .panelNotHome {
-    display: none;
-  }
-
-  .body:has(+ .panelNotHome) .main {
-    padding-bottom: calc(var(--bottom-nav-height) + 84px);
+    padding: 0 16px calc(var(--bottom-nav-height) + 84px);
   }
 
   /* 오른쪽 위 아이콘: 알림 · 내 정보 · ☰ */
@@ -215,17 +190,6 @@
     box-shadow: 0 0 0 2px #fff;
   }
 
-  .avatarSm {
-    display: grid;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #8dbaf6, var(--color-primary));
-    font-size: 13px;
-    font-weight: 700;
-    color: #fff;
-  }
 
   /* 메뉴가 열려 있는 동안 ✕ 버튼은 패널 위 같은 자리에 */
   .menuBtnOpen {
@@ -418,11 +382,6 @@
     background: #f3f4f9;
   }
 
-  .menuAccount .avatarSm {
-    width: 40px;
-    height: 40px;
-    font-size: 15px;
-  }
 
   .menuWho {
     flex: 1;

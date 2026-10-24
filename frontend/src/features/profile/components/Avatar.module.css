@@ -1,0 +1,10 @@
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8dbaf6, var(--color-primary));
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+}

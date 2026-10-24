@@ -130,6 +130,9 @@
 | `zip-posts` | 커뮤니티 글·좋아요·댓글·첨부 | `posts`, `post_likes`, `comments`, `post_attachments`, `uploaded_files` |
 | `zip-posts` | 커뮤니티 글·좋아요·댓글·첨부 | `posts`, `post_likes`, `comments`, `uploaded_files` + `post_attachments` |
 | `zipban-records` | 이용 정지·경고 기록 (데이터 초기화로 안 지워지게 `zip-`로 시작하지 않음) | `user_sanctions`, `users.status` |
+| `zip-map` | 지도 칩에 보이는 장소 종류 · 직접 추가한 검색어 · 즐겨찾기한 장소 | (표 없음) 즐겨찾기를 서버에 두려면 `place_favorites(user_id, place_id)` 추가 |
+| `zip-memos` | 메모장 (글 · 체크리스트 · 색 · 고정) | (표 없음) `memos` 추가 필요 — `frontend/API.md` 12번 |
+| `zip-profile` | 프로필 사진(240px) · 캐릭터 · 배경 색 · 한 줄 소개 | (칸 없음) `users.bio`, 프로필 사진 파일 연결 추가 필요 |
 | `zip-ai-chat` | AI 대화 말풍선 (지출 요약 카드 `{month,total,prevTotal,fixed,rows,top}` 포함) | `ai_conversations`, `ai_messages` (카드는 `card_data` JSON) |
 ## 4. 표마다 자세한 설명
 

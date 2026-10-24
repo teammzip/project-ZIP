@@ -19,7 +19,12 @@
   gap: 20px;
   padding: 0 max(32px, calc((100vw - 1176px) / 2)) 20px;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
+}
+
+.track::-webkit-scrollbar {
+  display: none;
 }
 
 .column {

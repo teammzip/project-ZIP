@@ -108,6 +108,12 @@ export function useNotis() {
   return { notis, notiRead, unread, showDot: settings.notiOn && unread > 0 }
 }
 
+/** 내 정보 "생활 정보" 줄 아래 작은 글씨: 동네 · 월세 · 납부일 */
+export function useLifeSummary() {
+  const { region, rent, rentDay } = useLifeStore(useShallow((s) => ({ region: s.settings.region, rent: s.settings.rent, rentDay: s.settings.rentDay })))
+  return `${region || '동네 미설정'} · 월세 ${rent}만원 · 매월 ${rentDay}일`
+}
+
 /** 'YYYY-MM' 두 달 사이가 몇 개월인지 (to 가 더 늦으면 양수) */
 export function monthsBetween(from: string, to: string) {
   const [fy, fm] = from.split('-').map(Number)
