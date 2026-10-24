@@ -101,12 +101,6 @@ function Header({ menuOpen, onToggleMenu }: { menuOpen: boolean; onToggleMenu: (
           안녕하세요, <b>{name}</b>님
         </p>
       </div>
-      {/* 관리자 계정이면 관리자 화면으로 가는 버튼 */}
-      {user?.role === 'ADMIN' && (
-        <Link to="/admin" className={styles.adminLink}>
-          관리자 화면
-        </Link>
-      )}
       {/* 900~1200px 에서만 보임 (넓은 화면은 오른쪽 패널에 로그아웃이 있고, 모바일은 아이콘 3개) */}
       <Button variant="line" className={styles.headerLogout} onClick={() => logout.mutate()} loading={logout.isPending}>
         로그아웃
