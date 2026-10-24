@@ -137,7 +137,7 @@
       localStorage.setItem('zip-settings', JSON.stringify(st));
     } catch (err) { }
     var go = function () { location.href = NEXT; };
-    if (window.ZipPassword) window.ZipPassword.set(form.pw.value, form.uid.value, { nick: form.nick.value.trim(), phone: form.phone.value }).then(go, go);   // 아이디·닉네임·휴대전화·비밀번호를 (해시로) 저장해 두면 내 정보에서 바꾸거나 아이디/비밀번호 찾기에서 본인 확인에 쓸 수 있음
+    if (window.ZipPassword) window.ZipPassword.set(form.pw.value, form.uid.value, { nick: form.nick.value.trim(), phone: form.phone.value, email: form.email.value.trim() }).then(go, go);   // 아이디·닉네임·휴대전화·비밀번호를 (해시로) 저장해 두면 내 정보에서 바꾸거나 아이디/비밀번호 찾기에서 본인 확인에 쓸 수 있음
     else go();
     };
     if (!window.ZipBan) return proceed();

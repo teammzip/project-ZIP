@@ -419,21 +419,32 @@
               <div class="card-head">
                 <h2>일정 기록하기</h2>
               </div>
-              <form class="form" id="evForm">
-                <label>일정 제목
-                  <input type="text" id="evTitle" maxlength="60" placeholder="예) 월세 이체, 집주인 통화, 장보기" required>
-                </label>
-                <div class="two">
-                  <label>날짜 <input type="date" id="evDate" required></label>
-                  <label>시간 (선택) <input type="time" id="evTime"></label>
+              <!-- 카테고리별 항목 버튼: 항목을 고르고 달력에서 날짜를 누르면 그 날에 추가 (항목 목록: js/data/ev-presets.js) -->
+              <p class="pick-help">항목을 누른 다음, 왼쪽 달력에서 날짜를 누르면 일정이 추가돼요.</p>
+              <div class="ev-cats" id="evCats"></div>
+              <div class="pick-bar" id="pickBar" hidden>
+                <div class="pick-msg"><b id="pickName"></b> <span id="pickNote">달력에서 날짜를 눌러 주세요.</span></div>
+                <div class="pick-row">
+                  <label>시간 (선택) <input type="time" id="pickTime"></label>
+                  <button type="button" class="btn-line" id="pickToday">오늘로 추가</button>
+                  <button type="button" class="btn-line" id="pickWeek">이번 주(일요일)로 추가</button>
+                  <button type="button" class="btn-line" id="pickCancel">선택 해제</button>
                 </div>
-                <div class="quick-date" aria-label="빠른 날짜 설정">
-                  <button type="button" class="btn-line" id="quickToday">오늘 할 일</button>
-                  <button type="button" class="btn-line" id="quickWeek">이번 주 할 일</button>
-                </div>
-                <small class="quick-date-help">이번 주 할 일은 이번 주 일요일을 날짜로 설정해요.</small>
-                <button class="btn-primary" type="submit">일정 추가</button>
-              </form>
+              </div>
+              <!-- 목록에 없는 일정은 직접 입력 -->
+              <details class="ev-custom" id="evCustom">
+                <summary>직접 입력하기</summary>
+                <form class="form" id="evForm">
+                  <label>일정 제목
+                    <input type="text" id="evTitle" maxlength="60" placeholder="예) 월세 이체, 집주인 통화, 장보기" required>
+                  </label>
+                  <div class="two">
+                    <label>날짜 <input type="date" id="evDate" required></label>
+                    <label>시간 (선택) <input type="time" id="evTime"></label>
+                  </div>
+                  <button class="btn-primary" type="submit">일정 추가</button>
+                </form>
+              </details>
             </article>
             <article class="card">
               <div class="card-head">
@@ -508,8 +519,22 @@
           <article class="card">
             <div class="card-head">
               <h2>주변 장소</h2>
+              <button type="button" class="link link-btn" id="catEdit">카테고리 편집</button>
             </div>
+            <!-- AI 장소 찾기: 집 주변에서 말로 특정 장소를 찾음 (시연용, 예시 데이터 안에서) -->
+            <form class="ai-find" id="aiFindForm">
+              <input type="text" id="aiFindQ" maxlength="40" placeholder="AI에게 물어보기: 예) 밤에 갈 수 있는 약국" autocomplete="off">
+              <button type="submit" class="btn-primary">✨ AI로 찾기</button>
+            </form>
+            <div class="ai-find-ex" id="aiFindEx">
+              <button type="button" class="chip">24시간 편의점</button>
+              <button type="button" class="chip">조용한 카페</button>
+              <button type="button" class="chip">혼밥 저렴한 식당</button>
+              <button type="button" class="chip">이불 빨래할 곳</button>
+            </div>
+            <div id="aiFindOut"></div>
             <div class="chips" id="mapChips"></div>
+            <div class="cat-editor" id="catEditor" hidden></div>
             <div id="placeList"></div>
           </article>
         </div>

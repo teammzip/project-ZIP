@@ -44,8 +44,8 @@ var TOPICS = [
     reply: function (v, text) { return keywordReply(v.q || text); }
   },
   {
-    id: 'nearby', ico: '📍', name: '근처 탐색', desc: '세탁방·편의점·약국·마트', photo: false,
-    fields: [{ k: 'what', label: '찾는 곳', ph: '예) 세탁방, 편의점, 약국, 마트' }, { k: 'cond', label: '원하는 조건 (선택)', ph: '예) 24시간, 이불 빨래 가능' }],
+    id: 'nearby', ico: '📍', name: '근처 탐색', desc: '세탁방·편의점·약국·카페·병원 등', photo: false,
+    fields: [{ k: 'what', label: '찾는 곳', ph: '예) 세탁방, 편의점, 약국, 카페, 병원' }, { k: 'cond', label: '원하는 조건 (선택)', ph: '예) 24시간, 이불 빨래 가능' }],
     draft: function (v) { return regionText() + ' 근처에서 걸어서 갈 수 있는 ' + (v.what || '(찾는 곳)') + '을(를) 찾고 있어요.' + (v.cond ? '\n조건: ' + v.cond : '') + '\n\n후보를 가까운 순서로 알려주고, 고를 때 확인할 점도 알려주세요.'; },
     reply: function (v) {
       var key = placeKey(v.what || '');

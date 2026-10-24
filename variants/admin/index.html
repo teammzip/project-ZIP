@@ -30,11 +30,11 @@
         <option value="temp">정지 중 (기간)</option>
         <option value="perm">정지 중 (영구)</option>
       </select>
-      <label class="num">밴 <input id="mMinBans" type="number" min="0" max="999" placeholder="0"> 회 이상</label>
+      <label class="num">정지 <input id="mMinBans" type="number" min="0" max="999" placeholder="0"> 회 이상</label>
       <label class="num">경고 <input id="mMinWarns" type="number" min="0" max="999" placeholder="0"> 회 이상</label>
       <select id="mSort">
         <option value="">기본 정렬</option>
-        <option value="bans">밴 횟수 많은 순</option>
+        <option value="bans">정지 횟수 많은 순</option>
         <option value="warns">경고 많은 순</option>
       </select>
     </div>
@@ -46,11 +46,11 @@
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th><input type="checkbox" id="mAll" title="검색 결과 전체 선택"></th><th>닉네임</th><th>아이디</th><th>가입일</th><th>쓴 글</th><th>쓴 댓글</th><th>경고</th><th>밴 횟수</th><th>상태</th><th>관리</th></tr></thead>
+        <thead><tr><th><input type="checkbox" id="mAll" title="검색 결과 전체 선택"></th><th>닉네임</th><th>아이디</th><th>가입일</th><th>쓴 글</th><th>쓴 댓글</th><th>경고</th><th>정지 횟수</th><th>상태</th><th>관리</th></tr></thead>
         <tbody id="mBody"></tbody>
       </table>
     </div>
-    <p class="hint">이 시안에는 회원 목록이 따로 없어서, 커뮤니티 글·댓글에 나온 작성자를 회원으로 모아 보여줍니다(내 계정은 제외). 가입일은 예시 값입니다. 경고는 정지 없이 횟수만 기록하는 조치이고, 정지는 1일·3일·5일·10일 또는 영구로 걸 수 있고, 걸 때마다 밴 횟수가 1씩 늘어 기록됩니다(기간이 끝나 풀려도, 해제해도 횟수는 남습니다). 정지 중인 회원은 앱에서 로그인·글쓰기·댓글·좋아요·재가입이 막힙니다. "밴 N회 이상"으로 찾은 뒤 맨 위 체크박스로 전체 선택해서 한꺼번에 정지할 수 있어요.</p>
+    <p class="hint">이 시안에는 회원 목록이 따로 없어서, 커뮤니티 글·댓글에 나온 작성자를 회원으로 모아 보여줍니다(내 계정은 제외). 가입일은 예시 값입니다. 경고는 정지 없이 횟수만 기록하는 조치이고, 정지는 1일·3일·5일·10일 또는 영구로 걸 수 있고, 걸 때마다 정지 횟수가 1씩 늘어 기록됩니다(기간이 끝나 풀려도, 해제해도 횟수는 남습니다). 정지 중인 회원은 앱에서 로그인·글쓰기·댓글·좋아요·재가입이 막힙니다. "정지 N회 이상"으로 찾은 뒤 맨 위 체크박스로 전체 선택해서 한꺼번에 정지할 수 있어요.</p>
   </main>
 
   <!-- 게시글 관리 -->
