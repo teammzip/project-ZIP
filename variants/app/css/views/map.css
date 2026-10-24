@@ -48,3 +48,114 @@
     height: 340px;
   }
 }
+
+/* 장소 한 줄: 왼쪽 글, 오른쪽 즐겨찾기 별 */
+.place-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.place-main .why {
+  display: block;
+  margin-top: 2px;
+  color: var(--orange);
+}
+
+.star {
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  color: #b8bccb;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.star.on {
+  color: #f5b301;
+}
+
+/* 카드 머리의 글자 버튼, AI 찾기 입력줄, 결과 상자 */
+.link-btn {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ai-find {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ai-find input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.ai-find .btn-primary {
+  white-space: nowrap;
+}
+
+.ai-find-ex {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.ai-out {
+  margin-bottom: 14px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #fff7f2;
+  border: 1px solid #ffd9c7;
+}
+
+.ai-out-head {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.ai-out-x {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* 카테고리 편집 창 */
+.cat-editor {
+  margin-bottom: 14px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #f7f8fc;
+}
+
+.cat-add {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+
+.cat-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+}

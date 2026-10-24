@@ -2,13 +2,16 @@
  * - 비밀번호·휴대전화 원문은 저장하지 않고, 소금(salt)을 섞은 해시만 localStorage 의 zip-account 에 저장한다.
  *   저장 내용: { uid(아이디), nick(닉네임), psalt·phoneHash(휴대전화 해시), salt·hash(비밀번호 해시) }
  * - 가입 페이지에서 가입하면 그 정보가 저장되고, 가입 기록이 없으면 체험용 계정(DEMO_ACCOUNT)으로 동작한다.
+ * - 관리자 체험용 계정(ADMIN_ACCOUNT)도 있다. 로그인 창(login/login.js)이 login() 으로 아이디(또는 이메일)·비밀번호를 확인한다.
  * - 쓰는 곳: 내 정보의 비밀번호 변경(verify, set), 가입(set), 아이디 찾기(findId), 비밀번호 찾기(checkReset, resetPassword)
  * - 데이터 초기화·회원 탈퇴는 zip- 키를 모두 지우므로 이 기록도 같이 지워져 체험용 계정으로 돌아간다.
  * 실제 서비스에서는 서버가 해시(bcrypt 등)로 저장·확인해야 하며, 이 파일은 필요 없어진다. */
 (function () {
   var KEY = 'zip-account';
   // 가입 기록이 없을 때 쓰는 체험용 계정 (비밀번호 zip12345)
-  var DEMO_ACCOUNT = { uid: 'zipdemo', nick: '지기', phone: '1234-5678', password: 'zip12345' };
+  var DEMO_ACCOUNT = { uid: 'zipdemo', email: 'demo@zip.com', nick: '지기', phone: '1234-5678', password: 'zip12345' };
+  // 관리자 화면(variants/admin)에 들어가는 체험용 계정 (React 앱의 가짜 API 와 같은 값)
+  var ADMIN_ACCOUNT = { uid: 'zipadmin', password: 'admin1234!' };
 
   function toHex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
   function weak(text) {   // crypto.subtle 을 못 쓰는 환경(보안되지 않은 주소 등)용 간단한 대체
@@ -49,7 +52,7 @@
   function save(pw, uid, extra) {
     var cur = read() || {}, salt = newSalt();
     return hash(pw, salt).then(function (h) {
-      var rec = { uid: uid || cur.uid || '', nick: (extra && extra.nick != null) ? extra.nick : (cur.nick || ''), psalt: cur.psalt, phoneHash: cur.phoneHash, salt: salt, hash: h };
+      var rec = { uid: uid || cur.uid || '', email: (extra && extra.email != null) ? extra.email : (cur.email || ''), nick: (extra && extra.nick != null) ? extra.nick : (cur.nick || ''), psalt: cur.psalt, phoneHash: cur.phoneHash, salt: salt, hash: h };
       if (extra && extra.phone) {
         rec.psalt = newSalt();
         return hash(digits(extra.phone), rec.psalt).then(function (ph) { rec.phoneHash = ph; write(rec); });
@@ -60,6 +63,7 @@
 
   window.ZipPassword = {
     DEMO_ACCOUNT: DEMO_ACCOUNT,
+    ADMIN_ACCOUNT: ADMIN_ACCOUNT,
     DEMO: DEMO_ACCOUNT.password,
     hashPhone: function (phone, salt) { return hash(digits(phone), salt); },   // 정지 기록과 휴대전화 비교용 (zip-ban.js)
     hasCustom: function () { var a = read(); return !!(a && a.hash); },   // 가입 등으로 정한 계정이 있는지
@@ -68,6 +72,14 @@
       var a = read();
       if (!a || !a.hash) return Promise.resolve(pw === DEMO_ACCOUNT.password);
       return hash(pw, a.salt).then(function (h) { return h === a.hash; });
+    },
+    // 로그인: 아이디 또는 이메일 + 비밀번호가 맞으면 'admin'(관리자) 또는 'user'(일반), 틀리면 null
+    login: function (id, pw) {
+      id = String(id || '').trim().toLowerCase();
+      if (id === ADMIN_ACCOUNT.uid) return Promise.resolve(pw === ADMIN_ACCOUNT.password ? 'admin' : null);
+      var a = read(), mine = a && a.uid ? { uid: a.uid, email: a.email } : { uid: DEMO_ACCOUNT.uid, email: DEMO_ACCOUNT.email };
+      if (id !== String(mine.uid).toLowerCase() && !(mine.email && id === String(mine.email).toLowerCase())) return Promise.resolve(null);
+      return window.ZipPassword.verify(pw).then(function (ok) { return ok ? 'user' : null; });
     },
     findId: function (nick, phone) {                                      // 아이디 찾기: 닉네임 + 휴대전화가 맞으면 아이디 (아니면 null)
       return matchAccount({ nick: nick, phone: phone }).then(function (m) { return m ? m.uid : null; });

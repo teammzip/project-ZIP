@@ -1,14 +1,17 @@
-/* 캘린더: 달력, 일정 추가·수정·삭제, 상단 검색, 캘린더 아래 알림 */
+/* 캘린더: 달력, 일정 추가(카테고리 항목 버튼 + 날짜 누르기 / 직접 입력)·수정·삭제, 상단 검색, 캘린더 아래 알림 */
 import { $, el, pad, fmt, today, todayStr, dayDiff, sortEvents } from '../core/utils.js';
 import { store } from '../core/storage.js';
 import { state, settings } from '../core/state.js';
 import { nextRentDate } from '../core/rentdate.js';
 import { trashIco, trashEventsBetween } from '../data/trash.js';
+import { EV_PRESETS } from '../data/ev-presets.js';
 import { registerView, showView } from '../core/router.js';
 import { updateDot } from './noti.js';
 
 // 달력이 보여주는 연·월, 선택한 날, 목록 보기 방식, 검색어, 수정 중인 일정 번호
 var viewY = today.getFullYear(), viewM = today.getMonth(), selected = todayStr, mode = 'today', query = '', editingId = null;
+// 일정 기록하기에서 눌러 둔 카테고리 항목 이름 (없으면 null). 달력에서 날짜를 누르면 이 이름으로 일정이 추가됨
+var pick = null;
 
 function weekRange(date) {
   var start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -92,7 +95,9 @@ function renderGrid() {
 $('calGrid').addEventListener('click', function (e) {
   var btn = e.target.closest('.cal-day');
   if (!btn) return;
-  selected = btn.getAttribute('data-date');
+  var ds = btn.getAttribute('data-date');
+  if (pick) { addPicked(ds); return; }   // 항목을 골라 둔 상태면 이 날짜에 추가
+  selected = ds;
   $('evDate').value = selected;
   editingId = null; mode = 'day'; query = ''; $('searchInput').value = '';
   renderCalendarAll();
@@ -198,20 +203,40 @@ $('modeWeek').addEventListener('click', function () { setMode('week'); });
 $('modeDay').addEventListener('click', function () { setMode('day'); });
 $('modeAll').addEventListener('click', function () { setMode('all'); });
 
-function quickDate(date, nextMode) {
-  $('evDate').value = date;
-  selected = date;
-  viewY = Number(date.slice(0, 4));
-  viewM = Number(date.slice(5, 7)) - 1;
-  mode = nextMode;
-  query = '';
-  $('searchInput').value = '';
-  editingId = null;
-  renderCalendarAll();
-  $('evTitle').focus();
+/* 일정 기록하기 ① 카테고리 항목 버튼 → ② 달력에서 날짜 누르기(또는 오늘·이번 주 버튼)로 추가 */
+function renderPresets() {
+  var box = $('evCats'); box.textContent = '';
+  EV_PRESETS.forEach(function (cat) {
+    var g = el('div', 'ev-cat');
+    g.appendChild(el('h3', null, cat.ico + ' ' + cat.name));
+    var row = el('div', 'chips');
+    cat.items.forEach(function (name) {
+      var b = el('button', 'chip' + (pick === name ? ' on' : ''), name);
+      b.type = 'button';
+      b.addEventListener('click', function () { setPick(pick === name ? null : name); });
+      row.appendChild(b);
+    });
+    g.appendChild(row);
+    box.appendChild(g);
+  });
 }
-$('quickToday').addEventListener('click', function () { quickDate(todayStr, 'today'); });
-$('quickWeek').addEventListener('click', function () { quickDate(weekRange(today).end, 'week'); });
+// 항목을 고르거나(이름) 해제(null)하고 안내 줄을 맞춤
+function setPick(name) {
+  pick = name;
+  $('pickBar').hidden = !pick;
+  if (pick) { $('pickName').textContent = '「' + pick + '」'; $('pickNote').textContent = '달력에서 날짜를 눌러 주세요.'; }
+  renderPresets();
+}
+// 골라 둔 항목을 이 날짜에 일정으로 추가 (같은 날 같은 이름이 이미 있으면 건너뜀)
+function addPicked(date) {
+  var dup = state.events.some(function (ev) { return ev.date === date && ev.title === pick; });
+  if (dup) { $('pickNote').textContent = date.slice(5).replace('-', '월 ') + '일에 이미 있어요.'; return; }
+  addEvent(pick, date, $('pickTime').value);
+  $('pickNote').textContent = date.slice(5).replace('-', '월 ') + '일에 추가했어요. 다른 날짜도 눌러 추가할 수 있어요.';
+}
+$('pickToday').addEventListener('click', function () { if (pick) addPicked(todayStr); });
+$('pickWeek').addEventListener('click', function () { if (pick) addPicked(weekRange(today).end); });
+$('pickCancel').addEventListener('click', function () { setPick(null); });
 
 /* 일정 한 줄을 입력칸으로 바꿔 제목·날짜·시간을 고치는 줄 */
 function editRow(ev) {
@@ -292,19 +317,25 @@ export function renderCalendarAll() {
 
 $('evDate').value = selected;
 // 일정 추가 폼: 제목, 날짜, 시간(선택)
-$('evForm').addEventListener('submit', function (e) {
-  e.preventDefault();
-  var title = $('evTitle').value.trim(), date = $('evDate').value;
-  if (!title || !date) return;
-  state.events.push({ id: Date.now(), date: date, time: $('evTime').value, title: title, done: false });
+// 일정 한 개를 저장하고 그 날짜로 달력·목록을 맞춤 (직접 입력과 항목 버튼 둘 다 이걸 씀)
+function addEvent(title, date, time) {
+  state.events.push({ id: Date.now() + Math.floor(Math.random() * 1000), date: date, time: time || '', title: title, done: false });
   store('zip-events', state.events);
   selected = date; viewY = Number(date.slice(0, 4)); viewM = Number(date.slice(5, 7)) - 1;
   var range = weekRange(today);
   mode = date === todayStr ? 'today' : mode === 'week' && date >= range.start && date <= range.end ? 'week' : 'day';
   query = ''; $('searchInput').value = '';
-  $('evTitle').value = ''; $('evTime').value = '';
+  $('evDate').value = date;
   renderCalendarAll(); updateDot();
+}
+$('evForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var title = $('evTitle').value.trim(), date = $('evDate').value;
+  if (!title || !date) return;
+  addEvent(title, date, $('evTime').value);
+  $('evTitle').value = ''; $('evTime').value = '';
 });
+renderPresets();
 
 /* 상단 검색(일정 제목 검색)과 + 버튼 */
 $('searchForm').addEventListener('submit', function (e) {
@@ -316,6 +347,6 @@ $('searchForm').addEventListener('submit', function (e) {
 $('searchInput').addEventListener('input', function () {
   if (!this.value.trim() && query) { query = ''; mode = 'day'; if (!$('view-calendar').hidden) renderEvList(); }
 });
-$('btnAdd').addEventListener('click', function () { showView('calendar'); $('evTitle').focus(); });
+$('btnAdd').addEventListener('click', function () { showView('calendar'); });   // 헤더 + 버튼: 일정 화면으로 (항목 버튼에서 고르거나 직접 입력)
 
 registerView('calendar', renderCalendarAll);

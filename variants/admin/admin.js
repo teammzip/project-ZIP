@@ -1,4 +1,4 @@
-/* 관리자 화면: 회원 관리(기간·영구 정지, 밴 횟수 기록·검색, 일괄 정지) + 커뮤니티 게시글 관리(글·댓글 삭제 + 작성자 정지)
+/* 관리자 화면: 회원 관리(기간·영구 정지, 정지 횟수 기록·검색, 일괄 정지) + 커뮤니티 게시글 관리(글·댓글 삭제 + 작성자 정지)
  * 앱 화면과 같은 localStorage 를 읽고 고친다.
  *   zip-posts           커뮤니티 글 (앱과 공유)
  *   zip-posts-removed   관리자가 지운 기본 예시 글 번호 (앱이 다시 채워 넣지 않게 함)
@@ -101,12 +101,12 @@ function renderStats() {
   var ms = members(), cm = 0, actv = 0, total = 0, warns = 0;
   posts.forEach(function (p) { cm += (p.comments || []).length; });
   ms.forEach(function (m) { if (m.active) actv++; total += m.count; warns += m.warns; });
-  var items = [[ms.length, '전체 회원'], [actv, '지금 정지 중'], [total, '누적 밴 횟수'], [warns, '누적 경고'], [posts.length, '게시글'], [cm, '댓글']];
+  var items = [[ms.length, '전체 회원'], [actv, '지금 정지 중'], [total, '누적 정지 횟수'], [warns, '누적 경고'], [posts.length, '게시글'], [cm, '댓글']];
   var box = $('stats'); box.textContent = '';
   items.forEach(function (it) { var s = el('div', 'stat'); s.appendChild(el('b', null, String(it[0]))); s.appendChild(el('span', null, it[1])); box.appendChild(s); });
 }
 
-// 지금 조건(검색·상태·밴 횟수·정렬)에 맞는 회원
+// 지금 조건(검색·상태·정지 횟수·정렬)에 맞는 회원
 function filteredMembers() {
   var q = $('mSearch').value.trim().toLowerCase(), st = $('mStatus').value, min = Number($('mMinBans').value) || 0, minW = Number($('mMinWarns').value) || 0;
   var list = members().filter(function (m) {
