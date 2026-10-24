@@ -895,6 +895,7 @@ body[data-view="income"] .my-head,
 body[data-view="bills"] .my-head,
 body[data-view="rent"] .my-head,
 body[data-view="spend"] .my-head,
+body[data-view="memo"] .my-head,
 body[data-view="noti"] .my-head,
 body[data-view="settings"] .my-head {
   display: block;

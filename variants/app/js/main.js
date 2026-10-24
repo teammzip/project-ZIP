@@ -8,6 +8,7 @@ import './views/ai.js';
 import './views/map.js';
 import './views/community.js';
 import './views/settings.js';
+import './views/memo.js';
 import { renderBills } from './views/bills.js';
 import './views/rent.js';
 import { renderFixed } from './views/fixed.js';

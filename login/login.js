@@ -1,6 +1,7 @@
 /* 시작 화면(PC·모바일)의 로그인 창 동작 (시안이라 실제 인증은 하지 않고 화면 흐름만 보여 줌)
  * - 아이디(또는 이메일)와 비밀번호를 shared/zip-password.js 의 login() 으로 확인해서 맞으면 이동. 체험용 계정: zipdemo / zip12345, 관리자 zipadmin / admin1234!
  *   관리자 계정이면 관리자 화면(../admin/index.html)으로 이동. 카카오·구글·네이버 버튼은 누르면 바로 입장
+ * - 어떤 방식으로 로그인했는지(아이디 / 카카오 / 구글 / 네이버)를 localStorage 'zip-login' 에 남겨 앱의 내 정보에서 보여 줌
  * - 창 아래 "회원가입" 링크는 별도 가입 페이지(window.SIGNUP_URL)로 이동
  * 이동할 화면은 주소 끝의 ?next=... 또는 window.LOGIN_NEXT 로 정한다. */
 (function () {
@@ -9,9 +10,11 @@
   var form = document.getElementById('loginForm');
 
   // 이 브라우저의 내 계정이 이용 정지 중이면 입장하지 않고 안내만 보여 줌 (정지 기록: shared/zip-ban.js)
-  function enter() {
+  // rec: { provider: 'id' | 'kakao' | 'google' | 'naver', id: 입력한 아이디(아이디 로그인일 때) }
+  function enter(rec) {
     var ban = window.ZipBan && window.ZipBan.meActive();
     if (ban) { document.getElementById('error').textContent = window.ZipBan.message(ban); return; }
+    try { localStorage.setItem('zip-login', JSON.stringify(Object.assign({ at: Date.now() }, rec))); } catch (e) { }
     location.href = next;
   }
 
@@ -22,16 +25,18 @@
     var err = document.getElementById('error');
     if (!id) { err.textContent = '아이디 또는 이메일을 입력해 주세요.'; return; }
     if (!pw) { err.textContent = '비밀번호를 입력해 주세요.'; return; }
-    if (!window.ZipPassword) { enter(); return; }
+    if (!window.ZipPassword) { enter({ provider: 'id', id: id }); return; }
     window.ZipPassword.login(id, pw).then(function (who) {
       if (!who) { err.textContent = '아이디(이메일) 또는 비밀번호가 맞지 않아요.'; return; }
       if (who === 'admin') { location.href = '../admin/index.html'; return; }
-      enter();
+      enter({ provider: 'id', id: id });
     });
   });
 
   // 소셜 로그인 버튼 (지금은 시안이라 누르면 바로 입장)
-  [].slice.call(document.querySelectorAll('[data-provider]')).forEach(function (b) { b.addEventListener('click', enter); });
+  [].slice.call(document.querySelectorAll('[data-provider]')).forEach(function (b) {
+    b.addEventListener('click', function () { enter({ provider: b.getAttribute('data-provider') }); });
+  });
 
   // 비밀번호 보기/숨기기
   document.getElementById('pwToggle').addEventListener('click', function () {

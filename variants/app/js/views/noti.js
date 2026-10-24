@@ -36,7 +36,7 @@ export function buildNotis() {
   return list;
 }
 // 안 읽은 알림 개수
-function unreadCount() { return buildNotis().filter(function (n) { return !readMap[n.id]; }).length; }
+export function unreadCount() { return buildNotis().filter(function (n) { return !readMap[n.id]; }).length; }
 // 안 읽은 알림이 있으면 메뉴·상단 종·마이페이지 탭의 빨간 점을 보이고, 없거나 알림을 껐으면 숨김
 export function updateDot() {
   var off = !(settings.notiOn && unreadCount() > 0); $('navDot').hidden = off; $('bellDot').hidden = off; $('myNotiDot').hidden = off;

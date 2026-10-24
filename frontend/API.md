@@ -17,6 +17,7 @@
 | [AI](#8-ai) | 📝 | `ai_topics` `ai_conversations` `ai_messages` `ai_usage_daily` |
 | [지도](#9-지도) | 📝 | `places` `place_categories` `place_reviews` |
 | [약관](#10-약관) | 📝 | `terms_documents` |
+| [메모](#12-메모) | 📝 | `memos` (**DB에 아직 없음**) |
 | [관리자 · 이용 정지](#11-관리자--이용-정지) | 📝 | `user_sanctions` `users.status` `reports` |
 
 ---
@@ -366,6 +367,28 @@
 
 ---
 
+## 12. 메모 📝
+
+마이페이지 "메모" 탭(메모장)과 홈의 메모 카드가 써요. 지금은 시안(`variants/app/js/views/memo.js`)만 있고 브라우저(`zip-memos`)에 저장해요.
+
+| 메서드 | 주소 | 보내는 값 | 받는 값 |
+|---|---|---|---|
+| GET | `/api/memos?q=` | — | `[memo]` (고정 먼저, 그다음 최근 수정 순) |
+| POST | `/api/memos` | `{ title, body, color, pinned, checklist, items }` (전부 선택) | `memo` |
+| PATCH | `/api/memos/{id}` | 바꾼 칸만 | `memo` (쓰는 대로 자동 저장 → 짧은 간격으로 자주 와요) |
+| DELETE | `/api/memos/{id}` | — | — |
+
+```json
+{ "id": "5", "title": "장보기", "body": "", "color": "노랑", "pinned": true, "checklist": true,
+  "items": [{ "text": "두부", "done": false }, { "text": "계란 한 판", "done": true }],
+  "createdAt": "2026-10-23T10:38:00+09:00", "updatedAt": "2026-10-24T10:38:00+09:00" }
+```
+- `checklist`가 `true`면 `items`(줄마다 체크), 아니면 `body`(글)를 써요.
+- `color`: `노랑` · `분홍` · `하늘` · `초록` · `보라` · `흰색` (영문 코드로 바꿔도 돼요: `YELLOW` 등)
+- 제안 표: `memos(id, user_id FK CASCADE, title VARCHAR(60), body TEXT, color, is_pinned, is_checklist, items JSON, created_at, updated_at)` + `(user_id, is_pinned, updated_at)` 인덱스
+
+---
+
 ## DB와 아직 안 맞는 곳 (백엔드 확인 필요)
 
 | # | 내용 | 제안 |
@@ -375,6 +398,7 @@
 | 3 | `password_resets.method`에 `EMAIL`이 남아 있어요 | 지금 화면은 `PHONE`만 써요. 남겨 둬도 되지만 문서에 "미사용" 표시 |
 | 4 | 첨부 형식 제한이 DB에 없어요 | 서버에서 MIME 검사 (이미지 · PDF 등) |
 | 5 | `user_settings`에 동네가 없고 `users.region_id`에 있어요 | 그대로 두고 설정 API에서 같이 주고받기 (위 2번 참고) |
+| 6 | 메모 기능이 생겼는데 DB에 표가 없어요 | 위 [12번](#12-메모)의 `memos` 표 추가 |
 
 ## 프론트에서 서버를 붙이는 순서 (예: 일정)
 

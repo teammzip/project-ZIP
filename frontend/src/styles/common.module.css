@@ -21,8 +21,12 @@
   gap: 16px;
 }
 
+/* 좁은 카드(폼 등)는 넓은 화면에서 가운데에 */
 .narrow {
-  max-width: 560px;
+  width: 100%;
+  max-width: 640px;
+  margin-inline: auto;
+  justify-self: center;
 }
 
 .pageTitle {

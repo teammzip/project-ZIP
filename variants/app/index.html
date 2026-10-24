@@ -16,6 +16,8 @@
   <link rel="stylesheet" href="css/views/map.css">
   <link rel="stylesheet" href="css/views/community.css">
   <link rel="stylesheet" href="css/views/life.css">
+  <link rel="stylesheet" href="css/views/settings.css">
+  <link rel="stylesheet" href="css/views/memo.css">
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="../../shared/mobile-scroll.css">
 </head>
@@ -159,6 +161,26 @@
           </article>
         </section>
 
+        <!-- 홈 메모 위젯 (js/views/memo.js): 노란 머리줄 + 줄 노트에 대표 메모(고정 또는 최근) + 최근 메모 목록 + 빠른 메모
+             대표 메모가 체크리스트면 위젯에서 바로 체크할 수 있음 -->
+        <section class="memo-widget" aria-labelledby="homeMemoTitle">
+          <header class="mw-head">
+            <span class="mw-ico" aria-hidden="true">📝</span>
+            <h2 id="homeMemoTitle">메모</h2>
+            <small id="homeMemoCount">0개</small>
+            <a class="mw-open" href="#" data-go="memo">전체 보기 ›</a>
+          </header>
+          <div class="mw-body">
+            <div class="mw-feature" id="homeMemoFeature"></div>
+            <ul class="mw-list" id="homeMemoList" aria-label="최근 메모"></ul>
+          </div>
+          <form class="mw-add" id="homeMemoForm">
+            <span aria-hidden="true">✏️</span>
+            <input type="text" id="homeMemoInput" maxlength="200" placeholder="빠른 메모 남기기" aria-label="빠른 메모" autocomplete="off">
+            <button type="submit" aria-label="메모 저장">＋</button>
+          </form>
+        </section>
+
         <!-- 홈 1줄: 월별 수입 그래프 | 이번 달 지출 구성 도넛 (둘 다 가계부 기록으로 그려짐) -->
         <section class="row">
           <article class="card">
@@ -234,12 +256,13 @@
         </section>
       </div>
 
-      <!-- ===== 마이페이지 머리말: 일정 · 가계부 · 알림 · 내 정보 ===== -->
+      <!-- ===== 마이페이지 머리말: 일정 · 가계부 · 메모 · 알림 · 내 정보 ===== -->
       <div class="my-head" id="myHead">
-        <h2 class="page-title">마이페이지 <small>일정 · 가계부 · 알림 · 내 정보</small></h2>
+        <h2 class="page-title">마이페이지 <small>일정 · 가계부 · 메모 · 알림 · 내 정보</small></h2>
         <div class="my-tabs" id="myTabs" role="tablist" aria-label="마이페이지">
           <button type="button" class="my-tab" role="tab" data-go="calendar">일정</button>
           <button type="button" class="my-tab" role="tab" data-go="income">가계부</button>
+          <button type="button" class="my-tab" role="tab" data-go="memo">메모</button>
           <button type="button" class="my-tab" role="tab" data-go="noti">알림 <span class="dot-badge" id="myNotiDot" hidden></span></button>
           <button type="button" class="my-tab" role="tab" data-go="settings">내 정보</button>
         </div>
@@ -557,6 +580,43 @@
       </div>
 
       <!-- ===== 알림 ===== -->
+      <!-- ===== 메모장 (js/views/memo.js, css/views/memo.css)
+           PC: 왼쪽 목록 | 오른쪽 쓰기 / 모바일: 목록 → 누르면 쓰기 화면. 쓰는 대로 자동 저장 ===== -->
+      <div id="view-memo" hidden>
+        <div class="memo-app" id="memoApp">
+          <aside class="card memo-side">
+            <div class="memo-side-head">
+              <h2>메모 <small id="memoCount">0개</small></h2>
+              <button type="button" class="btn-primary" id="memoNew">+ 새 메모</button>
+            </div>
+            <input type="search" class="memo-search" id="memoSearch" placeholder="메모 검색" aria-label="메모 검색" autocomplete="off">
+            <div class="memo-list" id="memoList"></div>
+          </aside>
+
+          <section class="card memo-editor" id="memoEditor" aria-label="메모 쓰기">
+            <div class="memo-empty" id="memoEmpty">
+              <span aria-hidden="true">📝</span>
+              <b>메모를 골라 보세요</b>
+              <p>왼쪽 목록에서 메모를 누르거나 새 메모를 만들어요.</p>
+            </div>
+            <div class="memo-edit" id="memoEdit" hidden>
+              <div class="memo-tools">
+                <button type="button" class="memo-back" id="memoBack" aria-label="목록으로">‹ 목록</button>
+                <div class="memo-colors" id="memoColors" role="group" aria-label="메모 색"></div>
+                <span class="grow"></span>
+                <button type="button" class="memo-tool" id="memoPin" aria-pressed="false" title="맨 위에 고정">📌 <span>고정</span></button>
+                <button type="button" class="memo-tool" id="memoCheck" aria-pressed="false" title="체크리스트로 바꾸기">☑️ <span>체크리스트</span></button>
+                <button type="button" class="memo-tool danger" id="memoDel" title="메모 삭제">🗑️ <span>삭제</span></button>
+              </div>
+              <input type="text" class="memo-title" id="memoTitle" maxlength="60" placeholder="제목" aria-label="메모 제목">
+              <textarea class="memo-body" id="memoBody" maxlength="5000" placeholder="내용을 적어 보세요" aria-label="메모 내용"></textarea>
+              <div class="memo-items" id="memoItems" hidden></div>
+              <p class="memo-saved" id="memoSaved" aria-live="polite"></p>
+            </div>
+          </section>
+        </div>
+      </div>
+
       <div id="view-noti" hidden>
         <article class="card">
           <div class="card-head">
@@ -621,42 +681,73 @@
         </div>
       </div>
 
-      <!-- ===== 설정 ===== -->
+      <!-- ===== 내 정보 (동작은 js/views/settings.js, 모양은 css/views/settings.css)
+           PC(1100px 이상): 왼쪽 = 프로필 · 월세 / 오른쪽 = 요약 · 바로 가기 · 계정·설정
+           모바일: 위에서부터 한 줄로 ===== -->
       <div id="view-settings" hidden>
-        <article class="card narrow">
-          <div class="card-head">
-            <h2>내 정보 · 설정</h2>
+        <div class="me-wrap">
+          <div class="me-side">
+            <!-- 프로필: 사진(또는 캐릭터·첫 글자), 닉네임, 한 줄 소개, 동네, 로그인 방식 -->
+            <section class="card me-hero">
+              <button type="button" class="me-photo" data-sheet="profileSheet" aria-label="프로필 사진 바꾸기">
+                <span class="me-ava" id="meAvatar">지</span>
+                <span class="me-cam" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg></span>
+              </button>
+              <div class="me-id">
+                <b id="meName">지기</b>
+                <p id="meBio">오늘도 알찬 자취 생활 중</p>
+                <small id="meRegion">📍 서울 마포구</small>
+                <span class="me-via" id="meVia"></span>
+              </div>
+              <button type="button" class="btn-line me-edit" data-sheet="profileSheet">프로필 편집</button>
+            </section>
+            <a href="#" class="card me-rent" data-go="rent">
+              <small>이번 달 월세</small>
+              <b id="meRent">55만원</b>
+              <span id="meRentDue">매월 15일</span>
+            </a>
           </div>
-          <form class="form" id="setForm">
-            <label>이름(닉네임) <input type="text" id="setName" maxlength="12" required></label>
-            <label>우리 동네 <input type="text" id="setRegion" maxlength="30"></label>
-            <div class="two">
-              <label>월세 납부일 (매월) <input type="number" id="setRentDay" min="1" max="31" required></label>
-              <label>월세 (만원) <input type="number" id="setRent" min="0" max="9999" required></label>
-            </div>
-            <label class="check"><input type="checkbox" id="setNoti"> 알림 받기</label>
-            <button class="btn-primary" type="submit">저장</button>
-            <div class="saved" id="setSaved"></div>
-          </form>
-          <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
-          <h3 class="sub-title">비밀번호 변경</h3>
-          <form class="form" id="pwForm" novalidate>
-            <label>현재 비밀번호 <input type="password" id="pwCur" autocomplete="current-password"></label>
-            <label>새 비밀번호 <input type="password" id="pwNew" maxlength="16" placeholder="8~16자" autocomplete="new-password"></label>
-            <label>새 비밀번호 확인 <input type="password" id="pwNew2" maxlength="16" placeholder="새 비밀번호를 한 번 더 입력" autocomplete="new-password"></label>
-            <label class="check"><input type="checkbox" id="pwShow"> 비밀번호 보기</label>
-            <p class="form-msg" id="pwMsg" role="status"></p>
-            <p class="demo-hint" id="pwDemo" hidden>시안이라 처음 비밀번호는 <b>zip12345</b> 예요. 가입 페이지에서 가입했다면 그때 정한 비밀번호를 입력하세요.</p>
-            <button class="btn-primary" type="submit">비밀번호 변경</button>
-          </form>
-          <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
-          <p style="font-size:13px;color:var(--muted);margin-bottom:10px">일정, 알림 읽음 상태, 커뮤니티 글, 설정을 이 브라우저에서 모두 지웁니다.
-          </p>
-          <button type="button" class="btn-danger" id="btnReset">모든 데이터 초기화</button>
-          <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
-          <p style="font-size:13px;color:var(--muted);margin-bottom:10px">회원 탈퇴를 하면 이 기기에 저장된 모든 정보가 삭제되고, 처음 화면으로 돌아가요.</p>
-          <button type="button" class="btn-danger" id="btnWithdraw">회원 탈퇴</button>
-        </article>
+
+          <div class="me-main">
+            <!-- 이번 달 요약: 누르면 해당 화면으로 -->
+            <section class="me-summary" aria-label="이번 달 요약">
+              <a href="#" class="card me-stat" data-go="calendar"><small>이번 달 일정</small><b id="meEvents">0개</b></a>
+              <a href="#" class="card me-stat" data-go="bills"><small>공과금 납부</small><b id="meBills">0%</b></a>
+              <a href="#" class="card me-stat" data-go="noti"><small>안 읽은 알림</small><b id="meNoti">0개</b></a>
+              <a href="#" class="card me-stat" data-go="community"><small>내가 쓴 글</small><b id="mePosts">0개</b></a>
+            </section>
+
+            <section class="card me-block">
+              <h3 class="me-sec">나의 자취 관리</h3>
+              <div class="me-tiles">
+                <a href="#" class="me-tile" data-go="calendar"><span>📅</span>일정</a>
+                <a href="#" class="me-tile" data-go="income"><span>💰</span>가계부</a>
+                <a href="#" class="me-tile" data-go="noti"><span>🔔</span>알림</a>
+                <a href="#" class="me-tile" data-go="community"><span>💬</span>동네 이야기</a>
+              </div>
+            </section>
+
+            <!-- 계정 · 설정: 로그인 정보 → 생활 설정 → 맨 아래 작은 글씨로 로그아웃 · 초기화 · 탈퇴 -->
+            <section class="card me-block">
+              <h3 class="me-sec">계정 · 설정</h3>
+              <ul class="me-list">
+                <li class="me-row me-login">
+                  <span class="me-ico brand" id="meLoginIco" aria-hidden="true"></span>
+                  <span class="grow"><span id="meLoginTitle">아이디로 로그인했어요</span><small id="meLoginSub">zipdemo</small></span>
+                  <span class="me-tag" id="meLoginTag">아이디</span>
+                </li>
+                <li id="mePwItem"><button type="button" class="me-row" data-sheet="pwSheet"><span class="me-ico">🔒</span><span class="grow">비밀번호 변경</span><i class="me-chev" aria-hidden="true"></i></button></li>
+                <li><button type="button" class="me-row" data-sheet="lifeSheet"><span class="me-ico">🏠</span><span class="grow">생활 정보<small id="meLifeSub">서울 마포구 · 월세 55만원 · 매월 15일</small></span><i class="me-chev" aria-hidden="true"></i></button></li>
+                <li><label class="me-row"><span class="me-ico">🔔</span><span class="grow">알림 받기<small>일정 · 쓰레기 배출 · 월세 알림</small></span><input type="checkbox" class="me-switch" id="setNoti"></label></li>
+              </ul>
+              <div class="me-foot">
+                <button type="button" id="meLogout">로그아웃</button>
+                <button type="button" id="btnReset" title="일정, 알림 읽음, 커뮤니티 글, 설정을 이 브라우저에서 지워요">데이터 초기화</button>
+                <button type="button" id="btnWithdraw" class="danger">회원 탈퇴</button>
+              </div>
+            </section>
+          </div>
+        </div>
       </div>
     </main>
 
@@ -689,6 +780,66 @@
       </form>
     </section>
   </div>
+
+  <!-- 내 정보의 아래에서 올라오는 창 3개: 프로필 편집 / 생활 정보 / 비밀번호 변경 (열고 닫기는 js/views/settings.js) -->
+  <div class="sheet-modal" id="profileSheet" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <section class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+      <header class="sheet-head"><h3 id="profileTitle">프로필 편집</h3><button type="button" class="sheet-x" data-close aria-label="닫기">×</button></header>
+      <form class="form" id="profForm">
+        <div class="prof-pick">
+          <span class="me-ava big" id="profPreview">지</span>
+          <div class="prof-btns">
+            <button type="button" class="btn-line" id="profUpload">📷 사진 올리기</button>
+            <button type="button" class="btn-line" id="profClear">기본으로</button>
+          </div>
+        </div>
+        <p class="prof-label">캐릭터로 고르기</p>
+        <div class="prof-chars" id="profChars"></div>
+        <p class="prof-label">배경 색</p>
+        <div class="prof-colors" id="profColors"></div>
+        <label>이름(닉네임) <input type="text" id="setName" maxlength="12" required></label>
+        <label>한 줄 소개 <input type="text" id="profBio" maxlength="30" placeholder="예) 자취 2년 차, 요리 연습 중"></label>
+        <p class="form-msg err" id="profMsg" role="alert" hidden></p>
+        <button class="btn-primary" type="submit">저장</button>
+      </form>
+      <input type="file" id="profFile" accept="image/*" hidden>
+    </section>
+  </div>
+
+  <div class="sheet-modal" id="lifeSheet" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <section class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="lifeTitle">
+      <header class="sheet-head"><h3 id="lifeTitle">생활 정보</h3><button type="button" class="sheet-x" data-close aria-label="닫기">×</button></header>
+      <form class="form" id="setForm">
+        <label>우리 동네 <input type="text" id="setRegion" maxlength="30" placeholder="예) 서울 마포구"></label>
+        <div class="two">
+          <label>월세 납부일 (매월) <input type="number" id="setRentDay" min="1" max="31" required></label>
+          <label>월세 (만원) <input type="number" id="setRent" min="0" max="9999" required></label>
+        </div>
+        <button class="btn-primary" type="submit">저장</button>
+      </form>
+    </section>
+  </div>
+
+  <div class="sheet-modal" id="pwSheet" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <section class="sheet-box" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+      <header class="sheet-head"><h3 id="pwTitle">비밀번호 변경</h3><button type="button" class="sheet-x" data-close aria-label="닫기">×</button></header>
+      <form class="form" id="pwForm" novalidate>
+        <label>현재 비밀번호 <input type="password" id="pwCur" autocomplete="current-password"></label>
+        <label>새 비밀번호 <input type="password" id="pwNew" maxlength="16" placeholder="8~16자" autocomplete="new-password"></label>
+        <label>새 비밀번호 확인 <input type="password" id="pwNew2" maxlength="16" placeholder="새 비밀번호를 한 번 더 입력" autocomplete="new-password"></label>
+        <label class="check"><input type="checkbox" id="pwShow"> 비밀번호 보기</label>
+        <p class="form-msg" id="pwMsg" role="status"></p>
+        <p class="demo-hint" id="pwDemo" hidden>시안이라 처음 비밀번호는 <b>zip12345</b> 예요. 가입 페이지에서 가입했다면 그때 정한 비밀번호를 입력하세요.</p>
+        <button class="btn-primary" type="submit">비밀번호 변경</button>
+      </form>
+    </section>
+  </div>
+
+  <!-- 저장 완료 등 짧은 안내 -->
+  <div class="me-toast" id="meToast" role="status" hidden></div>
 
   <!-- 회원 탈퇴 확인 창: 동의에 체크해야 "탈퇴하기"가 눌림 -->
   <div class="confirm-modal" id="confirmModal" hidden>
@@ -758,4 +909,4 @@
   <script src="../../shared/mobile-scroll.js"></script>
 </body>
 
-</html>
+</html>

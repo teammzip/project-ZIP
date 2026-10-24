@@ -35,7 +35,7 @@ frontend/      ★ 실제 앱 (React + TypeScript)
 variants/      HTML 시안: app(메인 앱) · start-pc · start-mobile · account(회원가입·찾기) · admin(관리자: 회원·게시글 관리)
 login/         시작 화면의 로그인 창 공통 코드 (약관 문구는 variants/account/terms.js)
 shared/        시안 공통: 모바일 스크롤 · 계정(zip-password.js) · 이용 정지 기록(zip-ban.js)
-db/            DB 설계: 구조 그림(ERD) 5장 + 표 만드는 SQL(schema.sql) + 한글 설명서(README.md)
+db/            DB 설계: 표 만드는 SQL(schema.sql) + 한글 설명서(README.md)
 images/        로고 · 아이콘 · 로봇 · 집 그림
 compare.html   시안을 버튼으로 골라 보는 미리보기 (개발용)
 ```
