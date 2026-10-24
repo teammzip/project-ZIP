@@ -1161,3 +1161,37 @@ body[data-view="settings"] .my-head {
   line-height: 1.5;
   color: var(--muted);
 }
+
+/* 경고 안내 창 */
+.warn-box {
+  text-align: center;
+}
+
+.warn-ico {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 10px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff4e5;
+  font-size: 28px;
+}
+
+.warn-box .pr-list {
+  margin-top: 14px;
+  text-align: left;
+}
+
+.warn-note {
+  margin-top: 10px;
+  font-size: 12px !important;
+}
+
+.warn-box .confirm-actions {
+  justify-content: center;
+}
+
+.warn-box .btn-primary {
+  width: 100%;
+}

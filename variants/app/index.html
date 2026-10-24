@@ -111,7 +111,43 @@
 
       <!-- ===== 홈 ===== -->
       <div id="view-home">
-        <!-- 홈 요약 카드 4개: 전체 일정 · 오늘 할 일 · 월세 납부일 · 사진 상담(알림 회전창이 이 카드 안에 들어 있음) -->
+        <!-- 홈 맨 위 줄: 왼쪽 메모 | 오른쪽 알림 회전창 (알림 개수만큼 슬라이드가 돌고, 닫기를 누르면 하나씩 닫히며 다 닫으면 알림 칸만 없어짐: js/components/home-noti.js) -->
+        <div class="home-top">
+          <!-- 홈 메모 위젯 (js/views/memo.js): 노란 머리줄 + 줄 노트에 대표 메모(고정 또는 최근) + 최근 메모 목록 + 빠른 메모
+               대표 메모가 체크리스트면 위젯에서 바로 체크할 수 있음 -->
+          <section class="memo-widget" aria-labelledby="homeMemoTitle">
+            <header class="mw-head">
+              <span class="mw-ico" aria-hidden="true">📝</span>
+              <h2 id="homeMemoTitle">메모</h2>
+              <small id="homeMemoCount">0개</small>
+              <a class="mw-open" href="#" data-go="memo">전체 보기 ›</a>
+            </header>
+            <div class="mw-body">
+              <div class="mw-feature" id="homeMemoFeature"></div>
+              <ul class="mw-list" id="homeMemoList" aria-label="최근 메모"></ul>
+            </div>
+            <form class="mw-add" id="homeMemoForm">
+              <span aria-hidden="true">✏️</span>
+              <input type="text" id="homeMemoInput" maxlength="200" placeholder="빠른 메모 남기기" aria-label="빠른 메모" autocomplete="off">
+              <button type="submit" aria-label="메모 저장">＋</button>
+            </form>
+          </section>
+          <!-- 알림 회전창 -->
+          <section class="home-noti card" id="homeNoti" aria-label="알림" hidden>
+            <div class="hn-head">
+              <b>🔔 알림</b>
+              <span class="hn-count" id="hnCount"></span>
+              <a class="link" href="#" id="hnAll">알림 전체 보기</a>
+            </div>
+            <div class="hn-stage">
+              <button type="button" class="hn-nav" id="hnPrev" aria-label="이전 알림">‹</button>
+              <div class="hn-view" aria-live="polite"><div class="hn-track" id="hnTrack"></div></div>
+              <button type="button" class="hn-nav" id="hnNext" aria-label="다음 알림">›</button>
+            </div>
+            <div class="hn-dots" id="hnDots"></div>
+          </section>
+        </div>
+        <!-- 홈 요약 카드 4개: 전체 일정 · 오늘 할 일 · 월세 납부일 · 사진으로 생활 고민 상담 -->
         <section class="stat-grid">
           <article class="stat teal" id="allEventsCard" data-go="calendar" tabindex="0" role="button" aria-label="전체 일정 자세히 보기">
             <div class="label">전체 일정</div>
@@ -144,41 +180,7 @@
               <span class="photo-desktop-label">사진 선택하고 상담 시작</span>
               <span class="photo-mobile-label">사진 찍고 상담 시작</span>
             </button>
-            <!-- 알림 회전창: 알림 개수만큼 슬라이드가 돌고, 닫기를 누르면 하나씩 닫히며 다 닫으면 이 부분만 없어짐 (js/components/home-noti.js) -->
-            <section class="home-noti" id="homeNoti" aria-label="알림" hidden>
-              <div class="hn-head">
-                <b>🔔 알림</b>
-                <span class="hn-count" id="hnCount"></span>
-                <a class="link" href="#" id="hnAll">전체 보기</a>
-              </div>
-              <div class="hn-stage">
-                <button type="button" class="hn-nav" id="hnPrev" aria-label="이전 알림">‹</button>
-                <div class="hn-view" aria-live="polite"><div class="hn-track" id="hnTrack"></div></div>
-                <button type="button" class="hn-nav" id="hnNext" aria-label="다음 알림">›</button>
-              </div>
-              <div class="hn-dots" id="hnDots"></div>
-            </section>
           </article>
-        </section>
-
-        <!-- 홈 메모 위젯 (js/views/memo.js): 노란 머리줄 + 줄 노트에 대표 메모(고정 또는 최근) + 최근 메모 목록 + 빠른 메모
-             대표 메모가 체크리스트면 위젯에서 바로 체크할 수 있음 -->
-        <section class="memo-widget" aria-labelledby="homeMemoTitle">
-          <header class="mw-head">
-            <span class="mw-ico" aria-hidden="true">📝</span>
-            <h2 id="homeMemoTitle">메모</h2>
-            <small id="homeMemoCount">0개</small>
-            <a class="mw-open" href="#" data-go="memo">전체 보기 ›</a>
-          </header>
-          <div class="mw-body">
-            <div class="mw-feature" id="homeMemoFeature"></div>
-            <ul class="mw-list" id="homeMemoList" aria-label="최근 메모"></ul>
-          </div>
-          <form class="mw-add" id="homeMemoForm">
-            <span aria-hidden="true">✏️</span>
-            <input type="text" id="homeMemoInput" maxlength="200" placeholder="빠른 메모 남기기" aria-label="빠른 메모" autocomplete="off">
-            <button type="submit" aria-label="메모 저장">＋</button>
-          </form>
         </section>
 
         <!-- 홈 1줄: 월별 수입 그래프 | 이번 달 지출 구성 도넛 (둘 다 가계부 기록으로 그려짐) -->
@@ -896,6 +898,24 @@
       <div class="confirm-actions">
         <button type="button" class="btn-line" id="prClose">닫기</button>
         <button type="button" class="btn-primary" id="prEdit">내 정보 수정</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- 경고 안내 창: 운영자에게 경고를 받으면 뜸 (js/components/warn-notice.js). 정지는 별도 화면(variants/suspended) -->
+  <div class="confirm-modal" id="warnModal" hidden>
+    <div class="confirm-backdrop"></div>
+    <section class="confirm-box warn-box" role="alertdialog" aria-modal="true" aria-labelledby="warnTitle">
+      <div class="warn-ico" aria-hidden="true">⚠️</div>
+      <h3 id="warnTitle">운영 정책 경고를 받았어요</h3>
+      <p>커뮤니티 운영 정책에 어긋나는 활동이 확인되어 경고가 부여되었어요.</p>
+      <dl class="pr-list">
+        <div><dt>사유</dt><dd id="warnWhy"></dd></div>
+        <div><dt>누적 경고</dt><dd id="warnCnt"></dd></div>
+      </dl>
+      <p class="warn-note">경고가 계속 쌓이면 이용이 정지될 수 있어요.</p>
+      <div class="confirm-actions">
+        <button type="button" class="btn-primary" id="warnOk">확인했어요</button>
       </div>
     </section>
   </div>

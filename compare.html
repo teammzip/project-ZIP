@@ -101,6 +101,10 @@
     <div class="group" id="vars"><span>시안</span></div>
     <div class="group" id="sizes"><span>화면</span></div>
     <a id="open" href="#" target="_blank" rel="noopener">새 탭에서 열기</a>
+    <div class="group" id="demos"><span>예시</span>
+      <button type="button" data-v="warn">경고창</button>
+      <button type="button" data-v="suspended">정지 화면</button>
+    </div>
     <button type="button" class="admin-btn" id="adminBtn" data-v="admin">관리자</button>
   </div>
   <div class="stage">
@@ -113,8 +117,12 @@
       ['app', '앱 화면', null],
       ['start-mobile', '모바일시작', 2],
       ['start-pc', 'PC시작', 0],
-      ['admin', '관리자', 0]   // 오른쪽 끝 버튼(#adminBtn)으로 따로 만들어서 목록에는 이름만 등록
+      ['admin', '관리자', 0],   // 오른쪽 끝 버튼(#adminBtn)으로 따로 만들어서 목록에는 이름만 등록
+      ['warn', '경고창', 0],    // "예시" 버튼: 앱 화면 위에 경고 모달을 띄워서 보여줌
+      ['suspended', '정지 화면', 0]   // "예시" 버튼: 정지된 계정이 보는 별도 화면
     ];
+    // 폴더와 다른 주소로 열어야 하는 화면
+    var SRC = { warn: 'variants/app/index.html?demo=warn', suspended: 'variants/suspended/index.html' };
     // [이름, 폭, 높이]  태블릿·모바일은 실제 기기 비율(768×1024, 375×812)로 맞추고, 창이 작으면 높이만 창에 맞춰 줄어듦
     var SIZES = [['데스크톱', '100%', '100%'], ['태블릿', '768px', 'min(1024px, 100%)'], ['모바일', '375px', 'min(812px, 100%)']];
     function applySize() { frame.style.width = SIZES[size][1]; frame.style.height = SIZES[size][2]; }
@@ -133,7 +141,7 @@
     function render() {
       document.querySelectorAll('button[data-v]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === cur); });
       document.querySelectorAll('#sizes button').forEach(function (b, i) { b.classList.toggle('on', i === size); });
-      var src = 'variants/' + cur + '/index.html';
+      var src = SRC[cur] || 'variants/' + cur + '/index.html';
       if (frame.getAttribute('src') !== src) frame.src = src;
       applySize();
       document.getElementById('open').href = src;
@@ -141,7 +149,7 @@
     }
 
     VARIANTS.forEach(function (v) {
-      if (v[0] === 'admin') return;
+      if (v[0] === 'admin' || SRC[v[0]]) return;
       var b = document.createElement('button');
       b.type = 'button'; b.textContent = v[1]; b.setAttribute('data-v', v[0]);
       b.addEventListener('click', function () {
@@ -150,6 +158,9 @@
         render();
       });
       document.getElementById('vars').appendChild(b);
+    });
+    document.querySelectorAll('#demos button').forEach(function (b) {
+      b.addEventListener('click', function () { cur = b.getAttribute('data-v'); write('compare-v', cur); render(); });
     });
     SIZES.forEach(function (s, i) {
       var b = document.createElement('button');

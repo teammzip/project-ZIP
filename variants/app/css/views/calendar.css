@@ -178,6 +178,22 @@
   border-radius: 0 4px 4px 0;
 }
 
+/* 같은 일정이 이어지는 날: 칸 사이(안쪽 여백 6px + 경계선 1px)를 메워 한 줄로 이어 보이게 함 */
+.cev.join-next {
+  margin-right: -7px;
+  border-radius: 0;
+}
+
+.cev.join-prev {
+  margin-left: -7px;
+  border-left-color: transparent;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--c) 10%, #fff);
+}
+
+.cev.gap {
+  visibility: hidden;
+}
+
 .cev i {
   font-style: normal;
   color: var(--muted);
