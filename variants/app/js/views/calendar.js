@@ -12,12 +12,111 @@ import { updateDot } from './noti.js';
 var viewY = today.getFullYear(), viewM = today.getMonth(), selected = todayStr, mode = 'today', query = '', editingId = null;
 // 일정 기록하기에서 눌러 둔 카테고리 항목 이름 (없으면 null). 달력에서 날짜를 누르면 이 이름으로 일정이 추가됨
 var pick = null;
+// ---------- 일정 카테고리 · 직접 만든 항목 (dev 4e9f9ae 에서 호출만 있고 정의가 빠져 있던 부분을 채움) ----------
+// 카테고리 목록: 기본(ev-presets.js) + 미분류. 이름 변경 · 추가 · 삭제는 "카테고리 관리"에서 (zip-event-categories)
+var UNCATEGORIZED = '미분류';
+var categories = load('zip-event-categories', null);
+if (!Array.isArray(categories) || !categories.length) {
+  categories = EV_PRESETS.map(function (c) { return { name: c.name, ico: c.ico, items: c.items.slice() }; });
+}
+if (!categories.some(function (c) { return c.name === UNCATEGORIZED; })) categories.push({ name: UNCATEGORIZED, ico: '📌', items: [] });
+// 사용자가 직접 만든 항목 [{ id, title, category }] (zip-event-presets)
+var customPresets = load('zip-event-presets', []);
+if (!Array.isArray(customPresets)) customPresets = [];
+// 골라 둔 항목의 카테고리, 수정 중인 직접 항목 번호
+var pickCategory = '';
+var editingPresetId = null;
+
+function saveCategoryData() { store('zip-event-categories', categories); }
+// 항목 버튼 묶음: 미분류는 직접 만든 항목이 있을 때만 보임
+function presetGroups() {
+  return categories.filter(function (c) {
+    return c.name !== UNCATEGORIZED || c.items.length || customPresets.some(function (i) { return i.category === UNCATEGORIZED; });
+  });
+}
+// 카테고리 선택 상자를 채움 (없는 값이면 미분류)
+function categorySelect(select, value) {
+  if (!select) return;
+  select.textContent = '';
+  categories.forEach(function (c) {
+    var o = document.createElement('option');
+    o.value = c.name; o.textContent = (c.ico ? c.ico + ' ' : '') + c.name;
+    select.appendChild(o);
+  });
+  select.value = categories.some(function (c) { return c.name === value; }) ? value : UNCATEGORIZED;
+}
+// 카테고리 목록이 바뀌면: 선택 상자 · 항목 버튼 · 달력을 다시 그림
+function refreshCategories() {
+  categorySelect($('evManageCategory'), $('evManageCategory').value);
+  renderCategoryOptions();
+  renderPresets();
+}
+// 직접 만든 항목 고치기: "직접 입력하기"를 열어 제목 · 카테고리를 채움
+function editPreset(item) {
+  editingPresetId = item.id;
+  $('evCustom').open = true;
+  $('evTitle').value = item.title;
+  categorySelect($('evCategory'), item.category);
+  $('evPresetCancel').hidden = false;
+  $('evForm').querySelector('button[type=submit]').textContent = '항목 수정';
+  $('evPresetMessage').textContent = '항목 이름 · 카테고리를 바꾼 뒤 "항목 수정"을 눌러 주세요.';
+  $('evTitle').focus();
+}
+function resetPresetEditor() {
+  editingPresetId = null;
+  $('evTitle').value = '';
+  $('evPresetCancel').hidden = true;
+  $('evForm').querySelector('button[type=submit]').textContent = '일정과 항목 추가';
+}
+// 카테고리 관리: 추가 · 이름 변경 · 삭제 (삭제한 카테고리의 항목과 일정은 미분류로)
+function categoryMsg(text) { $('evCategoryMessage').textContent = text; }
+function moveCategory(from, to) {
+  customPresets.forEach(function (i) { if (i.category === from) i.category = to; });
+  state.events.forEach(function (ev) { if (ev.category === from) ev.category = to; });
+  if (pickCategory === from) pickCategory = to;
+  store('zip-event-presets', customPresets);
+  store('zip-events', state.events);
+}
+$('evCategoryAdd').addEventListener('click', function () {
+  var name = $('evCategoryName').value.trim();
+  if (!name) return categoryMsg('추가할 이름을 적어 주세요.');
+  if (categories.some(function (c) { return c.name === name; })) return categoryMsg('같은 이름의 카테고리가 이미 있어요.');
+  categories.splice(categories.length - 1, 0, { name: name, ico: '🏷️', items: [] });   // 미분류는 늘 맨 끝
+  saveCategoryData(); $('evCategoryName').value = '';
+  refreshCategories(); $('evManageCategory').value = name;
+  categoryMsg('"' + name + '" 카테고리를 추가했어요.');
+});
+$('evCategoryRename').addEventListener('click', function () {
+  var from = $('evManageCategory').value, name = $('evCategoryName').value.trim();
+  if (from === UNCATEGORIZED) return categoryMsg('미분류는 이름을 바꿀 수 없어요.');
+  if (!name) return categoryMsg('새 이름을 적어 주세요.');
+  if (categories.some(function (c) { return c.name === name; })) return categoryMsg('같은 이름의 카테고리가 이미 있어요.');
+  categories.forEach(function (c) { if (c.name === from) c.name = name; });
+  moveCategory(from, name); saveCategoryData(); $('evCategoryName').value = '';
+  refreshCategories(); $('evManageCategory').value = name; renderCalendarAll();
+  categoryMsg('"' + from + '" → "' + name + '"(으)로 바꿨어요.');
+});
+$('evCategoryDelete').addEventListener('click', function () {
+  var name = $('evManageCategory').value;
+  if (name === UNCATEGORIZED) return categoryMsg('미분류는 삭제할 수 없어요.');
+  if (!confirm('"' + name + '" 카테고리를 삭제할까요? 이 카테고리의 항목과 일정은 미분류로 옮겨져요.')) return;
+  categories = categories.filter(function (c) { return c.name !== name; });
+  moveCategory(name, UNCATEGORIZED); saveCategoryData();
+  refreshCategories(); renderCalendarAll();
+  categoryMsg('"' + name + '" 카테고리를 삭제했어요.');
+});
+$('evPresetCancel').addEventListener('click', function () { resetPresetEditor(); $('evPresetMessage').textContent = ''; });
+
 // 달력 보기 방식: month(월간) / week(주간, 선택한 날이 든 주)
 var calView = 'month';
 // 달력 칸 안 일정 막대 색: 일정 기록하기 카테고리(집 관리 등)마다 다른 색, 직접 입력한 일정은 파랑, 쓰레기 배출은 초록
 var CAT_COLORS = ['#ff8a4c', '#2ec4b6', '#f5b301', '#e56b9a', '#7c6cf5'];
 function evColor(ev) {
   if (ev.kind === 'trash') return '#3bb273';
+  if (ev.category && ev.category !== '미분류') {
+    var ci = categories.map(function (c) { return c.name; }).indexOf(ev.category);
+    if (ci >= 0) return CAT_COLORS[ci % CAT_COLORS.length];
+  }
   for (var i = 0; i < EV_PRESETS.length; i++) { if (EV_PRESETS[i].items.indexOf(ev.title) >= 0) return CAT_COLORS[i % CAT_COLORS.length]; }
   return '#4a90e2';
 }
@@ -336,8 +435,9 @@ function renderPresets() {
   });
 }
 // 항목을 고르거나(이름) 해제(null)하고 안내 줄을 맞춤
-function setPick(name) {
+function setPick(name, category) {
   pick = name;
+  pickCategory = name ? (category || '') : '';
   $('calGrid').classList.toggle('picking', !!pick);   // 항목을 골라 두면 달력 칸에 "+" 커서
   $('pickBar').hidden = !pick;
   if (pick) { $('pickName').textContent = '「' + pick + '」'; $('pickNote').textContent = '달력에서 날짜를 눌러 주세요.'; }
