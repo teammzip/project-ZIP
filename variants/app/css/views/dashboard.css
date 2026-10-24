@@ -1,70 +1,11 @@
-/* 대시보드(홈): 사진 상담 카드, 요약 카드, 차트, 꿀팁 */
-
-/* 홈 사진 상담 진입점: 데스크톱 전용 */
-.home-photo.card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 18px;
-  border: 1px solid #cfe0fb;
-}
-
-.home-photo-icon {
-  width: 52px;
-  height: 52px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  background: #eaf2ff;
-  color: var(--orange);
-}
-
-.home-photo-icon svg {
-  width: 28px;
-  height: 28px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.home-photo-copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.home-photo-copy h2 {
-  font-size: 18px;
-  line-height: 1.5;
-}
-
-.home-photo-copy p {
-  font-size: 13px;
-  line-height: 1.6;
-  margin-top: 4px;
-}
-
-.home-photo-copy small {
-  display: block;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.5;
-  margin-top: 4px;
-}
-
-.home-photo-button {
-  /* 분리 전에도 .btn-primary의 white-space: nowrap이 적용되고 있어서 같은 결과가 되도록 정리 */
-  flex-shrink: 0;
-}
+/* 대시보드(홈): 알림 회전창, 사진 상담 카드, 요약 카드, 차트, 꿀팁 */
 
 .photo-mobile-label {
   display: none;
 }
 
 
-/* 홈 위쪽 요약 카드 4개(전체 할 일·남은 할 일·쓰레기·월세) 격자와 카드 모양/색(.teal/.orange/.pink/.purple) */
+/* 홈 위쪽 요약 카드 4개(전체 일정·오늘 할 일·월세·사진 상담) 격자와 카드 모양/색(.teal/.orange/.pink/.purple) */
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -343,29 +284,19 @@
   outline-offset: 2px;
 }
 
-/* 태블릿·모바일: 사진 상담 카드 줄바꿈, 요약 카드 2열, 홈의 카드 줄은 한 줄에 카드 한 개 */
+/* 태블릿·모바일: 요약 카드 2열, 홈의 카드 줄은 한 줄에 카드 한 개 */
 @media (max-width: 900px) {
-  .home-photo.card {
-    flex-wrap: wrap;
-  }
-
-  .home-photo-button {
-    width: 100%;
-  }
-
   .stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .stat-grid .stat.purple,
+  .stat-grid .photo-card {
+    grid-column: 1 / -1;
+  }
+
   .row {
     grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-/* 모바일: 홈의 사진 상담 카드는 숨김 (하단 메뉴의 사진 버튼을 씀) */
-@media (max-width: 700px) {
-  .home-photo.card {
-    display: none;
   }
 }
 
@@ -393,4 +324,293 @@
 
 .chart.dense .col span {
   font-size: 10px;
+}
+
+/* 홈 맨 위 알림 회전창 (슬라이드가 옆으로 돌아감) */
+.home-noti {
+  margin-top: 2px;
+  padding: 10px 12px 8px;
+  border-radius: 12px;
+  background: #fff8f3;
+  border: 1px solid #ffe0cf;
+}
+
+.hn-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.hn-head b {
+  font-size: 15px;
+}
+
+.hn-count {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hn-head .link {
+  margin-left: auto;
+}
+
+.hn-stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hn-view {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.hn-track {
+  display: flex;
+  transition: transform .45s ease;
+}
+
+.hn-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px;
+}
+
+.hn-slide .ico {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 22px;
+}
+
+.hn-slide .t {
+  flex: 1;
+  min-width: 0;
+}
+
+.hn-slide .t b,
+.hn-slide .t small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hn-slide .t small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.hn-slide .badge {
+  flex: none;
+}
+
+.hn-close {
+  flex: none;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hn-close:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.hn-nav {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hn-nav:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.hn-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.hn-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 99px;
+  background: #e5d9d1;
+  cursor: pointer;
+  transition: width .2s, background .2s;
+}
+
+.hn-dot.on {
+  width: 18px;
+  background: var(--orange);
+}
+
+/* 사진으로 생활 고민 상담 카드: 월세 납부일 카드 옆. 안에 알림 회전창이 들어간다 */
+.stat.photo-card {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid #cfe0fb;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stat.photo-card::after {
+  display: none;
+}
+
+.pc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pc-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #eaf2ff;
+  color: var(--orange);
+}
+
+.pc-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.photo-card h3 {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.photo-card .btn-primary {
+  width: 100%;
+  padding: 9px 10px;
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .hn-slide .badge {
+    display: none;
+  }
+
+  .hn-nav {
+    display: none;
+  }
+}
+
+/* 좁은 카드 안에 들어가므로 알림 슬라이드를 작게: 시간 배지는 숨기고 닫기·화살표를 줄임 */
+.photo-card .hn-slide {
+  gap: 8px;
+  padding: 2px;
+}
+
+.photo-card .hn-slide .ico {
+  width: 34px;
+  height: 34px;
+  font-size: 17px;
+}
+
+.photo-card .hn-slide .badge {
+  display: none;
+}
+
+.photo-card .hn-slide .t b {
+  font-size: 13px;
+}
+
+.photo-card .hn-close {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.photo-card .hn-nav {
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+}
+
+.photo-card .hn-stage {
+  gap: 4px;
+}
+
+.photo-card .hn-dots {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 700px) {
+  .photo-card .hn-nav {
+    display: none;
+  }
+}
+
+/* 좁은 카드에서는 화살표를 빼고(점·자동 회전으로 넘김) 제목이 줄바꿈되게 해 글자가 보이게 함 */
+.photo-card .hn-nav {
+  display: none;
+}
+
+.photo-card .hn-head {
+  gap: 6px;
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+.photo-card .hn-head b {
+  font-size: 13px;
+}
+
+.photo-card .hn-slide {
+  align-items: flex-start;
+}
+
+.photo-card .hn-slide .t b,
+.photo-card .hn-slide .t small {
+  white-space: normal;
+}
+
+.photo-card .hn-slide .t small {
+  font-size: 11px;
+}
+
+.photo-card .hn-slide .ico {
+  display: none;
+}
+
+.photo-card .hn-close {
+  align-self: flex-start;
 }

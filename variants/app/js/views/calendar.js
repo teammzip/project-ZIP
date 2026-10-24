@@ -12,6 +12,17 @@ import { updateDot } from './noti.js';
 var viewY = today.getFullYear(), viewM = today.getMonth(), selected = todayStr, mode = 'today', query = '', editingId = null;
 // 일정 기록하기에서 눌러 둔 카테고리 항목 이름 (없으면 null). 달력에서 날짜를 누르면 이 이름으로 일정이 추가됨
 var pick = null;
+// 달력 보기 방식: month(월간) / week(주간, 선택한 날이 든 주)
+var calView = 'month';
+// 달력 칸 안 일정 막대 색: 일정 기록하기 카테고리(집 관리 등)마다 다른 색, 직접 입력한 일정은 파랑, 쓰레기 배출은 초록
+var CAT_COLORS = ['#ff8a4c', '#2ec4b6', '#f5b301', '#e56b9a', '#7c6cf5'];
+function evColor(ev) {
+  if (ev.kind === 'trash') return '#3bb273';
+  for (var i = 0; i < EV_PRESETS.length; i++) { if (EV_PRESETS[i].items.indexOf(ev.title) >= 0) return CAT_COLORS[i % CAT_COLORS.length]; }
+  return '#4a90e2';
+}
+// 날짜 문자열이 속한 주의 일요일(주간 보기 시작일)
+function sundayOf(ds) { var p = ds.split('-'), d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])); d.setDate(d.getDate() - d.getDay()); return d; }
 
 function weekRange(date) {
   var start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -66,29 +77,53 @@ function renderEventSummary() {
   $('todayTodoSub').parentElement.setAttribute('aria-label', '오늘 할 일 ' + todayPending.length + '개. ' + summary);
 }
 
-// 달력 칸을 그림: 오늘·선택한 날 표시, 일정이 있는 날은 점(최대 3개)
+// 달력을 그림: 월간은 그 달 전체(앞뒤 달 날짜는 흐리게), 주간은 선택한 날이 든 한 주.
+// 칸마다 날짜 숫자 + 일정 막대(월간 최대 3개, 넘으면 "+N개 더", 주간은 전부). 오늘은 검은 동그라미, 선택한 날은 연한 배경
 function renderGrid() {
-  $('calTitle').textContent = viewY + '년 ' + (viewM + 1) + '월';
   var grid = $('calGrid');
   grid.textContent = '';
-  ['일', '월', '화', '수', '목', '금', '토'].forEach(function (d) { grid.appendChild(el('div', 'cal-dow', d)); });
-  var first = new Date(viewY, viewM, 1).getDay();
-  var days = new Date(viewY, viewM + 1, 0).getDate();
-  for (var i = 0; i < first; i++) grid.appendChild(el('div', 'cal-empty'));
-  for (var d = 1; d <= days; d++) {
-    var ds = viewY + '-' + pad(viewM + 1) + '-' + pad(d);
-    var btn = el('button', 'cal-day');
-    btn.type = 'button';
-    btn.setAttribute('data-date', ds);
-    if (ds === todayStr) btn.classList.add('today');
-    if (ds === selected) btn.classList.add('sel');
-    btn.appendChild(el('span', null, String(d)));
-    var mark = el('span', 'mark');
-    var count = state.events.filter(function (ev) { return ev.date === ds; }).length
-      + trashEventsBetween(ds, ds).length;
-    for (var k = 0; k < Math.min(count, 3); k++) mark.appendChild(el('i'));
-    btn.appendChild(mark);
-    grid.appendChild(btn);
+  grid.classList.toggle('week', calView === 'week');
+  ['일', '월', '화', '수', '목', '금', '토'].forEach(function (d, i) { grid.appendChild(el('div', 'cal-dow' + (i === 0 ? ' sun' : ''), d)); });
+  var start, count;
+  if (calView === 'week') {
+    start = sundayOf(selected); count = 7;
+    var end = new Date(start); end.setDate(end.getDate() + 6);
+    $('calTitle').textContent = start.getFullYear() + '.' + pad(start.getMonth() + 1) + '.' + pad(start.getDate()) + ' ~ ' + pad(end.getMonth() + 1) + '.' + pad(end.getDate());
+  } else {
+    var first = new Date(viewY, viewM, 1);
+    start = new Date(first); start.setDate(1 - first.getDay());
+    count = Math.ceil((first.getDay() + new Date(viewY, viewM + 1, 0).getDate()) / 7) * 7;
+    $('calTitle').textContent = viewY + '.' + pad(viewM + 1);
+  }
+  var maxChips = calView === 'week' ? 12 : 3;
+  for (var i = 0; i < count; i++) {
+    var d = new Date(start); d.setDate(start.getDate() + i);
+    var ds = fmt(d);
+    var cell = el('div', 'cal-day');
+    cell.tabIndex = 0; cell.setAttribute('role', 'button');
+    cell.setAttribute('data-date', ds);
+    if (calView === 'month' && d.getMonth() !== viewM) cell.classList.add('out');
+    if (d.getDay() === 0) cell.classList.add('sun');
+    if (ds === todayStr) cell.classList.add('today');
+    if (ds === selected) cell.classList.add('sel');
+    cell.appendChild(el('span', 'dn', String(d.getDate())));
+    var evs = sortEvents(state.events.filter(function (ev) { return ev.date === ds; }))
+      .concat(trashEventsBetween(ds, ds));   // 내 일정 먼저, 배출 일정은 뒤에
+    var chips = el('div', 'chips2');
+    evs.slice(0, maxChips).forEach(function (ev) {
+      var c = el('div', 'cev' + (ev.done ? ' done' : ''));
+      c.style.setProperty('--c', evColor(ev));
+      c.title = (ev.time ? ev.time + ' ' : '') + ev.title;
+      if (ev.time && ev.kind !== 'trash') c.appendChild(el('i', null, ev.time));
+      c.appendChild(document.createTextNode(ev.title));
+      chips.appendChild(c);
+    });
+    if (evs.length > maxChips) chips.appendChild(el('div', 'cev-more', '+' + (evs.length - maxChips) + '개 더'));
+    cell.appendChild(chips);
+    var mark = el('span', 'mark');   // 좁은 화면에서는 글자 대신 점
+    for (var k = 0; k < Math.min(evs.length, 3); k++) mark.appendChild(el('i'));
+    cell.appendChild(mark);
+    grid.appendChild(cell);
   }
 }
 // 날짜를 누르면 그 날을 선택하고 일정 목록을 그 날로 바꿈
@@ -102,12 +137,35 @@ $('calGrid').addEventListener('click', function (e) {
   editingId = null; mode = 'day'; query = ''; $('searchInput').value = '';
   renderCalendarAll();
 });
-// 이전 달 / 다음 달 / 오늘 버튼
-$('calPrev').addEventListener('click', function () { viewM--; if (viewM < 0) { viewM = 11; viewY--; } renderGrid(); });
-$('calNext').addEventListener('click', function () { viewM++; if (viewM > 11) { viewM = 0; viewY++; } renderGrid(); });
+$('calGrid').addEventListener('keydown', function (e) {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('cal-day')) { e.preventDefault(); e.target.click(); }
+});
+// 이전 / 다음 (월간은 한 달, 주간은 한 주) / 오늘 버튼
+function shift(dir) {
+  if (calView === 'week') {
+    var d = sundayOf(selected); d.setDate(d.getDate() + 7 * dir);
+    selected = fmt(d); viewY = d.getFullYear(); viewM = d.getMonth(); $('evDate').value = selected;
+    renderCalendarAll();
+  } else {
+    viewM += dir; if (viewM < 0) { viewM = 11; viewY--; } if (viewM > 11) { viewM = 0; viewY++; }
+    renderGrid();
+  }
+}
+$('calPrev').addEventListener('click', function () { shift(-1); });
+$('calNext').addEventListener('click', function () { shift(1); });
 $('calToday').addEventListener('click', function () {
   viewY = today.getFullYear(); viewM = today.getMonth(); selected = todayStr; $('evDate').value = selected; renderCalendarAll();
 });
+// 월간 / 주간 보기 전환
+function setCalView(v) {
+  calView = v;
+  if (v === 'month') { viewY = Number(selected.slice(0, 4)); viewM = Number(selected.slice(5, 7)) - 1; }
+  $('viewWeek').classList.toggle('on', v === 'week');
+  $('viewMonth').classList.toggle('on', v === 'month');
+  renderGrid();
+}
+$('viewWeek').addEventListener('click', function () { setCalView('week'); });
+$('viewMonth').addEventListener('click', function () { setCalView('month'); });
 
 // 일정 목록: 선택한 날 또는 전체, 검색어가 있으면 제목으로 거름. 줄마다 수정·삭제 버튼
 function renderEvList() {
@@ -223,6 +281,7 @@ function renderPresets() {
 // 항목을 고르거나(이름) 해제(null)하고 안내 줄을 맞춤
 function setPick(name) {
   pick = name;
+  $('calGrid').classList.toggle('picking', !!pick);   // 항목을 골라 두면 달력 칸에 "+" 커서
   $('pickBar').hidden = !pick;
   if (pick) { $('pickName').textContent = '「' + pick + '」'; $('pickNote').textContent = '달력에서 날짜를 눌러 주세요.'; }
   renderPresets();
