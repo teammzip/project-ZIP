@@ -290,9 +290,8 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .stat-grid .stat.purple,
   .stat-grid .photo-card {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 
   .row {
@@ -327,12 +326,14 @@
 }
 
 /* 홈 맨 위 알림 회전창 (슬라이드가 옆으로 돌아감) */
-.home-noti {
-  margin-top: 2px;
-  padding: 10px 12px 8px;
-  border-radius: 12px;
-  background: #fff8f3;
+.home-noti.card {
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px 16px 12px;
   border: 1px solid #ffe0cf;
+  background: #fff8f3;
 }
 
 .hn-head {
@@ -472,7 +473,26 @@
   background: var(--orange);
 }
 
-/* 사진으로 생활 고민 상담 카드: 월세 납부일 카드 옆. 안에 알림 회전창이 들어간다 */
+/* 홈 맨 위 줄: 왼쪽 메모 반 | 오른쪽 알림 회전창 반 */
+.home-top {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+  align-items: stretch;
+}
+
+.home-top > .memo-widget {
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .home-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 사진으로 생활 고민 상담 카드 (요약 카드 맨 오른쪽 칸, 사진 선택 기능만 있음) */
 .stat.photo-card {
   background: #fff;
   color: var(--text);
@@ -532,85 +552,4 @@
   .hn-nav {
     display: none;
   }
-}
-
-/* 좁은 카드 안에 들어가므로 알림 슬라이드를 작게: 시간 배지는 숨기고 닫기·화살표를 줄임 */
-.photo-card .hn-slide {
-  gap: 8px;
-  padding: 2px;
-}
-
-.photo-card .hn-slide .ico {
-  width: 34px;
-  height: 34px;
-  font-size: 17px;
-}
-
-.photo-card .hn-slide .badge {
-  display: none;
-}
-
-.photo-card .hn-slide .t b {
-  font-size: 13px;
-}
-
-.photo-card .hn-close {
-  padding: 4px 8px;
-  font-size: 11px;
-}
-
-.photo-card .hn-nav {
-  width: 24px;
-  height: 24px;
-  font-size: 14px;
-}
-
-.photo-card .hn-stage {
-  gap: 4px;
-}
-
-.photo-card .hn-dots {
-  flex-wrap: wrap;
-}
-
-@media (max-width: 700px) {
-  .photo-card .hn-nav {
-    display: none;
-  }
-}
-
-/* 좁은 카드에서는 화살표를 빼고(점·자동 회전으로 넘김) 제목이 줄바꿈되게 해 글자가 보이게 함 */
-.photo-card .hn-nav {
-  display: none;
-}
-
-.photo-card .hn-head {
-  gap: 6px;
-  margin-bottom: 6px;
-  white-space: nowrap;
-}
-
-.photo-card .hn-head b {
-  font-size: 13px;
-}
-
-.photo-card .hn-slide {
-  align-items: flex-start;
-}
-
-.photo-card .hn-slide .t b,
-.photo-card .hn-slide .t small {
-  white-space: normal;
-}
-
-.photo-card .hn-slide .t small {
-  font-size: 11px;
-}
-
-.photo-card .hn-slide .ico {
-  display: none;
-}
-
-.photo-card .hn-close {
-  align-self: flex-start;
 }

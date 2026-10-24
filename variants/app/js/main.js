@@ -19,6 +19,7 @@ import './components/ai-chat.js';
 import './components/account.js';
 import './components/home-noti.js';
 import './components/profile-menu.js';
+import './components/warn-notice.js';
 
 // 처음 한 번 화면을 그림: 메뉴 연결 → 설정 반영 → 각 화면의 내용
 initRouter();
