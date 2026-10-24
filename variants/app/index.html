@@ -472,6 +472,20 @@
                   <button type="button" class="btn-line" id="pickCancel">선택 해제</button>
                 </div>
               </div>
+              <details class="ev-custom" id="evCategoryManager">
+                <summary>카테고리 관리</summary>
+                <div class="form">
+                  <label>관리할 카테고리 <select id="evManageCategory"></select></label>
+                  <label>새 이름 <input type="text" id="evCategoryName" maxlength="20" placeholder="추가하거나 변경할 이름"></label>
+                  <div class="pick-row">
+                    <button type="button" class="btn-line" id="evCategoryAdd">추가</button>
+                    <button type="button" class="btn-line" id="evCategoryRename">이름 변경</button>
+                    <button type="button" class="btn-line" id="evCategoryDelete">삭제</button>
+                  </div>
+                  <small>삭제한 카테고리의 항목과 일정은 미분류로 이동해요. 미분류는 변경·삭제할 수 없어요.</small>
+                  <p id="evCategoryMessage" role="status" aria-live="polite"></p>
+                </div>
+              </details>
               <!-- 목록에 없는 일정은 직접 입력 -->
               <details class="ev-custom" id="evCustom">
                 <summary>직접 입력하기</summary>
@@ -479,11 +493,17 @@
                   <label>일정 제목
                     <input type="text" id="evTitle" maxlength="60" placeholder="예) 월세 이체, 집주인 통화, 장보기" required>
                   </label>
+                  <label>카테고리 (선택)
+                    <select id="evCategory" required aria-label="일정 카테고리"></select>
+                  </label>
+                  <small>입력한 일정은 선택한 카테고리 아래에 항목 버튼으로도 저장돼요.</small>
                   <div class="two">
                     <label>날짜 <input type="date" id="evDate" required></label>
                     <label>시간 (선택) <input type="time" id="evTime"></label>
                   </div>
-                  <button class="btn-primary" type="submit">일정 추가</button>
+                  <button class="btn-primary" type="submit">일정과 항목 추가</button>
+                  <button class="btn-line" type="button" id="evPresetCancel" hidden>항목 수정 취소</button>
+                  <p id="evPresetMessage" role="status" aria-live="polite"></p>
                 </form>
               </details>
             </article>
