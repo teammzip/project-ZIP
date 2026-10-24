@@ -1,12 +1,12 @@
 import { motion, useScroll, useTransform, type MotionValue } from 'motion/react'
 import { useRef } from 'react'
-import scene from '@/assets/images/house-intro.png'
+import scene from '@/assets/images/cinema-room.jpg'
 import robot from '@/assets/images/robot-cut.png'
 import { CINEMA } from '../content'
 import { Lines } from './SectionHead'
 import styles from './CinemaSection.module.css'
 
-/** 어두운 화면: 둥근 큰 그림(집 일러스트) 위에서 문장이 차례로 바뀌고, 마지막에 그림이 화면 가득 펼쳐지며 큰 문장 */
+/** 어두운 화면: 둥근 큰 사진(밤에 불 켜진 자취방) 위에서 문장이 차례로 바뀌고, 마지막에 그림이 화면 가득 펼쳐지며 큰 문장 */
 export function CinemaSection() {
   const ref = useRef<HTMLElement>(null)
   const { scrollYProgress: p } = useScroll({ target: ref, offset: ['start start', 'end end'] })
@@ -14,7 +14,7 @@ export function CinemaSection() {
   const height = useTransform(p, [0.58, 0.82], ['64%', '100%'])
   const radius = useTransform(p, [0.58, 0.82], [28, 0])
   const sceneScale = useTransform(p, [0, 1], [1.15, 1])
-  const dim = useTransform(p, [0, 0.6, 0.85], [0.82, 0.82, 0.72])
+  const dim = useTransform(p, [0, 0.6, 0.85], [0.78, 0.78, 0.6])
   const robotY = useTransform(p, [0, 1], [40, -120])
   const finalOpacity = useTransform(p, [0.72, 0.9], [0, 1])
   const finalScale = useTransform(p, [0.72, 0.95], [0.9, 1])
