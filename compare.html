@@ -159,8 +159,13 @@
       });
       document.getElementById('vars').appendChild(b);
     });
-    document.querySelectorAll('#demos button').forEach(function (b) {
-      b.addEventListener('click', function () { cur = b.getAttribute('data-v'); write('compare-v', cur); render(); });
+    // 오른쪽 위 "관리자" 버튼과 "예시"(경고창·정지 화면) 버튼: 눌린 화면으로 바꿈 (관리자는 데스크톱 크기로)
+    document.querySelectorAll('#demos button, #adminBtn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        cur = b.getAttribute('data-v'); write('compare-v', cur);
+        if (cur === 'admin') { size = 0; write('compare-size', '0'); }
+        render();
+      });
     });
     SIZES.forEach(function (s, i) {
       var b = document.createElement('button');
