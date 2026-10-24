@@ -1,14 +1,149 @@
-.hr {
-  margin: 16px 0;
-  border: 0;
+/* 내 정보: 모바일·좁은 화면은 한 줄로, PC(1100px 이상)는 왼쪽 프로필·월세(따라 내려옴) + 오른쪽 나머지 */
+.wrap {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.side,
+.main {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+}
+
+@media (min-width: 1100px) {
+  .wrap {
+    grid-template-columns: 300px minmax(0, 1fr);
+    align-items: start;
+    max-width: 1080px;
+  }
+
+  .side {
+    position: sticky;
+    top: 20px;
+  }
+}
+
+/* 바로 가기 */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tile {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 14px 6px;
+  border-radius: 14px;
+  background: var(--color-bg);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+  text-decoration: none;
+  transition: transform 0.15s;
+}
+
+.tile span {
+  font-size: 24px;
+}
+
+.tile:hover {
+  transform: translateY(-2px);
+}
+
+/* 계정 · 설정 목록 */
+.list {
+  list-style: none;
+}
+
+.list li + li {
   border-top: 1px solid var(--color-line);
 }
 
-.desc {
-  margin-bottom: 10px;
-  font-size: 13px;
-  line-height: 1.5;
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 2px;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.grow small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 400;
   color: var(--color-muted);
+}
+
+.ico {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  font-size: 18px;
+}
+
+.chev {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #b8bec9;
+  border-right: 2px solid #b8bec9;
+  transform: rotate(45deg);
+}
+
+/* 맨 아래 작은 글씨: 로그아웃 · 데이터 초기화 · 회원 탈퇴 */
+.foot {
+  display: flex;
+  justify-content: center;
+  margin: 4px -18px 0;
+  padding: 14px 18px 4px;
+  border-top: 1px solid var(--color-line);
+}
+
+.foot button {
+  padding: 4px 14px;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.foot button + button {
+  border-left: 1px solid var(--color-line);
+}
+
+.foot button:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+.foot .danger:hover {
+  color: var(--color-pink);
+}
+
+.legal {
+  justify-content: center;
+  margin-top: 8px;
+  font-size: 12px;
+  text-align: center;
 }
 
 .error {
@@ -17,6 +152,12 @@
   color: var(--color-danger);
 }
 
+.sheetTitle {
+  margin-bottom: 14px;
+  font-size: 18px;
+}
+
+/* 확인 창 (초기화 · 탈퇴) */
 .dialog {
   display: grid;
   gap: 12px;
@@ -51,19 +192,36 @@
   background: var(--color-pink);
 }
 
-.account {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+/* 저장 완료 안내 */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  z-index: 60;
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: rgba(31, 36, 48, 0.92);
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  transform: translateX(-50%);
 }
 
-.account .desc {
-  margin-bottom: 0;
-}
+@media (max-width: 900px) {
+  .tiles {
+    gap: 8px;
+  }
 
-.subTitle {
-  margin-bottom: 12px;
-  font-size: 15px;
+  .tile {
+    padding: 12px 4px;
+    font-size: 12px;
+  }
+
+  .foot button {
+    padding: 4px 10px;
+  }
+
+  .toast {
+    bottom: calc(var(--bottom-nav-height) + 32px + env(safe-area-inset-bottom));
+  }
 }

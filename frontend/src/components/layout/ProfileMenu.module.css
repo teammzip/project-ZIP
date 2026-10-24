@@ -1,0 +1,87 @@
+/* 프로필 메뉴: PC 는 왼쪽 메뉴 맨 아래 프로필 사진 옆, 모바일은 오른쪽 위 아래로 뜸 */
+.menu {
+  position: fixed;
+  left: calc(var(--sidebar-width) + 10px);
+  bottom: 16px;
+  z-index: 45;
+  display: grid;
+  width: 240px;
+  padding: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--shadow-modal);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.head b {
+  display: block;
+  font-size: 15px;
+}
+
+.head small {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.menu button {
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.menu button:hover {
+  background: var(--color-bg);
+}
+
+.menu .out {
+  color: var(--color-pink);
+}
+
+/* 프로필 보기 창 */
+.viewTitle {
+  margin-bottom: 14px;
+  font-size: 18px;
+}
+
+.view {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 16px;
+  font-size: 14px;
+}
+
+.view dt {
+  color: var(--color-muted);
+}
+
+.view dd {
+  font-weight: 700;
+  text-align: right;
+}
+
+.viewActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+@media (max-width: 900px) {
+  .menu {
+    top: 64px;
+    right: 16px;
+    bottom: auto;
+    left: auto;
+  }
+}

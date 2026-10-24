@@ -5,7 +5,8 @@ import type { User } from '../types'
 /* 로그인 상태(누가 로그인했는지 + 토큰)를 앱 전체에서 공유.
  * "로그인 유지"를 켜면 localStorage(브라우저를 닫아도 유지), 끄면 sessionStorage(탭을 닫으면 로그아웃)에 저장. */
 
-type Session = { user: User; token: string }
+/** loggedInAt: 로그인한 시각(ms). 내 정보에 "10월 24일 11:33 로그인"처럼 보여 줌 */
+type Session = { user: User; token: string; loggedInAt?: number }
 
 const KEY = 'zip-auth'
 const saved = readJSON<Session>(KEY, 'local') ?? readJSON<Session>(KEY, 'session')
@@ -13,6 +14,7 @@ const saved = readJSON<Session>(KEY, 'local') ?? readJSON<Session>(KEY, 'session
 type AuthState = {
   user: User | null
   token: string | null
+  loggedInAt: number | null
   setAuth: (user: User, token: string, remember: boolean) => void
   clearAuth: () => void
   /** 닉네임 등 내 정보가 바뀌었을 때 (토큰·저장 위치는 그대로) */
@@ -22,24 +24,26 @@ type AuthState = {
 export const useAuthStore = create<AuthState>((set) => ({
   user: saved?.user ?? null,
   token: saved?.token ?? null,
+  loggedInAt: saved?.loggedInAt ?? null,
 
   setAuth(user, token, remember) {
+    const loggedInAt = Date.now()
     remove(KEY, remember ? 'session' : 'local')
-    writeJSON(KEY, { user, token } satisfies Session, remember ? 'local' : 'session')
-    set({ user, token })
+    writeJSON(KEY, { user, token, loggedInAt } satisfies Session, remember ? 'local' : 'session')
+    set({ user, token, loggedInAt })
   },
 
   updateUser(user) {
     const where = readJSON<Session>(KEY, 'local') ? 'local' : 'session'
-    const token = useAuthStore.getState().token
-    if (token) writeJSON(KEY, { user, token } satisfies Session, where)
+    const { token, loggedInAt } = useAuthStore.getState()
+    if (token) writeJSON(KEY, { user, token, loggedInAt: loggedInAt ?? undefined } satisfies Session, where)
     set({ user })
   },
 
   clearAuth() {
     remove(KEY, 'local')
     remove(KEY, 'session')
-    set({ user: null, token: null })
+    set({ user: null, token: null, loggedInAt: null })
   },
 }))
 

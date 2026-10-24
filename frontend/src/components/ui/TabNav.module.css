@@ -1,8 +1,15 @@
+/* 좁은 화면에서는 옆으로 밀어서 봄. 세로로는 넘치지 않게(밑줄 -1px 때문에 세로 스크롤바가 생기던 문제),
+ * 스크롤바는 모든 브라우저에서 숨김 (Safari 는 scrollbar-width 를 몰라서 ::-webkit-scrollbar 도 필요) */
 .tabs {
   display: flex;
   gap: 4px;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {

@@ -1,3 +1,4 @@
+/* 동네 지도 (팀장님 시안 variants/app/css/views/map.css 와 같은 모양) */
 .frame {
   display: block;
   width: 100%;
@@ -7,15 +8,22 @@
   background: var(--color-line);
 }
 
+/* 장소 한 줄: 왼쪽 글, 오른쪽 즐겨찾기 별 (선택하면 .on) */
 .place {
-  display: block;
-  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 8px;
   padding: 10px 12px;
   border: 2px solid transparent;
   border-radius: var(--radius-md);
   background: #f7f8fc;
-  text-align: left;
+  cursor: pointer;
+}
+
+.place:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .place.on {
@@ -23,14 +31,128 @@
   background: #fff;
 }
 
-.place b {
+.placeMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.placeMain b {
   display: block;
   font-size: 14px;
 }
 
-.place small {
+.placeMain small {
+  display: block;
   font-size: 12px;
   color: var(--color-muted);
+}
+
+.placeMain .why {
+  margin-top: 2px;
+  color: var(--color-primary);
+}
+
+.star {
+  flex: none;
+  padding: 4px 6px;
+  font-size: 20px;
+  line-height: 1;
+  color: #b8bccb;
+}
+
+.starOn {
+  color: #f5b301;
+}
+
+/* 카드 머리 "카테고리 편집" */
+.linkBtn {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-purple);
+}
+
+/* AI 장소 찾기 */
+.aiFind {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.aiFind input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.aiFind input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.aiFind button {
+  white-space: nowrap;
+}
+
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.aiOut {
+  margin-bottom: 14px;
+  padding: 10px;
+  border: 1px solid #ffd9c7;
+  border-radius: 12px;
+  background: #fff7f2;
+}
+
+.aiOutHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.aiOutX {
+  flex: none;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+/* 카테고리 편집 */
+.editor {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 14px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #f7f8fc;
+}
+
+.editor > button {
+  justify-self: start;
+}
+
+.catAdd {
+  display: flex;
+  gap: 8px;
+}
+
+.catAdd input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  font-size: 13px;
 }
 
 @media (max-width: 900px) {
