@@ -18,6 +18,8 @@ type LifeData = {
   rentPaid: Record<string, boolean>
   /** 알림 id → 읽었는지 */
   notiRead: Record<string, boolean>
+  /** 지운 알림 id (읽은 알림을 삭제하면 여기에 담겨 목록에서 빠짐) */
+  notiDeleted: Record<string, boolean>
   settings: LifeSettings
   /** 일정 카테고리 (기본 5개 + 미분류, 사용자가 이름 변경 · 추가 · 삭제) */
   categories: EventCategory[]
@@ -56,6 +58,8 @@ type LifeActions = {
   removePreset: (id: string) => void
 
   markRead: (ids: string[]) => void
+  /** 알림 지우기 (읽은 알림 정리) */
+  deleteNotis: (ids: string[]) => void
   saveSettings: (s: LifeSettings) => void
   /** 위치로 확인한 동네를 우리 동네로 정하고 인증 완료 */
   verifyRegion: (region: string) => void
@@ -70,6 +74,7 @@ const initial = (): LifeData => ({
   spends: seedSpends(),
   rentPaid: {},
   notiRead: {},
+  notiDeleted: {},
   settings: defaultSettings(),
   categories: defaultCategories(),
   customPresets: [],
@@ -148,6 +153,7 @@ export const useLifeStore = create<LifeData & LifeActions>()(
       removePreset: (id) => set((s) => ({ customPresets: s.customPresets.filter((p) => p.id !== id) })),
 
       markRead: (ids) => set((s) => ({ notiRead: { ...s.notiRead, ...Object.fromEntries(ids.map((id) => [id, true])) } })),
+      deleteNotis: (ids) => set((s) => ({ notiDeleted: { ...s.notiDeleted, ...Object.fromEntries(ids.map((id) => [id, true])) } })),
       saveSettings: (settings) => set({ settings }),
       verifyRegion: (region) => set((s) => ({ settings: { ...s.settings, region }, regionVerify: { region, at: Date.now() } })),
       reset: () => set(initial()),
@@ -155,7 +161,7 @@ export const useLifeStore = create<LifeData & LifeActions>()(
     {
       name: 'zip-life',
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       // v1 → v2: 따로 저장하던 할 일(todos)을 오늘 날짜 일정으로 옮김
       migrate: (saved, version) => {
         const s = (saved ?? {}) as Partial<LifeData> & { todos?: Array<{ id: number; text: string; done: boolean }> }
@@ -163,6 +169,11 @@ export const useLifeStore = create<LifeData & LifeActions>()(
           const moved = todosToEvents(s.todos).filter((t) => !(s.events ?? []).some((e) => e.id === t.id))
           s.events = [...(s.events ?? []), ...moved]
           delete s.todos
+        }
+        // v2 → v3: 시험 삼아 지우거나 읽어 둔 알림을 되돌려 예시 알림을 다시 채움 (한 번만)
+        if (version < 3) {
+          s.notiRead = {}
+          s.notiDeleted = {}
         }
         return s as LifeData
       },
