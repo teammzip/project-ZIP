@@ -41,7 +41,7 @@ const colorOf = (cats: Category[], name: string) => cats.find((c) => c.name === 
 
 /** 수입 · 기타 지출 기록: 월별 보기, 분류별 합계, 기록 추가 · 삭제 (두 화면이 모양이 같아서 하나로 씀)
  * - PC: 왼쪽 목록 · 그래프, 오른쪽 기록하기 폼
- * - 모바일: 맨 위에 빠른 기록(금액 크게 · 종류 칩 · 날짜 · 메모는 작게) → 아래 합계 · 그래프 · 목록 */
+ * - 모바일: 합계 · 그래프 아래 "+ ○○ 기록하기" → 누르면 그 자리에 빠른 기록(금액 크게 · 종류 칩 · 날짜 · 메모는 작게) → 아래 목록 */
 export function MoneyLog({ kind }: { kind: Kind }) {
   const t = TEXT[kind]
   const cats = kind === 'income' ? INCOME_CATS : SPEND_CATS
@@ -56,6 +56,7 @@ export function MoneyLog({ kind }: { kind: Kind }) {
   const [monthKey, setMonthKey] = useState(thisMonth)
   const [form, setForm] = useState({ date: todayStr(), cat: cats[0].name, amount: '', memo: '' })
   const [memoOpen, setMemoOpen] = useState(false)
+  const [quickOpen, setQuickOpen] = useState(false)
   const [saved, setSaved] = useState('')
 
   // 월 선택: 기록이 있는 달 + 이번 달 (최근 달이 위로)
@@ -84,6 +85,7 @@ export function MoneyLog({ kind }: { kind: Kind }) {
     setMonthKey(form.date.slice(0, 7)) // 기록한 날짜의 달로 이동해서 바로 보이게
     setForm((f) => ({ ...f, amount: '', memo: '' }))
     setMemoOpen(false)
+    setQuickOpen(false)
     setSaved(`✅ ${form.cat} ${won(amount)} 기록했어요`)
   }
   const today = todayStr()
@@ -92,60 +94,6 @@ export function MoneyLog({ kind }: { kind: Kind }) {
 
   return (
     <div className={common.layout}>
-      {/* 모바일 전용 빠른 기록 */}
-      <form className={styles.quick} onSubmit={submit} aria-label={t.formTitle}>
-        <b className={styles.quickTitle}>{t.quickTitle}</b>
-        <label className={styles.quickAmount}>
-          <input
-            inputMode="numeric"
-            value={form.amount ? Number(form.amount).toLocaleString('ko-KR') : ''}
-            onChange={(e) => {
-              const digits = e.target.value.replace(/\D/g, '').slice(0, String(t.max).length)
-              setForm({ ...form, amount: digits && String(Math.min(Number(digits), t.max)) })
-              setSaved('')
-            }}
-            placeholder="0"
-            aria-label="금액 (원)"
-          />
-          <span>원</span>
-        </label>
-        <div className={styles.quickCats} role="radiogroup" aria-label={t.catLabel}>
-          {cats.map((c) => (
-            <button
-              key={c.name}
-              type="button"
-              role="radio"
-              aria-checked={form.cat === c.name}
-              className={cx(styles.quickCat, form.cat === c.name && styles.on)}
-              style={cssVar({ '--c': c.color })}
-              onClick={() => setForm({ ...form, cat: c.name })}
-            >
-              {c.name}
-            </button>
-          ))}
-        </div>
-        {memoOpen && <input className={cx(common.input, styles.quickMemo)} value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} maxLength={30} placeholder={t.memoPh} aria-label="메모" autoFocus />}
-        <div className={styles.quickBar}>
-          <label className={styles.quickTool}>
-            📅 {dateLabel}
-            <input type="date" value={form.date} onChange={(e) => e.target.value && setForm({ ...form, date: e.target.value })} aria-label="날짜" />
-          </label>
-          {!memoOpen && (
-            <button type="button" className={styles.quickTool} onClick={() => setMemoOpen(true)}>
-              📝 메모 +
-            </button>
-          )}
-          <Button type="submit" className={styles.quickGo} disabled={!(Number(form.amount) > 0)}>
-            기록
-          </Button>
-        </div>
-        {saved && (
-          <p className={styles.quickSaved} role="status">
-            {saved}
-          </p>
-        )}
-      </form>
-
       <Card
         title={`${Number(monthKey.slice(5))}월 ${t.title}`}
         actions={
@@ -194,6 +142,88 @@ export function MoneyLog({ kind }: { kind: Kind }) {
               ))}
             </ul>
           </div>
+        )}
+
+        {/* 모바일: 그래프 아래 "+ ○○ 기록하기" → 누르면 그 자리에 빠른 기록 */}
+        {quickOpen ? (
+          <form className={styles.quick} onSubmit={submit} aria-label={t.formTitle}>
+            <div className={styles.quickHead}>
+              <b className={styles.quickTitle}>{t.quickTitle}</b>
+              <button type="button" className={styles.quickX} onClick={() => setQuickOpen(false)} aria-label="기록 닫기">
+                ✕
+              </button>
+            </div>
+            <label className={styles.quickAmount}>
+              <input
+                inputMode="numeric"
+                value={form.amount ? Number(form.amount).toLocaleString('ko-KR') : ''}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, String(t.max).length)
+                  setForm({ ...form, amount: digits && String(Math.min(Number(digits), t.max)) })
+                  setSaved('')
+                }}
+                placeholder="0"
+                aria-label="금액 (원)"
+              />
+              <span>원</span>
+            </label>
+            <div className={styles.quickCats} role="radiogroup" aria-label={t.catLabel}>
+              {cats.map((c) => (
+                <button
+                  key={c.name}
+                  type="button"
+                  role="radio"
+                  aria-checked={form.cat === c.name}
+                  className={cx(styles.quickCat, form.cat === c.name && styles.on)}
+                  style={cssVar({ '--c': c.color })}
+                  onClick={() => setForm({ ...form, cat: c.name })}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+            {memoOpen && (
+              <input
+                className={cx(common.input, styles.quickMemo)}
+                value={form.memo}
+                onChange={(e) => setForm({ ...form, memo: e.target.value })}
+                maxLength={30}
+                placeholder={t.memoPh}
+                aria-label="메모"
+                autoFocus
+              />
+            )}
+            <div className={styles.quickBar}>
+              <label className={styles.quickTool}>
+                📅 {dateLabel}
+                <input type="date" value={form.date} onChange={(e) => e.target.value && setForm({ ...form, date: e.target.value })} aria-label="날짜" />
+              </label>
+              {!memoOpen && (
+                <button type="button" className={styles.quickTool} onClick={() => setMemoOpen(true)}>
+                  📝 메모 +
+                </button>
+              )}
+              <Button type="submit" className={styles.quickGo} disabled={!(Number(form.amount) > 0)}>
+                기록
+              </Button>
+            </div>
+            {saved && (
+              <p className={styles.quickSaved} role="status">
+                {saved}
+              </p>
+            )}
+          </form>
+        ) : (
+          <>
+            <button type="button" className={styles.quickOpen} onClick={() => setQuickOpen(true)}>
+              ＋ {t.formTitle}
+            </button>
+            {saved && (
+              <p className={cx(styles.quickSaved, styles.quickSavedOut)} role="status">
+                {saved}
+              </p>
+            )}
+          </>
         )}
 
         {rows.map((r) => {
