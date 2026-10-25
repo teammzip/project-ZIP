@@ -152,11 +152,11 @@ function BottomNav() {
   return (
     <nav className={styles.bottomNav} aria-label="하단 메뉴">
       {BOTTOM_ITEMS.map((item) =>
-        item.icon === 'photo' ? (
-          // 가운데 사진: 메뉴 위로 솟은 큰 동그라미 버튼 (글자는 스크린리더만)
-          <NavLink key={item.to} to={item.to} className={({ isActive }) => cx(styles.bottomPhoto, isActive && styles.photoOn)} aria-label="사진 찍고 물어보기">
+        item.to === '/' ? (
+          // 가운데 홈: 메뉴 위로 솟은 큰 파란 동그라미 버튼 (글자는 스크린리더만)
+          <NavLink key={item.to} to={item.to} end className={({ isActive }) => cx(styles.bottomPhoto, isActive && styles.photoOn)} aria-label={item.label}>
             <span className={styles.photoCircle}>
-              <NavIcon name="photo" size={28} />
+              <NavIcon name={item.icon} size={28} />
             </span>
           </NavLink>
         ) : (
