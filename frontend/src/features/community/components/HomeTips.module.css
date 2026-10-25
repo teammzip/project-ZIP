@@ -1,0 +1,41 @@
+/* 홈 "자취 꿀팁 게시글" 카드 */
+.tip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.tip:last-child {
+  border-bottom: 0;
+}
+
+.tip:hover b {
+  color: var(--color-primary);
+}
+
+.thumb {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  font-size: 26px;
+}
+
+.tipInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.tipInfo b {
+  display: block;
+  font-size: 14px;
+}
+
+.tipInfo small {
+  font-size: 12px;
+  color: var(--color-muted);
+}
