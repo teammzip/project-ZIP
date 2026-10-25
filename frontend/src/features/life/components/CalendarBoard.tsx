@@ -3,12 +3,12 @@ import { useSearchParams } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { Button, Card, Segmented } from '@/components/ui'
 import { cx } from '@/lib/cx'
-import { DOW, dayDiff, fmt, monthDay, pad, todayStr } from '@/lib/date'
+import { DOW, fmt, monthDay, pad, todayStr } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
 import common from '@/styles/common.module.css'
 import { trashIco } from '../data/catalog'
 import { UNCATEGORIZED, evColor } from '../data/presets'
-import { isTrash, nextRentDate, sortEvents, trashEventsBetween, weekRange } from '../derive'
+import { isTrash, sortEvents, trashEventsBetween, weekRange } from '../derive'
 import { useLifeStore } from '../store'
 import type { CalEvent, TrashEvent } from '../types'
 import cal from './calendar.module.css'
@@ -20,7 +20,7 @@ export type CalMode = 'today' | 'week' | 'day' | 'all'
 const MODES: CalMode[] = ['today', 'week', 'day', 'all']
 
 /** 일정 = 할 일 (팀장님 시안 variants/app 의 캘린더와 같은 구성)
- * - 왼쪽: 큰 달력(월간 · 주간, 칸 안에 일정 막대) + 알림(다가오는 일)
+ * - 왼쪽: 큰 달력(월간 · 주간, 칸 안에 일정 막대)
  * - 오른쪽: 일정 기록하기(카테고리 항목 버튼 → 달력에서 날짜 누르기 / 직접 입력) + 할 일 목록
  * ?mode=today|week|day|all 로 열면 그 목록 보기로 시작 (홈 카드에서 씀) */
 export function CalendarBoard() {
@@ -103,7 +103,6 @@ export function CalendarBoard() {
           onShift={shift}
           onToday={() => pick(today)}
         />
-        <UpcomingCard />
       </div>
       <div className={common.col}>
         <RecordCard
@@ -432,43 +431,5 @@ function EditRow({ ev, onDone }: { ev: CalEvent; onDone: (saved: CalEvent | null
         </Button>
       </div>
     </li>
-  )
-}
-
-/** 달력 아래 "알림"(다가오는 일): 월세 + 7일 안의 일정(끝낸 건 빼고) · 쓰레기 배출 */
-function UpcomingCard() {
-  const { events, settings } = useLifeStore(useShallow((s) => ({ events: s.events, settings: s.settings })))
-  const now = useToday()
-  const end = new Date(now)
-  end.setDate(end.getDate() + 7)
-  const rdiff = dayDiff(fmt(nextRentDate(settings.rentDay)))
-  const upcoming = sortEvents<CalEvent | TrashEvent>([...events, ...trashEventsBetween(todayStr(), fmt(end))])
-    .map((ev) => ({ ev, diff: dayDiff(ev.date) }))
-    .filter(({ ev, diff }) => diff >= 0 && diff <= 7 && (isTrash(ev) || !ev.done))
-  const rows = [
-    { key: 'rent', ico: '💸', t: '월세 납부', s: `매월 ${settings.rentDay}일 · ${settings.rent}만원`, b: rdiff === 0 ? '오늘' : `D-${rdiff}`, hot: rdiff <= 3 },
-    ...upcoming.map(({ ev, diff }) => ({
-      key: String(ev.id),
-      ico: isTrash(ev) ? trashIco(ev.title) : '📌',
-      t: ev.title,
-      s: `${monthDay(ev.date)} ${ev.time || '종일'}${isTrash(ev) ? ` · ${ev.detail}` : ''}`,
-      b: diff === 0 ? '오늘' : `D-${diff}`,
-      hot: diff <= 1,
-    })),
-  ]
-
-  return (
-    <Card title="알림">
-      {rows.map((r) => (
-        <div key={r.key} className={common.noti}>
-          <div className={common.notiIco}>{r.ico}</div>
-          <div className={common.notiText}>
-            <b>{r.t}</b>
-            <small>{r.s}</small>
-          </div>
-          <span className={cx(common.badge, r.hot && common.badgeHot)}>{r.b}</span>
-        </div>
-      ))}
-    </Card>
   )
 }

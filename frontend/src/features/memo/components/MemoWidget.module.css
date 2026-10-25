@@ -273,8 +273,14 @@
 }
 
 @media (max-width: 900px) {
+  /* 모바일·태블릿: 쪽지는 가로로 2장까지 (3번째는 숨김) */
   .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 14px 14px 4px;
+  }
+
+  .grid > :nth-child(n + 3) {
+    display: none;
   }
 
   .add {
@@ -282,12 +288,8 @@
   }
 }
 
-/* 좁은 화면: 쪽지를 한 줄에 한 장씩 */
+/* 좁은 화면: 쪽지 높이를 줄임 */
 @media (max-width: 700px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .note,
   .emptyNote {
     min-height: 0;
