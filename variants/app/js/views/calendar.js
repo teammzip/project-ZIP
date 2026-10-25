@@ -288,29 +288,61 @@ $('modeWeek').addEventListener('click', function () { setMode('week'); });
 $('modeDay').addEventListener('click', function () { setMode('day'); });
 $('modeAll').addEventListener('click', function () { setMode('all'); });
 
-/* 일정 기록하기 ① 카테고리 항목 버튼 → ② 달력에서 날짜 누르기(또는 오늘·이번 주 버튼)로 추가 */
+/* 일정 기록하기
+ * - 탭 두 개: ⚡ 빠른 추가 | ✏️ 직접 입력
+ * - 빠른 추가: 카테고리 탭(색 점 = 달력 막대 색) → 그 카테고리의 항목 타일 → 달력에서 날짜 누르기(또는 오늘 · 이번 주 버튼) */
+var catIdx = 0;   // 지금 보는 카테고리
+function setRecTab(tab) {
+  var quick = tab === 'quick';
+  $('recQuick').hidden = !quick; $('evCustom').hidden = quick;
+  $('recTabQuick').classList.toggle('on', quick); $('recTabCustom').classList.toggle('on', !quick);
+  $('recTabQuick').setAttribute('aria-selected', quick); $('recTabCustom').setAttribute('aria-selected', !quick);
+  if (!quick) setPick(null);
+}
+$('recTabQuick').addEventListener('click', function () { setRecTab('quick'); });
+$('recTabCustom').addEventListener('click', function () { setRecTab('custom'); $('evTitle').focus(); });
+$('recGoQuick').addEventListener('click', function () { setRecTab('quick'); });
+
 function renderPresets() {
-  var box = $('evCats'); box.textContent = '';
-  EV_PRESETS.forEach(function (cat) {
-    var g = el('div', 'ev-cat');
-    g.appendChild(el('h3', null, cat.ico + ' ' + cat.name));
-    var row = el('div', 'chips');
-    cat.items.forEach(function (name) {
-      var b = el('button', 'chip' + (pick === name ? ' on' : ''), name);
-      b.type = 'button';
-      b.addEventListener('click', function () { setPick(pick === name ? null : name); });
-      row.appendChild(b);
-    });
-    g.appendChild(row);
-    box.appendChild(g);
+  // 카테고리 탭
+  var tabs = $('recCats'); tabs.textContent = '';
+  EV_PRESETS.forEach(function (cat, i) {
+    var t = el('button', 'rec-cat' + (i === catIdx ? ' on' : ''));
+    t.type = 'button'; t.setAttribute('role', 'tab'); t.setAttribute('aria-selected', i === catIdx);
+    t.style.setProperty('--c', CAT_COLORS[i % CAT_COLORS.length]);
+    t.appendChild(el('span', 'rec-cat-ico', cat.ico));
+    t.appendChild(document.createTextNode(cat.name));
+    if (pick && cat.items.indexOf(pick) >= 0) t.appendChild(el('i', 'rec-cat-dot'));   // 골라 둔 항목이 이 카테고리에 있음
+    t.addEventListener('click', function () { catIdx = i; renderPresets(); });
+    tabs.appendChild(t);
+  });
+  // 고른 카테고리의 항목 타일
+  var cat = EV_PRESETS[catIdx], box = $('evCats'); box.textContent = '';
+  box.style.setProperty('--c', CAT_COLORS[catIdx % CAT_COLORS.length]);
+  cat.items.forEach(function (name) {
+    var on = pick === name;
+    var b = el('button', 'rec-item' + (on ? ' on' : ''));
+    b.type = 'button'; b.setAttribute('aria-pressed', on);
+    b.appendChild(el('span', 'rec-check', on ? '✓' : ''));
+    b.appendChild(el('span', 'rec-item-t', name));
+    b.addEventListener('click', function () { setPick(on ? null : name); });
+    box.appendChild(b);
   });
 }
-// 항목을 고르거나(이름) 해제(null)하고 안내 줄을 맞춤
+// 항목을 고르거나(이름) 해제(null)하고 안내 · 단계 표시를 맞춤
 function setPick(name) {
   pick = name;
   $('calGrid').classList.toggle('picking', !!pick);   // 항목을 골라 두면 달력 칸에 "+" 커서
   $('pickBar').hidden = !pick;
-  if (pick) { $('pickName').textContent = '「' + pick + '」'; $('pickNote').textContent = '달력에서 날짜를 눌러 주세요.'; }
+  var steps = $('recSteps').children;
+  steps[0].classList.toggle('done', !!pick); steps[0].classList.toggle('on', !pick);
+  steps[1].classList.toggle('on', !!pick);
+  if (pick) {
+    var ci = 0; EV_PRESETS.forEach(function (c, i) { if (c.items.indexOf(pick) >= 0) ci = i; });
+    $('pickBar').style.setProperty('--c', CAT_COLORS[ci % CAT_COLORS.length]);
+    $('pickName').textContent = pick;
+    $('pickNote').textContent = '왼쪽 달력에서 날짜를 눌러 주세요. 여러 날을 눌러도 돼요.';
+  }
   renderPresets();
 }
 // 골라 둔 항목을 이 날짜에 일정으로 추가 (같은 날 같은 이름이 이미 있으면 건너뜀)
@@ -318,7 +350,7 @@ function addPicked(date) {
   var dup = state.events.some(function (ev) { return ev.date === date && ev.title === pick; });
   if (dup) { $('pickNote').textContent = date.slice(5).replace('-', '월 ') + '일에 이미 있어요.'; return; }
   addEvent(pick, date, $('pickTime').value);
-  $('pickNote').textContent = date.slice(5).replace('-', '월 ') + '일에 추가했어요. 다른 날짜도 눌러 추가할 수 있어요.';
+  $('pickNote').textContent = '✅ ' + date.slice(5).replace('-', '월 ') + '일에 추가했어요. 다른 날짜도 눌러 추가할 수 있어요.';
 }
 $('pickToday').addEventListener('click', function () { if (pick) addPicked(todayStr); });
 $('pickWeek').addEventListener('click', function () { if (pick) addPicked(weekRange(today).end); });
@@ -433,6 +465,6 @@ $('searchForm').addEventListener('submit', function (e) {
 $('searchInput').addEventListener('input', function () {
   if (!this.value.trim() && query) { query = ''; mode = 'day'; if (!$('view-calendar').hidden) renderEvList(); }
 });
-$('btnAdd').addEventListener('click', function () { showView('calendar'); });   // 헤더 + 버튼: 일정 화면으로 (항목 버튼에서 고르거나 직접 입력)
+$('btnAdd').addEventListener('click', function () { showView('calendar'); setRecTab('custom'); $('evTitle').focus(); });   // 헤더 + 버튼: 일정 화면의 직접 입력으로
 
 registerView('calendar', renderCalendarAll);

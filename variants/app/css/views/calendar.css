@@ -416,70 +416,319 @@
   border: 1px solid var(--line);
 }
 
-/* 일정 기록하기: 카테고리 항목 버튼, 선택 안내 줄, 직접 입력 */
-.pick-help {
+/* ---------- 일정 기록하기: 탭(빠른 추가 | 직접 입력) ---------- */
+.rec-head {
+  align-items: center;
+}
+
+.rec-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f1f2f7;
+}
+
+.rec-tab {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rec-tab.on {
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+}
+
+/* 단계 표시: ① 항목 고르기 → ② 달력에서 날짜 누르기 */
+.rec-steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  list-style: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.rec-steps li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rec-steps li + li::before {
+  content: '';
+  width: 18px;
+  height: 2px;
+  margin-right: 2px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.rec-steps b {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #eceef4;
+  font-size: 11px;
+}
+
+.rec-steps li.on {
+  color: var(--text);
+}
+
+.rec-steps li.on b {
+  background: var(--orange);
+  color: #fff;
+}
+
+.rec-steps li.done b {
+  background: var(--teal);
+  color: #fff;
+}
+
+/* 카테고리 탭: 색 점 = 달력 막대 색. 칸이 좁으면 다음 줄로 (숨겨지는 탭 없이) */
+.rec-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.rec-cat {
+  --c: #4a90e2;
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+
+.rec-cat:hover {
+  border-color: var(--c);
+  color: var(--text);
+}
+
+.rec-cat.on {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, #fff);
+  color: var(--text);
+}
+
+.rec-cat-ico {
+  font-size: 15px;
+}
+
+/* 골라 둔 항목이 들어 있는 카테고리 */
+.rec-cat-dot {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+/* 항목 타일 (2열): 왼쪽 색 띠 */
+.rec-items {
+  --c: #4a90e2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.rec-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--c);
+  border-radius: 10px;
+  background: #fafbfd;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  transition: transform .12s, background .12s, box-shadow .12s;
+}
+
+.rec-item:hover {
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(31, 36, 48, .08);
+  transform: translateY(-1px);
+}
+
+.rec-item.on {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 16%, #fff);
+}
+
+.rec-check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid #c9cdd8;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.rec-item.on .rec-check {
+  border-color: var(--c);
+  background: var(--c);
+}
+
+.rec-item-t {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 고른 항목 카드 */
+.pick-bar {
+  --c: #4a90e2;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--c);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--c) 8%, #fff);
+  animation: pick-in .2s ease-out;
+}
+
+@keyframes pick-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.pick-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pick-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.pick-x {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .8);
   color: var(--muted);
   font-size: 12px;
-  margin-bottom: 10px;
+  cursor: pointer;
 }
 
-.ev-cat {
-  margin-bottom: 10px;
+.pick-x:hover {
+  color: var(--text);
 }
 
-.ev-cat h3 {
-  font-size: 13px;
-  margin-bottom: 6px;
+.pick-name {
+  display: block;
+  margin-top: 2px;
+  font-size: 17px;
 }
 
-.ev-cat .chips {
-  margin-bottom: 4px;
-}
-
-.pick-bar {
-  margin: 4px 0 12px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #fff7f2;
-  border: 1px solid #ffd9c7;
-}
-
-.pick-msg {
-  font-size: 13px;
-  margin-bottom: 8px;
-}
-
-.pick-msg span {
+.pick-note {
+  margin: 4px 0 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 
 .pick-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
   align-items: center;
-  font-size: 12px;
+  gap: 8px;
 }
 
-.pick-row label {
+.pick-time {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+}
+
+.pick-time input {
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  background: transparent;
 }
 
 .pick-row .btn-line {
-  padding: 6px 10px;
+  padding: 7px 12px;
   font-size: 12px;
+  background: #fff;
 }
 
-.ev-custom {
-  margin-top: 6px;
+/* 직접 입력 */
+.rec-form .btn-primary {
+  margin-top: 4px;
 }
 
-.ev-custom summary {
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
+.rec-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.rec-tip .link-btn {
+  font-size: 12px;
+  font-weight: 700;
   color: var(--purple);
-  margin-bottom: 8px;
+}
+
+@media (max-width: 700px) {
+  .rec-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .rec-tabs {
+    width: 100%;
+  }
+
+  .rec-tab {
+    flex: 1;
+  }
 }
