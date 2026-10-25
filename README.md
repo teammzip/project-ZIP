@@ -23,21 +23,13 @@ npm run dev      # → 브라우저에서 http://localhost:3000
 - 데모 계정 `zipdemo` / `zip12345` 로 바로 둘러볼 수 있어요. 서버·DB 없이 동작해요.
 - 자세한 내용은 [frontend/README.md](frontend/README.md)를 보세요.
 
-**HTML 시안 (참고용)**: VS Code의 `Live Server`(Go Live)로 `compare.html`을 열면 위쪽 버튼으로 화면을 골라 볼 수 있어요.
-파일을 더블클릭해서 열면 동작하지 않아요.
-
 ---
 
 ## 폴더 한눈에 보기
 
 ```
 frontend/      ★ 실제 앱 (React + TypeScript)
-variants/      HTML 시안: app(메인 앱) · start-pc · start-mobile · account(회원가입·찾기) · admin(관리자: 회원·게시글 관리)
-login/         시작 화면의 로그인 창 공통 코드 (약관 문구는 variants/account/terms.js)
-shared/        시안 공통: 모바일 스크롤 · 계정(zip-password.js) · 이용 정지 기록(zip-ban.js)
 db/            DB 설계: 표 만드는 SQL(schema.sql) + 한글 설명서(README.md)
-images/        로고 · 아이콘 · 로봇 · 집 그림
-compare.html   시안을 버튼으로 골라 보는 미리보기 (개발용)
 ```
 
 ---
@@ -51,7 +43,7 @@ compare.html   시안을 버튼으로 골라 보는 미리보기 (개발용)
 | PC · 모바일 화면, 모바일 인트로 | 실제 AI 연동 |
 | 이용약관 · 개인정보 처리방침 (초안) | 약관 법률 검토, `[ ]` 칸 채우기 |
 | DB 설계 (표 35개 + 집계 VIEW 2개, MySQL 8, `db/`) · API 약속 (`frontend/API.md`, DB 기준으로 전 영역 정리) | 백엔드 API 만들기, DB 남은 차이 정리 (`events` 완료 칸, 탈퇴 후 재가입 막기) |
-| 관리자 화면 · 이용 정지 (React `/admin`, 시안 `variants/admin`) | 관리자 기능을 서버로 옮기기 |
+| 관리자 화면 · 이용 정지 (React `/admin`) | 관리자 기능을 서버로 옮기기 |
 
 ---
 
@@ -62,7 +54,7 @@ compare.html   시안을 버튼으로 골라 보는 미리보기 (개발용)
 ```
 main          최종 결과물
  └─ dev       모두의 작업을 모으는 곳 (기본 브랜치)
-     ├─ test      팀장 — HTML 시안 (variants · login · compare.html)
+     ├─ test      팀장 — 화면 디자인 · 기획
      ├─ front     프론트엔드 — React 앱 (frontend/)
      └─ backend   백엔드 — 서버 API · DB
 ```
@@ -71,7 +63,7 @@ main          최종 결과물
 |---|---|---|
 | `main` | 팀 전체 | 최종 제출 · 배포용. 마지막에 `dev`에서 한 번만 머지 |
 | `dev` | 팀 전체 | 작업을 모으는 곳. **PR로만** 머지 |
-| `test` | 팀장 | 화면 시안(HTML) 작업 |
+| `test` | 팀장 | 화면 디자인 · 기획 |
 | `front` | 프론트엔드 | React 앱(`frontend/`) 작업 |
 | `backend` | 백엔드 | 서버 · DB 작업. 프론트와 맞출 API는 [frontend/API.md](frontend/API.md) |
 
