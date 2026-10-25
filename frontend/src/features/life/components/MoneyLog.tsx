@@ -15,7 +15,7 @@ type Kind = 'income' | 'spend'
 const TEXT: Record<Kind, { title: string; topLabel: string; formTitle: string; catLabel: string; memoPh: string; empty: string; note: string; max: number }> = {
   income: {
     title: '수입',
-    topLabel: '가장 큰 수입',
+    topLabel: '',
     formTitle: '수입 기록하기',
     catLabel: '수입 종류',
     memoPh: '예) 주말 카페 알바, 중고거래',
@@ -60,6 +60,14 @@ export function MoneyLog({ kind }: { kind: Kind }) {
   const total = rows.reduce((s, r) => s + r.amount, 0)
   const byCat: Record<string, number> = {}
   for (const r of rows) byCat[r.cat] = (byCat[r.cat] ?? 0) + r.amount
+  // 분류별 비율 원형 그래프 (큰 분류부터 시계 방향)
+  const catRows = cats.filter((c) => byCat[c.name]).sort((a, b) => byCat[b.name] - byCat[a.name])
+  let at = 0
+  const stops = catRows.map((c) => {
+    const from = at
+    at += (byCat[c.name] / total) * 100
+    return `${c.color} ${from}% ${at}%`
+  })
   const topCat = Object.keys(byCat).sort((a, b) => byCat[b] - byCat[a])[0]
 
   const submit = (e: FormEvent) => {
@@ -94,21 +102,34 @@ export function MoneyLog({ kind }: { kind: Kind }) {
             <small>기록</small>
             <b>{rows.length}건</b>
           </div>
-          <div>
-            <small>{t.topLabel}</small>
-            <b>{topCat ? `${topCat} ${Math.round((byCat[topCat] / total) * 100)}%` : '-'}</b>
-          </div>
+          {t.topLabel && (
+            <div>
+              <small>{t.topLabel}</small>
+              <b>{topCat ? `${topCat} ${Math.round((byCat[topCat] / total) * 100)}%` : '-'}</b>
+            </div>
+          )}
         </div>
 
-        <div className={styles.catChips}>
-          {cats
-            .filter((c) => byCat[c.name])
-            .map((c) => (
-              <span key={c.name} className={common.dotChip} style={cssVar({ '--c': c.color })}>
-                {c.name} {won(byCat[c.name])}
-              </span>
-            ))}
-        </div>
+        {total > 0 && (
+          <div className={styles.moneyDonutWrap}>
+            <div className={styles.moneyDonut} style={{ background: `conic-gradient(${stops.join(', ')})` }} role="img" aria-label={`${t.title} 합계 ${won(total)}`}>
+              <div className={styles.moneyDonutCenter}>
+                <small>총 {kind === 'income' ? '수입' : '지출'}</small>
+                <b>{won(total)}</b>
+              </div>
+            </div>
+            <ul className={styles.moneyLegend}>
+              {catRows.map((c) => (
+                <li key={c.name} style={cssVar({ '--c': c.color })}>
+                  {c.name}
+                  <span>
+                    {Math.round((byCat[c.name] / total) * 100)}% · {won(byCat[c.name])}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {rows.map((r) => {
           const d = new Date(`${r.date}T00:00:00`)
