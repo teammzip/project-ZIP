@@ -8,13 +8,15 @@ import styles from './Profile.module.css'
 type Props = {
   name: string
   region: string
+  /** 동네 인증을 했으면 동네 옆에 ✔ 인증 */
+  regionVerified?: boolean
   /** 이름 아래 작은 배지 (예: 로그인 방식) */
   badge?: ReactNode
   onEdit: () => void
 }
 
 /** 내 정보 맨 위 프로필 카드: 사진(누르면 편집), 닉네임, 한 줄 소개, 동네 */
-export function ProfileHero({ name, region, badge, onEdit }: Props) {
+export function ProfileHero({ name, region, regionVerified, badge, onEdit }: Props) {
   const bio = useProfileStore((s) => s.bio)
   return (
     <section className={styles.hero}>
@@ -30,7 +32,10 @@ export function ProfileHero({ name, region, badge, onEdit }: Props) {
       <div className={styles.id}>
         <b>{name}</b>
         <p>{bio || DEFAULT_BIO}</p>
-        <small>📍 {region || '동네를 정해 주세요'}</small>
+        <small>
+          📍 {region || '동네를 정해 주세요'}
+          {regionVerified && <em className={styles.verified}>✔ 인증</em>}
+        </small>
         {badge}
       </div>
       <Button variant="line" className={styles.edit} onClick={onEdit}>

@@ -1,0 +1,63 @@
+/* 동네 인증 창 */
+.box {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 6px 2px 2px;
+  text-align: center;
+}
+
+.pin {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #eaf3ff;
+  font-size: 30px;
+}
+
+.box h3 {
+  font-size: 19px;
+}
+
+.box p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #3c4254;
+}
+
+.current {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--color-bg);
+}
+
+.current span,
+.current small {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.current b {
+  font-size: 16px;
+}
+
+.box .error {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff1f3;
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 8px;
+  width: 100%;
+}

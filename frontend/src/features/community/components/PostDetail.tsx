@@ -17,10 +17,19 @@ export function NameAvatar({ name, size = 36 }: { name: string; size?: number })
   )
 }
 
-type Props = { post: Post; author: string; locked: boolean; onBack: () => void; onDeleted: () => void }
+type Props = {
+  post: Post
+  author: string
+  locked: boolean
+  /** 동네 인증을 했는지 (안 했으면 댓글 · 공감 대신 인증 창) */
+  verified: boolean
+  onVerify: () => void
+  onBack: () => void
+  onDeleted: () => void
+}
 
 /** 글 상세 (에브리타임처럼): 작성자 줄 → 제목 · 본문 → 사진 → 공감 · 댓글 수 → 댓글 → 아래 댓글 입력줄. 내 글이면 수정 · 삭제 */
-export function PostDetail({ post, author, locked, onBack, onDeleted }: Props) {
+export function PostDetail({ post, author, locked, verified, onVerify, onBack, onDeleted }: Props) {
   const { toggleLike, removePost, updatePost, addComment, updateComment, removeComment } = useCommunityStore()
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
@@ -74,7 +83,7 @@ export function PostDetail({ post, author, locked, onBack, onDeleted }: Props) {
       {!!post.attachments?.length && <Attachments files={post.attachments} />}
 
       <div className={styles.reactions}>
-        <button type="button" className={cx(styles.likeBtn, post.liked && styles.on)} onClick={() => toggleLike(post.id)} disabled={locked} aria-pressed={post.liked}>
+        <button type="button" className={cx(styles.likeBtn, post.liked && styles.on)} onClick={() => (verified ? toggleLike(post.id) : onVerify())} disabled={locked} aria-pressed={post.liked}>
           {post.liked ? '♥' : '♡'} 공감 {post.likes}
         </button>
         <span className={styles.cmtCount}>💬 댓글 {post.comments.length}</span>
@@ -126,21 +135,20 @@ export function PostDetail({ post, author, locked, onBack, onDeleted }: Props) {
         {!post.comments.length && <li className={styles.noComment}>첫 댓글을 남겨 보세요.</li>}
       </ul>
 
-      <form className={styles.commentBar} onSubmit={submitComment}>
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder={locked ? '이용 정지 중이에요' : '댓글을 입력하세요'} maxLength={100} aria-label="댓글" disabled={locked} />
-        <button type="submit" disabled={locked || !text.trim()} aria-label="댓글 등록">
-          ↑
+      {!verified && !locked ? (
+        <button type="button" className={styles.verifyBar} onClick={onVerify}>
+          📍 동네 인증하고 댓글 남기기
         </button>
-      </form>
+      ) : (
+        <form className={styles.commentBar} onSubmit={submitComment}>
+          <input value={text} onChange={(e) => setText(e.target.value)} placeholder={locked ? '이용 정지 중이에요' : '댓글을 입력하세요'} maxLength={100} aria-label="댓글" disabled={locked} />
+          <button type="submit" disabled={locked || !text.trim()} aria-label="댓글 등록">
+            ↑
+          </button>
+        </form>
+      )}
 
-      <PostComposer
-        open={editing}
-        onClose={() => setEditing(false)}
-        initial={post}
-        locked={locked}
-        region={post.region && shortRegion(post.region)}
-        onSave={(draft) => updatePost(post.id, draft)}
-      />
+      <PostComposer open={editing} onClose={() => setEditing(false)} initial={post} locked={locked} region={post.region && shortRegion(post.region)} onSave={(draft) => updatePost(post.id, draft)} />
     </article>
   )
 }

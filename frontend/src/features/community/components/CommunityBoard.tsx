@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { RegionVerifyDialog, useRegionVerify } from '@/features/life'
 import { banMessage, useActiveBan } from '@/features/moderation'
 import { cx } from '@/lib/cx'
 import { relTime } from '@/lib/date'
@@ -35,7 +36,8 @@ const SCOPES: Array<{ value: Scope; label: string }> = [
  * - 머리말: "○○구 동네생활" + 동네 범위(우리 동네 · 주변 동네 · 전체) + 검색
  * - 주제 칩 → 글 목록(제목 · 본문 두 줄 · 동네 · 주제 · 시간 · 공감 · 댓글, 사진이 있으면 오른쪽 썸네일)
  * - PC 오른쪽: 글쓰기 · 지금 뜨는 동네 이야기 1~5위 · 인기 검색어 / 모바일: 떠 있는 + 글쓰기
- * - 글 상세는 ?post=id, 글쓰기 · 수정은 전용 화면(PostComposer). 이용 정지 중이면 쓰기 동작을 막음 */
+ * - 글 상세는 ?post=id, 글쓰기 · 수정은 전용 화면(PostComposer). 이용 정지 중이면 쓰기 동작을 막음
+ * - 글쓰기 · 댓글 · 공감은 동네 인증을 한 사람만 (안 했으면 인증 창을 띄움). 읽기는 누구나 */
 export function CommunityBoard({ region, author, uid }: Props) {
   const { posts, addPost } = useCommunityStore()
   const ban = useActiveBan(author, uid)
@@ -44,6 +46,9 @@ export function CommunityBoard({ region, author, uid }: Props) {
   const [cat, setCat] = useState('전체')
   const [query, setQuery] = useState('')
   const [writing, setWriting] = useState(false)
+  // 동네 인증 창 (인증을 마치면 하려던 동작을 이어서: 글쓰기면 글쓰기 화면 열기)
+  const [verifyFor, setVerifyFor] = useState<'write' | 'act' | null>(null)
+  const { verified } = useRegionVerify()
   const selectedId = Number(params.get('post')) || null
   const locked = !!ban
   const place = region ? shortRegion(region) : '우리 동네'
@@ -51,9 +56,7 @@ export function CommunityBoard({ region, author, uid }: Props) {
   const near = NEARBY[region] ?? []
   const inScope = (p: Post) => !region || scope === 'all' || (scope === 'near' ? near.includes(p.region) : p.region === region)
   const q = query.trim().toLowerCase()
-  const items = posts
-    .filter((p) => inScope(p) && (cat === '전체' || p.cat === cat) && (!q || `${p.title} ${p.body}`.toLowerCase().includes(q)))
-    .sort((a, b) => b.ts - a.ts)
+  const items = posts.filter((p) => inScope(p) && (cat === '전체' || p.cat === cat) && (!q || `${p.title} ${p.body}`.toLowerCase().includes(q))).sort((a, b) => b.ts - a.ts)
   // 지금 뜨는 이야기: 공감 + 댓글×2 가 많은 순 (지금 보는 동네 범위 안에서)
   const hot = posts
     .filter(inScope)
@@ -67,7 +70,11 @@ export function CommunityBoard({ region, author, uid }: Props) {
     setParams(id ? { post: String(id) } : {})
     window.scrollTo(0, 0)
   }
-  const startWrite = () => !locked && setWriting(true)
+  const startWrite = () => {
+    if (locked) return
+    if (!verified) return setVerifyFor('write')
+    setWriting(true)
+  }
   const scopeNote = !region
     ? '내 정보에서 우리 동네를 입력하면 동네별로 모아 볼 수 있어요.'
     : scope === 'near'
@@ -88,7 +95,7 @@ export function CommunityBoard({ region, author, uid }: Props) {
         )}
 
         {selected ? (
-          <PostDetail post={selected} author={author} locked={locked} onBack={() => open(null)} onDeleted={() => open(null)} />
+          <PostDetail post={selected} author={author} locked={locked} verified={verified} onVerify={() => setVerifyFor('act')} onBack={() => open(null)} onDeleted={() => open(null)} />
         ) : (
           <>
             {/* 머리말 */}
@@ -105,13 +112,30 @@ export function CommunityBoard({ region, author, uid }: Props) {
                   ))}
                 </div>
               </div>
-              <p className={styles.scopeNote}>{scopeNote}</p>
+              <p className={styles.scopeNote}>
+                {scopeNote}
+                {scope === 'here' &&
+                  region &&
+                  (verified ? (
+                    <span className={styles.verified}>✔ 인증</span>
+                  ) : (
+                    <button type="button" className={styles.verifyLink} onClick={() => setVerifyFor('act')}>
+                      동네 인증하기 ›
+                    </button>
+                  ))}
+              </p>
               <label className={styles.search}>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="11" cy="11" r="7" />
                   <path d="M21 21l-4.3-4.3" />
                 </svg>
-                <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`${scope === 'all' ? '전체' : scope === 'near' ? '주변 동네' : place} 이야기 검색`} aria-label="동네 이야기 검색" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={`${scope === 'all' ? '전체' : scope === 'near' ? '주변 동네' : place} 이야기 검색`}
+                  aria-label="동네 이야기 검색"
+                />
               </label>
             </header>
 
@@ -122,7 +146,8 @@ export function CommunityBoard({ region, author, uid }: Props) {
                   '이용 정지 중에는 글을 쓸 수 없어요'
                 ) : (
                   <>
-                    {author}님, <span className={styles.composePlace}>{place} </span>이웃에게 이야기를 남겨 보세요
+                    {author}님, <span className={styles.composePlace}>{place} </span>
+                    {verified ? '이웃에게 이야기를 남겨 보세요' : '동네 인증하고 이웃과 이야기해요'}
                   </>
                 )}
               </span>
@@ -204,6 +229,8 @@ export function CommunityBoard({ region, author, uid }: Props) {
           ＋ 글쓰기
         </button>
       )}
+
+      <RegionVerifyDialog open={!!verifyFor} onClose={() => setVerifyFor(null)} onVerified={() => verifyFor === 'write' && setWriting(true)} />
 
       <PostComposer
         open={writing}
