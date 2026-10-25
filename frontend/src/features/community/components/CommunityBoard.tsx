@@ -118,7 +118,15 @@ export function CommunityBoard({ region, author, uid }: Props) {
             {/* 새 글 쓰기 (입력창 모양) */}
             <button type="button" className={styles.composeBar} onClick={startWrite} disabled={locked}>
               <NameAvatar name={author} size={34} />
-              <span className={styles.composeText}>{locked ? '이용 정지 중에는 글을 쓸 수 없어요' : `${place} 이웃에게 이야기를 남겨 보세요`}</span>
+              <span className={styles.composeText}>
+                {locked ? (
+                  '이용 정지 중에는 글을 쓸 수 없어요'
+                ) : (
+                  <>
+                    {author}님, <span className={styles.composePlace}>{place} </span>이웃에게 이야기를 남겨 보세요
+                  </>
+                )}
+              </span>
               <b aria-hidden="true">✏️</b>
             </button>
 

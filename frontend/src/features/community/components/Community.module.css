@@ -134,6 +134,9 @@
 .composeText {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 14px;
   color: var(--color-muted);
 }
@@ -924,6 +927,11 @@
 
   .head h1 {
     font-size: 21px;
+  }
+
+  /* 글쓰기 입력줄: 좁은 화면에선 동네 이름 빼고 한 줄로 */
+  .composePlace {
+    display: none;
   }
 
   /* 동네 범위: 제목 줄 오른쪽 구석에 작게 */
