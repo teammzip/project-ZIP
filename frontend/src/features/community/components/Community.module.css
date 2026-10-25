@@ -6,11 +6,14 @@
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: 20px;
   align-items: start;
+  width: 100%;
   max-width: 1080px;
   margin: 0 auto; /* PC 에서 화면 가운데 */
 }
 
 .main {
+  /* 주제를 바꿔 글 수가 달라져도 카드 높이가 들쭉날쭉하지 않게 화면 아래까지 채움 */
+  min-height: calc(100dvh - 180px);
   min-width: 0;
   overflow: hidden;
   border-radius: var(--radius-lg);
@@ -915,32 +918,36 @@
     padding: 18px 16px 12px;
   }
 
+  .main {
+    min-height: calc(100dvh - var(--bottom-nav-height) - 160px - env(safe-area-inset-bottom));
+  }
+
   .head h1 {
     font-size: 21px;
   }
 
-  /* 동네 범위: 제목 아래 화면 너비를 꽉 채운 3칸 탭 */
+  /* 동네 범위: 제목 줄 오른쪽 구석에 작게 */
   .headTop {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .head h1 {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .scopes {
-    padding: 4px;
-    border-radius: 12px;
+    flex: none;
+    gap: 2px;
+    padding: 2px;
   }
 
   .scope {
-    flex: 1;
-    padding: 9px 0;
-    border-radius: 9px;
-    font-size: 13px;
-    text-align: center;
-  }
-
-  .scopeNote {
-    margin-top: 8px;
+    padding: 5px 8px;
+    font-size: 11px;
   }
 
   .composeBar {

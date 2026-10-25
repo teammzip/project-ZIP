@@ -14,6 +14,11 @@ body,
   min-height: 100%;
 }
 
+/* 글 수가 바뀌어 스크롤바가 생겼다 사라져도 화면 폭이 출렁이지 않게 자리를 늘 비워 둠 */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   font-family: var(--font-sans);
   background: var(--color-bg);
