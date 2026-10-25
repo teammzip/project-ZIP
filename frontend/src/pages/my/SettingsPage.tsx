@@ -36,7 +36,7 @@ type Sheet = 'profile' | 'life' | 'password' | 'reset' | 'withdraw' | null
 /* 내 정보 (compare.html 시안과 같은 구성)
  * - PC(1100px 이상): 왼쪽 = 프로필 · 월세 카드 / 오른쪽 = 이번 달 요약 · 바로 가기 · 계정·설정
  * - 모바일: 위에서부터 한 줄로
- * 프로필 편집 · 생활 정보 · 비밀번호 변경은 창으로 열고, 로그아웃 · 초기화 · 탈퇴는 계정·설정 맨 아래 작은 글씨 */
+ * 프로필 편집 · 생활 정보 · 비밀번호 변경은 창으로 열고, 로그아웃 · 초기화 · 탈퇴는 카드 밖 맨 아래 작은 글씨 */
 export function SettingsPage() {
   const user = useAuthStore((s) => s.user)
   const region = useLifeStore((s) => s.settings.region)
@@ -108,6 +108,10 @@ export function SettingsPage() {
             </li>
           </ul>
           {updateMe.isError && <p className={styles.error}>{getErrorMessage(updateMe.error)}</p>}
+        </Card>
+
+        {/* 카드 밖 맨 아래 작은 글씨 */}
+        <div className={styles.bottom}>
           <div className={styles.foot}>
             <button type="button" onClick={() => logout.mutate()} disabled={logout.isPending}>
               로그아웃
@@ -120,16 +124,10 @@ export function SettingsPage() {
             </button>
           </div>
           <LegalLinks className={styles.legal} />
-        </Card>
+        </div>
       </div>
 
-      <ProfileEditor
-        open={sheet === 'profile'}
-        onClose={close}
-        name={name}
-        onSaveName={(nickname) => updateMe.mutate({ nickname })}
-        onSaved={() => notify('프로필을 바꿨어요.')}
-      />
+      <ProfileEditor open={sheet === 'profile'} onClose={close} name={name} onSaveName={(nickname) => updateMe.mutate({ nickname })} onSaved={() => notify('프로필을 바꿨어요.')} />
 
       <Modal open={sheet === 'life'} onClose={close} title="생활 정보">
         <h3 className={styles.sheetTitle}>생활 정보</h3>

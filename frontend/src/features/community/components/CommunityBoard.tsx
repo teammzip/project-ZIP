@@ -1,15 +1,15 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Button, Card, Segmented } from '@/components/ui'
 import { banMessage, useActiveBan } from '@/features/moderation'
 import { cx } from '@/lib/cx'
 import { relTime } from '@/lib/date'
-import common from '@/styles/common.module.css'
-import { checkAttachments, MAX_ATTACHMENTS, readAttachments, STORAGE_FULL } from '../attachments'
+import { CAT_ICON, shortRegion } from '../data/display'
 import { CATEGORIES, NEARBY } from '../data/seed'
 import { useCommunityStore } from '../store'
-import type { Attachment, Post, PostDraft } from '../types'
+import type { Post } from '../types'
 import styles from './Community.module.css'
+import { PostDetail } from './PostDetail'
+import { PostComposer } from './PostEditor'
 
 type Scope = 'here' | 'near' | 'all'
 
@@ -22,361 +22,230 @@ type Props = {
   uid?: string
 }
 
-/** 커뮤니티: 동네 범위 · 분류로 글 목록 보기, 글 상세(?post=id), 좋아요 · 댓글 · 글쓰기,
- * 내 글 · 댓글 수정 · 삭제, 사진 · 파일 첨부 (백엔드 담당 시안 PR #15). 이용 정지 중이면 쓰기 동작을 막음 */
+/** 인기 검색어 (누르면 그 말로 찾아 줌) */
+const HOT_WORDS = ['세탁방', '배수구', '냉장고', '이사', '약국', '분리배출', '월세', '곰팡이']
+
+const SCOPES: Array<{ value: Scope; label: string }> = [
+  { value: 'here', label: '우리 동네' },
+  { value: 'near', label: '주변 동네' },
+  { value: 'all', label: '전체' },
+]
+
+/** 커뮤니티 "동네생활" (당근 동네생활 구성 + 에브리타임처럼 깔끔한 목록)
+ * - 머리말: "○○구 동네생활" + 동네 범위(우리 동네 · 주변 동네 · 전체) + 검색
+ * - 주제 칩 → 글 목록(제목 · 본문 두 줄 · 동네 · 주제 · 시간 · 공감 · 댓글, 사진이 있으면 오른쪽 썸네일)
+ * - PC 오른쪽: 글쓰기 · 지금 뜨는 동네 이야기 1~5위 · 인기 검색어 / 모바일: 떠 있는 + 글쓰기
+ * - 글 상세는 ?post=id, 글쓰기 · 수정은 전용 화면(PostComposer). 이용 정지 중이면 쓰기 동작을 막음 */
 export function CommunityBoard({ region, author, uid }: Props) {
   const { posts, addPost } = useCommunityStore()
   const ban = useActiveBan(author, uid)
   const [params, setParams] = useSearchParams()
   const [scope, setScope] = useState<Scope>('here')
   const [cat, setCat] = useState('전체')
+  const [query, setQuery] = useState('')
+  const [writing, setWriting] = useState(false)
   const selectedId = Number(params.get('post')) || null
+  const locked = !!ban
+  const place = region ? shortRegion(region) : '우리 동네'
 
   const near = NEARBY[region] ?? []
+  const inScope = (p: Post) => !region || scope === 'all' || (scope === 'near' ? near.includes(p.region) : p.region === region)
+  const q = query.trim().toLowerCase()
   const items = posts
-    .filter((p) => {
-      if (cat !== '전체' && p.cat !== cat) return false
-      if (!region || scope === 'all') return true
-      return scope === 'near' ? near.includes(p.region) : p.region === region
-    })
+    .filter((p) => inScope(p) && (cat === '전체' || p.cat === cat) && (!q || `${p.title} ${p.body}`.toLowerCase().includes(q)))
     .sort((a, b) => b.ts - a.ts)
+  // 지금 뜨는 이야기: 공감 + 댓글×2 가 많은 순 (지금 보는 동네 범위 안에서)
+  const hot = posts
+    .filter(inScope)
+    .map((p) => ({ p, score: p.likes + p.comments.length * 2 }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map((x) => x.p)
   const selected = selectedId ? posts.find((p) => p.id === selectedId) : undefined
 
   const open = (id: number | null) => {
     setParams(id ? { post: String(id) } : {})
     window.scrollTo(0, 0)
   }
-
-  const title = scope === 'all' ? '전체 동네 이야기' : scope === 'near' ? '주변 동네 이야기' : region ? `${region} 이야기` : '우리 동네 이야기'
-  const note = !region
+  const startWrite = () => !locked && setWriting(true)
+  const scopeNote = !region
     ? '내 정보에서 우리 동네를 입력하면 동네별로 모아 볼 수 있어요.'
     : scope === 'near'
       ? near.length
-        ? `📍 ${near.join(' · ')} 글을 보여줘요.`
+        ? `${near.map(shortRegion).join(' · ')} 이웃들의 이야기`
         : '아직 이 지역의 주변 동네 정보가 없어요.'
       : scope === 'here'
-        ? `📍 ${region} 이웃들의 글이에요.`
-        : '모든 동네의 글을 보여줘요.'
-  const locked = !!ban
+        ? `📍 ${region} 이웃들의 이야기`
+        : '모든 동네의 이야기'
 
   return (
-    <div className={common.layout}>
-      <Card
-        title={title}
-        actions={
-          <Segmented
-            label="동네 범위"
-            value={scope}
-            onChange={(v) => {
-              setScope(v)
-              open(null)
-            }}
-            options={[
-              { value: 'here', label: '우리 동네' },
-              { value: 'near', label: '주변 동네' },
-              { value: 'all', label: '전체' },
-            ]}
-          />
-        }
-      >
+    <div className={styles.page}>
+      <div className={styles.main}>
         {ban && (
-          <p className={cx(common.notice, styles.banNotice)} role="alert">
-            {banMessage(ban)} 정지 중에는 글쓰기 · 댓글 · 좋아요를 할 수 없어요.
+          <p className={styles.banNotice} role="alert">
+            🚫 {banMessage(ban)} 정지 중에는 글쓰기 · 댓글 · 공감을 할 수 없어요.
           </p>
         )}
+
         {selected ? (
-          <>
-            <Button variant="line" className={styles.back} onClick={() => open(null)}>
-              ‹ 목록으로
-            </Button>
-            <PostItem post={selected} author={author} locked={locked} detail onDeleted={() => open(null)} />
-          </>
+          <PostDetail post={selected} author={author} locked={locked} onBack={() => open(null)} onDeleted={() => open(null)} />
         ) : (
           <>
-            <p className={styles.scopeNote}>{note}</p>
-            <div className={common.chips}>
+            {/* 머리말 */}
+            <header className={styles.head}>
+              <div className={styles.headTop}>
+                <h1>
+                  {scope === 'all' ? '전체' : place} <span>동네생활</span>
+                </h1>
+                <div className={styles.scopes} role="radiogroup" aria-label="동네 범위">
+                  {SCOPES.map((s) => (
+                    <button key={s.value} type="button" role="radio" aria-checked={scope === s.value} className={cx(styles.scope, scope === s.value && styles.on)} onClick={() => setScope(s.value)}>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className={styles.scopeNote}>{scopeNote}</p>
+              <label className={styles.search}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3" />
+                </svg>
+                <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`${scope === 'all' ? '전체' : scope === 'near' ? '주변 동네' : place} 이야기 검색`} aria-label="동네 이야기 검색" />
+              </label>
+            </header>
+
+            {/* 새 글 쓰기 (입력창 모양) */}
+            <button type="button" className={styles.composeBar} onClick={startWrite} disabled={locked}>
+              <span className={styles.composeText}>
+                {locked ? (
+                  '이용 정지 중에는 글을 쓸 수 없어요'
+                ) : (
+                  <>
+                    {author}님, <span className={styles.composePlace}>{place} </span>이웃에게 이야기를 남겨 보세요
+                  </>
+                )}
+              </span>
+              <b aria-hidden="true">✏️</b>
+            </button>
+
+            {/* 주제 */}
+            <div className={styles.topics} role="radiogroup" aria-label="주제">
               {['전체', ...CATEGORIES].map((c) => (
-                <button key={c} type="button" className={cx(common.chip, c === cat && common.chipOn)} aria-pressed={c === cat} onClick={() => setCat(c)}>
+                <button key={c} type="button" role="radio" aria-checked={cat === c} className={cx(styles.topic, cat === c && styles.on)} onClick={() => setCat(c)}>
+                  {c !== '전체' && `${CAT_ICON[c]} `}
                   {c}
                 </button>
               ))}
             </div>
-            {items.map((p) => (
-              <PostItem key={p.id} post={p} author={author} locked={locked} onOpen={() => open(p.id)} />
-            ))}
-            {!items.length && <p className={common.empty}>아직 글이 없어요. 첫 글을 써보세요!</p>}
-          </>
-        )}
-      </Card>
 
-      <Card title="글쓰기" actions={region && <span className={styles.loc}>📍 {region}</span>}>
-        <PostEditor
-          locked={locked}
-          submitLabel="올리기"
-          onSave={(draft) => {
-            const ok = addPost({ ...draft, region: region || '서울 마포구', author })
-            if (ok) {
-              setCat('전체')
-              setScope('here')
-              open(null)
-            }
-            return ok
-          }}
-        />
-      </Card>
-    </div>
-  )
-}
-
-type EditorProps = {
-  initial?: Post
-  locked?: boolean
-  submitLabel: string
-  /** 저장 공간이 부족해 실패하면 false */
-  onSave: (draft: PostDraft) => boolean
-  onCancel?: () => void
-}
-
-/** 글 쓰기 · 고치기 폼: 분류 · 제목 · 내용 · 첨부(최대 5개, 합계 2MB). 고칠 때는 기존 첨부를 뺄 수 있음 */
-function PostEditor({ initial, locked, submitLabel, onSave, onCancel }: EditorProps) {
-  const [form, setForm] = useState({ cat: initial?.cat ?? CATEGORIES[0], title: initial?.title ?? '', body: initial?.body ?? '' })
-  const [kept, setKept] = useState<Attachment[]>(initial?.attachments ?? [])
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const fileInput = useRef<HTMLInputElement>(null)
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (locked) return
-    setError('')
-    const title = form.title.trim()
-    const body = form.body.trim()
-    if (!title || !body) return setError('제목과 내용을 입력해 주세요.')
-    const files = Array.from(fileInput.current?.files ?? [])
-    const problem = checkAttachments(kept, files)
-    if (problem) return setError(problem)
-    setBusy(true)
-    try {
-      const added = await readAttachments(files)
-      if (!onSave({ cat: form.cat, title, body, attachments: [...kept, ...added] })) return setError(STORAGE_FULL)
-      if (!initial) {
-        // 새 글을 올렸으면 폼 비우기
-        setForm({ cat: CATEGORIES[0], title: '', body: '' })
-        setKept([])
-        if (fileInput.current) fileInput.current.value = ''
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '첨부 파일을 처리하지 못했어요.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <form className={common.form} onSubmit={submit}>
-      <label>
-        분류
-        <select value={form.cat} onChange={(e) => setForm({ ...form, cat: e.target.value })} disabled={locked}>
-          {CATEGORIES.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
-      </label>
-      <label>
-        제목
-        <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={60} required disabled={locked} />
-      </label>
-      <label>
-        내용
-        <textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} maxLength={500} required disabled={locked} />
-      </label>
-      {kept.length > 0 && (
-        <Attachments
-          files={kept}
-          onRemove={(i) => {
-            setKept(kept.filter((_, j) => j !== i))
-          }}
-        />
-      )}
-      <label>
-        사진 · 파일 첨부
-        <input ref={fileInput} type="file" multiple disabled={locked} />
-        <small className={styles.hint}>최대 {MAX_ATTACHMENTS}개, 합계 2MB까지 올릴 수 있어요.</small>
-      </label>
-      {error && (
-        <p className={common.formError} role="alert">
-          {error}
-        </p>
-      )}
-      <div className={common.actions}>
-        <Button type="submit" loading={busy} disabled={locked} className={styles.grow}>
-          {submitLabel}
-        </Button>
-        {onCancel && (
-          <Button variant="line" onClick={onCancel}>
-            취소
-          </Button>
-        )}
-      </div>
-    </form>
-  )
-}
-
-/** 첨부 보기: 사진은 바로 보이고, 다른 파일은 내려받기 링크. onRemove 가 있으면 "첨부 삭제" 버튼 */
-function Attachments({ files, onRemove }: { files: Attachment[]; onRemove?: (index: number) => void }) {
-  return (
-    <div className={styles.attachments}>
-      {files.map((f, i) => {
-        const valid = f.data.startsWith('data:')
-        return (
-          <div key={`${f.name}-${i}`} className={styles.attachment}>
-            {valid && f.type.startsWith('image/') && <img src={f.data} alt={f.name} />}
-            {valid ? (
-              <a href={f.data} download={f.name}>
-                {f.name}
-              </a>
-            ) : (
-              <span>{f.name}</span>
-            )}
-            {onRemove && (
-              <button type="button" className={cx(styles.pbtn, styles.pdel)} onClick={() => onRemove(i)}>
-                첨부 삭제
-              </button>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-type ItemProps = { post: Post; author: string; locked: boolean; detail?: boolean; onOpen?: () => void; onDeleted?: () => void }
-
-function PostItem({ post, author, locked, detail, onOpen, onDeleted }: ItemProps) {
-  const { toggleLike, removePost, updatePost, addComment, updateComment, removeComment } = useCommunityStore()
-  const [showCmt, setShowCmt] = useState(!!detail)
-  const [editing, setEditing] = useState(false)
-  const [text, setText] = useState('')
-  const [editCmt, setEditCmt] = useState<{ index: number; text: string } | null>(null)
-
-  if (editing)
-    return (
-      <article className={cx(detail ? styles.detail : styles.post)}>
-        <h3 className={styles.editTitle}>글 수정</h3>
-        <PostEditor
-          initial={post}
-          locked={locked}
-          submitLabel="수정 저장"
-          onSave={(draft) => {
-            const ok = updatePost(post.id, draft)
-            if (ok) setEditing(false)
-            return ok
-          }}
-          onCancel={() => setEditing(false)}
-        />
-      </article>
-    )
-
-  const submitComment = (e: FormEvent) => {
-    e.preventDefault()
-    const v = text.trim()
-    if (!v || locked) return
-    addComment(post.id, author, v)
-    setText('')
-  }
-  const remove = () => {
-    if (!window.confirm('이 게시글을 삭제할까요?')) return
-    removePost(post.id)
-    onDeleted?.()
-  }
-
-  return (
-    <article className={cx(detail ? styles.detail : styles.post)}>
-      <div className={styles.meta}>
-        <span className={common.tag}>{post.cat}</span>
-        {post.region && <span className={styles.loc}>📍 {post.region}</span>}
-        <span>{post.author}</span>
-        <span>· {relTime(post.ts)}</span>
-      </div>
-      {onOpen ? (
-        <button type="button" className={styles.openBtn} onClick={onOpen}>
-          <h3>{post.title}</h3>
-          <p>{post.body}</p>
-        </button>
-      ) : (
-        <>
-          <h3>{post.title}</h3>
-          <p>{post.body}</p>
-        </>
-      )}
-      {!!post.attachments?.length && <Attachments files={post.attachments} />}
-      <div className={styles.actions}>
-        <button type="button" className={cx(styles.pbtn, post.liked && styles.liked)} onClick={() => toggleLike(post.id)} disabled={locked} aria-pressed={post.liked} aria-label={`좋아요 ${post.likes}`}>
-          ♥ {post.likes}
-        </button>
-        <button type="button" className={styles.pbtn} onClick={() => setShowCmt((v) => !v)} aria-expanded={showCmt} aria-label={`댓글 ${post.comments.length}개`}>
-          💬 {post.comments.length}
-        </button>
-        {post.mine && (
-          <>
-            <button type="button" className={styles.pbtn} onClick={() => setEditing(true)} disabled={locked}>
-              수정
-            </button>
-            <button type="button" className={cx(styles.pbtn, styles.pdel)} onClick={remove} disabled={locked}>
-              삭제
-            </button>
-          </>
-        )}
-      </div>
-      {showCmt && (
-        <div className={styles.cmt}>
-          {post.comments.map((c, i) => {
-            const mine = c.mine || c.author === author
-            if (editCmt?.index === i)
-              return (
-                <form
-                  key={i}
-                  className={common.inline}
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    const v = editCmt.text.trim()
-                    if (!v || locked) return
-                    updateComment(post.id, i, v)
-                    setEditCmt(null)
-                  }}
-                >
-                  <input className={common.input} value={editCmt.text} onChange={(e) => setEditCmt({ index: i, text: e.target.value })} maxLength={100} aria-label="댓글 수정" autoFocus />
-                  <Button type="submit">저장</Button>
-                  <Button variant="line" onClick={() => setEditCmt(null)}>
-                    취소
-                  </Button>
-                </form>
-              )
-            return (
-              <div key={i} className={styles.cmtItem}>
-                <b>{c.author}</b>
-                <span className={styles.cmtText}>{c.text}</span>
-                {mine && (
-                  <span className={styles.cmtActions}>
-                    <button type="button" className={styles.pbtn} onClick={() => setEditCmt({ index: i, text: c.text })} disabled={locked}>
-                      수정
-                    </button>
-                    <button type="button" className={cx(styles.pbtn, styles.pdel)} onClick={() => removeComment(post.id, i)} disabled={locked}>
-                      삭제
-                    </button>
-                  </span>
-                )}
+            {/* 글 목록 */}
+            <ul className={styles.feed}>
+              {items.map((p) => (
+                <FeedItem key={p.id} post={p} onOpen={() => open(p.id)} />
+              ))}
+            </ul>
+            {!items.length && (
+              <div className={styles.empty}>
+                <span aria-hidden="true">🌱</span>
+                <b>{q ? `"${query}" 이야기를 찾지 못했어요` : '아직 글이 없어요'}</b>
+                <small>{q ? '다른 말로 찾아보세요.' : '첫 이야기를 남겨 보세요!'}</small>
               </div>
-            )
-          })}
-          <form className={common.inline} onSubmit={submitComment}>
-            <input className={common.input} value={text} onChange={(e) => setText(e.target.value)} placeholder={locked ? '이용 정지 중이에요' : '댓글을 입력하세요'} maxLength={100} aria-label="댓글" disabled={locked} />
-            <Button type="submit" disabled={locked}>
-              등록
-            </Button>
-          </form>
-        </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* PC 오른쪽 칸 */}
+      <aside className={styles.side} aria-label="동네생활 둘러보기">
+        <button type="button" className={styles.writeBtn} onClick={startWrite} disabled={locked}>
+          ✏️ 글쓰기
+        </button>
+        <section className={styles.sideCard}>
+          <h2>🔥 지금 뜨는 동네 이야기</h2>
+          <ol className={styles.hot}>
+            {hot.map((p, i) => (
+              <li key={p.id}>
+                <button type="button" onClick={() => open(p.id)}>
+                  <b className={cx(styles.rank, i < 3 && styles.top)}>{i + 1}</b>
+                  <span className={styles.hotText}>
+                    <span>{p.title}</span>
+                    <small>
+                      {p.cat} · 공감 {p.likes} · 댓글 {p.comments.length}
+                    </small>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
+        <section className={styles.sideCard}>
+          <h2>인기 검색어</h2>
+          <div className={styles.words}>
+            {HOT_WORDS.map((w) => (
+              <button
+                key={w}
+                type="button"
+                onClick={() => {
+                  setQuery(w)
+                  open(null)
+                }}
+              >
+                {w}
+              </button>
+            ))}
+          </div>
+        </section>
+      </aside>
+
+      {/* 모바일: 떠 있는 글쓰기 버튼 */}
+      {!selected && (
+        <button type="button" className={styles.fab} onClick={startWrite} disabled={locked} aria-label="글쓰기">
+          ＋ 글쓰기
+        </button>
       )}
-    </article>
+
+      <PostComposer
+        open={writing}
+        onClose={() => setWriting(false)}
+        locked={locked}
+        region={place}
+        onSave={(draft) => {
+          const ok = addPost({ ...draft, region: region || '서울 마포구', author })
+          if (ok) {
+            setCat('전체')
+            setScope('here')
+            setQuery('')
+            open(null)
+          }
+          return ok
+        }}
+      />
+    </div>
+  )
+}
+
+/** 글 목록 한 줄: 왼쪽 제목 · 본문 두 줄 · 동네 · 주제 · 시간 · 공감 · 댓글 / 오른쪽 사진 썸네일 */
+function FeedItem({ post, onOpen }: { post: Post; onOpen: () => void }) {
+  const thumb = post.attachments?.find((a) => a.type.startsWith('image/') && a.data.startsWith('data:'))
+  return (
+    <li>
+      <button type="button" className={styles.item} onClick={onOpen}>
+        <span className={styles.itemMain}>
+          <b className={styles.itemTitle}>{post.title}</b>
+          <span className={styles.itemBody}>{post.body}</span>
+          <span className={styles.itemMeta}>
+            <span>
+              {shortRegion(post.region)} · {post.cat} · {relTime(post.ts)}
+            </span>
+            <span className={styles.counts}>
+              {post.likes > 0 && <span className={styles.likeCount}>♡ {post.likes}</span>}
+              {post.comments.length > 0 && <span className={styles.cmtCountSm}>💬 {post.comments.length}</span>}
+            </span>
+          </span>
+        </span>
+        {thumb && <img className={styles.itemThumb} src={thumb.data} alt="" />}
+      </button>
+    </li>
   )
 }

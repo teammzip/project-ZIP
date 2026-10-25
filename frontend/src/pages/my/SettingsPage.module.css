@@ -112,12 +112,13 @@
 }
 
 /* 맨 아래 작은 글씨: 로그아웃 · 데이터 초기화 · 회원 탈퇴 */
+.bottom {
+  padding: 6px 0 10px;
+}
+
 .foot {
   display: flex;
   justify-content: center;
-  margin: 4px -18px 0;
-  padding: 14px 18px 4px;
-  border-top: 1px solid var(--color-line);
 }
 
 .foot button {

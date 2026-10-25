@@ -3,7 +3,7 @@ import { Card } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
 import { HOME_TIPS } from '../data/seed'
-import styles from './Community.module.css'
+import styles from './HomeTips.module.css'
 
 /** 홈 "자취 꿀팁 게시글" 카드: 누르면 커뮤니티의 해당 글 상세로 */
 export function HomeTips() {
