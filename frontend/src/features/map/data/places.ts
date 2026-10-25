@@ -3,6 +3,9 @@
  * - 처음 지도 칩에는 DEFAULT_CATS 만 보이고, 나머지 종류는 "카테고리 편집"에서 켜고 꺼요.
  * - AI "근처 탐색" 답변도 이 목록을 써요. 실제 서비스에서는 지도 검색 API(예: 카카오 로컬)로 근처 장소를 가져와요. */
 export type Place = { n: string; d: string; lat: number; lon: number }
+
+/** 우리 집 위치 (예시 — 장소들의 가운데). 지도의 🏠, "내 위치" 버튼 */
+export const HOME = { lat: 37.5572, lon: 126.9244 }
 /** 종류 · 고정 번호("종류:이름")가 붙은 장소 (즐겨찾기 · AI 찾기에 씀) */
 export type PlaceItem = Place & { cat: string; id: string }
 

@@ -1,239 +1,426 @@
-import { useEffect, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Button, Card } from '@/components/ui'
+import { Button, Modal } from '@/components/ui'
 import { useLifeStore } from '@/features/life'
 import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
-import { aiFind, type FoundPlace } from '../aiFind'
-import { ALL_PLACES, CAT_ICON, DEFAULT_CATS, PLACE_KINDS, PLACES, walkMin, type PlaceItem } from '../data/places'
+import { aiFind } from '../aiFind'
+import { ALL_PLACES, CAT_ICON, DEFAULT_CATS, HOME, PLACE_KINDS, PLACES, walkMin, type PlaceItem } from '../data/places'
 import { useMapStore } from '../store'
+import { LeafletMap } from './LeafletMap'
 import styles from './MapView.module.css'
 
-const FAV = '__fav' // 칩 "즐겨찾기"
 const CUSTOM = 'c:' // 직접 추가한 검색어 칩 앞머리 ("c:카페")
 const AI_EXAMPLES = ['24시간 편의점', '조용한 카페', '혼밥 저렴한 식당', '이불 빨래할 곳']
 
-const embedUrl = (p: PlaceItem) => {
-  const bbox = [p.lon - 0.004, p.lat - 0.0025, p.lon + 0.004, p.lat + 0.0025].join('%2C')
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${p.lat}%2C${p.lon}`
-}
-const bigUrl = (p: PlaceItem) => `https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lon}#map=17/${p.lat}/${p.lon}`
+/** 목록 위 조건 칩 (장소 설명에 그 말이 있으면 남김) */
+const FILTERS: Array<{ key: string; label: string; re?: RegExp }> = [
+  { key: 'near', label: '가까운 순' },
+  { key: '24', label: '24시간', re: /24시간|심야|야간/ },
+  { key: 'cheap', label: '저렴한', re: /저렴|월 3만원/ },
+  { key: 'quiet', label: '조용한', re: /조용|스터디/ },
+]
 
-/** 우리 동네 지도(OpenStreetMap) + 주변 장소 (팀장님 시안 views/map.js 와 같은 구성)
- * - AI 장소 찾기: "밤에 갈 수 있는 약국"처럼 말로 찾으면 가까운 순으로 추천 + 추천 이유 (시연용, 예시 데이터 안에서)
- * - ★ 즐겨찾기, 카테고리 편집(종류 켜기·끄기, 직접 검색어 추가, 기본값으로)
- * - ?cat=세탁방 으로 열면 그 종류부터 (꺼져 있으면 켬) */
+const bigUrl = (p: PlaceItem) => `https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lon}#map=18/${p.lat}/${p.lon}`
+const routeUrl = (p: PlaceItem) => `https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route=${HOME.lat}%2C${HOME.lon}%3B${p.lat}%2C${p.lon}`
+const walkText = (p: PlaceItem) => (walkMin(p) < 99 ? `도보 ${walkMin(p)}분` : '거리 정보 없음')
+/** 설명에서 "도보 약 N분"을 뺀 특징들 */
+const tagsOf = (p: PlaceItem) => p.d.split('·').map((t) => t.trim()).filter((t) => t && !/도보/.test(t))
+/** 종류마다 정해진 연한 배경 (썸네일) */
+const tint = (cat: string) => `hsl(${[...cat].reduce((h, c) => h + c.charCodeAt(0), 0) % 360} 75% 93%)`
+
+const MOBILE = '(max-width: 900px)'
+const subscribeMobile = (cb: () => void) => {
+  const mq = window.matchMedia(MOBILE)
+  mq.addEventListener('change', cb)
+  return () => mq.removeEventListener('change', cb)
+}
+const useMobile = () => useSyncExternalStore(subscribeMobile, () => window.matchMedia(MOBILE).matches)
+
+type Found = { q: string; items: Array<{ p: PlaceItem; why: string[] }> }
+
+/** 동네 지도 (네이버 지도처럼)
+ * - 모바일: 화면 가득 지도 + 위에 검색창 · 종류 칩, 오른쪽 둥근 버튼(저장 · 내 위치), 아래 끌어올리는 시트(동네 · 저장 탭, 장소 목록)
+ * - PC: 왼쪽 목록 칸(검색 · 탭 · 목록 · 상세) + 오른쪽 넓은 지도(위에 종류 칩)
+ * - 검색은 장소 이름 + AI 장소 찾기("밤에 갈 수 있는 약국" → 가까운 순 추천 + 이유, 시연용)
+ * - ★ 저장(즐겨찾기), 종류 편집(켜기 · 끄기 · 직접 검색어), ?cat=세탁방 으로 열면 그 종류부터 */
 export function MapView() {
   const { on, custom, favs, ensureCat } = useMapStore()
   const region = useLifeStore((s) => s.settings.region)
+  const mobile = useMobile()
   const [params] = useSearchParams()
   const asked = params.get('cat')
-  const [chip, setChip] = useState(() => (asked && PLACES[asked] ? asked : (on[0] ?? FAV)))
+  const [cat, setCat] = useState(() => (asked && PLACES[asked] ? asked : (on[0] ?? DEFAULT_CATS[0])))
+  const [tab, setTab] = useState<'near' | 'fav'>('near')
+  const [filter, setFilter] = useState('near')
   const [selId, setSelId] = useState<string | null>(null)
-  const [aiQ, setAiQ] = useState('')
-  const [aiOut, setAiOut] = useState<{ q: string; items: FoundPlace[] } | null>(null)
+  const [query, setQuery] = useState('')
+  const [found, setFound] = useState<Found | null>(null)
   const [editing, setEditing] = useState(false)
+  const [sheet, setSheet] = useState<'peek' | 'full'>('peek')
+  const [focus, setFocus] = useState<{ lat: number; lon: number; n: number } | null>(null)
+  const drag = useRef<number | null>(null)
 
   // 주소로 받은 종류가 꺼져 있으면 칩에 켬
   useEffect(() => {
     if (asked) ensureCat(asked)
   }, [asked, ensureCat])
 
-  const listFor = (c: string) => {
-    if (c === FAV) return ALL_PLACES.filter((p) => favs.includes(p.id)).sort((a, b) => walkMin(a) - walkMin(b))
-    if (c.startsWith(CUSTOM)) {
-      const kw = c.slice(CUSTOM.length)
+  const base = (() => {
+    if (found) return found.items.map((r) => r.p)
+    if (tab === 'fav') return ALL_PLACES.filter((p) => favs.includes(p.id))
+    if (cat.startsWith(CUSTOM)) {
+      const kw = cat.slice(CUSTOM.length)
       return ALL_PLACES.filter((p) => (p.n + p.d + p.cat).includes(kw))
     }
-    return ALL_PLACES.filter((p) => p.cat === c)
-  }
-  const list = listFor(chip)
-  const place = ALL_PLACES.find((p) => p.id === selId) ?? list[0] ?? ALL_PLACES[0]
+    return ALL_PLACES.filter((p) => p.cat === cat)
+  })()
+  const rule = FILTERS.find((f) => f.key === filter)?.re
+  const list = (found ? base : [...base].sort((a, b) => walkMin(a) - walkMin(b))).filter((p) => !rule || rule.test(p.d))
+  const selected = selId ? ALL_PLACES.find((p) => p.id === selId) : undefined
+  // 지도에는 목록 + (목록에 없으면) 고른 곳
+  const pins = selected && !list.some((p) => p.id === selected.id) ? [...list, selected] : list
+  const fitKey = `${found?.q ?? ''}|${tab}|${cat}|${filter}`
+  const place = region.split(' ').slice(1).join(' ') || region || '우리 동네'
+  const bottomInset = mobile && sheet === 'peek' ? Math.round(window.innerHeight * 0.4) : 0
 
-  const pickChip = (c: string) => {
-    setChip(c)
-    setSelId(listFor(c)[0]?.id ?? null)
-  }
-  /** AI 결과에서 고르면 그 종류 칩으로 바꾸고 지도를 그 위치로 */
-  const choose = (p: PlaceItem) => {
-    ensureCat(p.cat)
-    setChip(p.cat)
+  const select = (p: PlaceItem) => {
     setSelId(p.id)
+    setFocus({ lat: p.lat, lon: p.lon, n: Date.now() })
+    setSheet('peek')
   }
-  const find = (q: string) => {
-    const query = q.trim()
-    if (!query) return
-    const items = aiFind(query)
-    setAiQ(query)
-    setAiOut({ q: query, items })
-    if (items[0]) choose(items[0].p) // 가장 잘 맞는 곳을 지도에 바로 표시
+  const pickCat = (c: string) => {
+    setCat(c)
+    setTab('near')
+    setFound(null)
+    setSelId(null)
   }
+  const search = (q: string) => {
+    const text = q.trim()
+    if (!text) return setFound(null)
+    let items = aiFind(text).map((r) => ({ p: r.p, why: r.why }))
+    if (!items.length) items = ALL_PLACES.filter((p) => (p.n + p.d + p.cat).includes(text)).map((p) => ({ p, why: [`"${text}" 포함`] }))
+    setQuery(text)
+    setFound({ q: text, items })
+    setFilter('near')
+    setSelId(null)
+    setSheet('peek')
+  }
+  const goHome = () => setFocus({ lat: HOME.lat, lon: HOME.lon, n: Date.now() })
+
+  // 시트 손잡이: 위로 끌면 펼치고 아래로 끌면 접기, 누르기만 하면 바꾸기
+  const onGrab = (e: PointerEvent) => {
+    drag.current = e.clientY
+  }
+  const onRelease = (e: PointerEvent) => {
+    if (drag.current === null) return
+    const dy = e.clientY - drag.current
+    drag.current = null
+    setSheet(Math.abs(dy) < 8 ? (sheet === 'peek' ? 'full' : 'peek') : dy < 0 ? 'full' : 'peek')
+  }
+
+  const searchBox = (
+    <form
+      className={styles.search}
+      role="search"
+      onSubmit={(e: FormEvent) => {
+        e.preventDefault()
+        search(query)
+      }}
+    >
+      <span className={styles.searchPin} aria-hidden="true">
+        📍
+      </span>
+      <input value={query} onChange={(e) => setQuery(e.target.value)} maxLength={40} placeholder="장소 검색 · AI에게 물어보기" aria-label="장소 검색 또는 AI에게 물어보기" type="search" />
+      {found && (
+        <button
+          type="button"
+          className={styles.searchX}
+          onClick={() => {
+            setQuery('')
+            setFound(null)
+          }}
+          aria-label="검색 지우기"
+        >
+          ✕
+        </button>
+      )}
+      <button type="submit" className={styles.searchGo} aria-label="AI로 찾기" title="AI로 찾기">
+        ✨
+      </button>
+    </form>
+  )
 
   return (
-    <div className={common.layout}>
-      <Card
-        title="우리 동네 지도"
-        actions={
-          <a className={common.link} href={bigUrl(place)} target="_blank" rel="noopener noreferrer">
-            큰 지도로 보기
-          </a>
-        }
-      >
-        <iframe className={styles.frame} src={embedUrl(place)} title="동네 지도" loading="lazy" />
-        <p className={common.note}>장소 목록은 예시 데이터입니다. 지도는 OpenStreetMap을 사용하며 인터넷 연결이 필요해요.</p>
-      </Card>
+    <div className={styles.root} data-sheet={sheet}>
+      {/* 지도 */}
+      <div className={styles.mapArea}>
+        <LeafletMap className={styles.map} places={pins} selectedId={selId} onSelect={(id) => select(ALL_PLACES.find((p) => p.id === id)!)} focus={focus} fitKey={fitKey} bottomInset={bottomInset} />
 
-      <Card
-        title="주변 장소"
-        actions={
-          <button type="button" className={styles.linkBtn} onClick={() => setEditing((v) => !v)} aria-expanded={editing}>
-            {editing ? '편집 닫기' : '카테고리 편집'}
-          </button>
-        }
-      >
-        {/* AI 장소 찾기 */}
-        <form
-          className={styles.aiFind}
-          onSubmit={(e: FormEvent) => {
-            e.preventDefault()
-            find(aiQ)
-          }}
-        >
-          <input value={aiQ} onChange={(e) => setAiQ(e.target.value)} maxLength={40} placeholder="AI에게 물어보기: 예) 밤에 갈 수 있는 약국" aria-label="AI에게 장소 물어보기" />
-          <Button type="submit">✨ AI로 찾기</Button>
-        </form>
-        <div className={styles.examples}>
-          {AI_EXAMPLES.map((q) => (
-            <button key={q} type="button" className={common.chip} onClick={() => find(q)}>
-              {q}
-            </button>
-          ))}
-        </div>
-
-        {aiOut && (
-          <div className={styles.aiOut}>
-            <div className={styles.aiOutHead}>
-              <span>
-                {aiOut.items.length
-                  ? `"${aiOut.q}" → ${region ? `${region} ` : ''}집 근처에서 가까운 순으로 ${aiOut.items.length}곳을 골랐어요.`
-                  : `"${aiOut.q}" 에 맞는 곳을 못 찾았어요. 다른 말로 물어보거나 "카테고리 편집"에서 종류를 추가해 보세요.`}
-              </span>
-              <button type="button" className={styles.aiOutX} onClick={() => setAiOut(null)} aria-label="결과 닫기">
-                ✕
-              </button>
-            </div>
-            {aiOut.items.map((r) => (
-              <PlaceRow
-                key={r.p.id}
-                p={r.p}
-                on={r.p.id === place.id}
-                title={`${CAT_ICON[r.p.cat] ?? '📍'} ${r.p.n}`}
-                why={`추천 이유: ${[...r.why, `도보 ${walkMin(r.p) < 99 ? `${walkMin(r.p)}분` : '정보 없음'}`].join(' · ')}`}
-                onClick={() => choose(r.p)}
-              />
+        <div className={styles.overlayTop}>
+          <div className={styles.mobileOnly}>{searchBox}</div>
+          {/* 종류 칩 */}
+          <div className={styles.chips} role="radiogroup" aria-label="장소 종류">
+            {on.map((c) => (
+              <Chip key={c} on={!found && tab === 'near' && cat === c} onClick={() => pickCat(c)}>
+                {CAT_ICON[c] ?? '📍'} {c}
+              </Chip>
             ))}
-            <p className={common.note}>AI 찾기는 시연용이에요. 예시 데이터 안에서 말을 읽어 고르고, 실제 서비스에서는 AI와 지도 검색 API가 근처 장소를 찾아 줘요.</p>
+            {custom.map((k) => (
+              <Chip key={k} on={!found && tab === 'near' && cat === CUSTOM + k} onClick={() => pickCat(CUSTOM + k)}>
+                🔎 {k}
+              </Chip>
+            ))}
+            <button type="button" className={cx(styles.chip, styles.chipEdit)} onClick={() => setEditing(true)}>
+              ⚙ 편집
+            </button>
           </div>
-        )}
-
-        {/* 칩: 즐겨찾기 · 켜 둔 종류 · 직접 추가한 검색어 */}
-        <div className={common.chips}>
-          <ChipBtn on={chip === FAV} onClick={() => pickChip(FAV)}>
-            ★ 즐겨찾기 {favs.length}
-          </ChipBtn>
-          {on.map((c) => (
-            <ChipBtn key={c} on={chip === c} onClick={() => pickChip(c)}>
-              {CAT_ICON[c] ?? '📍'} {c}
-            </ChipBtn>
-          ))}
-          {custom.map((k) => (
-            <ChipBtn key={k} on={chip === CUSTOM + k} onClick={() => pickChip(CUSTOM + k)}>
-              🔎 {k}
-            </ChipBtn>
-          ))}
         </div>
 
-        {editing && <CategoryEditor current={chip} onCurrentGone={(next) => pickChip(next)} onAdded={(k) => pickChip(CUSTOM + k)} />}
+        {/* 오른쪽 둥근 버튼 */}
+        <div className={styles.fabs}>
+          <button
+            type="button"
+            className={cx(styles.fab, tab === 'fav' && !found && styles.fabOn)}
+            onClick={() => {
+              setFound(null)
+              setTab(tab === 'fav' ? 'near' : 'fav')
+            }}
+            aria-pressed={tab === 'fav'}
+            aria-label="저장한 장소"
+            title="저장한 장소"
+          >
+            ★
+          </button>
+          <button type="button" className={styles.fab} onClick={goHome} aria-label="우리 집으로" title="우리 집으로">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="7" />
+              <circle cx="12" cy="12" r="2.4" />
+              <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+            </svg>
+          </button>
+        </div>
+      </div>
 
-        {list.length === 0 ? (
-          <p className={common.empty}>
-            {chip === FAV ? '아직 즐겨찾기한 장소가 없어요. 장소 오른쪽의 ☆를 눌러 보세요.' : '예시 데이터에는 이 조건의 장소가 없어요. 실제 서비스에서는 지도 검색으로 찾아와요.'}
-          </p>
-        ) : (
-          list.map((p) => (
-            <PlaceRow
-              key={p.id}
-              p={p}
-              on={p.id === place.id}
-              title={p.n}
-              sub={`${chip === FAV || chip.startsWith(CUSTOM) ? `${p.cat} · ` : ''}${p.d}`}
-              onClick={() => setSelId(p.id)}
-            />
-          ))
-        )}
-      </Card>
+      {/* 목록 칸 (PC 왼쪽 / 모바일 아래 시트) */}
+      <section className={styles.panel} aria-label="장소 목록">
+        <button type="button" className={styles.grab} onPointerDown={onGrab} onPointerUp={onRelease} aria-label={sheet === 'peek' ? '목록 펼치기' : '목록 접기'}>
+          <span />
+        </button>
+        <div className={styles.pcOnly}>{searchBox}</div>
+
+        <div className={styles.panelScroll}>
+          {selected ? (
+            <PlaceDetail p={selected} onBack={() => setSelId(null)} />
+          ) : (
+            <>
+              <div className={styles.tabs} role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'near' && !found}
+                  className={cx(styles.tab, tab === 'near' && !found && styles.tabOn)}
+                  onClick={() => {
+                    setFound(null)
+                    setTab('near')
+                  }}
+                >
+                  <i aria-hidden="true">📍</i> {place}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'fav' && !found}
+                  className={cx(styles.tab, tab === 'fav' && !found && styles.tabOn)}
+                  onClick={() => {
+                    setFound(null)
+                    setTab('fav')
+                  }}
+                >
+                  <i aria-hidden="true">★</i> 저장 {favs.length}
+                </button>
+              </div>
+
+              <h2 className={styles.listTitle}>
+                {found ? (
+                  <>
+                    <span className={styles.ai}>✨ AI 추천</span> &ldquo;{found.q}&rdquo;
+                  </>
+                ) : tab === 'fav' ? (
+                  '저장한 장소'
+                ) : (
+                  <>이 주변 {cat.startsWith(CUSTOM) ? cat.slice(CUSTOM.length) : cat}</>
+                )}
+                <small>{list.length}곳</small>
+              </h2>
+
+              {!found && (
+                <div className={styles.filters}>
+                  {FILTERS.map((f) => (
+                    <button key={f.key} type="button" className={cx(styles.filter, filter === f.key && styles.filterOn)} aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
+                      {f.key !== 'near' && '# '}
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {found && !found.items.length && <p className={styles.empty}>&ldquo;{found.q}&rdquo;에 맞는 곳을 못 찾았어요. 다른 말로 물어보거나 ⚙ 편집에서 종류를 추가해 보세요.</p>}
+              {!found && (
+                <div className={styles.examples}>
+                  {AI_EXAMPLES.map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => {
+                        setQuery(q)
+                        search(q)
+                      }}
+                    >
+                      ✨ {q}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <ol className={styles.list}>
+                {list.map((p, i) => (
+                  <PlaceRow key={p.id} p={p} rank={i + 1} why={found?.items.find((r) => r.p.id === p.id)?.why} onClick={() => select(p)} />
+                ))}
+              </ol>
+              {!found && !list.length && (
+                <p className={styles.empty}>{tab === 'fav' ? '아직 저장한 장소가 없어요. 장소 오른쪽의 ☆를 눌러 보세요.' : '이 조건의 장소가 예시 데이터에 없어요.'}</p>
+              )}
+              <p className={styles.note}>장소는 예시 데이터예요. 지도 © OpenStreetMap</p>
+            </>
+          )}
+        </div>
+      </section>
+
+      <Modal open={editing} onClose={() => setEditing(false)} title="장소 종류 편집">
+        <h3 className={styles.editTitle}>장소 종류 편집</h3>
+        <CategoryEditor current={cat} onCurrentGone={(next) => pickCat(next)} onAdded={(k) => pickCat(CUSTOM + k)} />
+      </Modal>
     </div>
   )
 }
 
-function ChipBtn({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
+function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" className={cx(common.chip, on && common.chipOn)} aria-pressed={on} onClick={onClick}>
+    <button type="button" role="radio" aria-checked={on} className={cx(styles.chip, on && styles.chipOn)} onClick={onClick}>
       {children}
     </button>
   )
 }
 
-/** 장소 한 줄: 왼쪽 글, 오른쪽 즐겨찾기 별 */
-function PlaceRow({ p, on, title, sub, why, onClick }: { p: PlaceItem; on: boolean; title: string; sub?: string; why?: string; onClick: () => void }) {
+/** ☆ / ★ 저장 버튼 */
+function FavStar({ p, big }: { p: PlaceItem; big?: boolean }) {
   const fav = useMapStore((s) => s.favs.includes(p.id))
   const toggleFav = useMapStore((s) => s.toggleFav)
   return (
-    <div className={cx(styles.place, on && styles.on)} role="button" tabIndex={0} aria-pressed={on} onClick={onClick} onKeyDown={(e) => e.key === 'Enter' && onClick()}>
-      <div className={styles.placeMain}>
-        <b>{title}</b>
-        <small>{sub ?? p.d}</small>
-        {why && <small className={styles.why}>{why}</small>}
+    <button
+      type="button"
+      className={cx(styles.star, fav && styles.starOn, big && styles.starBig)}
+      aria-label={fav ? `${p.n} 저장 취소` : `${p.n} 저장`}
+      aria-pressed={fav}
+      onClick={(e: MouseEvent) => {
+        e.stopPropagation()
+        toggleFav(p.id)
+      }}
+    >
+      {fav ? '★' : '☆'}
+      {big && <span>{fav ? '저장됨' : '저장'}</span>}
+    </button>
+  )
+}
+
+/** 목록 한 줄: 왼쪽 썸네일, 순위 · 이름 · 종류 · 도보, 특징 칩 (AI 추천이면 추천 이유) */
+function PlaceRow({ p, rank, why, onClick }: { p: PlaceItem; rank: number; why?: string[]; onClick: () => void }) {
+  return (
+    <li>
+      <div className={styles.row} role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => e.key === 'Enter' && onClick()}>
+        <span className={styles.thumb} style={{ background: tint(p.cat) }} aria-hidden="true">
+          {CAT_ICON[p.cat] ?? '📍'}
+        </span>
+        <span className={styles.rowMain}>
+          <span className={styles.rowName}>
+            <i>{rank}</i>
+            <b>{p.n}</b>
+          </span>
+          <small>
+            {p.cat} · {walkText(p)}
+          </small>
+          <span className={styles.rowTag}>{why ? `추천 이유: ${why.join(' · ')}` : tagsOf(p).join(' · ') || '동네 장소'}</span>
+        </span>
+        <FavStar p={p} />
       </div>
-      <button
-        type="button"
-        className={cx(styles.star, fav && styles.starOn)}
-        aria-label={fav ? `${p.n} 즐겨찾기 해제` : `${p.n} 즐겨찾기에 추가`}
-        aria-pressed={fav}
-        onClick={(e: MouseEvent) => {
-          e.stopPropagation()
-          toggleFav(p.id)
-        }}
-      >
-        {fav ? '★' : '☆'}
+    </li>
+  )
+}
+
+/** 장소 상세: 이름 · 종류 · 도보, 특징, 저장 · 길찾기 · 큰 지도 */
+function PlaceDetail({ p, onBack }: { p: PlaceItem; onBack: () => void }) {
+  return (
+    <div className={styles.detail}>
+      <button type="button" className={styles.back} onClick={onBack}>
+        ‹ 목록
       </button>
+      <div className={styles.detailHead}>
+        <span className={styles.thumbBig} style={{ background: tint(p.cat) }} aria-hidden="true">
+          {CAT_ICON[p.cat] ?? '📍'}
+        </span>
+        <div>
+          <h2>{p.n}</h2>
+          <small>
+            {p.cat} · 🏠 우리 집에서 {walkText(p)}
+          </small>
+        </div>
+      </div>
+      <div className={styles.tags}>
+        {tagsOf(p).map((t) => (
+          <span key={t}>{t}</span>
+        ))}
+      </div>
+      <div className={styles.actions}>
+        <FavStar p={p} big />
+        <a className={styles.action} href={routeUrl(p)} target="_blank" rel="noopener noreferrer">
+          <b>↗</b>
+          <span>길찾기</span>
+        </a>
+        <a className={styles.action} href={bigUrl(p)} target="_blank" rel="noopener noreferrer">
+          <b>🗺</b>
+          <span>큰 지도</span>
+        </a>
+      </div>
     </div>
   )
 }
 
-/** 카테고리 편집: 종류 켜기·끄기, 직접 검색어 추가·삭제, 기본값으로 되돌리기 */
+/** 종류 편집: 종류 켜기·끄기, 직접 검색어 추가·삭제, 기본값으로 되돌리기 */
 function CategoryEditor({ current, onCurrentGone, onAdded }: { current: string; onCurrentGone: (next: string) => void; onAdded: (kw: string) => void }) {
   const { on, custom, toggleCat, addCustom, removeCustom, resetCats } = useMapStore()
   const [kw, setKw] = useState('')
 
   return (
     <div className={styles.editor}>
-      <p className={common.note}>보고 싶은 장소 종류를 눌러 켜고 끄세요. (✓ 표시 = 지금 보이는 종류)</p>
+      <p className={common.note}>지도 위 칩에 보일 장소 종류를 눌러 켜고 끄세요. (✓ = 지금 보이는 종류)</p>
       <div className={common.chips}>
         {PLACE_KINDS.map((c) => {
           const isOn = on.includes(c)
           return (
-            <ChipBtn
+            <button
               key={c}
-              on={isOn}
+              type="button"
+              className={cx(common.chip, isOn && common.chipOn)}
+              aria-pressed={isOn}
               onClick={() => {
                 toggleCat(c)
-                if (isOn && current === c) onCurrentGone(on.find((x) => x !== c) ?? FAV)
+                if (isOn && current === c) onCurrentGone(on.find((x) => x !== c) ?? DEFAULT_CATS[0])
               }}
             >
               {isOn && '✓ '}
               {CAT_ICON[c] ?? '📍'} {c} {PLACES[c].length}
-            </ChipBtn>
+            </button>
           )
         })}
       </div>
@@ -261,7 +448,7 @@ function CategoryEditor({ current, onCurrentGone, onAdded }: { current: string; 
               title="이 검색어 칩 지우기"
               onClick={() => {
                 removeCustom(k)
-                if (current === CUSTOM + k) onCurrentGone(on[0] ?? FAV)
+                if (current === CUSTOM + k) onCurrentGone(on[0] ?? DEFAULT_CATS[0])
               }}
             >
               🔎 {k} ✕
