@@ -25,7 +25,7 @@ export function MyLayout() {
   return (
     <div className={styles.wrap}>
       <h1 className={common.pageTitle}>
-        마이페이지 <small>일정 · 가계부 · 메모 · 알림 · 내 정보</small>
+        마이페이지
       </h1>
       <TabNav items={tabs} label="마이페이지 메뉴" />
       <Outlet />
