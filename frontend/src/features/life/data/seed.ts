@@ -1,4 +1,4 @@
-/* 처음 열었을 때 보여줄 예시 기록 (기존 시안 variants/app/js/core/state.js, data/demo.js 와 같은 내용).
+/* 처음 열었을 때 보여줄 예시 기록.
  * "오늘" 기준으로 만들어지고, 데이터 초기화하면 다시 생깁니다. */
 import { dateOfMonthsAgo, dayOffset, monthKeyOf } from '@/lib/date'
 import { todayStr } from '@/lib/date'

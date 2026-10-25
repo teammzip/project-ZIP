@@ -20,7 +20,7 @@ import styles from './StartPage.module.css'
 
 /* 시작 화면
  * - PC: 브랜드 스토리 (섹션 순서를 바꾸거나 빼려면 여기서 줄만 옮기면 됩니다)
- * - 모바일(900px 이하): 앱 시작 → 로봇 → 문 → 로그인 인트로 (팀 시안 variants/start-mobile)
+ * - 모바일(900px 이하): 앱 시작 → 로봇 → 문 → 로그인 인트로
  * 로그인은 AuthModal, 회원가입·아이디/비밀번호 찾기는 별도 페이지(/signup, /find).
  * /start#login 으로 오면(가입·찾기 페이지의 "로그인") PC 는 로그인 창을 바로 열고, 모바일은 문이 저절로 열린 뒤 로그인 창이 뜸 */
 export function StartPage() {

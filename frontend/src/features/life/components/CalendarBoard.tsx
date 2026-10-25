@@ -19,7 +19,7 @@ import styles from './life.module.css'
 export type CalMode = 'today' | 'week' | 'day' | 'all'
 const MODES: CalMode[] = ['today', 'week', 'day', 'all']
 
-/** 일정 = 할 일 (팀장님 시안 variants/app 의 캘린더와 같은 구성)
+/** 일정 = 할 일
  * - 왼쪽: 큰 달력(월간 · 주간, 칸 안에 일정 막대)
  * - 오른쪽: 일정 기록하기(카테고리 항목 버튼 → 달력에서 날짜 누르기 / 직접 입력) + 할 일 목록
  * ?mode=today|week|day|all 로 열면 그 목록 보기로 시작 (홈 카드에서 씀) */

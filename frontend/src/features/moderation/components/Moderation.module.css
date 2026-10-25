@@ -1,4 +1,4 @@
-/* 경고 안내 창 · 이용 정지 안내 (팀장님 시안 app.css 의 .warn-box · variants/suspended) */
+/* 경고 안내 창 · 이용 정지 안내 */
 .list {
   display: grid;
   gap: 8px;

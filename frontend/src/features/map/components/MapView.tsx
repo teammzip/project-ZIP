@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button, Modal } from '@/components/ui'
 import { useLifeStore } from '@/features/life'
@@ -7,8 +7,10 @@ import common from '@/styles/common.module.css'
 import { aiFind } from '../aiFind'
 import { ALL_PLACES, CAT_ICON, DEFAULT_CATS, HOME, PLACE_KINDS, PLACES, walkMin, type PlaceItem } from '../data/places'
 import { useMapStore } from '../store'
-import { LeafletMap } from './LeafletMap'
 import styles from './MapView.module.css'
+
+// 지도 라이브러리(Leaflet)는 크기가 커서 이 화면에 들어올 때만 받아 옴
+const LeafletMap = lazy(() => import('./LeafletMap').then((m) => ({ default: m.LeafletMap })))
 
 const CUSTOM = 'c:' // 직접 추가한 검색어 칩 앞머리 ("c:카페")
 const AI_EXAMPLES = ['24시간 편의점', '조용한 카페', '혼밥 저렴한 식당', '이불 빨래할 곳']
@@ -25,7 +27,11 @@ const bigUrl = (p: PlaceItem) => `https://www.openstreetmap.org/?mlat=${p.lat}&m
 const routeUrl = (p: PlaceItem) => `https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route=${HOME.lat}%2C${HOME.lon}%3B${p.lat}%2C${p.lon}`
 const walkText = (p: PlaceItem) => (walkMin(p) < 99 ? `도보 ${walkMin(p)}분` : '거리 정보 없음')
 /** 설명에서 "도보 약 N분"을 뺀 특징들 */
-const tagsOf = (p: PlaceItem) => p.d.split('·').map((t) => t.trim()).filter((t) => t && !/도보/.test(t))
+const tagsOf = (p: PlaceItem) =>
+  p.d
+    .split('·')
+    .map((t) => t.trim())
+    .filter((t) => t && !/도보/.test(t))
 /** 종류마다 정해진 연한 배경 (썸네일) */
 const tint = (cat: string) => `hsl(${[...cat].reduce((h, c) => h + c.charCodeAt(0), 0) % 360} 75% 93%)`
 
@@ -155,7 +161,9 @@ export function MapView() {
     <div className={styles.root} data-sheet={sheet}>
       {/* 지도 */}
       <div className={styles.mapArea}>
-        <LeafletMap className={styles.map} places={pins} selectedId={selId} onSelect={(id) => select(ALL_PLACES.find((p) => p.id === id)!)} focus={focus} fitKey={fitKey} bottomInset={bottomInset} />
+        <Suspense fallback={<div className={styles.map} />}>
+          <LeafletMap className={styles.map} places={pins} selectedId={selId} onSelect={(id) => select(ALL_PLACES.find((p) => p.id === id)!)} focus={focus} fitKey={fitKey} bottomInset={bottomInset} />
+        </Suspense>
 
         <div className={styles.overlayTop}>
           <div className={styles.mobileOnly}>{searchBox}</div>
@@ -288,9 +296,7 @@ export function MapView() {
                   <PlaceRow key={p.id} p={p} rank={i + 1} why={found?.items.find((r) => r.p.id === p.id)?.why} onClick={() => select(p)} />
                 ))}
               </ol>
-              {!found && !list.length && (
-                <p className={styles.empty}>{tab === 'fav' ? '아직 저장한 장소가 없어요. 장소 오른쪽의 ☆를 눌러 보세요.' : '이 조건의 장소가 예시 데이터에 없어요.'}</p>
-              )}
+              {!found && !list.length && <p className={styles.empty}>{tab === 'fav' ? '아직 저장한 장소가 없어요. 장소 오른쪽의 ☆를 눌러 보세요.' : '이 조건의 장소가 예시 데이터에 없어요.'}</p>}
               <p className={styles.note}>장소는 예시 데이터예요. 지도 © OpenStreetMap</p>
             </>
           )}

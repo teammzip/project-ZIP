@@ -1,4 +1,4 @@
-/* 일정 화면 (팀장님 시안 variants/app/css/views/calendar.css 와 같은 모양) */
+/* 일정 화면 */
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
@@ -238,7 +238,7 @@
   background: #fff1e6;
 }
 
-/* ---------- 일정 기록하기 (compare.html 시안과 같은 디자인) ---------- */
+/* ---------- 일정 기록하기 ---------- */
 .recHead {
   display: flex;
   flex-wrap: wrap;

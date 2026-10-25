@@ -12,7 +12,7 @@ import styles from './Account.module.css'
 
 type Tab = 'id' | 'pw'
 
-/** 아이디 찾기 · 비밀번호 찾기 (팀 시안 variants/account/find.html). 주소 끝 #id / #pw 로 탭이 정해짐
+/** 아이디 찾기 · 비밀번호 찾기. 주소 끝 #id / #pw 로 탭이 정해짐
  * - 아이디 찾기: 닉네임 + 휴대전화 인증 → 아이디를 그대로 보여 줌
  * - 비밀번호 찾기: 아이디 + 휴대전화 인증 → 같은 화면에서 바로 새 비밀번호로 재설정 (메일 없음) */
 export function FindAccount() {

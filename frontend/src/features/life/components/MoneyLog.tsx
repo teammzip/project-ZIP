@@ -69,12 +69,12 @@ export function MoneyLog({ kind }: { kind: Kind }) {
   for (const r of rows) byCat[r.cat] = (byCat[r.cat] ?? 0) + r.amount
   // 분류별 비율 원형 그래프 (큰 분류부터 시계 방향)
   const catRows = cats.filter((c) => byCat[c.name]).sort((a, b) => byCat[b.name] - byCat[a.name])
-  let at = 0
-  const stops = catRows.map((c) => {
-    const from = at
-    at += (byCat[c.name] / total) * 100
-    return `${c.color} ${from}% ${at}%`
-  })
+  const stops: string[] = []
+  catRows.reduce((from, c) => {
+    const to = from + (byCat[c.name] / total) * 100
+    stops.push(`${c.color} ${from}% ${to}%`)
+    return to
+  }, 0)
   const topCat = Object.keys(byCat).sort((a, b) => byCat[b] - byCat[a])[0]
 
   const submit = (e: FormEvent) => {

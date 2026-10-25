@@ -11,7 +11,7 @@ type Props = {
   errors?: ConsentErrors
 }
 
-/** 가입 약관 동의 (팀 시안 variants/account/signup.html 과 같은 구성)
+/** 가입 약관 동의
  * 필수 약관 전체 동의 + [필수] 서비스 이용약관 · 개인정보 처리방침(안내 확인) · 커뮤니티·AI 운영 정책 · 만 14세 이상.
  * "상세보기"를 누르면 그 자리에서 약관이 펼쳐짐. 회원가입 페이지와 소셜 첫 가입 화면이 같이 씀 */
 export function ConsentFields({ value, onChange, errors = {} }: Props) {

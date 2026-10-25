@@ -9,7 +9,7 @@ import { useChangePassword } from '../hooks/useAuthMutations'
 import { changePasswordSchema } from '../schema'
 import { useAuthStore } from '../store/authStore'
 
-/** 내 정보의 비밀번호 변경: 현재 비밀번호 확인 → 새 비밀번호 두 번 (팀 시안 variants/app 설정 화면과 같은 구성).
+/** 내 정보의 비밀번호 변경: 현재 비밀번호 확인 → 새 비밀번호 두 번.
  * 소셜 로그인으로 가입한 사람은 비밀번호가 없어서 아무것도 그리지 않음 */
 export function PasswordChangeForm() {
   const provider = useAuthStore((s) => s.user?.provider)

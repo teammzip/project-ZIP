@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import { Reveal } from '@/components/ui'
+import { Reveal } from './Reveal'
 import { cx } from '@/lib/cx'
 import { STORIES, STORIES_HEAD, type BrandStory } from '../content'
 import { Lines } from './SectionHead'

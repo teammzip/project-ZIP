@@ -1,4 +1,4 @@
-/* 커뮤니티 기본 글(예시)과 동네 정보. 기존 시안 variants/app/js/data/posts-seed.js 와 같은 내용 */
+/* 커뮤니티 기본 글(예시)과 동네 정보 */
 import type { Post } from '../types'
 
 export const CATEGORIES = ['자유', '꿀팁', '질문', '동네'] as const

@@ -1,6 +1,6 @@
 import { motion, useScroll, useTransform } from 'motion/react'
 import { useRef } from 'react'
-import { Reveal } from '@/components/ui'
+import { Reveal } from './Reveal'
 import { cx } from '@/lib/cx'
 import { SHOWCASE_ROWS, type ShowcaseRow } from '../content'
 import { Phone } from './Phone'

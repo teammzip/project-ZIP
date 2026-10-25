@@ -33,7 +33,7 @@ const TILES = [
 
 type Sheet = 'profile' | 'life' | 'verify' | 'password' | 'reset' | 'withdraw' | null
 
-/* 내 정보 (compare.html 시안과 같은 구성)
+/* 내 정보
  * - PC(1100px 이상): 왼쪽 = 프로필 · 월세 카드 / 오른쪽 = 이번 달 요약 · 바로 가기 · 계정·설정
  * - 모바일: 위에서부터 한 줄로
  * 프로필 편집 · 동네 인증 · 생활 정보 · 비밀번호 변경은 창으로 열고, 로그아웃 · 초기화 · 탈퇴는 카드 밖 맨 아래 작은 글씨 */
