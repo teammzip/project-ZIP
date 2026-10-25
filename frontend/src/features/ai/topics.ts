@@ -25,7 +25,8 @@ export type Topic = {
   fields: Array<{ k: string; label: string; ph: string }>
   draft: (v: Values, ctx: AiContext) => string
   reply: (v: Values, text: string, ctx: AiContext) => string
-  action?: (v: Values) => TopicAction | null
+  /** 답변 밑 버튼 (text 는 보낸 글 전체: 입력칸 대신 초안을 직접 고쳐 보낸 경우에도 쓰려고) */
+  action?: (v: Values, text: string) => TopicAction | null
 }
 
 const R_TRASH = '분리배출 기본 원칙이에요.\n\n• 플라스틱·캔·유리병: 내용물 비우고 헹군 뒤 라벨 제거\n• 종이: 테이프·스테이플러 제거 후 펼쳐서 묶기\n• 음식물: 종량제(음식물) 봉투나 전용 용기 사용\n• 배달 용기: 기름기가 남으면 일반쓰레기\n\n배출 요일과 시간은 지역마다 달라서, 사는 동네 구청 안내를 꼭 확인하세요.'
@@ -37,6 +38,30 @@ export const R_UNKNOWN = '아직 데모 버전이라 몇 가지 주제만 답할
 
 const regionText = (ctx: AiContext) => ctx.region || '자취방'
 const photoLine = (ctx: AiContext) => (ctx.hasPhoto ? '\n(사진을 함께 첨부했어요.)' : '')
+
+/* ---------- 사용 방법 안내: 기능이 앱 어디에 있는지 알려 주고 그 화면으로 가는 버튼을 줌 ----------
+ * 지금은 키워드로 찾는 틀만 있음. 실제 AI 를 붙이면 질문을 보내 어느 화면(to)인지 받아오도록 바꾸기 */
+type GuideItem = { name: string; to: string; desc: string; words: RegExp }
+const GUIDE: GuideItem[] = [
+  { name: '일정', to: '/my/calendar', desc: '마이페이지 → 일정에서 일정·할 일을 적고 쓰레기 배출 요일도 볼 수 있어요.', words: /일정|할일|달력|캘린더|쓰레기배출/ },
+  { name: '월세·공과금 (고정 지출)', to: '/my/budget/expense', desc: '마이페이지 → 가계부 → 지출 → 고정 지출에서 월세 납부 기록과 공과금을 관리해요.', words: /월세|공과금|고정지출|관리비|납부/ },
+  { name: '기타 지출', to: '/my/budget/expense/spend', desc: '마이페이지 → 가계부 → 지출 → 기타 지출에서 식비·생활용품 같은 지출을 적어요.', words: /기타지출|식비|생활용품|지출|가계부|소비/ },
+  { name: '수입', to: '/my/budget/income', desc: '마이페이지 → 가계부 → 수입에서 월급·용돈 같은 수입을 적어요.', words: /수입|월급|용돈|알바|아르바이트/ },
+  { name: '메모', to: '/my/memo', desc: '마이페이지 → 메모에서 메모를 쓰고, 홈 화면에 보여 줄 메모를 3개까지 고를 수 있어요.', words: /메모|쪽지|체크리스트/ },
+  { name: '알림', to: '/my/noti', desc: '마이페이지 → 알림에서 안 읽음·읽음으로 나눠 보고, 읽은 알림은 삭제할 수 있어요.', words: /알림|알람/ },
+  { name: '내 정보', to: '/my/settings', desc: '마이페이지 → 내 정보에서 프로필, 생활 정보, 비밀번호 변경, 알림 받기 설정을 바꿔요.', words: /내정보|프로필|비밀번호|설정|닉네임|탈퇴|로그아웃/ },
+  { name: '동네 지도', to: '/map', desc: '동네 메뉴에서 세탁방·편의점·약국 같은 주변 장소를 찾고 즐겨찾기를 해요.', words: /지도|동네|근처|세탁방|편의점|약국|병원|즐겨찾기/ },
+  { name: '커뮤니티', to: '/community', desc: '커뮤니티 메뉴에서 이웃 글을 보고 글쓰기·좋아요·댓글을 해요.', words: /커뮤니티|게시글|글쓰기|댓글|이웃/ },
+  { name: '사진으로 물어보기', to: '/ai', desc: 'AI 화면 입력줄의 ＋ 버튼으로 카메라로 찍거나 사진을 골라 함께 물어볼 수 있어요.', words: /사진|카메라|촬영/ },
+]
+
+/** 질문에 맞는 기능을 찾음 (못 찾으면 null) */
+export function guideFor(q: string) {
+  const s = q.replace(/\s/g, '')
+  return GUIDE.find((g) => g.words.test(s)) ?? null
+}
+
+const R_GUIDE_NONE = '어떤 기능을 찾는지 잘 모르겠어요. 이런 기능이 있어요.\n\n' + GUIDE.map((g) => `• ${g.name}`).join('\n') + '\n\n예) "월세 납부 기록은 어디서 해요?"처럼 물어보세요.'
 
 export function keywordReply(q: string) {
   const s = q.replace(/\s/g, '')
@@ -71,6 +96,19 @@ export const TOPICS: Topic[] = [
     fields: [{ k: 'q', label: '궁금한 점', ph: '예) 세탁기에서 냄새가 나요' }],
     draft: (v, ctx) => `저는 ${regionText(ctx)}에서 자취하는 세입자예요.\n\n질문: ${v.q || '(여기에 질문을 적어주세요)'}\n\n초보도 따라 할 수 있게 단계별로 알려주고, 주의할 점도 함께 알려주세요.`,
     reply: (v, text) => keywordReply(v.q || text),
+  },
+  {
+    id: 'guide', ico: '🧭', name: '사용 방법', desc: '기능이 어디 있는지 알려드려요', photo: false,
+    fields: [{ k: 'q', label: '하고 싶은 것', ph: '예) 월세 납부 기록은 어디서 해요?' }],
+    draft: (v) => `이 앱 사용 방법이 궁금해요.\n질문: ${v.q || '(하고 싶은 것)'}\n\n해당 기능이 어디에 있는지 알려주세요.`,
+    reply: (v, text) => {
+      const g = guideFor(v.q || text)
+      return g ? `「${g.name}」은(는) 여기서 할 수 있어요.\n\n${g.desc}\n\n아래 버튼을 누르면 바로 이동해요.` : R_GUIDE_NONE
+    },
+    action: (v, text) => {
+      const g = guideFor(v.q || text)
+      return g ? { kind: 'link', label: `${g.name} 바로가기`, to: g.to } : null
+    },
   },
   {
     id: 'nearby', ico: '📍', name: '근처 탐색', desc: '세탁방·편의점·약국·카페·병원 등', photo: false,
