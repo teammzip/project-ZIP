@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
-import { Button, Card, Segmented } from '@/components/ui'
+import { Button, Card, Modal, Segmented } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { DOW, fmt, monthDay, pad, todayStr } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
@@ -38,6 +38,9 @@ export function CalendarBoard() {
   const [picked, setPicked] = useState<Picked | null>(null)
   const [pickTime, setPickTime] = useState('')
   const [pickNote, setPickNote] = useState('')
+  // 달력에서 누른 일정 (상세 창). 내 일정은 id 로 찾아 늘 최신 내용, 쓰레기 배출은 그대로
+  const [opened, setOpened] = useState<CalEvent | TrashEvent | null>(null)
+  const openEv = opened && !isTrash(opened) ? (events.find((ev) => ev.id === opened.id) ?? null) : opened
 
   /** 날짜를 고르면 그 달로 이동하고 '선택한 날' 목록을 보여줌 */
   const pick = (date: string, nextMode: CalMode = 'day') => {
@@ -100,6 +103,10 @@ export function CalendarBoard() {
           picking={!!picked}
           categoryNames={categories.map((c) => c.name)}
           onDay={(d) => (picked ? addPicked(d) : pick(d))}
+          onEvent={(ev) => {
+            pick(ev.date)
+            setOpened(ev)
+          }}
           onShift={shift}
           onToday={() => pick(today)}
         />
@@ -118,6 +125,7 @@ export function CalendarBoard() {
         />
         <EventList events={events} selected={selected} mode={mode} setMode={changeMode} query={query} setQuery={setQuery} onMoved={(d) => pick(d)} viewMonth={view} />
       </div>
+      <EventDetail ev={openEv} onClose={() => setOpened(null)} onMoved={(d) => pick(d)} />
     </div>
   )
 }
@@ -131,13 +139,15 @@ type GridProps = {
   picking: boolean
   categoryNames: string[]
   onDay: (date: string) => void
+  /** 칸 안의 일정 막대를 누름 (항목을 골라 날짜에 추가하는 중에는 칸 누르기로 처리) */
+  onEvent: (ev: CalEvent | TrashEvent) => void
   onShift: (dir: number) => void
   onToday: () => void
 }
 
 /** 큰 달력: 월간은 그 달 전체(앞뒤 달 날짜는 흐리게), 주간은 선택한 날이 든 한 주.
  * 칸마다 날짜 + 일정 막대(월간 최대 3개, 넘으면 "+N개 더", 주간은 전부). 좁은 화면도 막대(얇게, "+N"만) */
-function BigCalendar({ events, view, calView, onCalView, selected, picking, categoryNames, onDay, onShift, onToday }: GridProps) {
+function BigCalendar({ events, view, calView, onCalView, selected, picking, categoryNames, onDay, onEvent, onShift, onToday }: GridProps) {
   const { y, m } = view
   const today = todayStr()
   let start: Date
@@ -162,7 +172,7 @@ function BigCalendar({ events, view, calView, onCalView, selected, picking, cate
   const maxChips = calView === 'week' ? 12 : 3
 
   return (
-    <Card>
+    <Card className={cal.bigCard}>
       <h2 className={cal.heading}>내 일정</h2>
       <div className={cal.toolbar}>
         <div className={cal.pills} role="group" aria-label="보기 방식">
@@ -216,6 +226,11 @@ function BigCalendar({ events, view, calView, onCalView, selected, picking, cate
                       className={cx(cal.cev, !trashEv && ev.done && cal.cevDone, joinPrev && cal.joinPrev, joinNext && cal.joinNext)}
                       style={{ '--c': evColor(ev.title, trashEv, trashEv ? undefined : ev.category, categoryNames) } as CSSProperties}
                       title={`${ev.time ? `${ev.time} ` : ''}${ev.title}`}
+                      onClick={(e) => {
+                        if (picking) return
+                        e.stopPropagation()
+                        onEvent(ev)
+                      }}
                     >
                       {/* 이어지는 막대에는 제목을 다시 쓰지 않음 */}
                       {joinPrev ? '\u00a0' : (
@@ -431,5 +446,65 @@ function EditRow({ ev, onDone }: { ev: CalEvent; onDone: (saved: CalEvent | null
         </Button>
       </div>
     </li>
+  )
+}
+
+/** 달력에서 누른 일정 하나: 카테고리 · 제목 · 날짜 · 시간, 완료 체크 · 수정 · 삭제 (쓰레기 배출은 안내만) */
+function EventDetail({ ev, onClose, onMoved }: { ev: CalEvent | TrashEvent | null; onClose: () => void; onMoved: (date: string) => void }) {
+  const { removeEvent, toggleEvent, categories } = useLifeStore(useShallow((s) => ({ removeEvent: s.removeEvent, toggleEvent: s.toggleEvent, categories: s.categories })))
+  const [editing, setEditing] = useState(false)
+  const close = () => {
+    setEditing(false)
+    onClose()
+  }
+  if (!ev) return null
+  const trashEv = isTrash(ev)
+  const color = evColor(ev.title, trashEv, trashEv ? undefined : ev.category, categories.map((c) => c.name))
+  const d = new Date(`${ev.date}T00:00:00`)
+  const when = `${monthDay(ev.date)} (${DOW[d.getDay()]}) · ${ev.time || '종일'}`
+
+  return (
+    <Modal open onClose={close} title={`${ev.title} 일정`}>
+      {editing && !trashEv ? (
+        <ul className={styles.evList}>
+          <EditRow
+            ev={ev}
+            onDone={(saved) => {
+              setEditing(false)
+              if (saved) onMoved(saved.date)
+            }}
+          />
+        </ul>
+      ) : (
+        <div className={cal.detail} style={{ '--c': color } as CSSProperties}>
+          <span className={cal.detailCat}>{trashEv ? `${trashIco(ev.title)} 쓰레기 배출` : ev.category || UNCATEGORIZED}</span>
+          <h3 className={cx(!trashEv && ev.done && cal.cevDone)}>{ev.title}</h3>
+          <p className={cal.detailWhen}>📅 {when}</p>
+          {trashEv ? (
+            <p className={cal.detailNote}>{ev.detail}</p>
+          ) : (
+            <>
+              <label className={cal.detailDone}>
+                <input type="checkbox" className={common.checkbox} checked={!!ev.done} onChange={(e) => toggleEvent(ev.id, e.target.checked)} />
+                {ev.done ? '완료했어요' : '완료로 표시'}
+              </label>
+              <div className={cal.detailBtns}>
+                <Button
+                  variant="line"
+                  className={cal.detailDel}
+                  onClick={() => {
+                    removeEvent(ev.id)
+                    close()
+                  }}
+                >
+                  삭제
+                </Button>
+                <Button onClick={() => setEditing(true)}>수정</Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </Modal>
   )
 }
