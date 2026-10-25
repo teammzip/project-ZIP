@@ -1,6 +1,6 @@
 /* 캘린더: 달력, 일정 추가(카테고리 항목 버튼 + 날짜 누르기 / 직접 입력)·수정·삭제, 상단 검색, 캘린더 아래 알림 */
 import { $, el, pad, fmt, today, todayStr, dayDiff, sortEvents } from '../core/utils.js';
-import { load, store } from '../core/storage.js';
+import { store } from '../core/storage.js';
 import { state, settings } from '../core/state.js';
 import { nextRentDate } from '../core/rentdate.js';
 import { trashIco, trashEventsBetween } from '../data/trash.js';
@@ -12,111 +12,12 @@ import { updateDot } from './noti.js';
 var viewY = today.getFullYear(), viewM = today.getMonth(), selected = todayStr, mode = 'today', query = '', editingId = null;
 // 일정 기록하기에서 눌러 둔 카테고리 항목 이름 (없으면 null). 달력에서 날짜를 누르면 이 이름으로 일정이 추가됨
 var pick = null;
-// ---------- 일정 카테고리 · 직접 만든 항목 (dev 4e9f9ae 에서 호출만 있고 정의가 빠져 있던 부분을 채움) ----------
-// 카테고리 목록: 기본(ev-presets.js) + 미분류. 이름 변경 · 추가 · 삭제는 "카테고리 관리"에서 (zip-event-categories)
-var UNCATEGORIZED = '미분류';
-var categories = load('zip-event-categories', null);
-if (!Array.isArray(categories) || !categories.length) {
-  categories = EV_PRESETS.map(function (c) { return { name: c.name, ico: c.ico, items: c.items.slice() }; });
-}
-if (!categories.some(function (c) { return c.name === UNCATEGORIZED; })) categories.push({ name: UNCATEGORIZED, ico: '📌', items: [] });
-// 사용자가 직접 만든 항목 [{ id, title, category }] (zip-event-presets)
-var customPresets = load('zip-event-presets', []);
-if (!Array.isArray(customPresets)) customPresets = [];
-// 골라 둔 항목의 카테고리, 수정 중인 직접 항목 번호
-var pickCategory = '';
-var editingPresetId = null;
-
-function saveCategoryData() { store('zip-event-categories', categories); }
-// 항목 버튼 묶음: 미분류는 직접 만든 항목이 있을 때만 보임
-function presetGroups() {
-  return categories.filter(function (c) {
-    return c.name !== UNCATEGORIZED || c.items.length || customPresets.some(function (i) { return i.category === UNCATEGORIZED; });
-  });
-}
-// 카테고리 선택 상자를 채움 (없는 값이면 미분류)
-function categorySelect(select, value) {
-  if (!select) return;
-  select.textContent = '';
-  categories.forEach(function (c) {
-    var o = document.createElement('option');
-    o.value = c.name; o.textContent = (c.ico ? c.ico + ' ' : '') + c.name;
-    select.appendChild(o);
-  });
-  select.value = categories.some(function (c) { return c.name === value; }) ? value : UNCATEGORIZED;
-}
-// 카테고리 목록이 바뀌면: 선택 상자 · 항목 버튼 · 달력을 다시 그림
-function refreshCategories() {
-  categorySelect($('evManageCategory'), $('evManageCategory').value);
-  renderCategoryOptions();
-  renderPresets();
-}
-// 직접 만든 항목 고치기: "직접 입력하기"를 열어 제목 · 카테고리를 채움
-function editPreset(item) {
-  editingPresetId = item.id;
-  $('evCustom').open = true;
-  $('evTitle').value = item.title;
-  categorySelect($('evCategory'), item.category);
-  $('evPresetCancel').hidden = false;
-  $('evForm').querySelector('button[type=submit]').textContent = '항목 수정';
-  $('evPresetMessage').textContent = '항목 이름 · 카테고리를 바꾼 뒤 "항목 수정"을 눌러 주세요.';
-  $('evTitle').focus();
-}
-function resetPresetEditor() {
-  editingPresetId = null;
-  $('evTitle').value = '';
-  $('evPresetCancel').hidden = true;
-  $('evForm').querySelector('button[type=submit]').textContent = '일정과 항목 추가';
-}
-// 카테고리 관리: 추가 · 이름 변경 · 삭제 (삭제한 카테고리의 항목과 일정은 미분류로)
-function categoryMsg(text) { $('evCategoryMessage').textContent = text; }
-function moveCategory(from, to) {
-  customPresets.forEach(function (i) { if (i.category === from) i.category = to; });
-  state.events.forEach(function (ev) { if (ev.category === from) ev.category = to; });
-  if (pickCategory === from) pickCategory = to;
-  store('zip-event-presets', customPresets);
-  store('zip-events', state.events);
-}
-$('evCategoryAdd').addEventListener('click', function () {
-  var name = $('evCategoryName').value.trim();
-  if (!name) return categoryMsg('추가할 이름을 적어 주세요.');
-  if (categories.some(function (c) { return c.name === name; })) return categoryMsg('같은 이름의 카테고리가 이미 있어요.');
-  categories.splice(categories.length - 1, 0, { name: name, ico: '🏷️', items: [] });   // 미분류는 늘 맨 끝
-  saveCategoryData(); $('evCategoryName').value = '';
-  refreshCategories(); $('evManageCategory').value = name;
-  categoryMsg('"' + name + '" 카테고리를 추가했어요.');
-});
-$('evCategoryRename').addEventListener('click', function () {
-  var from = $('evManageCategory').value, name = $('evCategoryName').value.trim();
-  if (from === UNCATEGORIZED) return categoryMsg('미분류는 이름을 바꿀 수 없어요.');
-  if (!name) return categoryMsg('새 이름을 적어 주세요.');
-  if (categories.some(function (c) { return c.name === name; })) return categoryMsg('같은 이름의 카테고리가 이미 있어요.');
-  categories.forEach(function (c) { if (c.name === from) c.name = name; });
-  moveCategory(from, name); saveCategoryData(); $('evCategoryName').value = '';
-  refreshCategories(); $('evManageCategory').value = name; renderCalendarAll();
-  categoryMsg('"' + from + '" → "' + name + '"(으)로 바꿨어요.');
-});
-$('evCategoryDelete').addEventListener('click', function () {
-  var name = $('evManageCategory').value;
-  if (name === UNCATEGORIZED) return categoryMsg('미분류는 삭제할 수 없어요.');
-  if (!confirm('"' + name + '" 카테고리를 삭제할까요? 이 카테고리의 항목과 일정은 미분류로 옮겨져요.')) return;
-  categories = categories.filter(function (c) { return c.name !== name; });
-  moveCategory(name, UNCATEGORIZED); saveCategoryData();
-  refreshCategories(); renderCalendarAll();
-  categoryMsg('"' + name + '" 카테고리를 삭제했어요.');
-});
-$('evPresetCancel').addEventListener('click', function () { resetPresetEditor(); $('evPresetMessage').textContent = ''; });
-
 // 달력 보기 방식: month(월간) / week(주간, 선택한 날이 든 주)
 var calView = 'month';
 // 달력 칸 안 일정 막대 색: 일정 기록하기 카테고리(집 관리 등)마다 다른 색, 직접 입력한 일정은 파랑, 쓰레기 배출은 초록
 var CAT_COLORS = ['#ff8a4c', '#2ec4b6', '#f5b301', '#e56b9a', '#7c6cf5'];
 function evColor(ev) {
   if (ev.kind === 'trash') return '#3bb273';
-  if (ev.category && ev.category !== '미분류') {
-    var ci = categories.map(function (c) { return c.name; }).indexOf(ev.category);
-    if (ci >= 0) return CAT_COLORS[ci % CAT_COLORS.length];
-  }
   for (var i = 0; i < EV_PRESETS.length; i++) { if (EV_PRESETS[i].items.indexOf(ev.title) >= 0) return CAT_COLORS[i % CAT_COLORS.length]; }
   return '#4a90e2';
 }
@@ -341,28 +242,19 @@ function renderEvList() {
     });
     li.appendChild(cb);
     li.appendChild(el('span', 'when', (mode === 'all' || mode === 'week' ? ev.date.slice(5).replace('-', '/') + ' ' : '') + (ev.time || '종일')));
-    var name = el('span', 'name');
-    if (ev.category) name.appendChild(el('small', 'ev-category', ev.category));
-    name.appendChild(document.createTextNode(ev.title));
-    li.appendChild(name);
-    li.tabIndex = 0;
-    li.addEventListener('pointerup', function (e) {
-      if (e.pointerType === 'touch' && !e.target.closest('button, input')) li.classList.toggle('show-actions');
-    });
-    var actions = el('span', 'ev-actions');
+    li.appendChild(el('span', 'name', ev.title));
     var edit = el('button', 'edit', '수정');
-    edit.type = 'button'; edit.title = '일정 수정'; edit.setAttribute('aria-label', ev.title + ' 일정 수정');
+    edit.type = 'button'; edit.title = '일정 수정';
     edit.addEventListener('click', function () { editingId = ev.id; renderEvList(); });
-    actions.appendChild(edit);
+    li.appendChild(edit);
     var del = el('button', 'del', '×');
-    del.type = 'button'; del.title = '삭제'; del.setAttribute('aria-label', ev.title + ' 일정 삭제');
+    del.type = 'button'; del.title = '삭제';
     del.addEventListener('click', function () {
       state.events = state.events.filter(function (x) { return x.id !== ev.id; });
       store('zip-events', state.events);
       renderCalendarAll(); updateDot();
     });
-    actions.appendChild(del);
-    li.appendChild(actions);
+    li.appendChild(del);
     list.appendChild(li);
   });
 }
@@ -399,45 +291,23 @@ $('modeAll').addEventListener('click', function () { setMode('all'); });
 /* 일정 기록하기 ① 카테고리 항목 버튼 → ② 달력에서 날짜 누르기(또는 오늘·이번 주 버튼)로 추가 */
 function renderPresets() {
   var box = $('evCats'); box.textContent = '';
-  presetGroups().forEach(function (cat) {
+  EV_PRESETS.forEach(function (cat) {
     var g = el('div', 'ev-cat');
     g.appendChild(el('h3', null, cat.ico + ' ' + cat.name));
     var row = el('div', 'chips');
-    function itemButton(name) {
-      var active = pick === name && pickCategory === cat.name;
-      var b = el('button', 'chip' + (active ? ' on' : ''), name);
-      b.type = 'button'; b.setAttribute('aria-pressed', String(active));
-      b.addEventListener('click', function () { setPick(active ? null : name, cat.name); });
-      return b;
-    }
-    cat.items.forEach(function (name) { row.appendChild(itemButton(name)); });
-    customPresets.filter(function (item) { return item.category === cat.name; }).forEach(function (item) {
-      var group = el('span', 'ev-preset-item');
-      group.addEventListener('pointerup', function (e) {
-        if (e.pointerType === 'touch') group.classList.add('show-actions');
-      });
-      group.appendChild(itemButton(item.title));
-      var edit = el('button', 'ev-preset-action', '수정'); edit.type = 'button';
-      edit.setAttribute('aria-label', item.title + ' 항목 수정');
-      edit.addEventListener('click', function () { editPreset(item); });
-      var del = el('button', 'ev-preset-action', '삭제'); del.type = 'button';
-      del.setAttribute('aria-label', item.title + ' 항목 삭제');
-      del.addEventListener('click', function () {
-        customPresets = customPresets.filter(function (other) { return other.id !== item.id; });
-        store('zip-event-presets', customPresets);
-        if (editingPresetId === item.id) resetPresetEditor();
-        if (pick === item.title && pickCategory === item.category) setPick(null);
-        renderPresets(); renderCategoryOptions();
-      });
-      group.appendChild(edit); group.appendChild(del); row.appendChild(group);
+    cat.items.forEach(function (name) {
+      var b = el('button', 'chip' + (pick === name ? ' on' : ''), name);
+      b.type = 'button';
+      b.addEventListener('click', function () { setPick(pick === name ? null : name); });
+      row.appendChild(b);
     });
-    g.appendChild(row); box.appendChild(g);
+    g.appendChild(row);
+    box.appendChild(g);
   });
 }
 // 항목을 고르거나(이름) 해제(null)하고 안내 줄을 맞춤
-function setPick(name, category) {
+function setPick(name) {
   pick = name;
-  pickCategory = name ? (category || '') : '';
   $('calGrid').classList.toggle('picking', !!pick);   // 항목을 골라 두면 달력 칸에 "+" 커서
   $('pickBar').hidden = !pick;
   if (pick) { $('pickName').textContent = '「' + pick + '」'; $('pickNote').textContent = '달력에서 날짜를 눌러 주세요.'; }
@@ -445,9 +315,9 @@ function setPick(name, category) {
 }
 // 골라 둔 항목을 이 날짜에 일정으로 추가 (같은 날 같은 이름이 이미 있으면 건너뜀)
 function addPicked(date) {
-  var dup = state.events.some(function (ev) { return ev.date === date && ev.title === pick && (ev.category || '') === pickCategory; });
+  var dup = state.events.some(function (ev) { return ev.date === date && ev.title === pick; });
   if (dup) { $('pickNote').textContent = date.slice(5).replace('-', '월 ') + '일에 이미 있어요.'; return; }
-  addEvent(pick, date, $('pickTime').value, pickCategory);
+  addEvent(pick, date, $('pickTime').value);
   $('pickNote').textContent = date.slice(5).replace('-', '월 ') + '일에 추가했어요. 다른 날짜도 눌러 추가할 수 있어요.';
 }
 $('pickToday').addEventListener('click', function () { if (pick) addPicked(todayStr); });
@@ -460,17 +330,12 @@ function editRow(ev) {
   var title = el('input'); title.type = 'text'; title.maxLength = 60; title.value = ev.title; title.setAttribute('aria-label', '일정 제목');
   var date = el('input'); date.type = 'date'; date.value = ev.date; date.setAttribute('aria-label', '날짜');
   var time = el('input'); time.type = 'time'; time.value = ev.time || ''; time.setAttribute('aria-label', '시간 (선택)');
-  var categoryLabel = el('label', null, '카테고리 (선택)');
-  var category = document.createElement('select'); categorySelect(category, ev.category || '미분류');
-  categoryLabel.appendChild(category);
-  var clearCategory = el('button', 'cancel', '카테고리 삭제'); clearCategory.type = 'button';
-  clearCategory.addEventListener('click', function () { category.value = '미분류'; category.focus(); });
   var ok = el('button', 'save', '저장'); ok.type = 'button';
   var no = el('button', 'cancel', '취소'); no.type = 'button';
   function save() {
     var t = title.value.trim();
     if (!t || !date.value) { (t ? date : title).focus(); return; }
-    ev.title = t; ev.date = date.value; ev.time = time.value; ev.category = category.value.trim();
+    ev.title = t; ev.date = date.value; ev.time = time.value;
     store('zip-events', state.events);
     editingId = null;
     selected = ev.date; viewY = Number(ev.date.slice(0, 4)); viewM = Number(ev.date.slice(5, 7)) - 1;   // 날짜를 바꿨으면 그 날로 따라감
@@ -481,14 +346,11 @@ function editRow(ev) {
   ok.addEventListener('click', save);
   no.addEventListener('click', cancel);
   li.addEventListener('keydown', function (e) {
-    if (e.target.tagName === 'BUTTON') return;
     if (e.key === 'Enter') { e.preventDefault(); save(); }
     else if (e.key === 'Escape') cancel();
   });
   var fields = el('div', 'fields');
   fields.appendChild(title);
-  fields.appendChild(categoryLabel);
-  fields.appendChild(clearCategory);
   var row = el('div', 'fields-row');
   row.appendChild(date); row.appendChild(time);
   fields.appendChild(row);
@@ -532,12 +394,7 @@ function renderCalNoti() {
   });
 }
 // 달력·일정 목록·알림과 할 일 요약을 한 번에 다시 그림
-function renderCategoryOptions() {
-  categorySelect($('evCategory'), $('evCategory').value);
-}
-
 export function renderCalendarAll() {
-  renderCategoryOptions();
   renderGrid();
   renderEvList();
   renderCalNoti();
@@ -547,8 +404,8 @@ export function renderCalendarAll() {
 $('evDate').value = selected;
 // 일정 추가 폼: 제목, 날짜, 시간(선택)
 // 일정 한 개를 저장하고 그 날짜로 달력·목록을 맞춤 (직접 입력과 항목 버튼 둘 다 이걸 씀)
-function addEvent(title, date, time, category) {
-  state.events.push({ id: Date.now() + Math.floor(Math.random() * 1000), date: date, time: time || '', title: title, category: (category || '').trim(), done: false });
+function addEvent(title, date, time) {
+  state.events.push({ id: Date.now() + Math.floor(Math.random() * 1000), date: date, time: time || '', title: title, done: false });
   store('zip-events', state.events);
   selected = date; viewY = Number(date.slice(0, 4)); viewM = Number(date.slice(5, 7)) - 1;
   var range = weekRange(today);
@@ -561,26 +418,10 @@ $('evForm').addEventListener('submit', function (e) {
   e.preventDefault();
   var title = $('evTitle').value.trim(), date = $('evDate').value;
   if (!title || !date) return;
-  var category = $('evCategory').value;
-  if (!categories.some(function (cat) { return cat.name === category; })) { $('evPresetMessage').textContent = '목록에서 카테고리를 선택해 주세요.'; return; }
-  var duplicate = categories.some(function (cat) { return cat.name === category && cat.items.indexOf(title) !== -1; })
-    || customPresets.some(function (item) { return item.id !== editingPresetId && item.title === title && item.category === category; });
-  if (editingPresetId && duplicate) { $('evPresetMessage').textContent = '해당 카테고리에 같은 항목이 이미 있어요.'; return; }
-  if (editingPresetId) {
-    var item = customPresets.find(function (item) { return item.id === editingPresetId; });
-    if (!item) return;
-    if (pick === item.title && pickCategory === item.category) { pick = title; pickCategory = category; $('pickName').textContent = '「' + title + '」'; }
-    item.title = title; item.category = category;
-  } else {
-    if (!duplicate) customPresets.push({ id: crypto.randomUUID(), title: title, category: category });
-    addEvent(title, date, $('evTime').value, category);
-  }
-  store('zip-event-presets', customPresets);
-  resetPresetEditor(); renderPresets(); renderCategoryOptions();
-  $('evPresetMessage').textContent = '카테고리 아래 항목 버튼에 반영했어요. 버튼을 선택해 다른 날짜에도 추가할 수 있어요.';
+  addEvent(title, date, $('evTime').value);
+  $('evTitle').value = ''; $('evTime').value = '';
 });
-saveCategoryData();
-refreshCategories();
+renderPresets();
 
 /* 상단 검색(일정 제목 검색)과 + 버튼 */
 $('searchForm').addEventListener('submit', function (e) {
