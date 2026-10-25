@@ -43,7 +43,7 @@ export function AppLayout() {
         </main>
       </div>
       <BottomNav />
-      {pathname !== '/ai' && (
+      {pathname !== '/ai' && pathname !== '/map' && (
         <Link to="/ai" className={styles.aiFab} aria-label="AI 도우미 열기" title="AI 도우미">
           <svg viewBox="0 0 24 24" width={32} height={32} aria-hidden="true">
             <path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z" />

@@ -6,8 +6,7 @@ import { TRASH, trashIco } from './data/catalog'
 import { useLifeStore } from './store'
 import type { Bill, CalEvent, LifeSettings, MoneyRecord, TrashEvent } from './types'
 
-export const sortEvents = <T extends { date: string; time: string }>(list: T[]) =>
-  [...list].sort((a, b) => (a.date + (a.time || '99:99')).localeCompare(b.date + (b.time || '99:99')))
+export const sortEvents = <T extends { date: string; time: string }>(list: T[]) => [...list].sort((a, b) => (a.date + (a.time || '99:99')).localeCompare(b.date + (b.time || '99:99')))
 
 export const isTrash = (ev: CalEvent | TrashEvent): ev is TrashEvent => 'kind' in ev && ev.kind === 'trash'
 
@@ -147,4 +146,15 @@ export function spendBreakdown(back: number, spends: MoneyRecord[], bills: Bill[
   const rows = Object.entries(sums).sort((a, b) => b[1] - a[1])
   const total = rows.reduce((t, r) => t + r[1], 0)
   return { month: d.getMonth() + 1, rows, total, fixed: rent + billSum, variable }
+}
+
+/** 동네 인증 유효 기간 (일) */
+export const VERIFY_DAYS = 30
+
+/** 지금 우리 동네가 인증된 상태인지 + 인증한 날 · 남은 날. 우리 동네를 바꾸거나 30일이 지나면 다시 인증 */
+export function useRegionVerify() {
+  const { region, verify } = useLifeStore(useShallow((s) => ({ region: s.settings.region, verify: s.regionVerify })))
+  const left = verify ? VERIFY_DAYS + dayDiff(fmt(new Date(verify.at))) : 0 // 인증한 날부터 지난 날만큼 줄어듦
+  const verified = !!region && !!verify && verify.region === region && left > 0
+  return { region, verified, at: verified ? verify.at : null, left: verified ? left : 0 }
 }

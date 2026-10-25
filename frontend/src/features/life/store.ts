@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 import { monthKeyOf } from '@/lib/date'
 import { seedBills, seedEvents, seedIncomes, seedSpends, todosToEvents } from './data/seed'
 import { UNCATEGORIZED, defaultCategories } from './data/presets'
-import type { Bill, CalEvent, CustomPreset, EventCategory, LifeSettings, MoneyRecord } from './types'
+import type { Bill, CalEvent, CustomPreset, EventCategory, LifeSettings, MoneyRecord, RegionVerify } from './types'
 
 /* 생활 관리 데이터(일정·공과금·월세·수입·지출·알림 읽음·설정)를 한곳에서 들고 있음.
  * 아직 서버가 없어서 이 브라우저(localStorage 'zip-life')에만 저장됩니다.
@@ -25,6 +25,8 @@ type LifeData = {
   categories: EventCategory[]
   /** 사용자가 직접 만든 항목 버튼 */
   customPresets: CustomPreset[]
+  /** 동네 인증 (안 했으면 null) */
+  regionVerify: RegionVerify | null
 }
 
 type LifeActions = {
@@ -59,6 +61,8 @@ type LifeActions = {
   /** 알림 지우기 (읽은 알림 정리) */
   deleteNotis: (ids: string[]) => void
   saveSettings: (s: LifeSettings) => void
+  /** 위치로 확인한 동네를 우리 동네로 정하고 인증 완료 */
+  verifyRegion: (region: string) => void
   /** 모든 기록을 처음 상태(예시 데이터)로 되돌림 */
   reset: () => void
 }
@@ -74,6 +78,7 @@ const initial = (): LifeData => ({
   settings: defaultSettings(),
   categories: defaultCategories(),
   customPresets: [],
+  regionVerify: null,
 })
 
 /** 기본 설정 (입주 8개월 전, 계약 14개월 뒤는 기존 시안의 예시 값) */
@@ -150,6 +155,7 @@ export const useLifeStore = create<LifeData & LifeActions>()(
       markRead: (ids) => set((s) => ({ notiRead: { ...s.notiRead, ...Object.fromEntries(ids.map((id) => [id, true])) } })),
       deleteNotis: (ids) => set((s) => ({ notiDeleted: { ...s.notiDeleted, ...Object.fromEntries(ids.map((id) => [id, true])) } })),
       saveSettings: (settings) => set({ settings }),
+      verifyRegion: (region) => set((s) => ({ settings: { ...s.settings, region }, regionVerify: { region, at: Date.now() } })),
       reset: () => set(initial()),
     }),
     {

@@ -91,6 +91,25 @@
   color: var(--color-muted);
 }
 
+.okTag,
+.needTag {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.okTag {
+  background: #e6f7ef;
+  color: #14935f;
+}
+
+.needTag {
+  background: var(--color-primary);
+  color: #fff;
+}
+
 .ico {
   display: grid;
   place-items: center;

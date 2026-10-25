@@ -145,6 +145,7 @@
 | PUT | `/api/me/settings` | `settings` | `settings` |
 | GET | `/api/regions` | — | `[{ id, name, parentId, level }]` |
 | GET | `/api/regions/{id}/neighbors` | — | `[{ id, name }]` |
+| POST | `/api/me/region-verify` | `{ lat, lon }` | `{ region: { id, name }, verifiedAt, expiresAt }` (지금 위치의 동네로 인증) |
 
 ```json
 { "regionId": "2", "regionName": "서울 마포구",
@@ -160,6 +161,14 @@
 
 - 닉네임은 설정이 아니라 `PATCH /api/auth/me`로 바꿔요.
 - 가입하면 `user_settings` 기본 줄을 같이 만들어 주세요.
+
+### 동네 인증
+- 마이페이지 > 내 정보 > 계정 · 설정의 **📍 동네 인증**, 또는 커뮤니티에서 인증 안 한 사람이 글쓰기 · 댓글 · 공감을 누르면 인증 창이 떠요.
+- 프론트가 휴대폰 위치(GPS) 좌표를 보내면, 서버가 좌표 → 행정구역(카카오 로컬 `coord2regioncode` 등)으로 바꿔 그 동네를 `users.region_id`로 정하고 인증 시각을 저장해요.
+  - 우리 동네와 다른 곳이면 프론트가 먼저 "지금 위치는 ○○구예요. 이 동네로 바꾸고 인증할까요?"를 물어보고, 확인하면 같은 요청을 보내요.
+- 인증은 **30일** 유지. 동네를 바꾸면(설정 저장으로 `regionId`가 바뀌면) 인증은 풀려요.
+- `GET /api/auth/me`의 `user`에 `regionVerifiedAt: "2026-10-25T10:58:00+09:00" | null`을 같이 주세요 (30일 지났거나 동네가 바뀌었으면 `null`).
+- 지금 프론트는 서버 없이 OpenStreetMap(Nominatim)으로 동네 이름을 찾고 브라우저(`zip-life`의 `regionVerify: { region, at }`)에 저장해요 → `features/life/locateRegion.ts`, `useRegionVerify()`.
 
 ---
 
@@ -300,6 +309,7 @@
   - 지금 프론트는 첨부를 브라우저에 data URL로 저장해요 (`Attachment { name, type, size, data }`). 서버가 생기면 `data` 대신 `url`을 써요.
 - **신고**: `targetType` `POST` · `COMMENT`, `reason` `ABUSE` · `FALSE_INFO` · `PRIVACY` · `AD_ILLEGAL` · `COPYRIGHT` · `OTHER` (`reports`). 신고 버튼 화면은 아직 없어요.
 - 정지된 회원은 글쓰기 · 댓글 · 좋아요가 403이어야 해요.
+- [동네 인증](#동네-인증)을 안 했거나 30일이 지난 회원도 글쓰기 · 댓글 · 좋아요가 403이어야 해요 (읽기는 누구나).
 - 프론트 대응: `features/community/types.ts` (지금은 댓글에 `id`가 없어 순서로 고쳐요. 서버가 생기면 `id`로 바꿔요)
 
 ---
@@ -459,6 +469,7 @@
 | 9 | `place_categories` 기본 데이터가 4개뿐이에요 | 카페 · 병원 · 헬스장 · 은행 · 미용실 · 다이소 · 공원 · 식당 · 반찬가게 · 세탁소 · 주민센터 추가 (+ `icon` 칸) |
 | 10 | 경고를 확인했는지 남길 칸이 없어요 | `user_sanctions.seen_at DATETIME NULL` 추가 (경고 창 "확인했어요") |
 | 11 | 일정 카테고리를 둘 곳이 없어요 | `event_categories(id, user_id, name, ico, sort_order)` · `event_presets(id, user_id, category_id, title)` 표 + `events.category_id` (NULL = 미분류) |
+| 12 | 동네 인증 시각을 둘 곳이 없어요 | `users.region_verified_at DATETIME NULL` 추가 (위 [동네 인증](#동네-인증)) |
 
 ## 프론트에서 서버를 붙이는 순서 (예: 일정)
 

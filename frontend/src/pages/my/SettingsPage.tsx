@@ -5,7 +5,7 @@ import { useChatStore } from '@/features/ai'
 import { LoginBadge, LoginMethod, PasswordChangeForm, useAuthStore, useLogout, useUpdateMe, useWithdraw } from '@/features/auth'
 import { useCommunityStore } from '@/features/community'
 import { LegalLinks } from '@/features/legal'
-import { LifeInfoForm, LifeStats, NotiSwitch, RentCard, useLifeStore, useLifeSummary } from '@/features/life'
+import { LifeInfoForm, LifeStats, NotiSwitch, RegionVerifyDialog, RentCard, useLifeStore, useLifeSummary, useRegionVerify } from '@/features/life'
 import { useMapStore } from '@/features/map'
 import { useMemoStore } from '@/features/memo'
 import { ProfileEditor, ProfileHero, useProfileStore } from '@/features/profile'
@@ -31,15 +31,15 @@ const TILES = [
   { to: '/community', ico: '💬', label: '동네 이야기' },
 ]
 
-type Sheet = 'profile' | 'life' | 'password' | 'reset' | 'withdraw' | null
+type Sheet = 'profile' | 'life' | 'verify' | 'password' | 'reset' | 'withdraw' | null
 
 /* 내 정보 (compare.html 시안과 같은 구성)
  * - PC(1100px 이상): 왼쪽 = 프로필 · 월세 카드 / 오른쪽 = 이번 달 요약 · 바로 가기 · 계정·설정
  * - 모바일: 위에서부터 한 줄로
- * 프로필 편집 · 생활 정보 · 비밀번호 변경은 창으로 열고, 로그아웃 · 초기화 · 탈퇴는 카드 밖 맨 아래 작은 글씨 */
+ * 프로필 편집 · 동네 인증 · 생활 정보 · 비밀번호 변경은 창으로 열고, 로그아웃 · 초기화 · 탈퇴는 카드 밖 맨 아래 작은 글씨 */
 export function SettingsPage() {
   const user = useAuthStore((s) => s.user)
-  const region = useLifeStore((s) => s.settings.region)
+  const { region, verified, left } = useRegionVerify()
   const postCount = useCommunityStore((s) => s.posts.filter((p) => p.mine).length)
   const lifeSummary = useLifeSummary()
   const updateMe = useUpdateMe()
@@ -56,7 +56,7 @@ export function SettingsPage() {
   return (
     <div className={styles.wrap}>
       <div className={styles.side}>
-        <ProfileHero name={name} region={region} badge={<LoginBadge />} onEdit={() => setSheet('profile')} />
+        <ProfileHero name={name} region={region} regionVerified={verified} badge={<LoginBadge />} onEdit={() => setSheet('profile')} />
         <RentCard />
       </div>
 
@@ -88,6 +88,15 @@ export function SettingsPage() {
                 </button>
               </li>
             )}
+            <li>
+              <button type="button" className={styles.row} onClick={() => setSheet('verify')}>
+                <span className={styles.ico}>📍</span>
+                <span className={styles.grow}>
+                  동네 인증<small>{verified ? `${region} · ${left}일 남음` : region ? `${region} · 인증하면 동네생활에 글을 쓸 수 있어요` : '우리 동네를 먼저 정해 주세요'}</small>
+                </span>
+                {verified ? <span className={styles.okTag}>인증 완료</span> : <span className={styles.needTag}>인증하기</span>}
+              </button>
+            </li>
             <li>
               <button type="button" className={styles.row} onClick={() => setSheet('life')}>
                 <span className={styles.ico}>🏠</span>
@@ -138,6 +147,8 @@ export function SettingsPage() {
           }}
         />
       </Modal>
+
+      <RegionVerifyDialog open={sheet === 'verify'} onClose={close} onVerified={() => notify('동네 인증을 마쳤어요.')} />
 
       <Modal open={sheet === 'password'} onClose={close} title="비밀번호 변경">
         <h3 className={styles.sheetTitle}>비밀번호 변경</h3>
