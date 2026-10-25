@@ -232,12 +232,6 @@
   }
 }
 
-@media (max-width: 900px) {
-  .card {
-    grid-column: 1 / -1;
-  }
-}
-
 @media (max-width: 700px) {
   .row {
     gap: 10px;

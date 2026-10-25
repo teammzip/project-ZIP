@@ -22,4 +22,13 @@
   .row {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  /* 모바일 순서: 요약 카드(order 0) → 메모·알림 → 나머지 */
+  .top {
+    order: 1;
+  }
+
+  .row {
+    order: 2;
+  }
 }
