@@ -589,191 +589,205 @@
   color: var(--color-muted);
 }
 
-/* 수입 · 지출 빠른 기록 (모바일만, MoneyLog.tsx). PC 는 오른쪽 기록하기 폼 */
-.quick,
-.quickOpen,
-.quickSaved {
+/* 수입 · 지출 빠른 기록 (MoneyLog.tsx): 금액 크게 · 종류 칩 · 날짜 · 메모 칸 · 꽉 찬 기록하기
+ * 모바일: 그래프 아래 "+ ○○ 기록하기" → 그 자리에 펼침(.quickInline) / PC: 오른쪽 카드(.quickPanel) */
+.quickOpen {
+  display: block;
+  width: 100%;
+  margin: 14px 0 6px;
+  padding: 14px 0;
+  border: 1.5px solid var(--color-primary);
+  border-radius: 14px;
+  background: #eaf3ff;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.quick {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  margin: 14px 0 6px;
+  padding: 16px;
+  border: 1.5px solid var(--color-primary);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.quickHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.quickX {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.quickTitle {
+  font-size: 15px;
+}
+
+.quickAmount {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--color-line);
+}
+
+.quickAmount:focus-within {
+  border-bottom-color: var(--color-primary);
+}
+
+.quickAmount input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.quickAmount input::placeholder {
+  color: #c9cdd6;
+}
+
+.quickAmount span {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.quickCats {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.quickCats::-webkit-scrollbar {
   display: none;
+}
+
+.quickCat {
+  flex: none;
+  padding: 7px 13px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5263;
+}
+
+.quickCat.on {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, #fff);
+  color: var(--color-text);
+  font-weight: 800;
+}
+
+.quickFields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.quickField {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: #f8f9fc;
+  text-align: left;
+}
+
+.quickField:focus-within {
+  border-color: var(--color-primary);
+  background: #fff;
+}
+
+.quickField span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.quickField b,
+.quickField input:not(.quickDate) {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quickField input:not(.quickDate) {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+}
+
+.quickAdd {
+  color: var(--color-primary);
+}
+
+/* 날짜: 칸 위에 보이지 않는 날짜 입력을 겹쳐서 누르면 달력이 열림 */
+.quickDate {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+}
+
+.quickSaved {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-teal);
+}
+
+.quickSavedOut {
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+/* PC 오른쪽 카드 안: 테두리 · 바깥 여백 없이 */
+.quickPanel {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.quickPanel .quickAmount input {
+  font-size: 32px;
+}
+
+@media (min-width: 901px) {
+  .quickOpen,
+  .quickInline,
+  .quickSavedOut {
+    display: none;
+  }
 }
 
 @media (max-width: 900px) {
   .fullForm {
     display: none;
-  }
-
-  .quickOpen {
-    display: block;
-    width: 100%;
-    margin: 14px 0 6px;
-    padding: 14px 0;
-    border: 1.5px solid var(--color-primary);
-    border-radius: 14px;
-    background: #eaf3ff;
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--color-primary);
-  }
-
-  .quick {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-    min-width: 0;
-    margin: 14px 0 6px;
-    padding: 16px;
-    border: 1.5px solid var(--color-primary);
-    border-radius: 14px;
-    background: #fff;
-  }
-
-  .quickHead {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .quickX {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--color-bg);
-    font-size: 12px;
-    color: var(--color-muted);
-  }
-
-  .quickTitle {
-    font-size: 15px;
-  }
-
-  .quickAmount {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    padding-bottom: 6px;
-    border-bottom: 2px solid var(--color-line);
-  }
-
-  .quickAmount:focus-within {
-    border-bottom-color: var(--color-primary);
-  }
-
-  .quickAmount input {
-    flex: 1;
-    min-width: 0;
-    border: 0;
-    outline: 0;
-    background: none;
-    font-size: 30px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-  }
-
-  .quickAmount input::placeholder {
-    color: #c9cdd6;
-  }
-
-  .quickAmount span {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--color-muted);
-  }
-
-  .quickCats {
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .quickCats::-webkit-scrollbar {
-    display: none;
-  }
-
-  .quickCat {
-    flex: none;
-    padding: 7px 13px;
-    border: 1px solid var(--color-line);
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #4b5263;
-  }
-
-  .quickCat.on {
-    border-color: var(--c);
-    background: color-mix(in srgb, var(--c) 14%, #fff);
-    color: var(--color-text);
-    font-weight: 800;
-  }
-
-  .quickFields {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 8px;
-  }
-
-  .quickField {
-    position: relative;
-    display: grid;
-    gap: 2px;
-    min-width: 0;
-    padding: 8px 12px;
-    border: 1px solid var(--color-line);
-    border-radius: 12px;
-    background: #f8f9fc;
-    text-align: left;
-  }
-
-  .quickField:focus-within {
-    border-color: var(--color-primary);
-    background: #fff;
-  }
-
-  .quickField span {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--color-muted);
-  }
-
-  .quickField b,
-  .quickField input:not(.quickDate) {
-    overflow: hidden;
-    font-size: 14px;
-    font-weight: 700;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .quickField input:not(.quickDate) {
-    width: 100%;
-    min-width: 0;
-    padding: 0;
-    border: 0;
-    outline: 0;
-    background: none;
-  }
-
-  .quickAdd {
-    color: var(--color-primary);
-  }
-
-  /* 날짜: 칸 위에 보이지 않는 날짜 입력을 겹쳐서 누르면 달력이 열림 */
-  .quickDate {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    opacity: 0;
-  }
-
-  .quickSaved {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-teal);
-  }
-
-  .quickSavedOut {
-    margin-bottom: 6px;
-    text-align: center;
   }
 }
