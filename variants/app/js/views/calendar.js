@@ -89,11 +89,13 @@ function renderGrid() {
     start = sundayOf(selected); count = 7;
     var end = new Date(start); end.setDate(end.getDate() + 6);
     $('calTitle').textContent = start.getFullYear() + '.' + pad(start.getMonth() + 1) + '.' + pad(start.getDate()) + ' ~ ' + pad(end.getMonth() + 1) + '.' + pad(end.getDate());
+    $('calTitle').classList.add('long');   // 주간 제목은 길어서 좁은 화면에서 글자를 줄임
   } else {
     var first = new Date(viewY, viewM, 1);
     start = new Date(first); start.setDate(1 - first.getDay());
     count = Math.ceil((first.getDay() + new Date(viewY, viewM + 1, 0).getDate()) / 7) * 7;
     $('calTitle').textContent = viewY + '.' + pad(viewM + 1);
+    $('calTitle').classList.remove('long');
   }
   var maxChips = calView === 'week' ? 12 : 3;
   // 같은 제목의 일정이 이어지는 날(예: 병원 예약 8~10일)은 막대가 이어지도록 같은 줄(slot)에 놓고 가운데 경계를 터 줌
@@ -145,9 +147,13 @@ function renderGrid() {
       }
       chips.appendChild(c);
     }
-    if (day.slots.length > maxChips) chips.appendChild(el('div', 'cev-more', '+' + (day.slots.length - maxChips) + '개 더'));
+    if (day.slots.length > maxChips) {   // 좁은 화면에서는 "개 더" 글자는 숨기고 "+N" 만
+      var more = el('div', 'cev-more', '+' + (day.slots.length - maxChips));
+      more.appendChild(el('span', 'more-word', '개 더'));
+      chips.appendChild(more);
+    }
     cell.appendChild(chips);
-    var mark = el('span', 'mark');   // 좁은 화면에서는 글자 대신 점
+    var mark = el('span', 'mark');   // 일정 개수 점 (지금은 쓰지 않음: 모바일도 막대로 보여 줌)
     for (var k = 0; k < Math.min(evs.length, 3); k++) mark.appendChild(el('i'));
     cell.appendChild(mark);
     grid.appendChild(cell);

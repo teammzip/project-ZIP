@@ -255,22 +255,76 @@
     min-width: 0;
   }
 
+  /* 주간/월간 버튼은 줄바꿈 없이, 주간 제목(긴 날짜)은 조금 작게 */
+  .pill {
+    white-space: nowrap;
+  }
+
+  .cal-nav {
+    justify-self: end;
+    gap: 6px;
+  }
+
+  .cal-ym.long {
+    font-size: 15px;
+  }
+
+  /* 모바일도 PC처럼 칸 안에 일정 막대: 칸이 좁아 막대를 얇게, 글자를 작게 (시간은 숨김) */
   .cal-day {
-    min-height: 62px;
-    padding: 4px 2px;
-    text-align: center;
+    min-height: 78px;
+    padding: 4px 2px 3px;
+  }
+
+  .cal-day .dn {
+    display: grid;
+    width: 22px;
+    min-width: 22px;
+    height: 22px;
+    margin: 0 auto;
+    padding: 0;
+    font-size: 12px;
   }
 
   .cal-grid.week .cal-day {
-    min-height: 130px;
+    min-height: 160px;
   }
 
   .chips2 {
+    gap: 2px;
+    margin-top: 3px;
+  }
+
+  .cev {
+    padding: 0 2px 0 3px;
+    border-left-width: 2px;
+    border-radius: 0 3px 3px 0;
+    font-size: 9px;
+    line-height: 1.6;
+    letter-spacing: -0.03em;
+  }
+
+  .cev i {
     display: none;
   }
 
-  .cal-day .mark {
-    display: flex;
+  /* 이어지는 막대: 칸 안쪽 여백(2px) + 경계선(1px)만큼 메움 */
+  .cev.join-next {
+    margin-right: -3px;
+  }
+
+  .cev.join-prev {
+    margin-left: -3px;
+    box-shadow: inset 2px 0 0 color-mix(in srgb, var(--c) 10%, #fff);
+  }
+
+  .cev-more {
+    padding-left: 2px;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .cev-more .more-word {
+    display: none;
   }
 
   .cal-dow {
