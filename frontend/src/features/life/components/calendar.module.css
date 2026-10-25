@@ -81,19 +81,17 @@
   color: var(--color-primary);
 }
 
-/* 큰 달력 카드: 달력 칸은 카드 양옆 끝까지 (제목 · 버튼 줄만 안쪽 여백) */
+/* 큰 달력 카드: 달력 칸은 카드 끝에 가깝게, 양옆 여백은 조금만 (제목 · 버튼 줄은 안쪽 여백) */
 .bigCard {
-  padding: 18px 0 0;
-  overflow: hidden;
+  padding: 18px 8px 8px;
 }
 
 .bigCard > :not(.grid) {
-  padding-inline: 18px;
+  padding-inline: 10px;
 }
 
 .bigCard .grid {
-  border-width: 1px 0 0;
-  border-radius: 0;
+  border-radius: 10px;
 }
 
 .grid {
@@ -687,66 +685,119 @@
   --touched: 1;
 }
 
-/* 달력에서 누른 일정 상세 창 */
-.cev:not(.gap) {
-  cursor: pointer;
-}
-
-.picking .cev {
-  cursor: inherit;
-}
-
-.detail {
+/* 달력에서 누른 날의 일정 창 */
+.dayBox {
   display: grid;
-  gap: 10px;
-  padding-left: 14px;
-  border-left: 4px solid var(--c);
+  gap: 14px;
 }
 
-.detailCat {
-  justify-self: start;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--c) 14%, #fff);
-  font-size: 12px;
-  font-weight: 700;
-  color: color-mix(in srgb, var(--c) 70%, #1f2430);
-}
-
-.detail h3 {
+.dayTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   font-size: 20px;
   font-weight: 800;
 }
 
-.detailWhen {
-  font-size: 14px;
-  color: #3c4254;
+.dayTitle em {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  font-size: 11px;
+  font-style: normal;
+  color: #fff;
 }
 
-.detailNote {
+.dayTitle small {
+  margin-left: auto;
   font-size: 13px;
-  line-height: 1.6;
+  font-weight: 600;
   color: var(--color-muted);
 }
 
-.detailDone {
+.sunText {
+  color: var(--color-pink);
+}
+
+.dayList {
+  display: grid;
+  gap: 8px;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.dayItem {
+  --c: #4a90e2;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-  font-size: 14px;
-  font-weight: 600;
+  gap: 10px;
+  padding: 11px 12px;
+  border-left: 4px solid var(--c);
+  border-radius: 0 12px 12px 0;
+  background: color-mix(in srgb, var(--c) 8%, #fff);
 }
 
-.detailBtns {
+.dayItemDone .dayMain b {
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+
+.dayIco {
+  width: 18px;
+  text-align: center;
+}
+
+.dayTime {
+  flex: none;
+  width: 40px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.dayMain {
   display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 8px;
-  margin-top: 8px;
+  flex: 1;
+  min-width: 0;
 }
 
-.detailDel {
+.dayMain b {
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dayMain small {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--color-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dayBtns {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+
+.dayBtns button {
+  padding: 4px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.dayBtns .dayDel {
   color: var(--color-danger);
+}
+
+.dayAdd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px auto;
+  gap: 8px;
 }
 
 @media (max-width: 1100px) {
@@ -800,14 +851,14 @@
     font-size: 15px;
   }
 
-  /* 달력 카드를 화면 양옆 끝까지 */
+  /* 달력 카드를 화면 끝 가까이 (양옆 6px만 띄움) */
   .bigCard {
-    margin-inline: -16px;
-    border-radius: 0;
+    margin-inline: -10px;
+    padding: 14px 4px 4px;
   }
 
   .bigCard > :not(.grid) {
-    padding-inline: 16px;
+    padding-inline: 10px;
   }
 
   /* 모바일도 PC처럼 칸 안에 일정 막대: 칸이 좁아 막대를 얇게, 글자를 작게 (시간은 숨김) */

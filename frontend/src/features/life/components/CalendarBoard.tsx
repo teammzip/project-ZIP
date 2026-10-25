@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { Button, Card, Modal, Segmented } from '@/components/ui'
@@ -38,9 +38,8 @@ export function CalendarBoard() {
   const [picked, setPicked] = useState<Picked | null>(null)
   const [pickTime, setPickTime] = useState('')
   const [pickNote, setPickNote] = useState('')
-  // 달력에서 누른 일정 (상세 창). 내 일정은 id 로 찾아 늘 최신 내용, 쓰레기 배출은 그대로
-  const [opened, setOpened] = useState<CalEvent | TrashEvent | null>(null)
-  const openEv = opened && !isTrash(opened) ? (events.find((ev) => ev.id === opened.id) ?? null) : opened
+  // 달력에서 누른 날 (그날 일정 창)
+  const [openDay, setOpenDay] = useState<string | null>(null)
 
   /** 날짜를 고르면 그 달로 이동하고 '선택한 날' 목록을 보여줌 */
   const pick = (date: string, nextMode: CalMode = 'day') => {
@@ -102,10 +101,10 @@ export function CalendarBoard() {
           selected={selected}
           picking={!!picked}
           categoryNames={categories.map((c) => c.name)}
-          onDay={(d) => (picked ? addPicked(d) : pick(d))}
-          onEvent={(ev) => {
-            pick(ev.date)
-            setOpened(ev)
+          onDay={(d) => {
+            if (picked) return addPicked(d)
+            pick(d)
+            setOpenDay(d)
           }}
           onShift={shift}
           onToday={() => pick(today)}
@@ -125,7 +124,7 @@ export function CalendarBoard() {
         />
         <EventList events={events} selected={selected} mode={mode} setMode={changeMode} query={query} setQuery={setQuery} onMoved={(d) => pick(d)} viewMonth={view} />
       </div>
-      <EventDetail ev={openEv} onClose={() => setOpened(null)} onMoved={(d) => pick(d)} />
+      <DayDetail date={openDay} onClose={() => setOpenDay(null)} onAdd={(title, time) => openDay && addEvent({ title, date: openDay, time })} onMoved={(d) => pick(d)} />
     </div>
   )
 }
@@ -139,15 +138,13 @@ type GridProps = {
   picking: boolean
   categoryNames: string[]
   onDay: (date: string) => void
-  /** 칸 안의 일정 막대를 누름 (항목을 골라 날짜에 추가하는 중에는 칸 누르기로 처리) */
-  onEvent: (ev: CalEvent | TrashEvent) => void
   onShift: (dir: number) => void
   onToday: () => void
 }
 
 /** 큰 달력: 월간은 그 달 전체(앞뒤 달 날짜는 흐리게), 주간은 선택한 날이 든 한 주.
  * 칸마다 날짜 + 일정 막대(월간 최대 3개, 넘으면 "+N개 더", 주간은 전부). 좁은 화면도 막대(얇게, "+N"만) */
-function BigCalendar({ events, view, calView, onCalView, selected, picking, categoryNames, onDay, onEvent, onShift, onToday }: GridProps) {
+function BigCalendar({ events, view, calView, onCalView, selected, picking, categoryNames, onDay, onShift, onToday }: GridProps) {
   const { y, m } = view
   const today = todayStr()
   let start: Date
@@ -226,11 +223,6 @@ function BigCalendar({ events, view, calView, onCalView, selected, picking, cate
                       className={cx(cal.cev, !trashEv && ev.done && cal.cevDone, joinPrev && cal.joinPrev, joinNext && cal.joinNext)}
                       style={{ '--c': evColor(ev.title, trashEv, trashEv ? undefined : ev.category, categoryNames) } as CSSProperties}
                       title={`${ev.time ? `${ev.time} ` : ''}${ev.title}`}
-                      onClick={(e) => {
-                        if (picking) return
-                        e.stopPropagation()
-                        onEvent(ev)
-                      }}
                     >
                       {/* 이어지는 막대에는 제목을 다시 쓰지 않음 */}
                       {joinPrev ? '\u00a0' : (
@@ -449,62 +441,88 @@ function EditRow({ ev, onDone }: { ev: CalEvent; onDone: (saved: CalEvent | null
   )
 }
 
-/** 달력에서 누른 일정 하나: 카테고리 · 제목 · 날짜 · 시간, 완료 체크 · 수정 · 삭제 (쓰레기 배출은 안내만) */
-function EventDetail({ ev, onClose, onMoved }: { ev: CalEvent | TrashEvent | null; onClose: () => void; onMoved: (date: string) => void }) {
-  const { removeEvent, toggleEvent, categories } = useLifeStore(useShallow((s) => ({ removeEvent: s.removeEvent, toggleEvent: s.toggleEvent, categories: s.categories })))
-  const [editing, setEditing] = useState(false)
+/** 달력에서 누른 날의 일정 창: 그날 일정 모두(시간순, 쓰레기 배출 포함) + 완료 체크 · 수정 · 삭제 + 이 날에 바로 추가 */
+function DayDetail({ date, onClose, onAdd, onMoved }: { date: string | null; onClose: () => void; onAdd: (title: string, time: string) => void; onMoved: (date: string) => void }) {
+  const { events, removeEvent, toggleEvent, categories } = useLifeStore(useShallow((s) => ({ events: s.events, removeEvent: s.removeEvent, toggleEvent: s.toggleEvent, categories: s.categories })))
+  const [editingId, setEditingId] = useState<CalEvent['id'] | null>(null)
+  const [title, setTitle] = useState('')
+  const [time, setTime] = useState('')
+  if (!date) return null
   const close = () => {
-    setEditing(false)
+    setEditingId(null)
+    setTitle('')
+    setTime('')
     onClose()
   }
-  if (!ev) return null
-  const trashEv = isTrash(ev)
-  const color = evColor(ev.title, trashEv, trashEv ? undefined : ev.category, categories.map((c) => c.name))
-  const d = new Date(`${ev.date}T00:00:00`)
-  const when = `${monthDay(ev.date)} (${DOW[d.getDay()]}) · ${ev.time || '종일'}`
+  const d = new Date(`${date}T00:00:00`)
+  const names = categories.map((c) => c.name)
+  const items = sortEvents<CalEvent | TrashEvent>([...events.filter((ev) => ev.date === date), ...trashEventsBetween(date, date)])
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const t = title.trim()
+    if (!t) return
+    onAdd(t, time)
+    setTitle('')
+    setTime('')
+  }
 
   return (
-    <Modal open onClose={close} title={`${ev.title} 일정`}>
-      {editing && !trashEv ? (
-        <ul className={styles.evList}>
-          <EditRow
-            ev={ev}
-            onDone={(saved) => {
-              setEditing(false)
-              if (saved) onMoved(saved.date)
-            }}
-          />
-        </ul>
-      ) : (
-        <div className={cal.detail} style={{ '--c': color } as CSSProperties}>
-          <span className={cal.detailCat}>{trashEv ? `${trashIco(ev.title)} 쓰레기 배출` : ev.category || UNCATEGORIZED}</span>
-          <h3 className={cx(!trashEv && ev.done && cal.cevDone)}>{ev.title}</h3>
-          <p className={cal.detailWhen}>📅 {when}</p>
-          {trashEv ? (
-            <p className={cal.detailNote}>{ev.detail}</p>
-          ) : (
-            <>
-              <label className={cal.detailDone}>
-                <input type="checkbox" className={common.checkbox} checked={!!ev.done} onChange={(e) => toggleEvent(ev.id, e.target.checked)} />
-                {ev.done ? '완료했어요' : '완료로 표시'}
-              </label>
-              <div className={cal.detailBtns}>
-                <Button
-                  variant="line"
-                  className={cal.detailDel}
-                  onClick={() => {
-                    removeEvent(ev.id)
-                    close()
+    <Modal open onClose={close} title={`${monthDay(date)} 일정`}>
+      <div className={cal.dayBox}>
+        <h3 className={cal.dayTitle}>
+          {monthDay(date)} <span className={cx(d.getDay() === 0 && cal.sunText)}>({DOW[d.getDay()]})</span>
+          {date === todayStr() && <em>오늘</em>}
+          <small>{items.length ? `일정 ${items.length}개` : ''}</small>
+        </h3>
+        <ul className={cal.dayList}>
+          {items.map((ev) => {
+            const trashEv = isTrash(ev)
+            if (!trashEv && ev.id === editingId)
+              return (
+                <EditRow
+                  key={ev.id}
+                  ev={ev}
+                  onDone={(saved) => {
+                    setEditingId(null)
+                    if (saved && saved.date !== date) onMoved(saved.date)
                   }}
-                >
-                  삭제
-                </Button>
-                <Button onClick={() => setEditing(true)}>수정</Button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+                />
+              )
+            return (
+              <li key={ev.id} className={cx(cal.dayItem, !trashEv && ev.done && cal.dayItemDone)} style={{ '--c': evColor(ev.title, trashEv, trashEv ? undefined : ev.category, names) } as CSSProperties}>
+                {trashEv ? (
+                  <span className={cal.dayIco}>{trashIco(ev.title)}</span>
+                ) : (
+                  <input type="checkbox" className={common.checkbox} checked={!!ev.done} onChange={(e) => toggleEvent(ev.id, e.target.checked)} aria-label={`${ev.title} 완료`} />
+                )}
+                <span className={cal.dayTime}>{ev.time || '종일'}</span>
+                <span className={cal.dayMain}>
+                  <b>{ev.title}</b>
+                  <small>{trashEv ? ev.detail : ev.category || UNCATEGORIZED}</small>
+                </span>
+                {!trashEv && (
+                  <span className={cal.dayBtns}>
+                    <button type="button" onClick={() => setEditingId(ev.id)} aria-label={`${ev.title} 수정`}>
+                      수정
+                    </button>
+                    <button type="button" className={cal.dayDel} onClick={() => removeEvent(ev.id)} aria-label={`${ev.title} 삭제`}>
+                      삭제
+                    </button>
+                  </span>
+                )}
+              </li>
+            )
+          })}
+          {!items.length && <li className={common.empty}>이 날은 일정이 없어요.</li>}
+        </ul>
+        <form className={cal.dayAdd} onSubmit={submit}>
+          <input className={common.input} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={60} placeholder="이 날에 일정 추가" aria-label="추가할 일정 제목" />
+          <input type="time" className={common.input} value={time} onChange={(e) => setTime(e.target.value)} aria-label="시간 (선택)" />
+          <Button type="submit" disabled={!title.trim()}>
+            추가
+          </Button>
+        </form>
+      </div>
     </Modal>
   )
 }
