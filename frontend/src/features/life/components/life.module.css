@@ -402,3 +402,122 @@
   gap: 10px;
   margin-top: 14px;
 }
+
+/* 고정 지출: 이번 달 납부 체크리스트 (FixedExpense.tsx PayChecklist) */
+.nextTag {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #ece9ff;
+  color: var(--color-purple);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.checkNote {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.checkRent {
+  border-bottom: 1px solid var(--color-line);
+}
+
+.checkRent .bill {
+  border-bottom: 0;
+}
+
+.checkMore {
+  padding: 0 4px 14px 34px;
+}
+
+.moreBtn {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ece9ff;
+  color: var(--color-purple);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.addToggle {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px dashed #cfd4e3;
+  border-radius: var(--radius-md);
+  color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.addToggle:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.addForm {
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: #f7f8fc;
+}
+
+@media (max-width: 640px) {
+  .checkMore {
+    padding-left: 4px;
+  }
+
+  .checkMore .infoRows {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 고정 지출 항목 태그 */
+.tagBadge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eaf2ff;
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  font-style: normal;
+  text-decoration: none;
+  vertical-align: 1px;
+}
+
+.tagSums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tagPick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tagOpt {
+  padding: 7px 13px;
+  border: 1.5px solid #cfe0fb;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tagOptOn {
+  border-color: var(--color-primary);
+  background: #eaf2ff;
+  color: var(--color-primary);
+}

@@ -4,8 +4,9 @@ import { Button, Modal } from '@/components/ui'
 import { spendBreakdown, useLifeStore } from '@/features/life'
 import { man, won } from '@/lib/date'
 import { useChatStore, type ChatMsg, type SpendCard } from '../store'
-import { CHAT_TOPICS, SUMMARY_ASK, chatReply, type AiContext } from '../topics'
+import { CHAT_TOPICS, SUMMARY_ASK, chatReply, type AiContext, type Topic } from '../topics'
 import styles from './Ai.module.css'
+import { TopicCards } from './TopicCards'
 
 /** 대화를 열 때 바로 보낼 첫 질문 (홈 카드의 칩·입력칸에서) */
 export type ChatOpening = { text: string; topic?: string } | null
@@ -15,6 +16,13 @@ type Props = {
   onClose: () => void
   opening: ChatOpening
   ctx: Omit<AiContext, 'hasPhoto'>
+}
+
+/** 분야 카드를 눌렀을 때 보낼 질문 (CHAT_TOPICS 에 없는 분야용) */
+const EXTRA_ASK: Record<string, string> = {
+  guide: '이 앱 사용 방법이 궁금해요',
+  nearby: '근처 세탁방이나 편의점 알려줘',
+  landlord: '집주인에게 보낼 문자 써줘',
 }
 
 /** 받침이 있으면 "이", 없으면 "가" */
@@ -51,6 +59,13 @@ export function ChatModal({ open, onClose, opening, ctx }: Props) {
       push(isSummary ? { role: 'bot', text: '이번 달 지출을 정리해 봤어요.', card: makeSpendCard() } : { role: 'bot', text: chatReply(v, topic, { ...ctx, hasPhoto: false }) })
       setBusy(false)
     }, 600)
+  }
+
+  // 카드: 정해진 질문이 있으면 바로 보내고, 없으면(자유 질문) 입력칸으로
+  const pick = (tp: Topic) => {
+    const ask = CHAT_TOPICS.find((c) => c.id === tp.id)?.ask ?? EXTRA_ASK[tp.id]
+    if (ask) send(ask, tp.id)
+    else input.current?.focus()
   }
 
   const sendOpening = useEffectEvent((o: NonNullable<ChatOpening>) => send(o.text, o.topic))
@@ -102,13 +117,7 @@ export function ChatModal({ open, onClose, opening, ctx }: Props) {
         ))}
         {busy && <div className={`${styles.msg} ${styles.bot} ${styles.typing}`}>답변을 쓰는 중…</div>}
       </div>
-      <div className={styles.chatChips}>
-        {CHAT_TOPICS.map((t) => (
-          <button key={t.id} type="button" className={styles.chip} onClick={() => send(t.ask, t.id)} disabled={busy}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <TopicCards className={styles.chatCards} disabled={busy} onPick={pick} />
       <form className={styles.chatForm} onSubmit={submit}>
         <input ref={input} value={text} onChange={(e) => setText(e.target.value)} maxLength={80} placeholder="궁금한 걸 입력하세요" aria-label="AI에게 보낼 메시지" autoComplete="off" />
         <Button type="submit" disabled={busy}>

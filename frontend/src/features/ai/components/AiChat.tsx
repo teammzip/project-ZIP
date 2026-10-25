@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type WheelEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { cx } from '@/lib/cx'
+import { TopicCards } from './TopicCards'
 import { usePhotoStore } from '../store'
-import { PHOTO_NOTE, TOPICS, keywordReply, topicById, type Topic, type TopicAction } from '../topics'
+import { PHOTO_NOTE, keywordReply, topicById, type Topic, type TopicAction } from '../topics'
 import styles from './AiChat.module.css'
 
 type Props = {
@@ -36,7 +37,6 @@ export function AiChat({ region, name }: Props) {
   const [plus, setPlus] = useState(false)
   const [copied, setCopied] = useState(-1)
   const endRef = useRef<HTMLDivElement>(null)
-  const cardsRef = useRef<HTMLDivElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const alive = useRef(true)
@@ -80,10 +80,6 @@ export function AiChat({ region, name }: Props) {
   }
 
   // PC: 마우스로도 옆으로 넘길 수 있게 ‹ › 단추와 휠(세로 휠 → 가로) 지원
-  const slide = (dir: 1 | -1) => cardsRef.current?.scrollBy({ left: dir * 400, behavior: 'smooth' })
-  const onWheel = (e: WheelEvent<HTMLDivElement>) => {
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) cardsRef.current?.scrollBy({ left: e.deltaY })
-  }
 
   const send = () => {
     const text = value.trim()
@@ -154,27 +150,8 @@ export function AiChat({ region, name }: Props) {
         <div ref={endRef} />
       </div>
 
-      {/* 분야 카드: 둥근 직사각형, 2줄로 놓고 옆으로 밀어서 고름 (PC 는 ‹ › 단추·휠) */}
-      <div className={styles.cardsWrap}>
-        <button type="button" className={cx(styles.slideBtn, styles.slideLeft)} onClick={() => slide(-1)} aria-label="카드 왼쪽으로">
-          ‹
-        </button>
-        <button type="button" className={cx(styles.slideBtn, styles.slideRight)} onClick={() => slide(1)} aria-label="카드 오른쪽으로">
-          ›
-        </button>
-        <div ref={cardsRef} className={styles.cards} role="list" aria-label="도움받을 분야" onWheel={onWheel}>
-          {TOPICS.map((t) => {
-            const suggest = !!photoUrl && t.photo
-            return (
-              <button key={t.id} type="button" role="listitem" className={cx(styles.card, topic?.id === t.id && styles.cardOn, suggest && styles.cardSuggest)} aria-pressed={topic?.id === t.id} onClick={() => pickTopic(t)}>
-                <span className={styles.cardIco}>{t.ico}</span>
-                <b>{t.name}</b>
-                <small>{suggest ? '사진과 함께 추천' : t.desc}</small>
-              </button>
-            )
-          })}
-        </div>
-      </div>
+      {/* 분야 카드: 둥근 직사각형, 2줄로 놓고 옆으로 밀거나 끌어서 고름 (홈 대화 모달과 같은 카드) */}
+      <TopicCards activeId={topic?.id} suggestPhoto={!!photoUrl} onPick={pickTopic} />
 
       {topic && (
         <div className={styles.fields}>

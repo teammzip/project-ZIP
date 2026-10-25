@@ -320,17 +320,11 @@
   }
 }
 
-.chatChips {
-  display: flex;
-  gap: 8px;
-  padding: 10px 12px 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-}
-
-.chatChips::-webkit-scrollbar {
-  display: none;
+/* 모달 아래쪽 분야 카드 (TopicCards, 옆으로 끌어서 이동) */
+.chatCards {
+  flex: none;
+  padding: 4px 16px 0;
+  overflow: hidden;
 }
 
 .chatForm {

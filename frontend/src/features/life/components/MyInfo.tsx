@@ -33,7 +33,7 @@ export function LifeStats({ postCount }: { postCount: number }) {
   const { unread } = useNotis()
   const notiOn = useLifeStore((s) => s.settings.notiOn)
   const month = monthKeyOf(useToday())
-  const paid = bills.length ? Math.round((bills.filter((b) => b.paid).length / bills.length) * 100) : 0
+  const paid = bills.length ? Math.round((bills.filter((b) => b.paidMonth === month).length / bills.length) * 100) : 0
   const items = [
     { to: '/my/calendar', label: '이번 달 일정', value: `${events.filter((e) => e.date.startsWith(month)).length}개` },
     { to: '/my/budget/expense', label: '공과금 납부', value: `${paid}%` },
