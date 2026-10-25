@@ -101,7 +101,7 @@ export function AiChat({ region, name }: Props) {
       if (!alive.current) return
       let out = !text ? '사진을 받았어요. 어떤 도움이 필요한지 아래 카드에서 분야를 골라 물어봐 주세요.' : t ? t.reply(v, text, ctx) : keywordReply(text)
       if (sentPhoto && (t?.photo || !text)) out += PHOTO_NOTE
-      setMsgs((m) => [...m, { role: 'bot', text: out, action: t?.action?.(v) ?? null }])
+      setMsgs((m) => [...m, { role: 'bot', text: out, action: t?.action?.(v, text) ?? null }])
       setPending(false)
     }, 500)
   }
