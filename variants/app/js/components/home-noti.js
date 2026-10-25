@@ -20,8 +20,8 @@ function visibleNotis() {
   var closed = closedIds();
   return buildNotis().filter(function (n) { return closed.indexOf(n.id) < 0; });
 }
-// 한 번에 쌓아 보여 줄 알림 수: 넓은 화면 4개, 좁은 화면 3개
-function maxShown() { return window.innerWidth <= 700 ? 3 : 4; }
+// 한 번에 쌓아 보여 줄 알림 수: 3개 (나머지는 "+N개 더")
+function maxShown() { return 3; }
 
 export function renderHomeNoti() {
   var list = visibleNotis(), empty = !list.length;

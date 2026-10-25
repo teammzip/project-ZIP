@@ -500,6 +500,16 @@
   margin-bottom: 0;
 }
 
+/* 알림 칸이 더 높으면 남는 높이는 빈칸이 아니라 쪽지가 나눠 가짐 */
+.home-top > .memo-widget {
+  display: flex;
+  flex-direction: column;
+}
+
+.home-top > .memo-widget .mw-grid {
+  flex: 1;
+}
+
 @media (max-width: 900px) {
   .home-top {
     grid-template-columns: minmax(0, 1fr);
