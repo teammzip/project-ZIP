@@ -8,7 +8,7 @@ import { CATEGORIES, NEARBY } from '../data/seed'
 import { useCommunityStore } from '../store'
 import type { Post } from '../types'
 import styles from './Community.module.css'
-import { NameAvatar, PostDetail } from './PostDetail'
+import { PostDetail } from './PostDetail'
 import { PostComposer } from './PostEditor'
 
 type Scope = 'here' | 'near' | 'all'
@@ -117,7 +117,6 @@ export function CommunityBoard({ region, author, uid }: Props) {
 
             {/* 새 글 쓰기 (입력창 모양) */}
             <button type="button" className={styles.composeBar} onClick={startWrite} disabled={locked}>
-              <NameAvatar name={author} size={34} />
               <span className={styles.composeText}>
                 {locked ? (
                   '이용 정지 중에는 글을 쓸 수 없어요'
