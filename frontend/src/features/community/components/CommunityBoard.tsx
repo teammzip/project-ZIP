@@ -111,7 +111,7 @@ export function CommunityBoard({ region, author, uid }: Props) {
                   <circle cx="11" cy="11" r="7" />
                   <path d="M21 21l-4.3-4.3" />
                 </svg>
-                <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`${place} 이야기 검색`} aria-label="동네 이야기 검색" />
+                <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`${scope === 'all' ? '전체' : scope === 'near' ? '주변 동네' : place} 이야기 검색`} aria-label="동네 이야기 검색" />
               </label>
             </header>
 

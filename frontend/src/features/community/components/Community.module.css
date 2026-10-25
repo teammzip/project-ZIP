@@ -919,6 +919,30 @@
     font-size: 21px;
   }
 
+  /* 동네 범위: 제목 아래 화면 너비를 꽉 채운 3칸 탭 */
+  .headTop {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .scopes {
+    padding: 4px;
+    border-radius: 12px;
+  }
+
+  .scope {
+    flex: 1;
+    padding: 9px 0;
+    border-radius: 9px;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .scopeNote {
+    margin-top: 8px;
+  }
+
   .composeBar {
     width: calc(100% - 32px);
     margin: 0 16px 10px;
