@@ -4,7 +4,6 @@ import { Button } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { todayStr } from '@/lib/date'
 import { readJSON, writeJSON } from '@/lib/storage'
-import { useMediaQuery } from '@/lib/useMediaQuery'
 import { useNotis } from '../derive'
 import { useLifeStore } from '../store'
 import home from './home.module.css'
@@ -15,6 +14,8 @@ import styles from './HomePhotoCard.module.css'
  * - HomeNotiCard: 맨 위 줄 메모 옆 알림 칸 (components/home-noti.js)
  *   "닫기"를 누른 알림은 오늘 하루 안 보임(localStorage 'zip-home-noti-closed'). 다음 날이면 다시 나옴 */
 const KEY = 'zip-home-noti-closed'
+/** 홈 알림 칸에 한 번에 보여 줄 알림 수 */
+const MAX_SHOWN = 3
 
 function readClosed(): string[] {
   const c = readJSON<{ date: string; ids: string[] }>(KEY)
@@ -43,16 +44,15 @@ export function HomePhotoCard() {
 }
 
 /** 메모 옆 알림 칸: 알림이 세로로 쌓여 있고, 맨 위부터 "닫기"를 누르면 옆으로 날아가며 아래 알림이 올라옴.
- * 넓은 화면 4개 · 좁은 화면 3개까지 보이고 나머지는 "+N개 더 있어요". 다 닫아도 칸은 남아 "새 알림이 없어요" + 닫은 알림 다시 보기 */
+ * 3개까지 보이고(팀장님 시안 #30) 나머지는 "+N개 더 있어요". 다 닫아도 칸은 남아 "새 알림이 없어요" + 닫은 알림 다시 보기 */
 export function HomeNotiCard() {
   const { notis } = useNotis()
   const notiOn = useLifeStore((s) => s.settings.notiOn)
   const navigate = useNavigate()
-  const narrow = useMediaQuery('(max-width: 700px)')
   const [closed, setClosed] = useState(readClosed)
   const [leaving, setLeaving] = useState<string | null>(null)
   const list = notiOn ? notis.filter((x) => !closed.includes(x.id)) : []
-  const shown = list.slice(0, narrow ? 3 : 4)
+  const shown = list.slice(0, MAX_SHOWN)
   const more = list.length - shown.length
 
   const save = (ids: string[]) => {

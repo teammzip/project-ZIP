@@ -1,6 +1,7 @@
 /* 홈 메모 위젯 (팀장님 시안 variants/app/css/views/memo.css 와 같은 모양): 노란 머리줄 + 쪽지 3장 + 빠른 메모 */
 .widget {
-  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border-radius: 22px;
   background: #fff;
@@ -53,6 +54,7 @@
 }
 /* 쪽지 3장: 고른 메모를 색깔 스티커처럼 나란히 보여 줌 */
 .grid {
+  flex: 1; /* 옆 알림 칸이 더 높으면 남는 높이를 쪽지가 나눠 가짐 (빈 여백 없이) */
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
