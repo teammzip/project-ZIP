@@ -25,7 +25,6 @@ import { NotiPage } from '@/pages/my/NotiPage'
 import { SettingsPage } from '@/pages/my/SettingsPage'
 import { SpendPage } from '@/pages/my/SpendPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
-import { PhotoPage } from '@/pages/photo/PhotoPage'
 import { StartPage } from '@/pages/start/StartPage'
 import { SuspendedPage } from '@/pages/suspended/SuspendedPage'
 import { GuestRoute, ProtectedRoute } from './guards'
@@ -69,7 +68,8 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: '/', element: <HomePage /> },
-          { path: '/photo', element: <PhotoPage /> },
+          // 예전 '사진' 메뉴는 AI 화면(＋ 로 카메라·사진)에 합쳐짐
+          { path: '/photo', element: <Navigate to="/ai" replace /> },
           { path: '/ai', element: <AiPage /> },
           { path: '/map', element: <MapPage /> },
           { path: '/community', element: <CommunityPage /> },
