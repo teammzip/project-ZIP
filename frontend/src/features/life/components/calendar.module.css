@@ -238,36 +238,344 @@
   background: #fff1e6;
 }
 
-/* ---------- 일정 기록하기 ---------- */
-.help {
-  margin-bottom: 10px;
+/* ---------- 일정 기록하기 (compare.html 시안과 같은 디자인) ---------- */
+.recHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.recHead h2 {
+  font-size: 17px;
+}
+
+.recTabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f1f2f7;
+}
+
+.recTab {
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.recTab.on {
+  background: #fff;
+  color: var(--color-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* 단계 표시: ① 항목 고르기 → ② 달력에서 날짜 누르기 */
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+  list-style: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.steps li + li::before {
+  content: '';
+  width: 18px;
+  height: 2px;
+  margin-right: 2px;
+  border-radius: 2px;
+  background: var(--color-line);
+}
+
+.steps b {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #eceef4;
+  font-size: 11px;
+}
+
+.steps li.on {
+  color: var(--color-text);
+}
+
+.steps li.on b {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.steps li.done b {
+  background: var(--color-teal);
+  color: #fff;
+}
+
+/* 카테고리 탭: 색 = 달력 막대 색. 좁으면 다음 줄로 */
+.cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.catTab {
+  --c: #4a90e2;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--color-line);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-muted);
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
+}
+
+.catTab:hover {
+  border-color: var(--c);
+  color: var(--color-text);
+}
+
+.catTab.on {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, #fff);
+  color: var(--color-text);
+}
+
+.catIco {
+  font-size: 15px;
+}
+
+/* 골라 둔 항목이 들어 있는 카테고리 */
+.catDot {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.catEdit {
+  --c: var(--color-text);
+  border-style: dashed;
+}
+
+/* ⚙ 편집 */
+.manager {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f7f8fc;
+}
+
+.managerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.managerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+/* 항목 타일 (2열): 왼쪽 색 띠 */
+.items {
+  --c: #4a90e2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-line);
+  border-left: 4px solid var(--c);
+  border-radius: 10px;
+  background: #fafbfd;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  transition:
+    transform 0.12s,
+    background 0.12s,
+    box-shadow 0.12s;
+}
+
+.item:hover {
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(31, 36, 48, 0.08);
+  transform: translateY(-1px);
+}
+
+.item.on {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 16%, #fff);
+}
+
+.check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid #c9cdd8;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.item.on .check {
+  border-color: var(--c);
+  background: var(--c);
+}
+
+.itemT {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mine {
+  flex: none;
   font-size: 12px;
   color: var(--color-muted);
 }
 
-.cat {
-  margin-bottom: 10px;
+/* 직접 만든 항목: 타일 위 오른쪽에 수정 · 삭제 (마우스를 올리거나 · 키보드로 고르거나 · 터치했을 때만) */
+.itemWrap {
+  position: relative;
 }
 
-.cat h3 {
-  margin-bottom: 6px;
+.itemActions {
+  position: absolute;
+  top: -8px;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(31, 36, 48, 0.1);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.itemActions button {
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.itemActions button:hover {
+  background: #fff0e6;
+  color: #9a4815;
+}
+
+.itemWrap:focus-within .itemActions,
+.itemWrap.showActions .itemActions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.itemsEmpty {
+  grid-column: 1 / -1;
+  padding: 18px 8px;
   font-size: 13px;
+  color: var(--color-muted);
+  text-align: center;
 }
 
-.pickBar {
-  margin: 4px 0 12px;
-  padding: 10px 12px;
-  border: 1px solid #ffd9c7;
-  border-radius: 12px;
-  background: #fff7f2;
+.linkBtn {
+  font-weight: 700;
+  color: var(--color-purple);
 }
 
-.pickMsg {
-  margin-bottom: 8px;
-  font-size: 13px;
+/* 고른 항목 카드 */
+.pickCard {
+  --c: #4a90e2;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--c);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--c) 8%, #fff);
+  animation: pick-in 0.2s ease-out;
 }
 
-.pickMsg span {
+@keyframes pick-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.pickTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.pickX {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.pickX:hover {
+  color: var(--color-text);
+}
+
+.pickName {
+  display: block;
+  margin-top: 2px;
+  font-size: 17px;
+}
+
+.pickNote {
+  margin: 4px 0 10px;
+  font-size: 12px;
   color: var(--color-muted);
 }
 
@@ -276,67 +584,47 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-}
-
-.pickRow label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.pickRow input {
-  width: auto;
-  padding: 5px 8px;
 }
 
 .pickRow button {
-  padding: 6px 10px;
+  padding: 7px 12px;
   font-size: 12px;
+  background: #fff;
 }
 
-.custom {
-  margin-top: 6px;
-}
-
-.custom summary {
-  margin-bottom: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-purple);
-  cursor: pointer;
-}
-
-/* 직접 만든 항목: 버튼 + 수정 · 삭제 (마우스를 올리거나 · 키보드로 고르거나 · 터치했을 때만 보임) */
-.presetItem {
-  display: inline-flex;
-  flex-wrap: wrap;
+.pickTime {
+  display: flex;
   align-items: center;
-  gap: 4px;
-  max-width: 100%;
-  padding: 3px;
+  gap: 6px;
+  padding: 4px 10px;
   border: 1px solid var(--color-line);
-  border-radius: 12px;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
 }
 
-.presetAction {
-  padding: 6px;
-  border-radius: 6px;
-  font-size: 11px;
+.pickTime input {
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+}
+
+/* 직접 입력 */
+.recForm button[type='submit'] {
+  margin-top: 4px;
+}
+
+.recTip {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.6;
   color: var(--color-muted);
-  opacity: 0;
-  pointer-events: none;
 }
 
-.presetAction:hover {
-  background: #fff0e6;
-  color: #9a4815;
-}
-
-.presetItem:focus-within .presetAction,
-.presetItem.showActions .presetAction {
-  opacity: 1;
-  pointer-events: auto;
+@media (prefers-reduced-motion: reduce) {
+  .pickCard {
+    animation: none;
+  }
 }
 
 /* 할 일 목록 한 줄: 카테고리 이름표, 수정 · 삭제는 마우스를 올리거나 · 키보드로 고르거나 · 터치했을 때만 */
@@ -374,7 +662,7 @@
 }
 
 @media (hover: hover) {
-  .presetItem:hover .presetAction,
+  .itemWrap:hover .itemActions,
   .evRow:hover .evActions {
     opacity: 1;
     pointer-events: auto;
@@ -392,7 +680,9 @@
   min-width: 0;
 }
 
+/* 터치로 눌렀을 때 수정 · 삭제를 보이게 하는 표시 (위 .itemWrap · .evRow 와 같이 씀) */
 .showActions {
+  --touched: 1;
 }
 
 @media (max-width: 1100px) {
@@ -402,6 +692,23 @@
 }
 
 @media (max-width: 700px) {
+  .recHead {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .recTabs {
+    width: 100%;
+  }
+
+  .recTab {
+    flex: 1;
+  }
+
+  .managerRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .toolbar {
     grid-template-columns: 1fr auto;
   }

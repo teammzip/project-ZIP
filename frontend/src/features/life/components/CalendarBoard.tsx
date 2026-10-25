@@ -65,7 +65,7 @@ export function CalendarBoard() {
     const label = `${Number(date.slice(5, 7))}월 ${Number(date.slice(8))}일`
     if (events.some((ev) => ev.date === date && ev.title === picked.title && (ev.category ?? '') === picked.category)) return setPickNote(`${label}에 이미 있어요.`)
     add(picked.title, date, pickTime, picked.category)
-    setPickNote(`${label}에 추가했어요. 다른 날짜도 눌러 추가할 수 있어요.`)
+    setPickNote(`✅ ${label}에 추가했어요. 다른 날짜도 눌러 추가할 수 있어요.`)
   }
   const choose = (p: Picked | null) => {
     setPicked(p)
