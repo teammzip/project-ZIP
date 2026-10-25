@@ -182,31 +182,28 @@ export function MoneyLog({ kind }: { kind: Kind }) {
                 </button>
               ))}
             </div>
-            {memoOpen && (
-              <input
-                className={cx(common.input, styles.quickMemo)}
-                value={form.memo}
-                onChange={(e) => setForm({ ...form, memo: e.target.value })}
-                maxLength={30}
-                placeholder={t.memoPh}
-                aria-label="메모"
-                autoFocus
-              />
-            )}
-            <div className={styles.quickBar}>
-              <label className={styles.quickTool}>
-                📅 {dateLabel}
-                <input type="date" value={form.date} onChange={(e) => e.target.value && setForm({ ...form, date: e.target.value })} aria-label="날짜" />
+            {/* 날짜 · 메모: 입력칸 모양 두 칸 나란히 */}
+            <div className={styles.quickFields}>
+              <label className={styles.quickField}>
+                <span>날짜</span>
+                <b>📅 {dateLabel}</b>
+                <input type="date" className={styles.quickDate} value={form.date} onChange={(e) => e.target.value && setForm({ ...form, date: e.target.value })} aria-label="날짜" />
               </label>
-              {!memoOpen && (
-                <button type="button" className={styles.quickTool} onClick={() => setMemoOpen(true)}>
-                  📝 메모 +
+              {memoOpen ? (
+                <label className={styles.quickField}>
+                  <span>메모</span>
+                  <input value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} maxLength={30} placeholder={t.memoPh.replace('예) ', '')} aria-label="메모" autoFocus />
+                </label>
+              ) : (
+                <button type="button" className={styles.quickField} onClick={() => setMemoOpen(true)}>
+                  <span>메모 (선택)</span>
+                  <b className={styles.quickAdd}>📝 메모 추가</b>
                 </button>
               )}
-              <Button type="submit" className={styles.quickGo} disabled={!(Number(form.amount) > 0)}>
-                기록
-              </Button>
             </div>
+            <Button type="submit" block disabled={!(Number(form.amount) > 0)}>
+              기록하기
+            </Button>
             {saved && (
               <p className={styles.quickSaved} role="status">
                 {saved}

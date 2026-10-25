@@ -706,38 +706,63 @@
     font-weight: 800;
   }
 
-  .quickMemo {
-    font-size: 14px;
+  .quickFields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
   }
 
-  .quickBar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .quickTool {
+  .quickField {
     position: relative;
-    padding: 8px 10px;
-    border-radius: 10px;
-    background: var(--color-bg);
-    font-size: 13px;
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    padding: 8px 12px;
+    border: 1px solid var(--color-line);
+    border-radius: 12px;
+    background: #f8f9fc;
+    text-align: left;
+  }
+
+  .quickField:focus-within {
+    border-color: var(--color-primary);
+    background: #fff;
+  }
+
+  .quickField span {
+    font-size: 11px;
     font-weight: 600;
-    color: #4b5263;
+    color: var(--color-muted);
+  }
+
+  .quickField b,
+  .quickField input:not(.quickDate) {
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 700;
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  /* 날짜: 글자 위에 보이지 않는 날짜 칸을 겹쳐서 누르면 달력이 열림 */
-  .quickTool input {
+  .quickField input:not(.quickDate) {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: none;
+  }
+
+  .quickAdd {
+    color: var(--color-primary);
+  }
+
+  /* 날짜: 칸 위에 보이지 않는 날짜 입력을 겹쳐서 누르면 달력이 열림 */
+  .quickDate {
     position: absolute;
     inset: 0;
     width: 100%;
     opacity: 0;
-  }
-
-  .quickGo {
-    margin-left: auto;
-    padding-inline: 22px;
   }
 
   .quickSaved {
