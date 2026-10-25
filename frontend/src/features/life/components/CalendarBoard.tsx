@@ -1,7 +1,7 @@
-import { useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
-import { Button, Card, Segmented } from '@/components/ui'
+import { Button, Card, Modal, Segmented } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { DOW, fmt, monthDay, pad, todayStr } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
@@ -38,6 +38,8 @@ export function CalendarBoard() {
   const [picked, setPicked] = useState<Picked | null>(null)
   const [pickTime, setPickTime] = useState('')
   const [pickNote, setPickNote] = useState('')
+  // 달력에서 누른 날 (그날 일정 창)
+  const [openDay, setOpenDay] = useState<string | null>(null)
 
   /** 날짜를 고르면 그 달로 이동하고 '선택한 날' 목록을 보여줌 */
   const pick = (date: string, nextMode: CalMode = 'day') => {
@@ -99,7 +101,11 @@ export function CalendarBoard() {
           selected={selected}
           picking={!!picked}
           categoryNames={categories.map((c) => c.name)}
-          onDay={(d) => (picked ? addPicked(d) : pick(d))}
+          onDay={(d) => {
+            if (picked) return addPicked(d)
+            pick(d)
+            setOpenDay(d)
+          }}
           onShift={shift}
           onToday={() => pick(today)}
         />
@@ -118,6 +124,7 @@ export function CalendarBoard() {
         />
         <EventList events={events} selected={selected} mode={mode} setMode={changeMode} query={query} setQuery={setQuery} onMoved={(d) => pick(d)} viewMonth={view} />
       </div>
+      <DayDetail date={openDay} onClose={() => setOpenDay(null)} onAdd={(title, time) => openDay && addEvent({ title, date: openDay, time })} onMoved={(d) => pick(d)} />
     </div>
   )
 }
@@ -162,7 +169,7 @@ function BigCalendar({ events, view, calView, onCalView, selected, picking, cate
   const maxChips = calView === 'week' ? 12 : 3
 
   return (
-    <Card>
+    <Card className={cal.bigCard}>
       <h2 className={cal.heading}>내 일정</h2>
       <div className={cal.toolbar}>
         <div className={cal.pills} role="group" aria-label="보기 방식">
@@ -431,5 +438,91 @@ function EditRow({ ev, onDone }: { ev: CalEvent; onDone: (saved: CalEvent | null
         </Button>
       </div>
     </li>
+  )
+}
+
+/** 달력에서 누른 날의 일정 창: 그날 일정 모두(시간순, 쓰레기 배출 포함) + 완료 체크 · 수정 · 삭제 + 이 날에 바로 추가 */
+function DayDetail({ date, onClose, onAdd, onMoved }: { date: string | null; onClose: () => void; onAdd: (title: string, time: string) => void; onMoved: (date: string) => void }) {
+  const { events, removeEvent, toggleEvent, categories } = useLifeStore(useShallow((s) => ({ events: s.events, removeEvent: s.removeEvent, toggleEvent: s.toggleEvent, categories: s.categories })))
+  const [editingId, setEditingId] = useState<CalEvent['id'] | null>(null)
+  const [title, setTitle] = useState('')
+  const [time, setTime] = useState('')
+  if (!date) return null
+  const close = () => {
+    setEditingId(null)
+    setTitle('')
+    setTime('')
+    onClose()
+  }
+  const d = new Date(`${date}T00:00:00`)
+  const names = categories.map((c) => c.name)
+  const items = sortEvents<CalEvent | TrashEvent>([...events.filter((ev) => ev.date === date), ...trashEventsBetween(date, date)])
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const t = title.trim()
+    if (!t) return
+    onAdd(t, time)
+    setTitle('')
+    setTime('')
+  }
+
+  return (
+    <Modal open onClose={close} title={`${monthDay(date)} 일정`}>
+      <div className={cal.dayBox}>
+        <h3 className={cal.dayTitle}>
+          {monthDay(date)} <span className={cx(d.getDay() === 0 && cal.sunText)}>({DOW[d.getDay()]})</span>
+          {date === todayStr() && <em>오늘</em>}
+          <small>{items.length ? `일정 ${items.length}개` : ''}</small>
+        </h3>
+        <ul className={cal.dayList}>
+          {items.map((ev) => {
+            const trashEv = isTrash(ev)
+            if (!trashEv && ev.id === editingId)
+              return (
+                <EditRow
+                  key={ev.id}
+                  ev={ev}
+                  onDone={(saved) => {
+                    setEditingId(null)
+                    if (saved && saved.date !== date) onMoved(saved.date)
+                  }}
+                />
+              )
+            return (
+              <li key={ev.id} className={cx(cal.dayItem, !trashEv && ev.done && cal.dayItemDone)} style={{ '--c': evColor(ev.title, trashEv, trashEv ? undefined : ev.category, names) } as CSSProperties}>
+                {trashEv ? (
+                  <span className={cal.dayIco}>{trashIco(ev.title)}</span>
+                ) : (
+                  <input type="checkbox" className={common.checkbox} checked={!!ev.done} onChange={(e) => toggleEvent(ev.id, e.target.checked)} aria-label={`${ev.title} 완료`} />
+                )}
+                <span className={cal.dayTime}>{ev.time || '종일'}</span>
+                <span className={cal.dayMain}>
+                  <b>{ev.title}</b>
+                  <small>{trashEv ? ev.detail : ev.category || UNCATEGORIZED}</small>
+                </span>
+                {!trashEv && (
+                  <span className={cal.dayBtns}>
+                    <button type="button" onClick={() => setEditingId(ev.id)} aria-label={`${ev.title} 수정`}>
+                      수정
+                    </button>
+                    <button type="button" className={cal.dayDel} onClick={() => removeEvent(ev.id)} aria-label={`${ev.title} 삭제`}>
+                      삭제
+                    </button>
+                  </span>
+                )}
+              </li>
+            )
+          })}
+          {!items.length && <li className={common.empty}>이 날은 일정이 없어요.</li>}
+        </ul>
+        <form className={cal.dayAdd} onSubmit={submit}>
+          <input className={common.input} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={60} placeholder="이 날에 일정 추가" aria-label="추가할 일정 제목" />
+          <input type="time" className={common.input} value={time} onChange={(e) => setTime(e.target.value)} aria-label="시간 (선택)" />
+          <Button type="submit" disabled={!title.trim()}>
+            추가
+          </Button>
+        </form>
+      </div>
+    </Modal>
   )
 }
