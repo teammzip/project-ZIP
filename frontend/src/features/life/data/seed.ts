@@ -1,6 +1,6 @@
 /* 처음 열었을 때 보여줄 예시 기록 (기존 시안 variants/app/js/core/state.js, data/demo.js 와 같은 내용).
  * "오늘" 기준으로 만들어지고, 데이터 초기화하면 다시 생깁니다. */
-import { dateOfMonthsAgo, dayOffset } from '@/lib/date'
+import { dateOfMonthsAgo, dayOffset, monthKeyOf } from '@/lib/date'
 import { todayStr } from '@/lib/date'
 import type { Bill, CalEvent, MoneyRecord } from '../types'
 
@@ -18,11 +18,14 @@ const TODO_SEED: Array<[number, string, boolean]> = [
 export const todosToEvents = (todos: Array<{ id: number; text: string; done: boolean }>): CalEvent[] =>
   todos.filter((t) => t?.text?.trim()).map((t) => ({ id: `todo-${t.id}`, date: todayStr(), time: '', title: t.text, done: !!t.done }))
 
-export const seedBills = (): Bill[] => [
-  { id: 1, name: '가스', amount: 28000, paid: true },
-  { id: 2, name: '전기', amount: 40000, paid: true },
-  { id: 3, name: '수도', amount: 32000, paid: false },
-]
+export const seedBills = (): Bill[] => {
+  const month = monthKeyOf(new Date())
+  return [
+    { id: 1, name: '가스', amount: 28000, tag: '공과금', paidMonth: month },
+    { id: 2, name: '전기', amount: 40000, tag: '공과금', paidMonth: month },
+    { id: 3, name: '수도', amount: 32000, tag: '공과금', paidMonth: null },
+  ]
+}
 
 export function seedEvents(): CalEvent[] {
   const rows: Array<[number, string, string]> = [

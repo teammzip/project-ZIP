@@ -2,7 +2,12 @@
  * (DB: db/schema.sql 의 2. 마이페이지 · 생활 관리, 3. 가계부)
  * 할 일은 따로 두지 않고 일정에 "완료" 체크로 합쳤어요 (백엔드 담당 시안 PR #12 와 같은 방식) */
 
-export type Bill = { id: number; name: string; amount: number; paid: boolean }
+/** 공과금 한 항목. paidMonth = 마지막으로 납부 체크한 달('YYYY-MM'): 이번 달과 같으면 납부 완료,
+ * 달이 바뀌면 저절로 미납으로 돌아감 (그래서 '새 달 시작' 버튼이 필요 없음) */
+export type Bill = { id: number; name: string; amount: number; tag: string; paidMonth: string | null }
+
+/** 고정 지출 항목에 붙일 수 있는 태그. 태그별로 합계를 따로 계산함 */
+export const BILL_TAGS = ['공과금', '통신', '구독', '관리비', '기타'] as const
 
 export type CalEvent = {
   id: number | string

@@ -30,10 +30,10 @@ type LifeData = {
 }
 
 type LifeActions = {
-  addBill: (name: string, amount: number) => void
+  addBill: (name: string, amount: number, tag: string) => void
+  /** 이번 달 납부 체크 (달이 바뀌면 저절로 풀림) */
   toggleBill: (id: number, paid: boolean) => void
   removeBill: (id: number) => void
-  resetBills: () => void
 
   setRentPaid: (monthKey: string, paid: boolean) => void
 
@@ -110,10 +110,9 @@ export const useLifeStore = create<LifeData & LifeActions>()(
     (set, get) => ({
       ...initial(),
 
-      addBill: (name, amount) => set((s) => ({ bills: [...s.bills, { id: newId(), name, amount, paid: false }] })),
-      toggleBill: (id, paid) => set((s) => ({ bills: s.bills.map((b) => (b.id === id ? { ...b, paid } : b)) })),
+      addBill: (name, amount, tag) => set((s) => ({ bills: [...s.bills, { id: newId(), name, amount, tag, paidMonth: null }] })),
+      toggleBill: (id, paid) => set((s) => ({ bills: s.bills.map((b) => (b.id === id ? { ...b, paidMonth: paid ? monthKeyOf(new Date()) : null } : b)) })),
       removeBill: (id) => set((s) => ({ bills: s.bills.filter((b) => b.id !== id) })),
-      resetBills: () => set((s) => ({ bills: s.bills.map((b) => ({ ...b, paid: false })) })),
 
       setRentPaid: (key, paid) => set((s) => ({ rentPaid: { ...s.rentPaid, [key]: paid } })),
 
@@ -161,7 +160,7 @@ export const useLifeStore = create<LifeData & LifeActions>()(
     {
       name: 'zip-life',
       storage: createJSONStorage(() => localStorage),
-      version: 3,
+      version: 5,
       // v1 → v2: 따로 저장하던 할 일(todos)을 오늘 날짜 일정으로 옮김
       migrate: (saved, version) => {
         const s = (saved ?? {}) as Partial<LifeData> & { todos?: Array<{ id: number; text: string; done: boolean }> }
@@ -174,6 +173,15 @@ export const useLifeStore = create<LifeData & LifeActions>()(
         if (version < 3) {
           s.notiRead = {}
           s.notiDeleted = {}
+        }
+        // v3 → v4: 공과금 paid(true/false) → paidMonth. 납부로 체크돼 있던 항목은 이번 달 납부로 봄
+        if (version < 4 && Array.isArray(s.bills)) {
+          const month = monthKeyOf(new Date())
+          s.bills = (s.bills as Array<Record<string, unknown>>).map(({ paid, ...b }) => ({ ...b, paidMonth: paid ? month : null })) as unknown as Bill[]
+        }
+        // v4 → v5: 고정 지출 항목에 태그 추가. 기존 항목은 모두 '공과금'
+        if (version < 5 && Array.isArray(s.bills)) {
+          s.bills = (s.bills as Array<Record<string, unknown>>).map((b) => ({ ...b, tag: '공과금' })) as unknown as Bill[]
         }
         return s as LifeData
       },

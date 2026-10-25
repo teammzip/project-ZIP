@@ -104,6 +104,9 @@
     <div class="group" id="demos"><span>예시</span>
       <button type="button" data-v="warn">경고창</button>
       <button type="button" data-v="suspended">정지 화면</button>
+      <button type="button" data-v="fixed-a">A안</button>
+      <button type="button" data-v="fixed-b">B안</button>
+      <button type="button" data-v="fixed-c">C안</button>
     </div>
     <button type="button" class="admin-btn" id="adminBtn" data-v="admin">관리자</button>
   </div>
@@ -119,10 +122,14 @@
       ['start-pc', 'PC시작', 0],
       ['admin', '관리자', 0],   // 오른쪽 끝 버튼(#adminBtn)으로 따로 만들어서 목록에는 이름만 등록
       ['warn', '경고창', 0],    // "예시" 버튼: 앱 화면 위에 경고 모달을 띄워서 보여줌
-      ['suspended', '정지 화면', 0]   // "예시" 버튼: 정지된 계정이 보는 별도 화면
+      ['suspended', '정지 화면', 0],   // "예시" 버튼: 정지된 계정이 보는 별도 화면
+      ['fixed-a', '고정 지출 A안', 0],   // "예시" 버튼: 고정 지출 합치기 시안 (variants/fixed-expense)
+      ['fixed-b', '고정 지출 B안', 0],
+      ['fixed-c', '고정 지출 C안', 0]
     ];
     // 폴더와 다른 주소로 열어야 하는 화면
-    var SRC = { warn: 'variants/app/index.html?demo=warn', suspended: 'variants/suspended/index.html' };
+    var SRC = { warn: 'variants/app/index.html?demo=warn', suspended: 'variants/suspended/index.html',
+      'fixed-a': 'variants/fixed-expense/a.html', 'fixed-b': 'variants/fixed-expense/b.html', 'fixed-c': 'variants/fixed-expense/c.html' };
     // [이름, 폭, 높이]  태블릿·모바일은 실제 기기 비율(768×1024, 375×812)로 맞추고, 창이 작으면 높이만 창에 맞춰 줄어듦
     var SIZES = [['데스크톱', '100%', '100%'], ['태블릿', '768px', 'min(1024px, 100%)'], ['모바일', '375px', 'min(812px, 100%)']];
     function applySize() { frame.style.width = SIZES[size][1]; frame.style.height = SIZES[size][2]; }
@@ -159,7 +166,7 @@
       });
       document.getElementById('vars').appendChild(b);
     });
-    // 오른쪽 위 "관리자" 버튼과 "예시"(경고창·정지 화면) 버튼: 눌린 화면으로 바꿈 (관리자는 데스크톱 크기로)
+    // 오른쪽 위 "관리자" 버튼과 "예시"(경고창·정지 화면·고정 지출 A/B/C안) 버튼: 눌린 화면으로 바꿈 (관리자는 데스크톱 크기로)
     document.querySelectorAll('#demos button, #adminBtn').forEach(function (b) {
       b.addEventListener('click', function () {
         cur = b.getAttribute('data-v'); write('compare-v', cur);

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>고정 지출 C안 · 월세 크게 + 공과금 이어 붙이기</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- C안: 한 카드 위쪽에 D-day 큰 월세 영역, 아래쪽에 10월 공과금 체크리스트를 이어 붙임. 지난 6개월은 카드 맨 아래 점 줄. 지금 화면과 가장 비슷해서 바꾸는 양이 적음 -->
+  <main class="page">
+    <span class="ribbon">C안 <small>월세 크게 + 공과금 이어 붙이기</small></span>
+    <h1>고정 지출</h1>
+
+    <section class="sum">
+      <div class="main"><small>이번 달 고정 지출 합계</small><b>650,000원</b><small>월세 550,000원 + 공과금 100,000원</small></div>
+      <div><small>월세</small><b>550,000원</b><small>매달 15일 납부</small></div>
+      <div><small>공과금</small><b>100,000원</b><small id="billNote"></small></div>
+    </section>
+
+    <section class="card">
+      <h2>다음 월세 납부</h2>
+      <div class="hero" style="margin-top:10px">
+        <span class="dday">D-21</span>
+        <span class="muted">2026년 11월 15일 (일)</span>
+      </div>
+      <div class="chips" style="margin-top:12px">
+        <div><small>금액</small><b>55만원</b></div>
+        <div><small>납부일</small><b>매월 15일</b></div>
+        <div><small>납부 방법</small><b>계좌이체</b></div>
+      </div>
+      <div class="btns">
+        <button type="button" class="btn primary">캘린더에 일정 추가</button>
+        <button type="button" class="btn">금액·날짜 수정</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="top" style="margin-bottom:0">
+        <h2>10월 공과금</h2>
+        <span class="muted" id="billSum" style="font-size:13px"></span>
+      </div>
+      <ul class="list" id="list">
+        <li><label class="row" data-amt="38000"><input type="checkbox" checked><span class="name"><b>전기요금</b><small>10월 공과금</small></span><span class="amt">38,000원</span></label></li>
+        <li><label class="row" data-amt="30000"><input type="checkbox" checked><span class="name"><b>가스요금</b><small>10월 공과금</small></span><span class="amt">30,000원</span></label></li>
+        <li><label class="row" data-amt="32000"><input type="checkbox"><span class="name"><b>인터넷</b><small>10월 공과금</small></span><span class="amt">32,000원</span></label></li>
+      </ul>
+      <button type="button" class="add">＋ 항목 추가</button>
+
+      <div class="hr"></div>
+      <p class="sec-title">납부 내역 · 지난 6개월 월세</p>
+      <div class="dots">
+        <span><i class="late"></i>5월</span><span><i class="late"></i>6월</span><span><i class="late"></i>7월</span>
+        <span><i class="late"></i>8월</span><span><i class="late"></i>9월</span><span><i class="now"></i>10월</span>
+      </div>
+      <p class="muted" style="font-size:12px;margin-top:10px">● 납부 완료 &nbsp; ○ 미납 &nbsp; ◌ 이번 달</p>
+    </section>
+  </main>
+
+  <script>
+    var rows = [].slice.call(document.querySelectorAll('.row'));
+    function money(n) { return n.toLocaleString('ko-KR') + '원'; }
+    function update() {
+      var total = 0, paid = 0;
+      rows.forEach(function (r) {
+        var a = Number(r.getAttribute('data-amt')), on = r.querySelector('input').checked;
+        total += a; if (on) paid += a;
+        r.classList.toggle('done', on);
+      });
+      document.getElementById('billSum').textContent = '납부 ' + money(paid) + ' · 남음 ' + money(total - paid);
+      document.getElementById('billNote').textContent = '납부 ' + money(paid) + ' · 남음 ' + money(total - paid);
+    }
+    rows.forEach(function (r) { r.querySelector('input').addEventListener('change', update); });
+    update();
+  </script>
+</body>
+</html>
