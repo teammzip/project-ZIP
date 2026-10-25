@@ -48,7 +48,7 @@ const place = (el: HTMLElement, x: number, y: number, w: number, h: number) => {
 }
 
 /** 모바일 시작 화면: 앱 시작(스플래시) → 로봇이 날아와 문을 가리킴 → 문을 누르면 로봇이 들어가고 불이 켜짐 → 로그인.
- * 기존 시안 variants/start-mobile/index.html 의 모션을 그대로 옮김. '동작 줄이기' 설정이면 모션을 건너뜀 */
+ * '동작 줄이기' 설정이면 모션을 건너뜀 */
 export function MobileIntro({ onEnter, onSignup, paused, autoDoor = false }: Props) {
   const world = useRef<HTMLDivElement>(null)
   const img = useRef<HTMLImageElement>(null)

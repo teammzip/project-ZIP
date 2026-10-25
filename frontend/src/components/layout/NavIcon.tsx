@@ -1,4 +1,4 @@
-/* 메뉴 아이콘 (기존 시안 variants/app/index.html 의 선 아이콘). 색은 currentColor 를 따라감 */
+/* 메뉴 아이콘. 색은 currentColor 를 따라감 */
 export type IconName = 'home' | 'photo' | 'ai' | 'map' | 'community' | 'my' | 'bell' | 'menu' | 'close'
 
 const PATHS: Record<IconName, React.ReactNode> = {

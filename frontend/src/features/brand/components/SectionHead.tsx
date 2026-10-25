@@ -1,5 +1,5 @@
 import { Fragment } from 'react'
-import { Reveal } from '@/components/ui'
+import { Reveal } from './Reveal'
 import { cx } from '@/lib/cx'
 import styles from './SectionHead.module.css'
 

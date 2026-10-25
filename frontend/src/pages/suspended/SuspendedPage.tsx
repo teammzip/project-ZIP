@@ -3,7 +3,7 @@ import { useAuthStore, useLogout } from '@/features/auth'
 import { SuspendedNotice, useActiveBan } from '@/features/moderation'
 import styles from './SuspendedPage.module.css'
 
-/* 이용 정지 화면 (/suspended, 팀장님 시안 variants/suspended)
+/* 이용 정지 화면
  * 정지된 계정은 ProtectedRoute 가 앱 대신 이 화면으로 보냄. 메뉴 없이 로그아웃 · 문의만.
  * 정지 중이 아니면 홈으로. 단 ?demo 를 붙이면 예시(3일 정지)를 보여 줌 (시안의 "정지 화면" 예시 버튼) */
 export function SuspendedPage() {

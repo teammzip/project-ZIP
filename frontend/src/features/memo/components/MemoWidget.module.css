@@ -1,4 +1,4 @@
-/* 홈 메모 위젯 (팀장님 시안 variants/app/css/views/memo.css 와 같은 모양): 노란 머리줄 + 쪽지 3장 + 빠른 메모 */
+/* 홈 메모 위젯: 노란 머리줄 + 쪽지 3장 + 빠른 메모 */
 .widget {
   display: flex;
   flex-direction: column;

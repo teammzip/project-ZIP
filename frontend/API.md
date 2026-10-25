@@ -6,19 +6,19 @@
 - 📝 **약속만 있음**: 화면은 다 만들어져 있고 지금은 브라우저(localStorage)에 저장해요. 백엔드가 만들면 프론트가 이 모양대로 붙일게요.
 - ⚠️ 표시는 **DB(`schema.sql`)에 아직 칸·표가 없는 것**이에요. 맨 아래 [DB와 아직 안 맞는 곳](#db와-아직-안-맞는-곳-백엔드-확인-필요)에 모아 뒀어요.
 
-> 마지막 정리: 2026-10-24 (React 화면 기준 — 메모장 · 홈 메모 위젯, 지도 AI 찾기 · 즐겨찾기, 일정 빠른 항목, 프로필 꾸미기, 경고 창 · 정지 화면까지 반영)
+> 마지막 정리: 2026-10-25 (React 화면 기준 — 동네 인증, 고정 지출 태그 · 달마다 납부, 알림 삭제, AI "사용 방법" 주제, 네이버 지도 스타일 동네 화면 · 집 위치, 달력 날짜 창, 가계부 빠른 기록까지 반영)
 
 | 영역 | 상태 | DB 표 |
 |---|---|---|
 | [인증 · 내 정보](#1-인증--내-정보-) | ✅ | `users` `social_accounts` `auth_sessions` `phone_verifications` `password_resets` `user_term_agreements` `withdrawal_logs` |
-| [설정 · 동네](#2-설정--동네-) | 📝 | `user_settings` `regions` `region_neighbors` |
+| [설정 · 동네](#2-설정--동네-) | 📝 | `user_settings` `regions` `region_neighbors` · ⚠️ 동네 인증 시각 |
 | [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | 📝 | `events`(⚠️ 완료 칸) `trash_schedules` |
-| [월세 · 공과금](#4-월세--공과금-) | 📝 | `rent_payments` `bill_items` `bill_payments` |
+| [월세 · 고정 지출](#4-월세--고정-지출-) | 📝 | `rent_payments` `bill_items`(⚠️ 태그) `bill_payments` |
 | [가계부](#5-가계부-수입--기타-지출-) | 📝 | `ledger_categories` `incomes` `expenses` + VIEW 2개 |
-| [알림](#6-알림-) | 📝 | `notifications` |
+| [알림](#6-알림-) | 📝 | `notifications` (읽음 · 삭제) |
 | [커뮤니티 · 첨부 · 신고](#7-커뮤니티--첨부--신고-) | 📝 | `posts` `post_likes` `comments` `uploaded_files` `post_attachments` `reports` |
-| [AI](#8-ai-) | 📝 | `ai_topics` `ai_conversations` `ai_messages` `ai_usage_daily` |
-| [지도](#9-지도-) | 📝 | `places` `place_categories` `place_reviews` · ⚠️ 즐겨찾기 표 |
+| [AI](#8-ai-) | 📝 | `ai_topics`(⚠️ `guide` 추가) `ai_conversations` `ai_messages` `ai_usage_daily` |
+| [지도](#9-지도-) | 📝 | `places` `place_categories` `place_reviews` · ⚠️ 즐겨찾기 표 · 집 좌표 |
 | [약관](#10-약관-) | 📝 | `terms_documents` |
 | [관리자 · 이용 정지 · 경고](#11-관리자--이용-정지-) | 📝 | `user_sanctions`(⚠️ 확인 시각) `users.status` `reports` |
 | [메모](#12-메모-) | 📝 | ⚠️ `memos` (DB에 아직 없음) |
@@ -203,6 +203,7 @@
   - 일정을 **직접 입력**하면 고른 카테고리 아래에 **항목 버튼**으로도 저장돼요(같은 이름이 이미 있으면 안 만듦). 직접 만든 항목은 수정 · 삭제할 수 있어요.
   - ⚠️ DB에 `events.category`, 카테고리 · 항목 표가 없어요 (아래 표 11번).
   - 지금은 브라우저(`zip-life`의 `categories` · `customPresets`)에 저장해요.
+- **달력에서 날짜를 누르면 그날 일정 창**이 떠요 (그날 일정 전부 + 쓰레기 배출, 완료 체크 · 수정 · 삭제 · 이 날에 바로 추가). 새 API는 필요 없고 위 `GET /api/events?from=…&to=…`(그날 하루) · `POST` · `PATCH` · `DELETE`를 그대로 써요.
 - 달력 막대 색은 프론트가 카테고리 순서로 정해요 (미분류 · 직접 입력은 파랑, 쓰레기 배출은 초록). 같은 제목이 며칠 이어지면 막대를 이어 그려요.
 - 같은 날 · 같은 제목 · 같은 카테고리 일정은 프론트가 한 번 더 추가하지 않게 막아요.
 - 쓰레기 배출은 일정으로 저장하지 않고, 프론트가 `trash_schedules` 요일표로 달력에 그려요.
@@ -210,25 +211,29 @@
 
 ---
 
-## 4. 월세 · 공과금 📝
+## 4. 월세 · 고정 지출 📝
+
+가계부 → 지출 → **고정 지출** 화면: 월세 + 공과금 · 통신 · 구독 · 관리비 같은 매달 나가는 돈. 항목마다 **태그**를 붙여 태그별 합계를 보여 주고, **이번 달 납부 체크리스트**로 달마다 체크해요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
 | GET | `/api/rent-payments?from=2026-05&to=2026-10` | — | `[{ month, amount, paid, paidAt }]` |
 | PUT | `/api/rent-payments/{month}` | `{ paid: true }` | `{ month, amount, paid, paidAt }` |
-| GET | `/api/bills?month=2026-10` | — | `[bill]` |
-| POST | `/api/bills` | `{ name, amount }` | `bill` |
+| GET | `/api/bills?month=2026-10` | — | `[bill]` (그 달 납부 상태 포함) |
+| POST | `/api/bills` | `{ name, amount, tag }` | `bill` |
 | PUT | `/api/bills/{id}/payments/{month}` | `{ paid: true }` 또는 `{ amount: 41000 }` | `bill` |
-| POST | `/api/bills/reset?month=2026-10` | — (이번 달 모두 미납으로) | `[bill]` |
 | DELETE | `/api/bills/{id}` | — (해지: `is_active = 0`) | — |
 
 ```json
-{ "id": "5", "name": "전기", "amount": 32000, "paid": false, "paidAt": null }
+{ "id": "5", "name": "전기", "amount": 32000, "tag": "공과금", "paid": false, "paidAt": null }
 ```
 - 월세 `amount`는 **원 단위** (설정의 `rent` × 10000, `rent_payments.amount`).
-- 공과금 `id`는 항목(`bill_items.id`), `amount`·`paid`는 그 달 납부 기록(`bill_payments`)의 값이에요.
-- 그 달 줄이 없으면 서버가 만들어 주세요 (월세: 설정 금액, 공과금: `default_amount`). 같은 달 줄이 두 번 생기지 않게 (`uk_*_period_ym`).
-- 프론트 대응: `rentPaid['2026-10']` · `Bill { id, name, amount, paid }` (`features/life/types.ts`)
+- 고정 지출 `id`는 항목(`bill_items.id`), `amount`·`paid`는 그 달 납부 기록(`bill_payments`)의 값이에요.
+- **`tag`**: `공과금` · `통신` · `구독` · `관리비` · `기타` (`features/life/types.ts`의 `BILL_TAGS`). 홈 · 고정 지출의 "공과금" 합계는 `tag = 공과금`인 것만 더해요.
+  - ⚠️ `bill_items`에 태그 칸이 없어요 (아래 표 13번).
+- **납부는 달마다 따로**: 달이 바뀌면 저절로 미납으로 보여요 (그 달 `bill_payments` 줄이 없으면 미납). 예전의 "이번 달 모두 미납으로"(`POST /api/bills/reset`)는 화면에서 없어져서 필요 없어요.
+- 그 달 줄이 없으면 서버가 만들어 주세요 (월세: 설정 금액, 고정 지출: `default_amount`). 같은 달 줄이 두 번 생기지 않게 (`uk_*_period_ym`).
+- 프론트 대응: `rentPaid['2026-10']` · `Bill { id, name, amount, tag, paidMonth }` — `paidMonth`는 납부한 달(`'2026-10'`) 또는 `null`이라, 서버의 `paid`(이번 달 기준)를 받으면 `paidMonth = paid ? 이번 달 : null`로 바꿔 써요.
 
 ---
 
@@ -251,6 +256,8 @@
 ```
 - 분류는 `ledger_categories` (`kind`: `INCOME` · `EXPENSE`). 프론트는 분류 **이름**(`cat`)으로 보여 주니 이름과 색도 같이 주세요.
 - 통계는 저장하지 않고 VIEW로 계산: 월별 수입 = `v_monthly_income`, 지출 구성(월세 + 공과금 + 기타 지출) = `v_monthly_spend_breakdown`.
+- 화면: 월별 합계 · **분류별 원형 그래프**(비율 · 금액) · 목록, 기록은 **빠른 기록**(금액 → 분류 칩 → 날짜(기본 오늘) · 메모(선택) → 기록하기). 보내는 값은 위 `POST` 그대로예요.
+- 지출 구성 VIEW의 "공과금"은 이제 **고정 지출 전체**(태그 공과금 · 통신 · 구독 · 관리비 · 기타)예요 ([4번](#4-월세--고정-지출-)).
 - 프론트 대응: `MoneyRecord { id, date, cat, amount, memo }`
 
 ---
@@ -261,6 +268,7 @@
 |---|---|---|---|
 | GET | `/api/notifications?status=all\|unread\|read` | — | `{ items: [noti], unreadCount }` |
 | PATCH | `/api/notifications/read` | `{ ids: ["1","2"] }` (빈 배열이면 전부) | — |
+| DELETE | `/api/notifications` | `{ ids: ["1","2"] }` | — (읽은 알림 지우기) |
 
 ```json
 { "id": "1", "type": "RENT", "title": "월세 납부일이 3일 남았어요", "body": "매월 15일 · 55만원",
@@ -268,8 +276,9 @@
 ```
 - `type`: `EVENT` · `TRASH` · `RENT` · `BILL` · `COMMUNITY` · `SYSTEM` (`notifications.noti_type`)
 - `read`는 `read_at`이 있으면 `true`. `unreadCount`가 메뉴·종의 빨간 점이 돼요.
+- 알림 화면은 **안 읽음 / 읽음**으로 나눠 보고(`status`), "모두 읽음"은 `ids: []`, 읽은 알림은 골라서 **삭제**해요. 지운 알림은 다시 안 나와야 해요 (줄을 지우거나 `deleted_at`을 두고 목록에서 빼기).
 - 설정에서 알림을 끄면(`notiOn: false`) 만들지 않거나 빈 목록을 주세요.
-- 지금 프론트는 일정·쓰레기·월세로 알림을 직접 계산해요(`features/life/derive.ts`의 `buildNotis`). 서버가 알림을 만들기 시작하면 이 API로 바꿀게요.
+- 지금 프론트는 일정·쓰레기·월세로 알림을 직접 계산하고(`features/life/derive.ts`의 `buildNotis`), 읽음은 `zip-life`의 `notiRead`, 지운 것은 `notiDeleted`(알림 id → true)에 저장해요. 서버가 알림을 만들기 시작하면 이 API로 바꿀게요.
 - **홈 알림 칸**: 메모 옆에 알림이 세로로 쌓여요(넓은 화면 4개 · 좁은 화면 3개, 나머지는 "+N개 더 있어요"). "닫기"는 **그날 하루만 숨김**이라 브라우저에만 저장해요(`zip-home-noti-closed`, "닫은 알림 다시 보기"로 되살림). 읽음 처리와는 달라서 서버 API는 필요 없어요.
 
 ---
@@ -330,7 +339,10 @@
   "card": { "type": "SPEND_SUMMARY", "data": { "month": 10, "total": 1180000, "prevTotal": 1090000, "fixed": 620000,
             "rows": [["월세", 550000], ["식비", 210000]], "top": ["식비", 210000] } } }
 ```
-- `topic` 코드는 `ai_topics.code`와 같아요: `qna` `nearby` `trash` `cook` `clean` `contract` `landlord` `bill` `summary` (`features/ai/topics.ts`).
+- `topic` 코드는 `ai_topics.code`와 같아요: `qna` `guide` `nearby` `trash` `cook` `clean` `contract` `landlord` `bill` `summary` (`features/ai/topics.ts`).
+  - ⚠️ **`guide`(🧭 사용 방법)** 는 새로 생긴 주제라 `ai_topics` 기본 데이터에 넣어 주세요 (아래 표 14번). "월세 납부 기록은 어디서 해요?" 같은 질문에 **기능 위치를 알려 주고 그 화면으로 가는 버튼**을 줘요.
+  - 답에 버튼이 붙으면 `card: { "type": "LINK", "data": { "label": "월세·공과금 (고정 지출) 바로가기", "to": "/my/budget/expense" } }`로 주세요. `to`는 앱 화면 주소예요 (`/my/calendar` · `/my/budget/expense` · `/my/budget/expense/spend` · `/my/budget/income` · `/my/memo` · `/my/noti` · `/my/settings` · `/map` · `/community` · `/ai`).
+  - 지금은 프론트가 키워드로 찾아요 (`guideFor`). 실제 AI를 붙이면 질문을 보내 어느 화면인지 받아 오도록 바꿔요.
 - `entryPoint`: `HOME_MODAL`(홈 "AI와 대화") · `AI_PAGE`(AI 메뉴)
 - 지출 요약 카드는 **보낸 그때의 숫자**를 `card_data` JSON에 저장해서 다시 열어도 같게 보여요.
 - **사진은 답을 만든 뒤 저장하지 않아요** (개인정보 처리방침). `ai_messages.attachment_id`는 비워 두세요.
@@ -341,7 +353,8 @@
 
 ## 9. 지도 📝
 
-동네 화면: OpenStreetMap 지도 + 주변 장소 목록 + **AI 장소 찾기** + **★ 즐겨찾기** + **카테고리 편집**(종류 켜기·끄기, 직접 검색어 추가).
+동네 화면 (네이버 지도처럼): 움직이는 지도(Leaflet + OpenStreetMap)에 장소 핀 · 🏠 우리 집, 장소 목록(가까운 순 · 24시간 · 저렴한 · 조용한), 장소 상세(저장 · 길찾기 · 큰 지도), **검색 = 장소 이름 + AI 장소 찾기**, **★ 저장(즐겨찾기)**, **종류 편집**(켜기·끄기, 직접 검색어 추가).
+- 모바일: 화면 가득 지도 + 위 검색창 · 종류 칩 + 아래 끌어올리는 목록 시트 / PC: 왼쪽 목록 칸 + 오른쪽 지도
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
@@ -362,7 +375,10 @@
 - **종류 15개**: 세탁방 · 편의점 · 약국 · 마트 · 카페 · 병원 · 헬스장 · 은행 · 미용실 · 다이소 · 공원 · 식당 · 반찬가게 · 세탁소 · 주민센터. 처음 칩에는 앞의 4개만 보여요.
   - ⚠️ `schema.sql`의 `place_categories` 기본 데이터는 4개(세탁방 · 편의점 · 약국 · 마트)뿐이에요. 11개를 더 넣어 주세요.
 - **AI 장소 찾기**: 지금은 프론트가 예시 데이터 안에서 말을 읽어 골라요 (`features/map/aiFind.ts` — "빨래·이불 → 세탁방", "밤·24 → 24시간 운영 가산점" 같은 규칙). 서버가 생기면 AI + 지도 검색 API(예: 카카오 로컬)로 바꾸고, 화면에 보일 **추천 이유**(`reasons`)를 같이 주세요.
-- **도보 시간**: 프론트는 설명의 "도보 약 N분"을 읽어 써요. 서버는 `walkMin`(사용자 동네 · 주소 기준)을 따로 주면 좋아요.
+- **도보 시간**: 프론트는 설명의 "도보 약 N분"을 읽어 써요. 서버는 `walkMin`(우리 집 기준)을 따로 주면 좋아요.
+- **우리 집 위치 (🏠, "우리 집으로" 버튼, 길찾기 출발점)**: 지금은 예시 좌표(`HOME`, `features/map/data/places.ts`)예요. 서버가 생기면 `GET /api/auth/me`의 주소를 좌표로 바꿔 `home: { lat, lon }`으로 같이 주세요 (⚠️ 아래 표 15번). 동네 인증 때 받은 좌표를 써도 돼요.
+- **조건 칩**(24시간 · 저렴한 · 조용한)은 지금 설명 글자로 걸러요. 서버는 `openHours` · 태그로 걸러 주면 더 정확해요 (`GET /api/places?…&filter=24h|cheap|quiet`).
+- **길찾기 · 큰 지도**는 OpenStreetMap 링크를 새 창으로 열어요 (서버 필요 없음).
 - **즐겨찾기 번호**: 지금은 `"종류:이름"`을 써요. 서버가 생기면 `places.id`로 바꿔요. ⚠️ 즐겨찾기 표가 없어요 (아래 표 8번).
 - 프론트 대응: `Place { n: name, d: description, lat, lon }` (`features/map/data/places.ts`), 지도 설정 저장 `zip-map` (`features/map/store.ts`)
 
@@ -470,6 +486,10 @@
 | 10 | 경고를 확인했는지 남길 칸이 없어요 | `user_sanctions.seen_at DATETIME NULL` 추가 (경고 창 "확인했어요") |
 | 11 | 일정 카테고리를 둘 곳이 없어요 | `event_categories(id, user_id, name, ico, sort_order)` · `event_presets(id, user_id, category_id, title)` 표 + `events.category_id` (NULL = 미분류) |
 | 12 | 동네 인증 시각을 둘 곳이 없어요 | `users.region_verified_at DATETIME NULL` 추가 (위 [동네 인증](#동네-인증)) |
+| 13 | 고정 지출 태그 칸이 없어요 | `bill_items.tag ENUM('공과금','통신','구독','관리비','기타') NOT NULL DEFAULT '공과금'` 추가 (위 [4번](#4-월세--고정-지출-)) |
+| 14 | AI "사용 방법" 주제가 없어요 | `ai_topics`에 `('guide', '사용 방법', '기능이 어디 있는지 알려드려요', photo 0)` 추가, `ai_messages.card_type`에 `LINK` 허용 (위 [8번](#8-ai-)) |
+| 15 | 우리 집 좌표를 둘 곳이 없어요 | `users.home_lat DECIMAL(9,6)` · `home_lon DECIMAL(9,6)` 추가 (주소를 좌표로 바꿔 저장, 지도 🏠 · 도보 시간 · 길찾기 출발점) |
+| 16 | 지운 알림을 표시할 칸이 없어요 | 줄을 지우면 칸은 필요 없어요. 기록을 남기려면 `notifications.deleted_at DATETIME NULL` 추가 |
 
 ## 프론트에서 서버를 붙이는 순서 (예: 일정)
 
@@ -483,7 +503,7 @@
 | 저장 키 | 들어 있는 것 | 파일 | 옮겨 갈 API |
 |---|---|---|---|
 | `zip-auth` | 로그인 토큰 · 내 정보 · 로그인한 시각 | `features/auth/store/authStore.ts` | 1번 |
-| `zip-life` | 일정 · 월세 · 공과금 · 수입 · 지출 · 알림 읽음 · 설정 | `features/life/store.ts` | 2 ~ 6번 |
+| `zip-life` | 일정 · 월세 · 고정 지출 · 수입 · 지출 · 알림 읽음 · 지운 알림 · 동네 인증 · 설정 | `features/life/store.ts` | 2 ~ 6번 |
 | `zip-posts` | 커뮤니티 글 · 댓글 · 좋아요 · 첨부 | `features/community/store.ts` | 7번 |
 | `zip-ai-chat` | 홈 AI 대화 (최근 40개) | `features/ai/store.ts` | 8번 |
 | `zip-map` | 지도 칩에 보일 종류 · 직접 검색어 · 즐겨찾기 | `features/map/store.ts` | 9번 |

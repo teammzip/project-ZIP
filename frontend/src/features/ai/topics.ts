@@ -1,4 +1,4 @@
-/* AI 도우미(데모)의 분야·질문 초안·정해진 답변. 기존 시안 variants/app/js/views/ai.js 와 같은 내용.
+/* AI 도우미(데모)의 분야·질문 초안·정해진 답변.
  * 실제 AI 를 붙이면 reply() 대신 서버(features/ai/api)에 초안을 보내고 답을 받으면 됩니다. */
 import { spendBreakdown, useLifeStore } from '@/features/life'
 import { PLACES, placeKindOf } from '@/features/map'

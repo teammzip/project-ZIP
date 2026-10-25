@@ -1,5 +1,6 @@
 import house from '@/assets/images/last-house.png'
-import { Button, Reveal } from '@/components/ui'
+import { Button } from '@/components/ui'
+import { Reveal } from './Reveal'
 import { Lines } from './SectionHead'
 import { CTA } from '../content'
 import styles from './CtaSection.module.css'

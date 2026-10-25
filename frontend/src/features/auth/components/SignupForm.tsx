@@ -14,7 +14,7 @@ type Props = {
   onSuccess?: () => void
 }
 
-/** 회원가입 (팀 시안 variants/account/signup.html 과 같은 구성)
+/** 회원가입
  * 로그인 정보(아이디·비밀번호) · 회원 정보(닉네임·휴대전화 인증·이메일·주소) · 가입 약관 동의.
  * 필수 항목을 모두 채우고 약관에 동의하면 "가입하기"가 파랗게 켜짐 */
 export function SignupForm({ onSuccess }: Props) {

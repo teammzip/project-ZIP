@@ -1,7 +1,7 @@
 /* 저장된 데이터로 계산하는 값들 (다음 월세일, 알림 목록, 지출 구성 등).
  * 여러 화면(홈·알림·캘린더·가계부·AI 대화)이 같은 계산을 쓰도록 여기에 모아 둠. */
 import { useShallow } from 'zustand/react/shallow'
-import { DOW, dayDiff, fmt, monthDay, monthKeyOf, todayStr } from '@/lib/date'
+import { dayDiff, fmt, monthDay, monthKeyOf, todayStr } from '@/lib/date'
 import { TRASH, trashIco } from './data/catalog'
 import { useLifeStore } from './store'
 import type { Bill, CalEvent, LifeSettings, MoneyRecord, TrashEvent } from './types'
@@ -54,24 +54,6 @@ export const ddayText = (diff: number) => (diff === 0 ? 'D-Day' : `D-${diff}`)
 /** 그 날짜가 속한 달의 월세를 냈는지 */
 export const monthKeyRentPaid = (rentPaid: Record<string, boolean>, d: Date) => !!rentPaid[monthKeyOf(d)]
 
-export function todayTrash() {
-  return TRASH[new Date().getDay()]
-}
-
-/** 가장 가까운 배출일 (오늘 포함, k = 며칠 뒤). kind 를 주면 그 종류만 (예: '재활용') */
-export function nextTrashDay(kind?: string, fromTomorrow = false) {
-  const today = new Date().getDay()
-  for (let k = fromTomorrow ? 1 : 0; k <= 7; k++) {
-    const idx = (today + k) % 7
-    const t = TRASH[idx]
-    if (t && (!kind || t.t === kind)) return { k, idx, t }
-  }
-  return null
-}
-
-/** 0 → 오늘, 1 → 내일, 그 밖 → 'O요일' */
-export const dayWord = (k: number, idx: number) => (k === 0 ? '오늘' : k === 1 ? '내일' : `${DOW[idx]}요일`)
-
 export type Noti = { id: string; ico: string; t: string; s: string; time: string }
 
 /** 알림 목록: 3일 안의 일정(끝낸 건 빼고) · 쓰레기 배출 + 월세 + 예시 알림 */
@@ -116,13 +98,6 @@ export function useNotis() {
 export function useLifeSummary() {
   const { region, rent, rentDay } = useLifeStore(useShallow((s) => ({ region: s.settings.region, rent: s.settings.rent, rentDay: s.settings.rentDay })))
   return `${region || '동네 미설정'} · 월세 ${rent}만원 · 매월 ${rentDay}일`
-}
-
-/** 'YYYY-MM' 두 달 사이가 몇 개월인지 (to 가 더 늦으면 양수) */
-export function monthsBetween(from: string, to: string) {
-  const [fy, fm] = from.split('-').map(Number)
-  const [ty, tm] = to.split('-').map(Number)
-  return (ty - fy) * 12 + (tm - fm)
 }
 
 export const sumAmount = (list: { amount: number }[]) => list.reduce((t, r) => t + r.amount, 0)

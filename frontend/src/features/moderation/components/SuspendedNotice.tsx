@@ -13,7 +13,7 @@ type Props = {
   logoutPending?: boolean
 }
 
-/** 이용 정지 안내 (팀장님 시안 variants/suspended): 정지된 계정은 앱 대신 이 안내만 봄. 로그아웃 · 문의만 가능 */
+/** 이용 정지 안내: 정지된 계정은 앱 대신 이 안내만 봄. 로그아웃 · 문의만 가능 */
 export function SuspendedNotice({ record, onLogout, logoutPending }: Props) {
   const [now] = useState(() => Date.now())
   const bans = record?.history.filter((e) => !e.warn) ?? []

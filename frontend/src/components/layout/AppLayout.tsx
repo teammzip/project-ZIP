@@ -15,7 +15,7 @@ import { ProfileMenu } from './ProfileMenu'
 import { BOTTOM_ITEMS, SIDEBAR_ITEMS, type NavItem } from './navItems'
 import styles from './AppLayout.module.css'
 
-/* 로그인 후 모든 화면의 틀 (팀장님 시안 variants/app 과 같은 구성)
+/* 로그인 후 모든 화면의 틀
  * - PC: 왼쪽 좁은 아이콘 메뉴(맨 아래 프로필 사진 → 프로필 메뉴) + 본문. 오른쪽 요약 패널은 시안에서 빠짐
  * - 모바일(900px 이하): 하단 메뉴(커뮤니티·AI·홈·동네·마이페이지) + 그 위 AI 버튼 + 오른쪽 위 알림·프로필·☰ 전체 메뉴
  * 각 화면은 <Outlet /> 자리에 그려집니다. */

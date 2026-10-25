@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-/* 로그인·회원가입·계정 찾기 입력 검사 규칙 (팀 시안 variants/account/signup.js 와 같은 기준).
+/* 로그인·회원가입·계정 찾기 입력 검사 규칙.
  * 백엔드도 같은 규칙으로 검사하도록 맞춰 주세요. */
 
 const email = z
