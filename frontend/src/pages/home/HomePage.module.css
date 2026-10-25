@@ -3,16 +3,12 @@
   gap: 18px;
 }
 
-/* 맨 위 줄: 메모 | 알림 (알림을 다 닫으면 메모만 남음) */
+/* 맨 위 줄: 메모 | 알림 */
 .top {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   align-items: stretch;
-}
-
-.top > :only-child {
-  grid-column: 1 / -1;
 }
 
 .row {

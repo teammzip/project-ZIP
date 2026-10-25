@@ -169,23 +169,33 @@
 |---|---|---|---|
 | GET | `/api/events?from=2026-10-01&to=2026-10-31` | — | `[event]` |
 | GET | `/api/events/search?q=월세` | — | `[event]` (상단 검색) |
-| POST | `/api/events` | `{ date, time, title }` | `event` |
-| PATCH | `/api/events/{id}` | `{ date, time, title }` 중 바꿀 것 | `event` |
+| POST | `/api/events` | `{ date, time, title, category }` | `event` |
+| PATCH | `/api/events/{id}` | `{ date, time, title, category }` 중 바꿀 것 | `event` |
 | PATCH | `/api/events/{id}/done` | `{ done: true }` | `event` |
 | DELETE | `/api/events/{id}` | — | — |
 | GET | `/api/trash-schedules?regionId=2` | — | `[{ weekday, wasteType, description }]` |
+| GET | `/api/event-categories` | — | `[{ id, name, ico, items: ["에어컨 필터 청소", …] }]` (기본 5개 + 내가 만든 것 + 미분류) |
+| POST | `/api/event-categories` | `{ name }` | `category` |
+| PATCH | `/api/event-categories/{id}` | `{ name }` | — (그 카테고리의 일정 · 항목 이름도 같이 바뀜) |
+| DELETE | `/api/event-categories/{id}` | — | — (그 카테고리의 일정 · 항목은 미분류로) |
+| GET | `/api/event-presets` | — | `[{ id, title, category }]` (내가 만든 항목 버튼) |
+| POST | `/api/event-presets` | `{ title, category }` | `preset` |
+| PATCH · DELETE | `/api/event-presets/{id}` | `{ title, category }` | — |
 
 ```json
-{ "id": "31", "date": "2026-10-24", "time": "18:00", "title": "택배 반품", "done": false, "source": "USER" }
+{ "id": "31", "date": "2026-10-24", "time": "18:00", "title": "택배 반품", "category": "연락·행정", "done": false, "source": "USER" }
 ```
 - `time`이 빈 문자열(`""`)이면 종일 (`event_time = NULL`).
 - `source`: `USER`(직접 입력) · `RENT`("월세 캘린더에 추가"로 자동 등록).
 - **할 일은 일정에 합쳤어요** (백엔드 담당 시안 PR #12와 같은 방식). 체크한 일정은 `done: true`.
   - ⚠️ 지금 `schema.sql`에는 `events`에 완료 칸이 없고 `todos` 표가 따로 있어요. **`events.is_done`(+ `done_at`)을 추가**하고 `todos`는 빼는 걸 제안해요.
-- **일정 기록하기의 빠른 항목**(집 관리 · 청소·빨래 · 돈·계약 · 건강·생활 · 연락·행정, 30개)은 프론트 목록이에요 (`features/life/data/presets.ts`). 고른 항목은 그냥 `POST /api/events`의 `title`로 보내요.
-  - 달력 막대 색도 프론트가 제목으로 정해요 (항목 카테고리별 색 · 직접 입력은 파랑 · 쓰레기 배출은 초록). 같은 제목이 며칠 이어지면 막대를 이어 그려요. 서버가 할 일은 없어요.
-  - 나중에 사용자가 항목을 직접 만들게 하려면 `event_presets` 표 + `GET/POST /api/event-presets`가 필요해요 (지금은 안 해도 돼요).
-- 같은 날 · 같은 제목 일정은 프론트가 한 번 더 추가하지 않게 막아요 (서버도 막으면 좋아요).
+- **일정 카테고리** (백엔드 담당 시안 PR #24 · #26): 일정마다 `category`가 붙고, 목록에 작은 이름표로 보여요. 고칠 때 카테고리를 바꾸거나 지울 수 있어요(→ `미분류`).
+  - 기본 카테고리 5개(집 관리 · 청소·빨래 · 돈·계약 · 건강·생활 · 연락·행정)와 항목 30개는 프론트 목록이에요(`features/life/data/presets.ts`). 사용자는 **추가 · 이름 변경 · 삭제**할 수 있어요. `미분류`는 바꾸거나 지울 수 없어요.
+  - 일정을 **직접 입력**하면 고른 카테고리 아래에 **항목 버튼**으로도 저장돼요(같은 이름이 이미 있으면 안 만듦). 직접 만든 항목은 수정 · 삭제할 수 있어요.
+  - ⚠️ DB에 `events.category`, 카테고리 · 항목 표가 없어요 (아래 표 11번).
+  - 지금은 브라우저(`zip-life`의 `categories` · `customPresets`)에 저장해요.
+- 달력 막대 색은 프론트가 카테고리 순서로 정해요 (미분류 · 직접 입력은 파랑, 쓰레기 배출은 초록). 같은 제목이 며칠 이어지면 막대를 이어 그려요.
+- 같은 날 · 같은 제목 · 같은 카테고리 일정은 프론트가 한 번 더 추가하지 않게 막아요.
 - 쓰레기 배출은 일정으로 저장하지 않고, 프론트가 `trash_schedules` 요일표로 달력에 그려요.
   - `weekday` 0=일 ~ 6=토, `wasteType`: `GENERAL`(일반) · `RECYCLE`(재활용) · `FOOD`(음식물)
 
@@ -251,7 +261,7 @@
 - `read`는 `read_at`이 있으면 `true`. `unreadCount`가 메뉴·종의 빨간 점이 돼요.
 - 설정에서 알림을 끄면(`notiOn: false`) 만들지 않거나 빈 목록을 주세요.
 - 지금 프론트는 일정·쓰레기·월세로 알림을 직접 계산해요(`features/life/derive.ts`의 `buildNotis`). 서버가 알림을 만들기 시작하면 이 API로 바꿀게요.
-- **홈 알림 회전창**: 메모 옆에서 알림이 하나씩 돌아가요. "닫기"는 **그날 하루만 숨김**이라 브라우저에만 저장해요(`zip-home-noti-closed`). 읽음 처리와는 달라서 서버 API는 필요 없어요.
+- **홈 알림 칸**: 메모 옆에 알림이 세로로 쌓여요(넓은 화면 4개 · 좁은 화면 3개, 나머지는 "+N개 더 있어요"). "닫기"는 **그날 하루만 숨김**이라 브라우저에만 저장해요(`zip-home-noti-closed`, "닫은 알림 다시 보기"로 되살림). 읽음 처리와는 달라서 서버 API는 필요 없어요.
 
 ---
 
@@ -409,7 +419,9 @@
 마이페이지 **"메모" 탭(`/my/memo`, 메모장)**과 **홈 메모 위젯**이 써요. React 화면이 다 있고(`features/memo`), 지금은 브라우저(`zip-memos`)에 저장해요.
 
 - 메모장: 왼쪽 목록(고정 먼저 → 최근 수정 순, 검색) | 오른쪽 쓰기. 제목 · 글, 또는 **체크리스트**(줄마다 체크, Enter로 다음 줄), **📌 고정**, **색 6가지**, 삭제(확인 창). 쓰는 대로 자동 저장.
-- 홈 위젯: 대표 메모(고정 또는 가장 최근) 한 장 + 그다음 3개 + **빠른 메모**(한 줄 적고 Enter → 새 메모). 대표 메모가 체크리스트면 **위젯에서 바로 체크** → `PATCH`로 `items` 전체를 보내요.
+- 홈 위젯: **고른 메모 최대 3개를 쪽지로** 나란히 + **빠른 메모**(한 줄 적고 Enter → 새 메모). 체크리스트 쪽지는 **위젯에서 바로 체크** → `PATCH`로 `items` 전체를 보내요.
+  - "메모 고르기"에서 체크한 순서대로 보여요. 안 고르면 자동(고정 → 최근 수정 순 3개). 쪽지를 꾹 눌러 끌면 자리가 바뀌어요.
+  - 홈에 보일 메모 · 순서: `GET · PUT /api/me/home-memos` → `{ ids: ["5", "9"] }` (`null` = 자동). ⚠️ 저장할 곳이 없어요 — `user_settings.home_memo_ids JSON` 추가를 제안해요.
 - 홈에서 메모를 누르면 `/my/memo?id=5`로 그 메모를 열어요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
@@ -446,6 +458,7 @@
 | 8 | 지도 즐겨찾기 · 칩 설정을 둘 곳이 없어요 | `place_favorites(user_id, place_id, created_at)` 표 + `user_settings.map_categories JSON`(보일 종류 · 직접 검색어) |
 | 9 | `place_categories` 기본 데이터가 4개뿐이에요 | 카페 · 병원 · 헬스장 · 은행 · 미용실 · 다이소 · 공원 · 식당 · 반찬가게 · 세탁소 · 주민센터 추가 (+ `icon` 칸) |
 | 10 | 경고를 확인했는지 남길 칸이 없어요 | `user_sanctions.seen_at DATETIME NULL` 추가 (경고 창 "확인했어요") |
+| 11 | 일정 카테고리를 둘 곳이 없어요 | `event_categories(id, user_id, name, ico, sort_order)` · `event_presets(id, user_id, category_id, title)` 표 + `events.category_id` (NULL = 미분류) |
 
 ## 프론트에서 서버를 붙이는 순서 (예: 일정)
 
