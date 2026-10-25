@@ -19,6 +19,7 @@ export function Segmented<T extends string>({ options, value, onChange, label }:
         <button
           key={o.value}
           type="button"
+          data-value={o.value}
           className={cx(o.value === value && styles.on)}
           aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}

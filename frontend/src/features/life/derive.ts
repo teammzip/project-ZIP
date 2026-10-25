@@ -107,8 +107,8 @@ export function buildNotis(events: CalEvent[], settings: LifeSettings): Noti[] {
 
 /** 알림 목록 + 안 읽은 개수 (알림을 끄면 빨간 점은 안 보이게 showDot=false) */
 export function useNotis() {
-  const { events, settings, notiRead } = useLifeStore(useShallow((s) => ({ events: s.events, settings: s.settings, notiRead: s.notiRead })))
-  const notis = buildNotis(events, settings)
+  const { events, settings, notiRead, notiDeleted } = useLifeStore(useShallow((s) => ({ events: s.events, settings: s.settings, notiRead: s.notiRead, notiDeleted: s.notiDeleted })))
+  const notis = buildNotis(events, settings).filter((n) => !notiDeleted?.[n.id]) // 저장된 예전 데이터엔 notiDeleted 가 없을 수 있음
   const unread = notis.filter((n) => !notiRead[n.id]).length
   return { notis, notiRead, unread, showDot: settings.notiOn && unread > 0 }
 }
