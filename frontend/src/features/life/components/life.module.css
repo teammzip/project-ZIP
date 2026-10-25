@@ -588,3 +588,131 @@
   margin-left: auto;
   color: var(--color-muted);
 }
+
+/* 수입 · 지출 빠른 기록 (모바일만, MoneyLog.tsx). PC 는 오른쪽 기록하기 폼 */
+.quick {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .fullForm {
+    display: none;
+  }
+
+  .quick {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    min-width: 0;
+    padding: 16px;
+    border-radius: var(--radius-lg);
+    background: var(--color-card);
+  }
+
+  .quickTitle {
+    font-size: 15px;
+  }
+
+  .quickAmount {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--color-line);
+  }
+
+  .quickAmount:focus-within {
+    border-bottom-color: var(--color-primary);
+  }
+
+  .quickAmount input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: none;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .quickAmount input::placeholder {
+    color: #c9cdd6;
+  }
+
+  .quickAmount span {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--color-muted);
+  }
+
+  .quickCats {
+    display: flex;
+    gap: 6px;
+    margin: 0 -16px;
+    padding: 0 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .quickCats::-webkit-scrollbar {
+    display: none;
+  }
+
+  .quickCat {
+    flex: none;
+    padding: 7px 13px;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #4b5263;
+  }
+
+  .quickCat.on {
+    border-color: var(--c);
+    background: color-mix(in srgb, var(--c) 14%, #fff);
+    color: var(--color-text);
+    font-weight: 800;
+  }
+
+  .quickMemo {
+    font-size: 14px;
+  }
+
+  .quickBar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .quickTool {
+    position: relative;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: var(--color-bg);
+    font-size: 13px;
+    font-weight: 600;
+    color: #4b5263;
+    white-space: nowrap;
+  }
+
+  /* 날짜: 글자 위에 보이지 않는 날짜 칸을 겹쳐서 누르면 달력이 열림 */
+  .quickTool input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    opacity: 0;
+  }
+
+  .quickGo {
+    margin-left: auto;
+    padding-inline: 22px;
+  }
+
+  .quickSaved {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-teal);
+  }
+}
