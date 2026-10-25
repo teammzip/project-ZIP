@@ -1,7 +1,7 @@
 ﻿# ZIP 프론트엔드 (React)
 
 React 19 · TypeScript · Vite로 만든 ZIP 앱이에요.
-HTML 시안(`../variants`)을 옮겨 왔고, 모든 화면이 동작해요.
+모든 화면이 동작해요. (예전 HTML 시안은 정리했고, git 기록에 남아 있어요.)
 
 ## 실행
 

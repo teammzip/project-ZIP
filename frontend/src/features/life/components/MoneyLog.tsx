@@ -12,14 +12,15 @@ import styles from './life.module.css'
 
 type Kind = 'income' | 'spend'
 
-const TEXT: Record<Kind, { title: string; topLabel: string; formTitle: string; catLabel: string; memoPh: string; empty: string; note: string; max: number }> = {
+const TEXT: Record<Kind, { title: string; topLabel: string; formTitle: string; quickTitle: string; catLabel: string; memoPh: string; empty: string; note: string; max: number }> = {
   income: {
     title: '수입',
     topLabel: '',
     formTitle: '수입 기록하기',
+    quickTitle: '💰 얼마 받았어요?',
     catLabel: '수입 종류',
     memoPh: '예) 주말 카페 알바, 중고거래',
-    empty: '이 달에는 수입 기록이 없어요. 오른쪽에서 첫 수입을 기록해 보세요.',
+    empty: '이 달에는 수입 기록이 없어요. 첫 수입을 기록해 보세요.',
     note: '쓴 돈은 "지출" 탭에 있어요.',
     max: 999999999,
   },
@@ -27,9 +28,10 @@ const TEXT: Record<Kind, { title: string; topLabel: string; formTitle: string; c
     title: '기타 지출',
     topLabel: '가장 많이 쓴 곳',
     formTitle: '지출 기록하기',
+    quickTitle: '💸 얼마 썼어요?',
     catLabel: '분류',
     memoPh: '예) 점심 김밥, 세제',
-    empty: '이 달에는 기록이 없어요. 오른쪽에서 첫 지출을 기록해 보세요.',
+    empty: '이 달에는 기록이 없어요. 첫 지출을 기록해 보세요.',
     note: '월세·공과금은 "고정 지출"에 따로 있어요.',
     max: 99999999,
   },
@@ -37,7 +39,9 @@ const TEXT: Record<Kind, { title: string; topLabel: string; formTitle: string; c
 
 const colorOf = (cats: Category[], name: string) => cats.find((c) => c.name === name)?.color ?? 'var(--color-muted)'
 
-/** 수입 · 기타 지출 기록: 월별 보기, 분류별 합계, 기록 추가 · 삭제 (두 화면이 모양이 같아서 하나로 씀) */
+/** 수입 · 기타 지출 기록: 월별 보기, 분류별 합계, 기록 추가 · 삭제 (두 화면이 모양이 같아서 하나로 씀)
+ * - PC: 왼쪽 목록 · 그래프, 오른쪽 기록하기 폼
+ * - 모바일: 합계 · 그래프 아래 "+ ○○ 기록하기" → 누르면 그 자리에 빠른 기록(금액 크게 · 종류 칩 · 날짜 · 메모는 작게) → 아래 목록 */
 export function MoneyLog({ kind }: { kind: Kind }) {
   const t = TEXT[kind]
   const cats = kind === 'income' ? INCOME_CATS : SPEND_CATS
@@ -51,6 +55,9 @@ export function MoneyLog({ kind }: { kind: Kind }) {
   const thisMonth = monthKeyOf(useToday())
   const [monthKey, setMonthKey] = useState(thisMonth)
   const [form, setForm] = useState({ date: todayStr(), cat: cats[0].name, amount: '', memo: '' })
+  const [memoOpen, setMemoOpen] = useState(false)
+  const [quickOpen, setQuickOpen] = useState(false)
+  const [saved, setSaved] = useState('')
 
   // 월 선택: 기록이 있는 달 + 이번 달 (최근 달이 위로)
   const months = [...new Set([thisMonth, ...records.map((r) => r.date.slice(0, 7))])].sort().reverse()
@@ -77,7 +84,83 @@ export function MoneyLog({ kind }: { kind: Kind }) {
     add({ date: form.date, cat: form.cat, amount, memo: form.memo.trim() })
     setMonthKey(form.date.slice(0, 7)) // 기록한 날짜의 달로 이동해서 바로 보이게
     setForm((f) => ({ ...f, amount: '', memo: '' }))
+    setMemoOpen(false)
+    setQuickOpen(false)
+    setSaved(`✅ ${form.cat} ${won(amount)} 기록했어요`)
   }
+  const today = todayStr()
+  const d0 = new Date(`${form.date}T00:00:00`)
+  const dateLabel = form.date === today ? '오늘' : `${d0.getMonth() + 1}월 ${d0.getDate()}일 (${DOW[d0.getDay()]})`
+
+  /** 빠른 기록 폼 (panel = PC 오른쪽 카드 안, 아니면 모바일 그래프 아래 펼침) */
+  const quickForm = (panel: boolean) => (
+    <form className={cx(styles.quick, panel ? styles.quickPanel : styles.quickInline)} onSubmit={submit} aria-label={t.formTitle}>
+      {!panel && (
+        <div className={styles.quickHead}>
+          <b className={styles.quickTitle}>{t.quickTitle}</b>
+          <button type="button" className={styles.quickX} onClick={() => setQuickOpen(false)} aria-label="기록 닫기">
+            ✕
+          </button>
+        </div>
+      )}
+      <label className={styles.quickAmount}>
+        <input
+          inputMode="numeric"
+          value={form.amount ? Number(form.amount).toLocaleString('ko-KR') : ''}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/\D/g, '').slice(0, String(t.max).length)
+            setForm({ ...form, amount: digits && String(Math.min(Number(digits), t.max)) })
+            setSaved('')
+          }}
+          placeholder="0"
+          aria-label="금액 (원)"
+        />
+        <span>원</span>
+      </label>
+      <div className={styles.quickCats} role="radiogroup" aria-label={t.catLabel}>
+        {cats.map((c) => (
+          <button
+            key={c.name}
+            type="button"
+            role="radio"
+            aria-checked={form.cat === c.name}
+            className={cx(styles.quickCat, form.cat === c.name && styles.on)}
+            style={cssVar({ '--c': c.color })}
+            onClick={() => setForm({ ...form, cat: c.name })}
+          >
+            {c.name}
+          </button>
+        ))}
+      </div>
+      {/* 날짜 · 메모: 입력칸 모양 두 칸 나란히 */}
+      <div className={styles.quickFields}>
+        <label className={styles.quickField}>
+          <span>날짜</span>
+          <b>📅 {dateLabel}</b>
+          <input type="date" className={styles.quickDate} value={form.date} onChange={(e) => e.target.value && setForm({ ...form, date: e.target.value })} aria-label="날짜" />
+        </label>
+        {memoOpen ? (
+          <label className={styles.quickField}>
+            <span>메모</span>
+            <input value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} maxLength={30} placeholder={t.memoPh.replace('예) ', '')} aria-label="메모" autoFocus />
+          </label>
+        ) : (
+          <button type="button" className={styles.quickField} onClick={() => setMemoOpen(true)}>
+            <span>메모 (선택)</span>
+            <b className={styles.quickAdd}>📝 메모 추가</b>
+          </button>
+        )}
+      </div>
+      <Button type="submit" block disabled={!(Number(form.amount) > 0)}>
+        기록하기
+      </Button>
+      {panel && saved && (
+        <p className={styles.quickSaved} role="status">
+          {saved}
+        </p>
+      )}
+    </form>
+  )
 
   return (
     <div className={common.layout}>
@@ -131,6 +214,22 @@ export function MoneyLog({ kind }: { kind: Kind }) {
           </div>
         )}
 
+        {/* 모바일: 그래프 아래 "+ ○○ 기록하기" → 누르면 그 자리에 빠른 기록 */}
+        {quickOpen ? (
+          quickForm(false)
+        ) : (
+          <>
+            <button type="button" className={styles.quickOpen} onClick={() => setQuickOpen(true)}>
+              ＋ {t.formTitle}
+            </button>
+            {saved && (
+              <p className={cx(styles.quickSaved, styles.quickSavedOut)} role="status">
+                {saved}
+              </p>
+            )}
+          </>
+        )}
+
         {rows.map((r) => {
           const d = new Date(`${r.date}T00:00:00`)
           const name = r.memo || r.cat
@@ -159,34 +258,8 @@ export function MoneyLog({ kind }: { kind: Kind }) {
         {!rows.length && <p className={common.empty}>{t.empty}</p>}
       </Card>
 
-      <Card title={t.formTitle}>
-        <form className={common.form} onSubmit={submit}>
-          <div className={common.two}>
-            <label>
-              날짜
-              <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
-            </label>
-            <label>
-              {t.catLabel}
-              <select value={form.cat} onChange={(e) => setForm({ ...form, cat: e.target.value })}>
-                {cats.map((c) => (
-                  <option key={c.name}>{c.name}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label>
-            금액 (원)
-            <input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} min={1} max={t.max} required />
-          </label>
-          <label>
-            메모 (선택)
-            <input value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} maxLength={30} placeholder={t.memoPh} />
-          </label>
-          <Button type="submit" block>
-            기록하기
-          </Button>
-        </form>
+      <Card title={t.formTitle} className={styles.fullForm}>
+        {quickForm(true)}
         <p className={common.note}>{t.note}</p>
       </Card>
     </div>

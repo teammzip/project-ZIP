@@ -1,5 +1,7 @@
 /* 관리자 화면: 표 중심의 단순한 관리 화면 (팀장님 시안 variants/admin/admin.css 기준, 색은 앱과 같은 파랑) */
 .page {
+  /* 넓은 화면에서는 내용을 1240px 폭으로 가운데에 (위 줄 배경은 끝까지) */
+  --side: max(24px, calc((100% - 1240px) / 2));
   min-height: 100dvh;
   padding-bottom: 48px;
   background: var(--color-bg);
@@ -11,7 +13,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 20px;
-  padding: 14px 24px;
+  padding: 14px var(--side);
   border-bottom: 1px solid var(--color-line);
   background: #fff;
 }
@@ -53,14 +55,13 @@
 }
 
 .stats {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
-  padding: 18px 24px 4px;
+  padding: 18px var(--side) 4px;
 }
 
 .stat {
-  min-width: 130px;
   padding: 12px 16px;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
@@ -78,7 +79,7 @@
 }
 
 .pane {
-  padding: 14px 24px 0;
+  padding: 14px var(--side) 0;
 }
 
 .tools {
