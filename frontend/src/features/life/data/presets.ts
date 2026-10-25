@@ -19,12 +19,16 @@ export const EV_COLOR_TRASH = '#3bb273'
 
 const CAT_COLORS = EV_PRESETS.map((p) => p.color)
 
-/** 달력 칸 안 일정 막대 색: 카테고리 순서대로 색 (미분류 · 카테고리 없으면 기본 항목 이름으로 찾고, 그래도 없으면 파랑) */
+/** 카테고리 색 (순서대로 돌려 씀, 미분류 · 없는 이름은 파랑). 일정 기록하기의 탭 · 항목 타일과 달력 막대가 같은 색 */
+export function catColor(category: string | undefined, categoryNames: string[]) {
+  if (!category || category === UNCATEGORIZED) return EV_COLOR_DEFAULT
+  const i = categoryNames.indexOf(category)
+  return i >= 0 ? CAT_COLORS[i % CAT_COLORS.length] : EV_COLOR_DEFAULT
+}
+
+/** 달력 칸 안 일정 막대 색: 카테고리 색 (카테고리가 없으면 기본 항목 이름으로 찾고, 그래도 없으면 파랑) */
 export function evColor(title: string, trash = false, category?: string, categoryNames: string[] = []) {
   if (trash) return EV_COLOR_TRASH
-  if (category && category !== UNCATEGORIZED) {
-    const i = categoryNames.indexOf(category)
-    if (i >= 0) return CAT_COLORS[i % CAT_COLORS.length]
-  }
+  if (category && category !== UNCATEGORIZED && categoryNames.includes(category)) return catColor(category, categoryNames)
   return EV_PRESETS.find((p) => p.items.includes(title))?.color ?? EV_COLOR_DEFAULT
 }

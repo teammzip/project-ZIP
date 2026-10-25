@@ -65,7 +65,7 @@ export function CalendarBoard() {
     const label = `${Number(date.slice(5, 7))}월 ${Number(date.slice(8))}일`
     if (events.some((ev) => ev.date === date && ev.title === picked.title && (ev.category ?? '') === picked.category)) return setPickNote(`${label}에 이미 있어요.`)
     add(picked.title, date, pickTime, picked.category)
-    setPickNote(`${label}에 추가했어요. 다른 날짜도 눌러 추가할 수 있어요.`)
+    setPickNote(`✅ ${label}에 추가했어요. 다른 날짜도 눌러 추가할 수 있어요.`)
   }
   const choose = (p: Picked | null) => {
     setPicked(p)
@@ -136,7 +136,7 @@ type GridProps = {
 }
 
 /** 큰 달력: 월간은 그 달 전체(앞뒤 달 날짜는 흐리게), 주간은 선택한 날이 든 한 주.
- * 칸마다 날짜 + 일정 막대(월간 최대 3개, 넘으면 "+N개 더", 주간은 전부). 좁은 화면은 막대 대신 점 */
+ * 칸마다 날짜 + 일정 막대(월간 최대 3개, 넘으면 "+N개 더", 주간은 전부). 좁은 화면도 막대(얇게, "+N"만) */
 function BigCalendar({ events, view, calView, onCalView, selected, picking, categoryNames, onDay, onShift, onToday }: GridProps) {
   const { y, m } = view
   const today = todayStr()
@@ -177,7 +177,7 @@ function BigCalendar({ events, view, calView, onCalView, selected, picking, cate
           <button type="button" onClick={() => onShift(-1)} aria-label="이전">
             ‹
           </button>
-          <span className={cal.ym}>{title}</span>
+          <span className={cx(cal.ym, calView === 'week' && cal.ymLong)}>{title}</span>
           <button type="button" onClick={() => onShift(1)} aria-label="다음">
             ›
           </button>
@@ -227,13 +227,13 @@ function BigCalendar({ events, view, calView, onCalView, selected, picking, cate
                     </div>
                   )
                 })}
-                {slots.length > maxChips && <div className={cal.more}>+{slots.length - maxChips}개 더</div>}
+                {slots.length > maxChips && (
+                  <div className={cal.more}>
+                    +{slots.length - maxChips}
+                    <span className={cal.moreWord}>개 더</span>
+                  </div>
+                )}
               </div>
-              <span className={cal.mark}>
-                {evs.slice(0, 3).map((ev) => (
-                  <i key={ev.id} />
-                ))}
-              </span>
             </div>
           )
         })}

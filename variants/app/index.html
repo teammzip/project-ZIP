@@ -464,25 +464,41 @@
           </div>
           <div class="cal-col">
             <article class="card">
-              <div class="card-head">
+              <!-- 일정 기록하기: 탭 두 개(빠른 추가 | 직접 입력) — 동작은 js/views/calendar.js, 모양은 css/views/calendar.css -->
+              <div class="card-head rec-head">
                 <h2>일정 기록하기</h2>
-              </div>
-              <!-- 카테고리별 항목 버튼: 항목을 고르고 달력에서 날짜를 누르면 그 날에 추가 (항목 목록: js/data/ev-presets.js) -->
-              <p class="pick-help">항목을 누른 다음, 왼쪽 달력에서 날짜를 누르면 일정이 추가돼요.</p>
-              <div class="ev-cats" id="evCats"></div>
-              <div class="pick-bar" id="pickBar" hidden>
-                <div class="pick-msg"><b id="pickName"></b> <span id="pickNote">달력에서 날짜를 눌러 주세요.</span></div>
-                <div class="pick-row">
-                  <label>시간 (선택) <input type="time" id="pickTime"></label>
-                  <button type="button" class="btn-line" id="pickToday">오늘로 추가</button>
-                  <button type="button" class="btn-line" id="pickWeek">이번 주(일요일)로 추가</button>
-                  <button type="button" class="btn-line" id="pickCancel">선택 해제</button>
+                <div class="rec-tabs" role="tablist" aria-label="일정 기록 방법">
+                  <button type="button" role="tab" class="rec-tab on" id="recTabQuick" aria-selected="true" aria-controls="recQuick">⚡ 빠른 추가</button>
+                  <button type="button" role="tab" class="rec-tab" id="recTabCustom" aria-selected="false" aria-controls="evCustom">✏️ 직접 입력</button>
                 </div>
               </div>
-              <!-- 목록에 없는 일정은 직접 입력 -->
-              <details class="ev-custom" id="evCustom">
-                <summary>직접 입력하기</summary>
-                <form class="form" id="evForm">
+
+              <!-- ① 빠른 추가: 카테고리 탭 → 항목 타일 고르기 → 달력에서 날짜 누르기 (항목 목록: js/data/ev-presets.js) -->
+              <div class="rec-panel" id="recQuick" role="tabpanel" aria-labelledby="recTabQuick">
+                <ol class="rec-steps" id="recSteps">
+                  <li class="on"><b>1</b> 항목 고르기</li>
+                  <li><b>2</b> 달력에서 날짜 누르기</li>
+                </ol>
+                <div class="rec-cats" id="recCats" role="tablist" aria-label="카테고리"></div>
+                <div class="rec-items" id="evCats"></div>
+                <div class="pick-bar" id="pickBar" hidden>
+                  <div class="pick-top">
+                    <span class="pick-label">선택한 항목</span>
+                    <button type="button" class="pick-x" id="pickCancel" aria-label="선택 해제">✕</button>
+                  </div>
+                  <b class="pick-name" id="pickName"></b>
+                  <p class="pick-note" id="pickNote" aria-live="polite">달력에서 날짜를 눌러 주세요.</p>
+                  <div class="pick-row">
+                    <label class="pick-time">🕒 <input type="time" id="pickTime" aria-label="시간 (선택)"></label>
+                    <button type="button" class="btn-line" id="pickToday">오늘로 추가</button>
+                    <button type="button" class="btn-line" id="pickWeek">이번 주 일요일로</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ② 직접 입력: 목록에 없는 일정 -->
+              <div class="rec-panel" id="evCustom" role="tabpanel" aria-labelledby="recTabCustom" hidden>
+                <form class="form rec-form" id="evForm">
                   <label>일정 제목
                     <input type="text" id="evTitle" maxlength="60" placeholder="예) 월세 이체, 집주인 통화, 장보기" required>
                   </label>
@@ -491,8 +507,9 @@
                     <label>시간 (선택) <input type="time" id="evTime"></label>
                   </div>
                   <button class="btn-primary" type="submit">일정 추가</button>
+                  <p class="rec-tip">💡 자주 쓰는 일정은 <button type="button" class="link link-btn" id="recGoQuick">빠른 추가</button>에서 한 번에 넣을 수 있어요.</p>
                 </form>
-              </details>
+              </div>
             </article>
             <article class="card">
               <div class="card-head">
