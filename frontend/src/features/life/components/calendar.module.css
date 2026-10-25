@@ -307,6 +307,94 @@
   cursor: pointer;
 }
 
+/* 직접 만든 항목: 버튼 + 수정 · 삭제 (마우스를 올리거나 · 키보드로 고르거나 · 터치했을 때만 보임) */
+.presetItem {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 3px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+}
+
+.presetAction {
+  padding: 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--color-muted);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.presetAction:hover {
+  background: #fff0e6;
+  color: #9a4815;
+}
+
+.presetItem:focus-within .presetAction,
+.presetItem.showActions .presetAction {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 할 일 목록 한 줄: 카테고리 이름표, 수정 · 삭제는 마우스를 올리거나 · 키보드로 고르거나 · 터치했을 때만 */
+.evCategory {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #fff0e6;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9a4815;
+}
+
+.evActions {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.evRow:focus-within .evActions,
+.evRow.showActions .evActions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.evRow:focus-visible {
+  outline: 2px solid var(--color-purple);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .presetItem:hover .presetAction,
+  .evRow:hover .evActions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* 일정 고치기 줄의 카테고리 */
+.editCategory {
+  display: flex;
+  gap: 8px;
+}
+
+.editCategory select {
+  flex: 1;
+  min-width: 0;
+}
+
+.showActions {
+}
+
 @media (max-width: 1100px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);

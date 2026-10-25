@@ -8,11 +8,23 @@ export const EV_PRESETS = [
   { name: '건강·생활', ico: '💊', color: '#e56b9a', items: ['병원 예약', '약 챙기기', '운동하기', '장보기', '정수기 필터 확인', '비타민 구매'] },
   { name: '연락·행정', ico: '📞', color: '#7c6cf5', items: ['집주인 통화', '주민센터 방문', '택배 반품', '전입신고', '이사 업체 연락', '수리 기사 방문'] },
 ]
+/** 분류 안 된 일정 · 항목이 모이는 카테고리 (이름 변경 · 삭제 불가, 늘 맨 끝) */
+export const UNCATEGORIZED = '미분류'
+
+/** 처음 카테고리 목록: 위 기본 5개 + 미분류 */
+export const defaultCategories = () => [...EV_PRESETS.map((p) => ({ name: p.name, ico: p.ico, items: [...p.items] })), { name: UNCATEGORIZED, ico: '📌', items: [] as string[] }]
+
 export const EV_COLOR_DEFAULT = '#4a90e2'
 export const EV_COLOR_TRASH = '#3bb273'
 
-/** 달력 칸 안 일정 막대 색 */
-export function evColor(title: string, trash = false) {
+const CAT_COLORS = EV_PRESETS.map((p) => p.color)
+
+/** 달력 칸 안 일정 막대 색: 카테고리 순서대로 색 (미분류 · 카테고리 없으면 기본 항목 이름으로 찾고, 그래도 없으면 파랑) */
+export function evColor(title: string, trash = false, category?: string, categoryNames: string[] = []) {
   if (trash) return EV_COLOR_TRASH
+  if (category && category !== UNCATEGORIZED) {
+    const i = categoryNames.indexOf(category)
+    if (i >= 0) return CAT_COLORS[i % CAT_COLORS.length]
+  }
   return EV_PRESETS.find((p) => p.items.includes(title))?.color ?? EV_COLOR_DEFAULT
 }

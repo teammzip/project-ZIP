@@ -13,7 +13,15 @@ export type CalEvent = {
   title: string
   /** 할 일처럼 끝냈는지 */
   done?: boolean
+  /** 일정 카테고리 (집 관리 · 청소·빨래 … · 미분류). 없으면 분류 안 함 */
+  category?: string
 }
+
+/** 일정 카테고리: 이름 · 그림 · 기본 항목 버튼 (이름 변경 · 추가 · 삭제는 "카테고리 관리") */
+export type EventCategory = { name: string; ico: string; items: string[] }
+
+/** 사용자가 직접 만든 항목 버튼 (직접 입력한 일정이 카테고리 아래 버튼으로도 저장됨) */
+export type CustomPreset = { id: string; title: string; category: string }
 
 /** 요일별 쓰레기 배출을 달력에 보여 주는 읽기 전용 일정 (저장하지 않고 매번 계산) */
 export type TrashEvent = { id: string; date: string; time: string; title: string; detail: string; kind: 'trash' }
