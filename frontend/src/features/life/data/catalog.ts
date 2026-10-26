@@ -17,14 +17,23 @@ export const trashIco = (t: string) => (t.startsWith('재활용') ? '♻️' : '
 
 export type Category = { name: string; color: string }
 
-export const INCOME_CATS: Category[] = [
+export const FIXED_INCOME_CATS: Category[] = [
   { name: '월급', color: 'var(--color-teal)' },
+  { name: '이자', color: 'var(--color-primary)' },
+  { name: '연금', color: 'var(--color-purple)' },
+  { name: '임대 수입', color: '#f5a623' },
+  { name: '기타 고정 수입', color: 'var(--color-muted)' },
+]
+
+export const OTHER_INCOME_CATS: Category[] = [
   { name: '아르바이트', color: 'var(--color-primary)' },
   { name: '용돈', color: 'var(--color-pink)' },
   { name: '부수입', color: '#f5a623' },
   { name: '환급·정산', color: 'var(--color-purple)' },
   { name: '기타', color: 'var(--color-muted)' },
 ]
+
+export const INCOME_CATS = [...FIXED_INCOME_CATS, ...OTHER_INCOME_CATS]
 
 export const SPEND_CATS: Category[] = [
   { name: '식비', color: 'var(--color-teal)' },

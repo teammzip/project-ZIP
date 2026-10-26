@@ -5,7 +5,7 @@ import { useChatStore } from '@/features/ai'
 import { LoginBadge, LoginMethod, PasswordChangeForm, useAuthStore, useLogout, useUpdateMe, useWithdraw } from '@/features/auth'
 import { useCommunityStore } from '@/features/community'
 import { LegalLinks } from '@/features/legal'
-import { LifeInfoForm, LifeStats, NotiSwitch, RegionVerifyDialog, RentCard, useLifeStore, useLifeSummary, useRegionVerify } from '@/features/life'
+import { BudgetSummaryCard, LifeInfoForm, LifeStats, NotiSwitch, RegionVerifyDialog, useLifeStore, useLifeSummary, useRegionVerify } from '@/features/life'
 import { useMapStore } from '@/features/map'
 import { useMemoStore } from '@/features/memo'
 import { ProfileEditor, ProfileHero, useProfileStore } from '@/features/profile'
@@ -34,7 +34,7 @@ const TILES = [
 type Sheet = 'profile' | 'life' | 'verify' | 'password' | 'reset' | 'withdraw' | null
 
 /* 내 정보
- * - PC(1100px 이상): 왼쪽 = 프로필 · 월세 카드 / 오른쪽 = 이번 달 요약 · 바로 가기 · 계정·설정
+ * - PC(1100px 이상): 왼쪽 = 프로필 · 수입·지출 카드 / 오른쪽 = 이번 달 요약 · 바로 가기 · 계정·설정
  * - 모바일: 위에서부터 한 줄로
  * 프로필 편집 · 동네 인증 · 생활 정보 · 비밀번호 변경은 창으로 열고, 로그아웃 · 초기화 · 탈퇴는 카드 밖 맨 아래 작은 글씨 */
 export function SettingsPage() {
@@ -57,7 +57,7 @@ export function SettingsPage() {
     <div className={styles.wrap}>
       <div className={styles.side}>
         <ProfileHero name={name} region={region} regionVerified={verified} badge={<LoginBadge />} onEdit={() => setSheet('profile')} />
-        <RentCard />
+        <BudgetSummaryCard />
       </div>
 
       <div className={styles.main}>
@@ -117,6 +117,14 @@ export function SettingsPage() {
             </li>
           </ul>
           {updateMe.isError && <p className={styles.error}>{getErrorMessage(updateMe.error)}</p>}
+        </Card>
+
+        <Card title="고객센터">
+          <Link to="/my/settings/support" className={styles.row}>
+            <span className={styles.ico}>🎧</span>
+            <span className={styles.grow}>문의하기 · 내 문의 내역<small>문의 내용과 답변을 확인할 수 있어요.</small></span>
+            <i className={styles.chev} aria-hidden="true" />
+          </Link>
         </Card>
 
         {/* 카드 밖 맨 아래 작은 글씨 */}

@@ -1,22 +1,28 @@
-import { useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { Card } from '@/components/ui'
 import { cssVar } from '@/lib/cssVar'
 import { cx } from '@/lib/cx'
-import { dayDiff, fmt, man, monthKeyOf, todayStr, won } from '@/lib/date'
+import { man, monthKeyOf, todayStr, won } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
 import common from '@/styles/common.module.css'
 import { DONUT_COLORS } from '../data/catalog'
-import { ddayText, monthKeyRentPaid, nextRentDate, spendBreakdown } from '../derive'
+import { spendBreakdown } from '../derive'
 import { useLifeStore } from '../store'
 import { HomePhotoCard } from './HomePhotoCard'
 import styles from './home.module.css'
 
-/** 홈 요약 카드 4개: 전체 일정 · 오늘 할 일 · 월세 납부일 · 사진 상담(+ 알림 회전창) (팀장님 시안). 누르면 해당 화면으로 */
+const TodayScheduleDialog = lazy(() => import('./CalendarBoard').then((module) => ({ default: module.DayDetail })))
+const WeatherCard = lazy(() => import('@/features/weather').then((module) => ({ default: module.WeatherCard })))
+
+/** 홈 요약 카드 4개. 오늘 할 일은 홈에서 일정 모달로 확인. */
 export function LifeStatGrid() {
   const navigate = useNavigate()
-  const { events, settings, rentPaid } = useLifeStore(useShallow((s) => ({ events: s.events, settings: s.settings, rentPaid: s.rentPaid })))
+  const [todayOpen, setTodayOpen] = useState(false)
+  const todayButton = useRef<HTMLButtonElement>(null)
+  const addEvent = useLifeStore((s) => s.addEvent)
+  const events = useLifeStore((s) => s.events)
 
   const today = todayStr()
   const doneCount = events.filter((e) => e.done).length
@@ -26,7 +32,6 @@ export function LifeStatGrid() {
   const todayPct = todays.length ? Math.round(((todays.length - todayLeft.length) / todays.length) * 100) : 0
   let todaySub = todayLeft.length ? todayLeft.slice(0, 2).map((e) => e.title).join(' · ') : todays.length ? '오늘 할 일을 모두 끝냈어요!' : '오늘 등록된 할 일이 없어요.'
   if (todayLeft.length > 2) todaySub += ` 외 ${todayLeft.length - 2}개`
-  const next = nextRentDate(settings.rentDay)
 
   const cards = [
     {
@@ -35,35 +40,55 @@ export function LifeStatGrid() {
       sub: events.length ? `전체 ${events.length}개 중 ${doneCount}개 완료` : '일정을 추가해 보세요.',
     },
     {
-      key: 'today', tone: styles.sky, to: '/my/calendar?mode=today', label: '오늘 할 일',
+      key: 'today', tone: styles.sky, to: '', label: '오늘 할 일',
       value: <>{todayLeft.length}<small>개 남음</small></>, pct: todayPct,
       sub: todaySub,
-    },
-    {
-      key: 'rent', tone: styles.purple, to: '/my/budget/expense', label: '월세 납부일',
-      value: ddayText(dayDiff(fmt(next))),
-      sub: `매월 ${settings.rentDay}일 · ${settings.rent}만원 · 계좌이체${monthKeyRentPaid(rentPaid, next) ? ' · 납부 완료' : ''}`,
     },
   ]
 
   return (
-    <section className={styles.statGrid}>
-      {cards.map((c) => (
-        <button key={c.key} type="button" className={cx(styles.stat, c.tone)} onClick={() => navigate(c.to)} aria-label={`${c.label} 자세히 보기`}>
-          <span className={styles.statLabel}>{c.label}</span>
-          <span className={styles.statValue}>{c.value}</span>
-          {c.pct !== undefined && (
-            <span className={styles.statBar}>
-              <i style={{ width: `${c.pct}%` }} />
+    <>
+      <section className={styles.statGrid}>
+        {cards.map((c) => (
+          <button
+            key={c.key}
+            ref={c.key === 'today' ? todayButton : undefined}
+            type="button"
+            className={cx(styles.stat, c.tone)}
+            onClick={() => c.key === 'today' ? setTodayOpen(true) : navigate(c.to)}
+            aria-label={`${c.label} 자세히 보기`}
+            aria-haspopup={c.key === 'today' ? 'dialog' : undefined}
+          >
+            <span className={styles.statLabel}>{c.label}</span>
+            <span className={styles.statValue}>{c.value}</span>
+            {c.pct !== undefined && (
+              <span className={styles.statBar}>
+                <i style={{ width: `${c.pct}%` }} />
+              </span>
+            )}
+            <span className={styles.statSub} title={c.sub}>
+              {c.sub}
             </span>
-          )}
-          <span className={styles.statSub} title={c.sub}>
-            {c.sub}
-          </span>
-        </button>
-      ))}
-      <HomePhotoCard />
-    </section>
+          </button>
+        ))}
+        <Suspense fallback={<div className={cx(styles.stat, styles.purple)} role="status"><span className={styles.statLabel}>오늘 날씨</span><span className={styles.statSub}>날씨를 준비하는 중…</span></div>}>
+          <WeatherCard />
+        </Suspense>
+        <HomePhotoCard />
+      </section>
+      {todayOpen && (
+        <Suspense fallback={<p role="status">오늘 일정을 불러오는 중이에요.</p>}>
+          <TodayScheduleDialog
+            date={today}
+            onClose={() => {
+              setTodayOpen(false)
+              todayButton.current?.focus()
+            }}
+            onAdd={(title, time) => addEvent({ title, date: today, time })}
+          />
+        </Suspense>
+      )}
+    </>
   )
 }
 

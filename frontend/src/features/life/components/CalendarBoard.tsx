@@ -441,8 +441,8 @@ function EditRow({ ev, onDone }: { ev: CalEvent; onDone: (saved: CalEvent | null
   )
 }
 
-/** 달력에서 누른 날의 일정 창: 그날 일정 모두(시간순, 쓰레기 배출 포함) + 완료 체크 · 수정 · 삭제 + 이 날에 바로 추가 */
-function DayDetail({ date, onClose, onAdd, onMoved }: { date: string | null; onClose: () => void; onAdd: (title: string, time: string) => void; onMoved: (date: string) => void }) {
+/** 달력·홈에서 여는 일정 창: 그날 일정 모두(시간순, 쓰레기 배출 포함) + 완료 체크 · 수정 · 삭제 + 이 날에 바로 추가 */
+export function DayDetail({ date, onClose, onAdd, onMoved }: { date: string | null; onClose: () => void; onAdd: (title: string, time: string) => void; onMoved?: (date: string) => void }) {
   const { events, removeEvent, toggleEvent, categories } = useLifeStore(useShallow((s) => ({ events: s.events, removeEvent: s.removeEvent, toggleEvent: s.toggleEvent, categories: s.categories })))
   const [editingId, setEditingId] = useState<CalEvent['id'] | null>(null)
   const [title, setTitle] = useState('')
@@ -484,7 +484,7 @@ function DayDetail({ date, onClose, onAdd, onMoved }: { date: string | null; onC
                   ev={ev}
                   onDone={(saved) => {
                     setEditingId(null)
-                    if (saved && saved.date !== date) onMoved(saved.date)
+                    if (saved && saved.date !== date) onMoved?.(saved.date)
                   }}
                 />
               )

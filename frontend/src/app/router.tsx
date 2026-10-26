@@ -75,7 +75,7 @@ export const router = createBrowserRouter([
                     lazy: page(() => import('@/pages/my/BudgetPage'), 'BudgetPage'),
                     children: [
                       { index: true, element: <Navigate to="income" replace /> },
-                      { path: 'income', lazy: page(() => import('@/pages/my/IncomePage'), 'IncomePage') },
+                      { path: 'income/*', lazy: page(() => import('@/pages/my/IncomePage'), 'IncomePage') },
                       {
                         path: 'expense',
                         lazy: page(() => import('@/pages/my/ExpensePage'), 'ExpensePage'),
@@ -89,6 +89,7 @@ export const router = createBrowserRouter([
                   { path: 'memo', lazy: page(() => import('@/pages/my/MemoPage'), 'MemoPage') },
                   { path: 'noti', lazy: page(() => import('@/pages/my/NotiPage'), 'NotiPage') },
                   { path: 'settings', lazy: page(() => import('@/pages/my/SettingsPage'), 'SettingsPage') },
+                  { path: 'settings/support/*', lazy: page(() => import('@/pages/my/SupportPage'), 'SupportPage') },
                 ],
               },
             ],

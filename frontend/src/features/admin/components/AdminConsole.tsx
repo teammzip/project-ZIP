@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button, Modal } from '@/components/ui'
 import { useCommunityStore } from '@/features/community'
+import { AdminInquiries } from '@/features/support'
 import { banLabel, fmtAt, isActive, useBanStore, type BanRecord } from '@/features/moderation'
 import { cx } from '@/lib/cx'
 import { relTime } from '@/lib/date'
@@ -11,7 +12,7 @@ import styles from './Admin.module.css'
  * - 게시글 관리: 분류 · 동네 · 검색어로 거르기, 내용·댓글 펼쳐 보기, 글·댓글 삭제 + 작성자 경고/정지
  * 서버가 없어서 회원 목록 대신 커뮤니티 글 · 댓글 작성자와 정지 기록을 모아 보여 줘요. */
 
-type Tab = 'members' | 'posts'
+type Tab = 'members' | 'posts' | 'inquiries'
 /** 고른 조치: null = 조치 안 함, 'warn' = 경고, 0 = 영구 정지, 그 밖 = 정지 일수 */
 type Action = null | 'warn' | number
 type DialogState = {
@@ -83,9 +84,9 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
       <header className={styles.top}>
         <h1>ZIP 관리자</h1>
         <nav className={styles.tabs} aria-label="관리 메뉴">
-          {(['members', 'posts'] as const).map((t) => (
+          {(['members', 'posts', 'inquiries'] as const).map((t) => (
             <button key={t} type="button" className={cx(tab === t && styles.on)} aria-pressed={tab === t} onClick={() => setTab(t)}>
-              {t === 'members' ? '회원 관리' : '게시글 관리'}
+              {t === 'members' ? '회원 관리' : t === 'posts' ? '게시글 관리' : '문의 관리'}
             </button>
           ))}
         </nav>
@@ -107,6 +108,8 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
 
       {tab === 'members' ? (
         <Members members={members} openDialog={setDialog} act={act} unban={unban} />
+      ) : tab === 'inquiries' ? (
+        <main className={styles.pane}><AdminInquiries /></main>
       ) : (
         <Posts
           posts={posts}
