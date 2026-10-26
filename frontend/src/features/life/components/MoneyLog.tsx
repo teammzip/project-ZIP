@@ -6,8 +6,9 @@ import { cx } from '@/lib/cx'
 import { DOW, monthKeyOf, monthLabel, todayStr, won } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
 import common from '@/styles/common.module.css'
-import { INCOME_CATS, SPEND_CATS, type Category } from '../data/catalog'
+import { FIXED_INCOME_CATS, OTHER_INCOME_CATS, SPEND_CATS, type Category } from '../data/catalog'
 import { useLifeStore } from '../store'
+import type { IncomeType, MoneyRecord } from '../types'
 import styles from './life.module.css'
 
 type Kind = 'income' | 'spend'
@@ -42,9 +43,17 @@ const colorOf = (cats: Category[], name: string) => cats.find((c) => c.name === 
 /** 수입 · 기타 지출 기록: 월별 보기, 분류별 합계, 기록 추가 · 삭제 (두 화면이 모양이 같아서 하나로 씀)
  * - PC: 왼쪽 목록 · 그래프, 오른쪽 기록하기 폼
  * - 모바일: 합계 · 그래프 아래 "+ ○○ 기록하기" → 누르면 그 자리에 빠른 기록(금액 크게 · 종류 칩 · 날짜 · 메모는 작게) → 아래 목록 */
-export function MoneyLog({ kind }: { kind: Kind }) {
-  const t = TEXT[kind]
-  const cats = kind === 'income' ? INCOME_CATS : SPEND_CATS
+export function MoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeType?: IncomeType }) {
+  const incomeTitle = incomeType === 'fixed' ? '고정 수입' : '기타 수입'
+  const t = kind === 'income' ? {
+    ...TEXT.income,
+    title: incomeTitle,
+    formTitle: `${incomeTitle} 기록하기`,
+    memoPh: incomeType === 'fixed' ? '예) 월급, 예금 이자' : '예) 주말 카페 알바, 부모님 용돈',
+    empty: `이 달에는 ${incomeTitle} 기록이 없어요. 첫 수입을 기록해 보세요.`,
+    note: incomeType === 'fixed' ? '월급·이자 등 정기적으로 들어오는 수입을 받은 날짜에 기록해요.' : '부수입·용돈 등 일정하지 않은 수입을 기록해요.',
+  } : TEXT.spend
+  const cats = kind === 'income' ? (incomeType === 'fixed' ? FIXED_INCOME_CATS : OTHER_INCOME_CATS) : SPEND_CATS
   const { records, add, remove } = useLifeStore(
     useShallow((s) =>
       kind === 'income'
@@ -52,6 +61,10 @@ export function MoneyLog({ kind }: { kind: Kind }) {
         : { records: s.spends, add: s.addSpend, remove: s.removeSpend },
     ),
   )
+  // 분류가 없던 기존 기록도 보존: 월급·이자 등은 고정, 나머지는 기타 수입.
+  const visibleRecords = kind === 'income' ? records.filter((r: MoneyRecord) =>
+    (r.incomeType ?? (FIXED_INCOME_CATS.some((c) => c.name === r.cat) ? 'fixed' : 'other')) === incomeType,
+  ) : records
   const thisMonth = monthKeyOf(useToday())
   const [monthKey, setMonthKey] = useState(thisMonth)
   const [form, setForm] = useState({ date: todayStr(), cat: cats[0].name, amount: '', memo: '' })
@@ -60,8 +73,8 @@ export function MoneyLog({ kind }: { kind: Kind }) {
   const [saved, setSaved] = useState('')
 
   // 월 선택: 기록이 있는 달 + 이번 달 (최근 달이 위로)
-  const months = [...new Set([thisMonth, ...records.map((r) => r.date.slice(0, 7))])].sort().reverse()
-  const rows = records
+  const months = [...new Set([thisMonth, ...visibleRecords.map((r) => r.date.slice(0, 7))])].sort().reverse()
+  const rows = visibleRecords
     .filter((r) => r.date.slice(0, 7) === monthKey)
     .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
   const total = rows.reduce((s, r) => s + r.amount, 0)
@@ -81,16 +94,13 @@ export function MoneyLog({ kind }: { kind: Kind }) {
     e.preventDefault()
     const amount = Math.round(Number(form.amount))
     if (!form.date || !(amount > 0)) return
-    add({ date: form.date, cat: form.cat, amount, memo: form.memo.trim() })
+    add({ date: form.date, cat: form.cat, amount, memo: form.memo.trim(), ...(kind === 'income' ? { incomeType } : {}) })
     setMonthKey(form.date.slice(0, 7)) // 기록한 날짜의 달로 이동해서 바로 보이게
     setForm((f) => ({ ...f, amount: '', memo: '' }))
     setMemoOpen(false)
     setQuickOpen(false)
     setSaved(`✅ ${form.cat} ${won(amount)} 기록했어요`)
   }
-  const today = todayStr()
-  const d0 = new Date(`${form.date}T00:00:00`)
-  const dateLabel = form.date === today ? '오늘' : `${d0.getMonth() + 1}월 ${d0.getDate()}일 (${DOW[d0.getDay()]})`
 
   /** 빠른 기록 폼 (panel = PC 오른쪽 카드 안, 아니면 모바일 그래프 아래 펼침) */
   const quickForm = (panel: boolean) => (
@@ -136,8 +146,17 @@ export function MoneyLog({ kind }: { kind: Kind }) {
       <div className={styles.quickFields}>
         <label className={styles.quickField}>
           <span>날짜</span>
-          <b>📅 {dateLabel}</b>
-          <input type="date" className={styles.quickDate} value={form.date} onChange={(e) => e.target.value && setForm({ ...form, date: e.target.value })} aria-label="날짜" />
+          <input
+            type="date"
+            className={styles.quickDate}
+            value={form.date}
+            required
+            onChange={(e) => {
+              setForm((f) => ({ ...f, date: e.target.value }))
+              setSaved('')
+            }}
+            aria-label="날짜"
+          />
         </label>
         {memoOpen ? (
           <label className={styles.quickField}>

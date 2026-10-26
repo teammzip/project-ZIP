@@ -747,12 +747,18 @@
   color: var(--color-primary);
 }
 
-/* 날짜: 칸 위에 보이지 않는 날짜 입력을 겹쳐서 누르면 달력이 열림 */
+/* 날짜를 직접 입력하거나 달력 아이콘으로 선택할 수 있는 기본 입력 */
 .quickDate {
-  position: absolute;
-  inset: 0;
   width: 100%;
-  opacity: 0;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color-scheme: light;
 }
 
 .quickSaved {

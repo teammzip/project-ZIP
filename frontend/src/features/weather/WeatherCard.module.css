@@ -1,0 +1,23 @@
+.card { background: linear-gradient(135deg, #326fc0, #4654a3); }
+.region { margin-top: 6px; font-size: 12px; overflow-wrap: anywhere; }
+.summary { margin-top: 5px; font-size: 12px; line-height: 1.5; }
+.source { margin-top: auto; padding-top: 8px; font-size: 10px; opacity: .8; }
+.dialog { width: min(620px, 100%); }
+.detail { display: grid; gap: 16px; }
+.detail header h3 { font-size: 22px; }
+.detail header p, .updated, .attribution { margin-top: 4px; color: var(--color-muted); font-size: 12px; line-height: 1.6; }
+.regionForm { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+.current { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; }
+.current > span:first-child { font-size: 40px; }
+.current strong { font-size: 44px; }
+.range { text-align: center; font-size: 14px; line-height: 1.6; }
+.hourSection { min-width: 0; }
+.hourSection h4 { margin-bottom: 10px; font-size: 15px; }
+.hours { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; list-style: none; }
+.hours li { display: grid; justify-items: center; gap: 6px; padding: 12px 4px; border-radius: 12px; background: #f0f5fc; }
+.hours time, .hours small { font-size: 11px; }
+.hours li > span { font-size: 24px; }
+.attribution a { color: var(--color-primary); text-decoration: underline; }
+@media (max-width: 420px) {
+  .hours { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

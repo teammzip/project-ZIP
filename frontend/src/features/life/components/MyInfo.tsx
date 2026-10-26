@@ -2,27 +2,30 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui'
-import { dayDiff, fmt, monthKeyOf } from '@/lib/date'
+import { monthKeyOf, todayStr, won } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
 import common from '@/styles/common.module.css'
-import { ddayText, nextRentDate, useNotis } from '../derive'
+import { spendBreakdown, sumAmount, useNotis } from '../derive'
 import { useLifeStore } from '../store'
 import styles from './myinfo.module.css'
 
-/* 내 정보 화면에 쓰는 생활 조각들: 월세 카드, 이번 달 요약, 생활 정보 폼, 알림 스위치 */
+/* 내 정보 화면에 쓰는 생활 조각들: 수입·지출 카드, 이번 달 요약, 생활 정보 폼, 알림 스위치 */
 
-/** 파란 월세 카드 (누르면 고정 지출 화면) */
-export function RentCard() {
-  const { rent, rentDay } = useLifeStore(useShallow((s) => ({ rent: s.settings.rent, rentDay: s.settings.rentDay })))
-  useToday()
-  const diff = dayDiff(fmt(nextRentDate(rentDay)))
+/** 이번 달 수입·지출 카드. 홈과 같은 기준으로 합산하고 가계부로 연결. */
+export function BudgetSummaryCard() {
+  const { incomes, spends, bills, settings } = useLifeStore(useShallow((s) => ({ incomes: s.incomes, spends: s.spends, bills: s.bills, settings: s.settings })))
+  const month = todayStr().slice(0, 7)
+  const income = sumAmount(incomes.filter((r) => r.date.slice(0, 7) === month))
+  const expense = spendBreakdown(0, spends, bills, settings).total
   return (
-    <Link to="/my/budget/expense" className={styles.rent}>
-      <small>이번 달 월세</small>
-      <b>{rent}만원</b>
-      <span>
-        매월 {rentDay}일 · {diff === 0 ? '오늘 납부' : ddayText(diff)}
-      </span>
+    <Link to="/my/budget" className={styles.budget}>
+      <strong>이번 달 수입·지출</strong>
+      <dl className={styles.budgetTotals}>
+        <div><dt>총수입</dt><dd>{won(income)}</dd></div>
+        <div><dt>총지출</dt><dd>{won(expense)}</dd></div>
+      </dl>
+      <small>월세·공과금·기타 지출 포함</small>
+      <span className={styles.budgetLink}>가계부 보기 →</span>
     </Link>
   )
 }
