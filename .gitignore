@@ -1,2 +1,42 @@
 # 맥이 폴더마다 만드는 파일 (올리지 않음)
 .DS_Store
+
+# Local credentials (examples must contain placeholders only)
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+.my.cnf
+.mylogin.cnf
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Database exports and local storage; keep schema/migrations/seeds versioned
+/db/backups/
+/db/dumps/
+/db/exports/
+/db/private/
+/db/data/
+*.dump
+*.bak
+*.sql.gz
+*.sql.zip
+*.sql.7z
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+dump.sql
+dump-*.sql
+dump_*.sql
+backup.sql
+backup-*.sql
+backup_*.sql
+mysqldump*.sql
