@@ -1,9 +1,10 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Card } from '@/components/ui'
-import { ALL_PLACES, DEFAULT_CATS, HOME } from '../data/places'
+import { RegionVerifyDialog } from '@/features/life'
+import { ALL_PLACES, DEFAULT_CATS } from '../data/places'
 import { useMapStore } from '../store'
-import { useCurrentMapPosition } from '../useCurrentMapPosition'
+import { useNeighborhoodPosition } from '../useNeighborhoodPosition'
 import styles from './HomeMapCard.module.css'
 import mapStyles from './MapView.module.css'
 
@@ -14,13 +15,14 @@ const NO_FOCUS = null
 const noop = () => {}
 const PREVIEW_ZOOM = 16
 
-/** 홈 지도: 실제 현재 위치 주변을 가까이 표시. 위치를 확인할 수 없으면 예시 지도로 안내. */
+/** 홈 지도: 저장한 동네 중심을 표시하고 위치 인증 시 변경된 주소를 반영한다. */
 export function HomeMapCard() {
-  const position = useCurrentMapPosition()
+  const [verifyOpen, setVerifyOpen] = useState(false)
+  const position = useNeighborhoodPosition()
   const on = useMapStore((s) => s.on)
   const kinds = on.length ? on : DEFAULT_CATS
   const places = ALL_PLACES.filter((p) => kinds.includes(p.cat))
-  const center = position.point ?? HOME
+  const center = position.point
 
   return (
     <Card
@@ -33,22 +35,23 @@ export function HomeMapCard() {
       }
     >
       <div className={styles.frame}>
-        <Suspense fallback={<div className={styles.loading}>지도를 불러오는 중…</div>}>
+        {center ? <Suspense fallback={<div className={styles.loading}>지도를 불러오는 중…</div>}>
           <LeafletMap
             className={mapStyles.map} places={places} selectedId={null} onSelect={noop}
             focus={NO_FOCUS} fitKey={kinds.join(',')} bottomInset={0} readOnly
-            viewport={{ ...center, zoom: PREVIEW_ZOOM }} currentPosition={position.point}
+            viewport={{ ...center, zoom: PREVIEW_ZOOM }}
           />
-        </Suspense>
+        </Suspense> : <p role="status">{position.loading ? '저장한 동네를 찾고 있어요.' : position.error}</p>}
         {/* 지도 위를 덮는 링크: 어디를 눌러도 동네 화면으로 */}
         <Link to="/map" state={{ mapCenter: position.point }} className={styles.cover} aria-label="동네 지도 크게 보기" />
-        <button type="button" className={styles.locate} onClick={position.retry} disabled={position.loading} aria-label="현재 위치 다시 확인">
-          {position.loading ? '위치 확인 중…' : '◎ 내 위치'}
+        <button type="button" className={styles.locate} onClick={() => setVerifyOpen(true)} aria-label="현 위치로 동네 인증" aria-haspopup="dialog">
+          ◎ 현 위치
         </button>
       </div>
       <p className={styles.status} role="status">
-        {position.loading ? '내 위치를 확인하고 있어요.' : position.error ? `${position.error} ${position.point ? '마지막으로 확인한 위치를 표시하고 있어요.' : '예시 지도를 표시하고 있어요.'}` : '파란 점이 내 위치예요. 주변 장소 표시는 예시 데이터예요.'}
+        {position.loading ? '저장한 동네를 찾고 있어요.' : position.error || '설정한 동네 중심을 표시해요. 주변 장소 표시는 예시 데이터예요.'}
       </p>
+      <RegionVerifyDialog open={verifyOpen} onClose={() => setVerifyOpen(false)} />
     </Card>
   )
 }

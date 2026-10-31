@@ -4,6 +4,7 @@
 
 const SIDO: Record<string, string> = {
   서울특별시: '서울',
+  서울시: '서울',
   부산광역시: '부산',
   대구광역시: '대구',
   인천광역시: '인천',
@@ -51,20 +52,23 @@ function getPosition() {
   })
 }
 
-type NominatimAddress = Partial<Record<'province' | 'state' | 'city' | 'county' | 'borough' | 'city_district' | 'district', string>>
+type NominatimAddress = Partial<Record<'province' | 'state' | 'city' | 'county' | 'borough' | 'city_district' | 'district' | 'municipality' | 'town' | 'village' | 'suburb' | 'quarter' | 'neighbourhood', string>>
 
 /** 지금 위치의 동네 이름 (예: '서울 마포구', '경기 성남시 분당구') */
 export async function locateRegion() {
   const { coords } = await getPosition()
-  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=12&accept-language=ko&lat=${coords.latitude}&lon=${coords.longitude}`
+  if (coords.accuracy > 1000) throw new Error('위치 오차가 커서 인증할 수 없어요. GPS를 켜고 다시 시도해 주세요.')
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&accept-language=ko&lat=${coords.latitude}&lon=${coords.longitude}`
   let addr: NominatimAddress | undefined
   try {
-    const res = await fetch(url)
+    const res = await fetch(url, { signal: AbortSignal.timeout(12000) })
+    if (!res.ok) throw new Error('위치 조회 실패')
     addr = (await res.json())?.address
   } catch {
     throw new Error('동네 이름을 찾지 못했어요. 인터넷 연결을 확인해 주세요.')
   }
-  const parts = [addr?.province ?? addr?.state, addr?.city, addr?.county, addr?.borough ?? addr?.city_district ?? addr?.district]
+  const parts = [addr?.province ?? addr?.state, addr?.city, addr?.county, addr?.borough ?? addr?.city_district ?? addr?.district,
+    addr?.municipality, addr?.town, addr?.village, addr?.suburb, addr?.quarter, addr?.neighbourhood]
   const region = normRegion([...new Set(parts.filter(Boolean))].join(' '))
   if (!region) throw new Error('이 위치의 동네 이름을 찾지 못했어요.')
   return region

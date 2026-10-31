@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useAuthStore } from '@/features/auth/store/authStore'
+import { authApi } from '@/features/auth/api'
 import { Button, Modal } from '@/components/ui'
 import { fmt, monthDay } from '@/lib/date'
 import { VERIFY_DAYS, useRegionVerify } from '../derive'
-import { locateRegion, sameRegion } from '../locateRegion'
+import { locateRegion } from '../locateRegion'
 import { useLifeStore } from '../store'
 import styles from './verify.module.css'
 
-type Step = { kind: 'idle' } | { kind: 'locating' } | { kind: 'done'; region: string } | { kind: 'other'; found: string } | { kind: 'error'; message: string }
+type Step = { kind: 'idle' } | { kind: 'locating' } | { kind: 'done'; region: string } | { kind: 'error'; message: string }
 
 type Props = {
   open: boolean
@@ -15,28 +17,37 @@ type Props = {
   onVerified?: () => void
 }
 
-/** 동네 인증 창: 지금 위치를 확인해 우리 동네와 같으면 인증 완료.
- * 다른 동네에 있으면 "그 동네로 바꾸고 인증"을 고를 수 있음 (당근 동네 인증처럼) */
+/** GPS로 확인한 동네를 회원 주소·생활 설정에 적용하고 인증한다. */
 export function RegionVerifyDialog({ open, onClose, onVerified }: Props) {
   const { region, verified, at, left } = useRegionVerify()
   const verifyRegion = useLifeStore((s) => s.verifyRegion)
   const [step, setStep] = useState<Step>({ kind: 'idle' })
+  const request = useRef({ id: 0 })
+  useEffect(() => {
+    const pending = request.current
+    return () => { pending.id++ }
+  }, [open, region])
 
   const close = () => {
+    request.current.id++
     setStep({ kind: 'idle' })
     onClose()
   }
-  const finish = (r: string) => {
-    verifyRegion(r)
-    setStep({ kind: 'done', region: r })
-  }
   const start = async () => {
+    const attempt = ++request.current.id
+    const userId = useAuthStore.getState().user?.id
     setStep({ kind: 'locating' })
     try {
       const found = await locateRegion()
-      if (region && sameRegion(region, found)) finish(region)
-      else setStep({ kind: 'other', found })
+      if (attempt !== request.current.id || userId !== useAuthStore.getState().user?.id || region !== useLifeStore.getState().settings.region) return
+      const user = await authApi.updateMe({ address: found })
+      if (attempt !== request.current.id || userId !== useAuthStore.getState().user?.id || region !== useLifeStore.getState().settings.region) return
+      const firstLogin = useAuthStore.getState().user?.firstLogin
+      useAuthStore.getState().updateUser({ ...user, firstLogin })
+      verifyRegion(found)
+      setStep({ kind: 'done', region: found })
     } catch (err) {
+      if (attempt !== request.current.id) return
       setStep({ kind: 'error', message: err instanceof Error ? err.message : '위치를 확인하지 못했어요.' })
     }
   }
@@ -52,7 +63,7 @@ export function RegionVerifyDialog({ open, onClose, onVerified }: Props) {
           <>
             <h3>{step.region} 인증 완료!</h3>
             <p>
-              이제 동네생활에 글 · 댓글 · 공감을 남길 수 있어요.
+              날씨와 지도가 인증한 동네로 변경됐어요. 이제 커뮤니티도 이용할 수 있어요.
               <br />
               인증은 {VERIFY_DAYS}일 동안 유지돼요.
             </p>
@@ -66,32 +77,13 @@ export function RegionVerifyDialog({ open, onClose, onVerified }: Props) {
               확인
             </Button>
           </>
-        ) : step.kind === 'other' ? (
-          <>
-            <h3>지금 위치는 {step.found}예요</h3>
-            <p>
-              {region ? (
-                <>
-                  우리 동네({region})와 달라요.
-                  <br />
-                </>
-              ) : null}
-              이 동네를 우리 동네로 바꾸고 인증할까요?
-            </p>
-            <div className={styles.actions}>
-              <Button variant="line" onClick={close}>
-                취소
-              </Button>
-              <Button onClick={() => finish(step.found)}>이 동네로 인증</Button>
-            </div>
-          </>
         ) : (
           <>
             <h3>동네 인증</h3>
             <p>
-              지금 있는 위치로 우리 동네가 맞는지 확인해요.
+              현재 위치를 확인해 우리 동네로 적용해요.
               <br />
-              인증하면 동네생활에 글 · 댓글 · 공감을 남길 수 있어요.
+              인증하면 날씨와 지도가 현재 동네로 변경되고 커뮤니티를 이용할 수 있어요.
             </p>
             <div className={styles.current}>
               <span>우리 동네</span>
