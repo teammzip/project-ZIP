@@ -3,7 +3,8 @@
 /* 사진 상담: 요약 카드(.stat .pink)의 색 바탕 · 무늬를 그대로 쓰고, 버튼만 흰색 */
 .card {
   gap: 12px;
-  cursor: default;
+  cursor: pointer;
+  text-decoration: none;
 }
 
 .head {
@@ -55,10 +56,6 @@
   color: var(--color-pink);
   text-align: center;
   text-decoration: none;
-}
-
-.cta:hover {
-  filter: brightness(0.97);
 }
 
 .moLabel {
@@ -254,5 +251,33 @@
 
   .moLabel {
     display: inline;
+  }
+}
+
+/* 모바일: 홈 카드 높이가 고정이라 안쪽을 조금 줄임 */
+@media (max-width: 900px) {
+  .card {
+    gap: 8px;
+  }
+
+  .head h3 {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+  }
+
+  .icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .cta {
+    padding: 7px 8px;
+    font-size: 12px;
   }
 }
