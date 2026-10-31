@@ -18,6 +18,8 @@
 
 .frame {
   position: relative;
+  /* 지도 내부의 높은 z-index가 모달 위로 나오지 않도록 범위를 제한한다. */
+  isolation: isolate;
   flex: 1;
   min-height: 200px;
   overflow: hidden;
