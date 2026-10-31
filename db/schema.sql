@@ -2,6 +2,7 @@
 -- ZIP – 자취생 생활 도우미 : 데이터베이스 (MySQL 8.0.16 이상)
 -- 2026-10-31: frontend/API.md와 현재 React 데이터 모델(메모·지도·프로필·고객센터 포함) 기준입니다.
 --   · 표 41개 + 집계용 VIEW 2개
+--   · 2fa08f5 기준 기념일·매년 반복 반영. 기존 DB 적용 순서는 db/migrations/README.md 참고
 --   · 한글 설명: db/README.md, 기존 DB 변경: db/migrations/20261031_current_project.sql
 -- 사용법:  mysql -u root -p < db/schema.sql      (zip 데이터베이스가 새로 만들어집니다)
 -- 규칙:   금액은 원 단위 정수(INT), 단 user_settings.rent_amount는 화면과 같은 만원 단위, 날짜·시간은 DATE/TIME/DATETIME, 글자는 utf8mb4,
@@ -226,6 +227,9 @@ CREATE TABLE IF NOT EXISTS `events` (
   `category_id` BIGINT UNSIGNED NULL COMMENT '일정 카테고리 번호 — NULL은 미분류',
   `is_done` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '할 일 완료 여부',
   `done_at` DATETIME NULL COMMENT '완료 일시 — 완료 해제 시 NULL',
+  `is_anniversary` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '기념일 여부 — API anniv, 할 일 완료 및 남은 일 집계에서 제외',
+  `repeat_yearly` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '매년 반복 여부 — API yearly, 기념일 원본 한 행만 저장',
+  CONSTRAINT `ck_events_anniversary_flags` CHECK (`is_anniversary` IN (0,1) AND `repeat_yearly` IN (0,1) AND (`repeat_yearly` = 0 OR `is_anniversary` = 1)),
   CONSTRAINT `fk_events_category_id` FOREIGN KEY (`category_id`) REFERENCES `event_categories` (`id`) ON DELETE SET NULL,
   PRIMARY KEY (`id`),
   KEY `idx_events_user_id_event_date` (`user_id`, `event_date`),
