@@ -21,6 +21,7 @@ Git 공개 전 확인 사항과 검토 범위는 [보안 검토 문서](SECURITY
 | 경고 확인·정지 해제 | user_sanctions.seen_at·revoked_at·revoked_by·revoke_reason |
 | 탈퇴 후 재가입 차단 | banned_identities에 식별값 HMAC와 차단 기간 보관 |
 | 고객센터 문의·답변 | support_inquiries, 문의당 관리자 답변 하나 |
+| 기념일·매년 반복 | events.is_anniv·is_yearly (20261101_event_anniversary.sql) |
 | 장소 분류 확대 | place_categories.icon, 15개 분류 기본 데이터 |
 
 현재 frontend/API.md는 10월 25일 문서이므로 DB에 없다고 적힌 항목은 이 설계로 보완했습니다. 그 이후 코드에 추가된 고정·기타 수입과 고객센터도 포함합니다. React 코드는 변경하지 않았습니다.
@@ -58,6 +59,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 - 기본 항목은 is_custom=0, 직접 입력한 항목은 1입니다. 직접 입력 시 같은 카테고리·제목 버튼은 UNIQUE 키로 중복을 막고 일정은 별도로 생성합니다. 항목 수정·삭제는 이미 등록한 일정 제목·날짜에 영향을 주지 않습니다.
 - 동일 날짜·제목·카테고리 일정의 중복 추가는 API에서 검사합니다. 기존 일정 자료를 보존하기 위해 해당 조합에 UNIQUE 제약은 추가하지 않았습니다.
 - 완료 시 is_done=1과 done_at을 함께 저장하고, 완료 해제 시 done_at=NULL로 바꿉니다. 쓰레기 배출 일정은 events에 복제하지 않고 요일표로 계산합니다.
+- 기념일은 is_anniv=1인 일정입니다. 제목에는 API가 붙이는 "🎉 " 접두어가 포함될 수 있고, is_yearly=1이면 한 행만 저장하고 화면에서 매년 날짜로 펼칩니다. 기념일은 완료 처리 대상이 아니며 남은 일 수에서 제외합니다.
 
 ### 메모·지도·프로필
 
@@ -397,6 +399,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `category_id` | BIGINT UNSIGNED | 허용 | — | 일정 카테고리 번호 — NULL은 미분류 |
 | `is_done` | TINYINT(1) | 필수 | 0 | 할 일 완료 여부 |
 | `done_at` | DATETIME | 허용 | — | 완료 일시 — 완료 해제 시 NULL |
+| `is_anniv` | TINYINT(1) | 필수 | 0 | 기념일 여부 — 1이면 완료 체크 없이 D-day로 표시 |
+| `is_yearly` | TINYINT(1) | 필수 | 0 | 매년 반복 여부 — 기념일일 때만 사용 |
 
 - 외래키 `category_id` → `event_categories`.`id`: SET NULL
 - 기본키: `id`

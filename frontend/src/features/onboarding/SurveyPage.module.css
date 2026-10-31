@@ -1,0 +1,181 @@
+/* 처음 로그인 설문 페이지 (AccountLayout 과 같은 하늘색 바탕 + 흰 카드) */
+.page {
+  min-height: 100dvh;
+  padding: 24px 16px 60px;
+  background: rgb(229, 255, 255);
+}
+
+.top {
+  width: min(1100px, 100%);
+  margin: 0 auto 22px;
+}
+
+.top img {
+  height: 44px;
+  width: auto;
+}
+
+.card {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: 28px 44px 36px;
+  border: 1px solid #e3e6eb;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+.form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.form input[type='number'],
+.form input[type='date'],
+.form input:not([type]) {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--color-line);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 15px;
+}
+
+.form input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+.hello {
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.sub {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.sec {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-line);
+}
+
+.sec h2 {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.sub3 {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #f3f8ff;
+}
+
+.sub3 h3 {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.q {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.kindGrid,
+.yn {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.kind,
+.ynBtn {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 14px 8px;
+  border: 2px solid var(--color-line);
+  border-radius: 14px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.kind span {
+  font-size: 26px;
+}
+
+.kind b {
+  font-size: 17px;
+}
+
+.kind small {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.kindOn {
+  border-color: var(--color-primary);
+  background: #eaf2ff;
+  color: var(--color-primary);
+}
+
+.skip {
+  justify-self: center;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--color-muted);
+  text-decoration: underline;
+}
+
+.doneBox {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px 0;
+  text-align: center;
+}
+
+.doneIco {
+  font-size: 52px;
+}
+
+.doneBox h1 {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.doneBox p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+@media (max-width: 560px) {
+  .card {
+    padding: 22px 18px 32px;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+}

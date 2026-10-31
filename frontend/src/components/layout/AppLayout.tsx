@@ -25,6 +25,7 @@ export function AppLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const toggleProfile = () => setProfileOpen((v) => !v)
+  const showFab = pathname !== '/ai' && pathname !== '/map' // AI 버튼은 AI · 동네 화면에선 안 나옴
 
   // 화면을 옮기면 ☰ 메뉴는 닫힘 (렌더 중에 이전 주소와 비교 — effect 안에서 setState 하지 않으려고)
   const [lastPath, setLastPath] = useState(pathname)
@@ -39,12 +40,12 @@ export function AppLayout() {
       <Sidebar onProfile={toggleProfile} profileOpen={profileOpen} />
       <div className={styles.body}>
         <Header menuOpen={menuOpen} onToggleMenu={() => setMenuOpen((v) => !v)} onProfile={toggleProfile} profileOpen={profileOpen} />
-        <main className={styles.main}>
+        <main className={cx(styles.main, showFab && styles.mainFab)}>
           <Outlet />
         </main>
       </div>
       <BottomNav />
-      {pathname !== '/ai' && pathname !== '/map' && (
+      {showFab && (
         <Link to="/ai" className={styles.aiFab} aria-label="AI 도우미 열기" title="AI 도우미">
           <svg viewBox="0 0 24 24" width={32} height={32} aria-hidden="true">
             <path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-5.4A8 8 0 1 1 21 12z" />

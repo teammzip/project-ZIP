@@ -38,14 +38,39 @@ const ADMIN: MockAccount = {
   agreedAt: '2026-10-18T00:00:00.000Z',
 }
 
+/** 처음 로그인 설문을 테스트하는 계정: 아이디 a1 / 비밀번호 b1. 로그인할 때마다 "처음 로그인"으로 취급됨
+ * (가짜 API 모드에서만 있음) */
+export const FIRST_LOGIN_ACCOUNT = { username: 'a1', password: 'b1' }
+const FIRST: MockAccount = {
+  id: 'first',
+  ...FIRST_LOGIN_ACCOUNT,
+  email: 'a1@zip.com',
+  nickname: '새내기',
+  phone: '010-1111-2222',
+  address: '서울시 마포구 합정동',
+  provider: 'email',
+  role: 'USER',
+  agreedAt: '2026-10-18T00:00:00.000Z',
+  firstLogin: true,
+}
+
 const wait = (ms = 400) => new Promise((r) => setTimeout(r, ms))
 const loadAccounts = () => {
   const list = readJSON<MockAccount[]>(USERS_KEY) ?? []
   // 데모 계정은 저장된 게 있으면 그걸 씀 (비밀번호를 바꿨을 수 있어서). 예전 형식(아이디 없음)이면 새로
   const saved = list.find((a) => a.id === DEMO.id && a.username)
-  return [saved ?? DEMO, list.find((a) => a.id === ADMIN.id) ?? ADMIN, ...list.filter((a) => a.id !== DEMO.id && a.id !== ADMIN.id)]
+  // 비밀번호를 바꿨을 수 있으니 a1 은 저장본을 쓰되 항상 처음 로그인으로
+  const fixed = [DEMO.id, ADMIN.id, FIRST.id]
+  return [saved ?? DEMO, list.find((a) => a.id === ADMIN.id) ?? ADMIN, { ...(list.find((a) => a.id === FIRST.id) ?? FIRST), firstLogin: true }, ...list.filter((a) => !fixed.includes(a.id))]
 }
 const saveAccounts = (list: MockAccount[]) => writeJSON(USERS_KEY, list)
+
+/** 로그인 응답을 만들고, 그 계정은 더 이상 "처음 로그인"이 아니게 저장 (응답에는 firstLogin 이 그대로 실림) */
+function respondLogin(account: MockAccount): AuthResponse {
+  const res = toResponse(account)
+  if (account.firstLogin && account.id !== FIRST.id) saveAccounts(loadAccounts().map((a) => (a.id === account.id ? { ...a, firstLogin: false } : a)))
+  return res
+}
 
 function toResponse({ password: _password, phone: _phone, ...user }: MockAccount): AuthResponse {
   return { accessToken: `mock-token-${user.id}`, user }
@@ -76,7 +101,7 @@ export const mockAuthApi: AuthApi = {
     const ban = findActiveBan({ nicks: [account.nickname], uid: account.username })
     if (ban) throw new Error(banMessage(ban))
     currentId = account.id
-    return toResponse(account)
+    return respondLogin(account)
   },
 
   async sendPhoneCode() {
@@ -112,10 +137,11 @@ export const mockAuthApi: AuthApi = {
       provider: 'email',
       role: 'USER',
       agreedAt: new Date().toISOString(),
+      firstLogin: true,
     }
     saveAccounts([...accounts, account])
     currentId = account.id
-    return toResponse(account)
+    return respondLogin(account)
   },
 
   async findId({ nickname, phone, phoneVerificationToken }) {
@@ -173,11 +199,11 @@ export const mockAuthApi: AuthApi = {
     let account = accounts.find((a) => a.email === email)
     if (!account) {
       // 소셜로 처음 들어오면 아직 동의·주소가 없음 → 앱이 /welcome 동의 화면으로 보냄
-      account = { id: crypto.randomUUID(), email, password: '', nickname: `${SOCIAL_NAMES[provider]} 사용자`, address: '', provider, agreedAt: null }
+      account = { id: crypto.randomUUID(), email, password: '', nickname: `${SOCIAL_NAMES[provider]} 사용자`, address: '', provider, agreedAt: null, firstLogin: true }
       saveAccounts([...accounts, account])
     }
     currentId = account.id
-    return toResponse(account)
+    return respondLogin(account)
   },
 
   async updateMe(req) {
