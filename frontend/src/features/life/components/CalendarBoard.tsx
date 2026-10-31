@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react'
+import { useMemo, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { Button, Card, Modal, Segmented } from '@/components/ui'
@@ -8,7 +8,7 @@ import { useToday } from '@/lib/useToday'
 import common from '@/styles/common.module.css'
 import { trashIco } from '../data/catalog'
 import { UNCATEGORIZED, evColor } from '../data/presets'
-import { isTrash, sortEvents, trashEventsBetween, weekRange } from '../derive'
+import { expandAnniversaries, isTrash, sortEvents, trashEventsBetween, weekRange } from '../derive'
 import { useLifeStore } from '../store'
 import type { CalEvent, TrashEvent } from '../types'
 import cal from './calendar.module.css'
@@ -30,6 +30,10 @@ export function CalendarBoard() {
   const [params] = useSearchParams()
   const initialMode = params.get('mode') as CalMode | null
   const [view, setView] = useState({ y: now.getFullYear(), m: now.getMonth() })
+  // 매년 반복 기념일은 보고 있는 해 앞뒤로 펼쳐서 보여 줌
+  const shown = useMemo(() => expandAnniversaries(events, view.y - 1, view.y + 1), [events, view.y])
+  // 일정 목록은 보고 있는 해의 기념일만 (여러 해가 같은 날짜로 겹쳐 보이지 않게)
+  const listed = useMemo(() => expandAnniversaries(events, view.y, view.y), [events, view.y])
   const [calView, setCalView] = useState<'month' | 'week'>('month')
   const [selected, setSelected] = useState(today)
   const [mode, setMode] = useState<CalMode>(initialMode && MODES.includes(initialMode) ? initialMode : 'today')
@@ -61,6 +65,11 @@ export function CalendarBoard() {
     addEvent({ title, date, time, ...(category ? { category } : {}) })
     const week = weekRange(now)
     pick(date, date === today ? 'today' : mode === 'week' && date >= week.start && date <= week.end ? 'week' : 'day')
+  }
+  /** 기념일 저장 (제목 앞에 🎉 를 붙여 달력 · 목록에서 구분) */
+  const addAnniv = (name: string, date: string, yearly: boolean) => {
+    addEvent({ title: `🎉 ${name}`, date, time: '', anniv: true, yearly })
+    pick(date)
   }
   const addPicked = (date: string) => {
     if (!picked) return
@@ -94,7 +103,7 @@ export function CalendarBoard() {
     <div className={cal.layout}>
       <div className={common.col}>
         <BigCalendar
-          events={events}
+          events={shown}
           view={view}
           calView={calView}
           onCalView={changeCalView}
@@ -121,8 +130,9 @@ export function CalendarBoard() {
           onAddWeek={() => addPicked(weekRange(now).end)}
           date={selected}
           onAdd={add}
+          onAddAnniv={addAnniv}
         />
-        <EventList events={events} selected={selected} mode={mode} setMode={changeMode} query={query} setQuery={setQuery} onMoved={(d) => pick(d)} viewMonth={view} />
+        <EventList events={listed} selected={selected} mode={mode} setMode={changeMode} query={query} setQuery={setQuery} onMoved={(d) => pick(d)} viewMonth={view} />
       </div>
       <DayDetail date={openDay} onClose={() => setOpenDay(null)} onAdd={(title, time) => openDay && addEvent({ title, date: openDay, time })} onMoved={(d) => pick(d)} />
     </div>
@@ -370,7 +380,7 @@ function EventList({ events, selected, mode, setMode, query, setQuery, onMoved, 
               tabIndex={0}
               onPointerUp={(e) => e.pointerType === 'touch' && !(e.target as HTMLElement).closest('button, input') && e.currentTarget.classList.toggle(cal.showActions)}
             >
-              <input type="checkbox" className={common.checkbox} checked={!!ev.done} onChange={(e) => toggleEvent(ev.id, e.target.checked)} aria-label={`${ev.title} 완료`} />
+              {!ev.anniv && <input type="checkbox" className={common.checkbox} checked={!!ev.done} onChange={(e) => toggleEvent(ev.id, e.target.checked)} aria-label={`${ev.title} 완료`} />}
               <span className={styles.evWhen}>
                 {showDate && `${ev.date.slice(5).replace('-', '/')} `}
                 {ev.time || '종일'}
@@ -456,7 +466,7 @@ export function DayDetail({ date, onClose, onAdd, onMoved }: { date: string | nu
   }
   const d = new Date(`${date}T00:00:00`)
   const names = categories.map((c) => c.name)
-  const items = sortEvents<CalEvent | TrashEvent>([...events.filter((ev) => ev.date === date), ...trashEventsBetween(date, date)])
+  const items = sortEvents<CalEvent | TrashEvent>([...expandAnniversaries(events, Number(date.slice(0, 4)), Number(date.slice(0, 4))).filter((ev) => ev.date === date), ...trashEventsBetween(date, date)])
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const t = title.trim()
@@ -492,6 +502,8 @@ export function DayDetail({ date, onClose, onAdd, onMoved }: { date: string | nu
               <li key={ev.id} className={cx(cal.dayItem, !trashEv && ev.done && cal.dayItemDone)} style={{ '--c': evColor(ev.title, trashEv, trashEv ? undefined : ev.category, names) } as CSSProperties}>
                 {trashEv ? (
                   <span className={cal.dayIco}>{trashIco(ev.title)}</span>
+                ) : ev.anniv ? (
+                  <span className={cal.dayIco} aria-hidden="true" />
                 ) : (
                   <input type="checkbox" className={common.checkbox} checked={!!ev.done} onChange={(e) => toggleEvent(ev.id, e.target.checked)} aria-label={`${ev.title} 완료`} />
                 )}

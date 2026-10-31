@@ -924,3 +924,17 @@
     text-align: center;
   }
 }
+
+/* 일정 기록하기 > 기념일 탭: 매년 반복 체크 */
+.yearlyCheck {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.yearlyCheck input {
+  width: 18px;
+  height: 18px;
+}

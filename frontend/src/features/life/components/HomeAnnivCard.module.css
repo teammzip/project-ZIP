@@ -1,0 +1,16 @@
+/* 홈: 다가오는 기념일 카드 (색 바탕 · 무늬는 요약 카드 .stat .pink 를 그대로 씀) */
+.card {
+  gap: 4px;
+  text-decoration: none;
+}
+
+.name {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
