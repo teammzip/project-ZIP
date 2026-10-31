@@ -1,5 +1,5 @@
 import { lazy, Suspense, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { Card } from '@/components/ui'
 import { cssVar } from '@/lib/cssVar'
@@ -114,10 +114,15 @@ export function IncomeChart() {
     <Card
       title="월별 수입"
       actions={
-        <select className={common.select} value={range} onChange={(e) => setRange(Number(e.target.value))} aria-label="보기 기간">
-          <option value={6}>최근 6개월</option>
-          <option value={12}>최근 12개월</option>
-        </select>
+        <div className={styles.chartActions}>
+          <select className={common.select} value={range} onChange={(e) => setRange(Number(e.target.value))} aria-label="보기 기간">
+            <option value={6}>최근 6개월</option>
+            <option value={12}>최근 12개월</option>
+          </select>
+          <Link to="/my/budget/income" className={common.link} aria-label="수입 내역 더 보기">
+            더 보기
+          </Link>
+        </div>
       }
     >
       <p className={styles.chartSum}>
@@ -159,10 +164,15 @@ export function SpendDonut() {
     <Card
       title="이번 달 지출 구성"
       actions={
-        <select className={common.select} value={back} onChange={(e) => setBack(Number(e.target.value))} aria-label="보기 달">
-          <option value={0}>이번 달</option>
-          <option value={1}>지난 달</option>
-        </select>
+        <div className={styles.chartActions}>
+          <select className={common.select} value={back} onChange={(e) => setBack(Number(e.target.value))} aria-label="보기 달">
+            <option value={0}>이번 달</option>
+            <option value={1}>지난 달</option>
+          </select>
+          <Link to="/my/budget/expense" className={common.link} aria-label="지출 내역 더 보기">
+            더 보기
+          </Link>
+        </div>
       }
     >
       <div className={styles.donutWrap}>

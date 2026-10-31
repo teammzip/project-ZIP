@@ -107,6 +107,17 @@
 }
 
 /* ---------- 월별 수입 막대 ---------- */
+.chartActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.chartActions a {
+  white-space: nowrap;
+}
+
 .chartSum {
   margin: -6px 0 12px;
   font-size: 13px;
