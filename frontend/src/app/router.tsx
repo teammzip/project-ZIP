@@ -52,6 +52,8 @@ export const router = createBrowserRouter([
           // 이용 정지 안내: 정지된 계정은 앱 대신 이 화면만 (ProtectedRoute 가 보냄)
           { path: '/suspended', lazy: page(() => import('@/pages/suspended/SuspendedPage'), 'SuspendedPage') },
           // 소셜 첫 가입: 약관 동의 + 주소 입력
+          // 처음 로그인: 우리 집 설문 (별도 페이지)
+          { path: '/onboarding', lazy: page(() => import('@/pages/onboarding/OnboardingPage'), 'OnboardingPage') },
           { element: <AuthLayout />, children: [{ path: '/welcome', lazy: page(() => import('@/pages/auth/WelcomePage'), 'WelcomePage') }] },
           {
             element: <AppLayout />,

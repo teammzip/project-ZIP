@@ -32,3 +32,11 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/migrations
 8. 새 기능 API의 소유권 검사·정지 해제·카테고리 삭제 시 항목 이동 등을 구현한 뒤 서비스를 재개합니다.
 
 MySQL DDL은 암묵 커밋됩니다. 중간 실패 시 백업과 실제 스키마를 확인하고 실패 지점부터 복구해야 합니다. 이 파일은 재실행용·자동 롤백용이 아닙니다. 이전 할 일 ID를 참조하는 외부 시스템이 있다면 위 ID 변환을 함께 적용해야 합니다.
+
+# 2026-11-01 기념일 칸 추가
+
+`20261101_event_anniversary.sql`은 `events`에 `is_anniv` · `is_yearly`를 추가합니다. 20261031 마이그레이션을 적용한 DB에서 백업 후 한 번만 실행합니다. 새 DB는 ../schema.sql에 이미 포함되어 있어 실행하지 않습니다.
+
+```powershell
+mysql -u root -p --default-character-set=utf8mb4 --execute="source db/migrations/20261101_event_anniversary.sql"
+```

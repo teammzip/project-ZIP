@@ -108,6 +108,11 @@
   padding: 0 28px 40px;
 }
 
+/* 오른쪽 아래 AI 버튼(60px)이 떠 있는 화면은 맨 아래까지 내려도 버튼에 안 가리게 아래 여백을 더 줌 (모바일은 아래 규칙이 따로 정함) */
+.mainFab {
+  padding-bottom: 90px;
+}
+
 /* 왼쪽 메뉴 맨 아래 프로필 사진 */
 .sideProfile {
   margin-top: auto;

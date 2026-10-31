@@ -21,6 +21,9 @@ export function ProtectedRoute() {
   // 소셜 첫 가입: 약관 동의 전에는 앱 화면에 못 들어가고 동의 화면만 보임
   if (needsConsent && location.pathname !== '/welcome') return <Navigate to="/welcome" replace />
   if (!needsConsent && location.pathname === '/welcome') return <Navigate to="/" replace />
+  // 처음 로그인(가입 직후): 우리 집 설문 페이지를 한 번 거침. 끝내거나 건너뛰면 firstLogin 이 꺼져서 앱으로
+  if (user?.firstLogin && !isAdmin && location.pathname !== '/onboarding') return <Navigate to="/onboarding" replace />
+  if (!user?.firstLogin && location.pathname === '/onboarding') return <Navigate to="/" replace />
   return <Outlet />
 }
 
