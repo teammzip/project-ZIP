@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Modal } from '@/components/ui'
 import { useLifeStore } from '@/features/life/store'
+import { RegionVerifyDialog, useRegionVerify } from '@/features/life'
 import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
 import home from '@/features/life/components/home.module.css'
@@ -11,6 +12,8 @@ import styles from './WeatherCard.module.css'
 export function WeatherCard() {
   const region = useLifeStore((s) => s.settings.region.trim())
   const [open, setOpen] = useState(false)
+  const [verifyOpen, setVerifyOpen] = useState(false)
+  const { verified } = useRegionVerify()
   const [now, setNow] = useState(Date.now)
   const trigger = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -52,10 +55,16 @@ export function WeatherCard() {
       </>}
       <span className={styles.source}>Open-Meteo · OpenStreetMap</span>
     </button>
-    <Modal open={open} onClose={close} title="오늘 날씨" className={styles.dialog}>
+    <Modal open={open && !verifyOpen} onClose={close} title="오늘 날씨" className={styles.dialog}>
       <div className={styles.detail}>
         <header><h3>오늘 날씨</h3><p>{day.replaceAll('-', '.')} · 한국 시간</p></header>
         <RegionForm key={region} region={region} />
+        <div>
+          <Button variant="line" onClick={() => setVerifyOpen(true)} aria-haspopup="dialog">
+            {verified ? '현 위치 다시 인증' : '현 위치 인증'}
+          </Button>
+          <p className={styles.updated}>위치를 인증하면 현재 동네의 날씨로 변경돼요.</p>
+        </div>
         {!region && <p className={common.empty}>우리 동네를 저장하면 날씨를 보여드려요.</p>}
         {region && !data && !error && <p role="status">날씨를 불러오는 중이에요.</p>}
         {region && error && <p className={common.formError} role="alert">{error instanceof Error && error.message.includes('동네') ? error.message : '날씨를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.'}{data && ' 아래는 마지막으로 받은 정보예요.'}</p>}
@@ -85,6 +94,7 @@ export function WeatherCard() {
         <footer className={styles.attribution}>날씨: <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> · 지역: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap 기여자</a></footer>
       </div>
     </Modal>
+    <RegionVerifyDialog open={verifyOpen} onClose={() => setVerifyOpen(false)} />
   </>
 }
 
