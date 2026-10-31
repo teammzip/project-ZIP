@@ -12,8 +12,8 @@
 |---|---|---|
 | [인증 · 내 정보](#1-인증--내-정보-) | ✅ | `users` `social_accounts` `auth_sessions` `phone_verifications` `password_resets` `user_term_agreements` `withdrawal_logs` |
 | [설정 · 동네](#2-설정--동네-) | 📝 | `user_settings` `regions` `region_neighbors` · ⚠️ 동네 인증 시각 |
-| [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | 📝 | `events`(⚠️ 완료 칸) `trash_schedules` |
-| [월세 · 고정 지출](#4-월세--고정-지출-) | 📝 | `rent_payments` `bill_items`(⚠️ 태그) `bill_payments` |
+| [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | 📝 | `events`(⚠️ 기념일 칸) `event_categories` `event_presets` `trash_schedules` |
+| [월세 · 고정 지출](#4-월세--고정-지출-) | 📝 | `rent_payments` `bill_items` `bill_payments` |
 | [가계부](#5-가계부-수입--기타-지출-) | 📝 | `ledger_categories` `incomes` `expenses` + VIEW 2개 |
 | [알림](#6-알림-) | 📝 | `notifications` (읽음 · 삭제) |
 | [커뮤니티 · 첨부 · 신고](#7-커뮤니티--첨부--신고-) | 📝 | `posts` `post_likes` `comments` `uploaded_files` `post_attachments` `reports` |
@@ -21,7 +21,8 @@
 | [지도](#9-지도-) | 📝 | `places` `place_categories` `place_reviews` · ⚠️ 즐겨찾기 표 · 집 좌표 |
 | [약관](#10-약관-) | 📝 | `terms_documents` |
 | [관리자 · 이용 정지 · 경고](#11-관리자--이용-정지-) | 📝 | `user_sanctions`(⚠️ 확인 시각) `users.status` `reports` |
-| [메모](#12-메모-) | 📝 | ⚠️ `memos` (DB에 아직 없음) |
+| [메모](#12-메모-) | 📝 | `memos` |
+| [고객센터](#13-고객센터-) | 📝 | `support_inquiries` |
 
 ---
 
@@ -61,6 +62,9 @@
 | POST | `/api/auth/password-reset/verify` | `{ username, phone, phoneVerificationToken }` | `{ resetToken }` |
 | POST | `/api/auth/password-reset` | `{ resetToken, newPassword }` | — |
 | GET | `/api/oauth2/authorization/{kakao\|google\|naver}` | (페이지 이동) | 끝나면 `/oauth/callback?token=...`으로 보내기 |
+
+- **처음 로그인 설문**: 로그인 응답의 `user.firstLogin`이 `true`면 앱이 "우리 집 설문" 별도 페이지(`/onboarding`)로 보내요. 질문: ① 생년월일 ② 간략한 주소 ③ 계약 유형(월세: 보증금 · 월세 · 관리비 포함 여부 · 포함 아니면 관리비 / 전세: 계약금 · 대출 여부와 금액 · 관리비) ④ 한 달 수입. 서버는 로그인 처리 직전 `users.last_login_at`이 `NULL`이었는지로 판단하고 값을 채워 주세요. 답변을 저장할 API · 칸은 아직 없어요(지금은 브라우저 `zip-housing-survey`, 월세는 `zip-life` 설정에, 관리비는 고정 지출 항목에 반영).
+- 테스트용 계정(가짜 API 모드): 아이디 `a1` / 비밀번호 `b1` — 처음 로그인 설문 확인용, 로그인할 때마다 처음 로그인으로 취급돼요.
 
 ### user 모양
 ```json
@@ -178,8 +182,8 @@
 |---|---|---|---|
 | GET | `/api/events?from=2026-10-01&to=2026-10-31` | — | `[event]` |
 | GET | `/api/events/search?q=월세` | — | `[event]` (상단 검색) |
-| POST | `/api/events` | `{ date, time, title, category }` | `event` |
-| PATCH | `/api/events/{id}` | `{ date, time, title, category }` 중 바꿀 것 | `event` |
+| POST | `/api/events` | `{ date, time, title, category, anniv, yearly }` | `event` |
+| PATCH | `/api/events/{id}` | `{ date, time, title, category, anniv, yearly }` 중 바꿀 것 | `event` |
 | PATCH | `/api/events/{id}/done` | `{ done: true }` | `event` |
 | DELETE | `/api/events/{id}` | — | — |
 | GET | `/api/trash-schedules?regionId=2` | — | `[{ weekday, wasteType, description }]` |
@@ -192,20 +196,24 @@
 | PATCH · DELETE | `/api/event-presets/{id}` | `{ title, category }` | — |
 
 ```json
-{ "id": "31", "date": "2026-10-24", "time": "18:00", "title": "택배 반품", "category": "연락·행정", "done": false, "source": "USER" }
+{ "id": "31", "date": "2026-10-24", "time": "18:00", "title": "택배 반품", "category": "연락·행정", "done": false, "source": "USER", "anniv": false, "yearly": false }
 ```
 - `time`이 빈 문자열(`""`)이면 종일 (`event_time = NULL`).
 - `source`: `USER`(직접 입력) · `RENT`("월세 캘린더에 추가"로 자동 등록).
 - **할 일은 일정에 합쳤어요** (백엔드 담당 시안 PR #12와 같은 방식). 체크한 일정은 `done: true`.
-  - ⚠️ 지금 `schema.sql`에는 `events`에 완료 칸이 없고 `todos` 표가 따로 있어요. **`events.is_done`(+ `done_at`)을 추가**하고 `todos`는 빼는 걸 제안해요.
+  - DB는 `events.is_done` · `done_at`으로 저장해요 (`todos`는 `todos_legacy_20261031`로 보관만).
 - **일정 카테고리** (백엔드 담당 시안 PR #24 · #26): 일정마다 `category`가 붙고, 목록에 작은 이름표로 보여요. 고칠 때 카테고리를 바꾸거나 지울 수 있어요(→ `미분류`).
   - 기본 카테고리 5개(집 관리 · 청소·빨래 · 돈·계약 · 건강·생활 · 연락·행정)와 항목 30개는 프론트 목록이에요(`features/life/data/presets.ts`). 사용자는 **추가 · 이름 변경 · 삭제**할 수 있어요. `미분류`는 바꾸거나 지울 수 없어요.
   - 일정을 **직접 입력**하면 고른 카테고리 아래에 **항목 버튼**으로도 저장돼요(같은 이름이 이미 있으면 안 만듦). 직접 만든 항목은 수정 · 삭제할 수 있어요.
-  - ⚠️ DB에 `events.category`, 카테고리 · 항목 표가 없어요 (아래 표 11번).
+  - DB는 `event_categories` · `event_presets` 표와 `events.category_id`(NULL = 미분류)를 써요.
   - 지금은 브라우저(`zip-life`의 `categories` · `customPresets`)에 저장해요.
 - **달력에서 날짜를 누르면 그날 일정 창**이 떠요 (그날 일정 전부 + 쓰레기 배출, 완료 체크 · 수정 · 삭제 · 이 날에 바로 추가). 새 API는 필요 없고 위 `GET /api/events?from=…&to=…`(그날 하루) · `POST` · `PATCH` · `DELETE`를 그대로 써요.
 - 달력 막대 색은 프론트가 카테고리 순서로 정해요 (미분류 · 직접 입력은 파랑, 쓰레기 배출은 초록). 같은 제목이 며칠 이어지면 막대를 이어 그려요.
 - 같은 날 · 같은 제목 · 같은 카테고리 일정은 프론트가 한 번 더 추가하지 않게 막아요.
+- **기념일** (일정 기록하기 > 🎉 기념일): `anniv: true`인 일정이에요. 카테고리 · 시간 · 완료 체크가 없고, 제목 앞에 `🎉 `를 붙여 저장해요(프론트가 보여 줄 때 뗌).
+  - `yearly: true`면 **매년 반복**이에요. 서버는 한 줄만 저장하고, 프론트가 달력 · 목록 · 알림에 해당 연도 날짜로 펼쳐 보여요(윤년 2/29는 평년에 2/28). 펼친 일정의 id는 `"<id>@<연도>"`지만 서버에는 원래 `id`로만 요청해요.
+  - 기념일은 "남은 일" 수에 안 들어가고, 홈 요약 카드 **다가오는 기념일**(오늘 포함 가장 가까운 것, D-day)과 알림(3일 전부터)에 쓰여요.
+  - ⚠️ DB에 `events.is_anniv` · `is_yearly` 칸이 필요해요 (아래 표 17번, `db/migrations/20261101_event_anniversary.sql`).
 - 쓰레기 배출은 일정으로 저장하지 않고, 프론트가 `trash_schedules` 요일표로 달력에 그려요.
   - `weekday` 0=일 ~ 6=토, `wasteType`: `GENERAL`(일반) · `RECYCLE`(재활용) · `FOOD`(음식물)
 
@@ -242,8 +250,8 @@
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
 | GET | `/api/ledger/categories?kind=INCOME` | — | `[{ id, kind, name, color }]` |
-| GET | `/api/incomes?month=2026-10` | — | `[record]` |
-| POST | `/api/incomes` | `{ date, categoryId, amount, memo }` | `record` |
+| GET | `/api/incomes?month=2026-10&incomeType=fixed` | — | `[record]` (`incomeType`은 생략하면 전체) |
+| POST | `/api/incomes` | `{ date, categoryId, amount, memo, incomeType }` | `record` |
 | DELETE | `/api/incomes/{id}` | — | — |
 | GET | `/api/expenses?month=2026-10` | — | `[record]` |
 | POST | `/api/expenses` | `{ date, categoryId, amount, memo }` | `record` |
@@ -258,7 +266,8 @@
 - 통계는 저장하지 않고 VIEW로 계산: 월별 수입 = `v_monthly_income`, 지출 구성(월세 + 공과금 + 기타 지출) = `v_monthly_spend_breakdown`.
 - 화면: 월별 합계 · **분류별 원형 그래프**(비율 · 금액) · 목록, 기록은 **빠른 기록**(금액 → 분류 칩 → 날짜(기본 오늘) · 메모(선택) → 기록하기). 보내는 값은 위 `POST` 그대로예요.
 - 지출 구성 VIEW의 "공과금"은 이제 **고정 지출 전체**(태그 공과금 · 통신 · 구독 · 관리비 · 기타)예요 ([4번](#4-월세--고정-지출-)).
-- 프론트 대응: `MoneyRecord { id, date, cat, amount, memo }`
+- **수입은 고정 · 기타 두 종류**예요 (`/my/budget/income` 고정 수입, `/my/budget/income/other` 기타 수입). `incomeType`은 `fixed` · `other`, DB `incomes.income_type`은 `FIXED` · `OTHER`로 바꿔 저장해요. 월별 수입 VIEW는 두 종류를 합쳐요.
+- 프론트 대응: `MoneyRecord { id, date, cat, amount, memo, incomeType? }`
 
 ---
 
@@ -379,6 +388,8 @@
 - **우리 집 위치 (🏠, "우리 집으로" 버튼, 길찾기 출발점)**: 지금은 예시 좌표(`HOME`, `features/map/data/places.ts`)예요. 서버가 생기면 `GET /api/auth/me`의 주소를 좌표로 바꿔 `home: { lat, lon }`으로 같이 주세요 (⚠️ 아래 표 15번). 동네 인증 때 받은 좌표를 써도 돼요.
 - **조건 칩**(24시간 · 저렴한 · 조용한)은 지금 설명 글자로 걸러요. 서버는 `openHours` · 태그로 걸러 주면 더 정확해요 (`GET /api/places?…&filter=24h|cheap|quiet`).
 - **길찾기 · 큰 지도**는 OpenStreetMap 링크를 새 창으로 열어요 (서버 필요 없음).
+- **홈 "내 주변 지도" 카드**: 브라우저 위치(Geolocation)로 현재 위치 주변을 보여 줘요(파란 점, ◎ 내 위치 버튼). 위치를 못 받으면 예시 좌표(`HOME`)로 보여 줘요. 서버 필요 없고, 카드를 누르면 `/map`으로 가며 `state.mapCenter`로 그 위치를 넘겨요. 장소 핀은 예시 데이터예요.
+- **홈 날씨 카드**: 프론트가 Open-Meteo(날씨) · Nominatim(주소 → 좌표)을 직접 불러요. 서버 API 없음.
 - **즐겨찾기 번호**: 지금은 `"종류:이름"`을 써요. 서버가 생기면 `places.id`로 바꿔요. ⚠️ 즐겨찾기 표가 없어요 (아래 표 8번).
 - 프론트 대응: `Place { n: name, d: description, lat, lon }` (`features/map/data/places.ts`), 지도 설정 저장 `zip-map` (`features/map/store.ts`)
 
@@ -470,26 +481,47 @@
 
 ---
 
+## 13. 고객센터 📝
+
+마이페이지 > 내 정보 > 고객센터(`/my/settings/support`): 자주 묻는 질문 · 1대1 문의 · 내 문의 내역. 관리자는 `/admin`에서 문의에 답변해요.
+
+| 메서드 | 주소 | 보내는 값 | 받는 값 |
+|---|---|---|---|
+| GET | `/api/support/inquiries` | — | `[inquiry]` (내 문의, 관리자는 전체) |
+| POST | `/api/support/inquiries` | `{ category, title, content }` | `inquiry` |
+| POST | `/api/admin/support/inquiries/{id}/answer` | `{ content }` | `inquiry` (관리자만, 문의당 답변 하나) |
+
+```json
+{ "id": "5", "userId": "2", "nickname": "지은", "category": "이용 문의", "title": "일정이 안 보여요", "content": "…", "createdAt": "2026-10-31T09:00:00Z", "answer": { "content": "…", "createdAt": "2026-10-31T11:00:00Z" } }
+```
+- `category`: 이용 문의 · 오류 신고 · 개선 제안 · 계정 문의 · 기타. 제목 100자, 내용 · 답변 3,000자 이내.
+- 내 문의만 보이게 하고 답변은 관리자만 쓰게 **서버에서 권한을 확인**해 주세요 (지금은 브라우저 `zip-support`에 저장).
+- DB: `support_inquiries` (`answer_content` · `answered_by` · `answered_at`, 답변 대기 = `answered_at IS NULL`).
+- 프론트 대응: `Inquiry` (`features/support/store.ts`)
+
+---
+
 ## DB와 아직 안 맞는 곳 (백엔드 확인 필요)
 
 | # | 내용 | 제안 |
 |---|---|---|
-| 1 | 할 일이 일정에 합쳐졌는데 DB에 `todos`가 따로 있고 `events`에 완료 칸이 없어요 | `events.is_done`, `events.done_at` 추가, `todos` 제거 |
-| 2 | 탈퇴하면 정지 기록이 사라져 재가입을 못 막아요 | 정지된 아이디·휴대전화 해시를 보관하는 표 추가 (예: `banned_identities`) |
+| 1 | ✅ 할 일이 일정에 합쳐졌는데 DB에 `todos`가 따로 있고 `events`에 완료 칸이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `events.is_done`, `events.done_at` 추가, `todos` 제거 |
+| 2 | ✅ 탈퇴하면 정지 기록이 사라져 재가입을 못 막아요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): 정지된 아이디·휴대전화 해시를 보관하는 표 추가 (예: `banned_identities`) |
 | 3 | `password_resets.method`에 `EMAIL`이 남아 있어요 | 지금 화면은 `PHONE`만 써요. 남겨 둬도 되지만 문서에 "미사용" 표시 |
 | 4 | 첨부 형식 제한이 DB에 없어요 | 서버에서 MIME 검사 (이미지 · PDF 등) |
 | 5 | `user_settings`에 동네가 없고 `users.region_id`에 있어요 | 그대로 두고 설정 API에서 같이 주고받기 (위 2번 참고) |
-| 6 | 메모 기능이 생겼는데 DB에 표가 없어요 | 위 [12번](#12-메모-)의 `memos` 표 추가 |
-| 7 | 프로필 사진 · 한 줄 소개 칸이 DB에 없어요 | `users.bio VARCHAR(30)`, `users.avatar_file_id`(→ `uploaded_files`), `avatar_emoji`, `avatar_color` 추가 |
-| 8 | 지도 즐겨찾기 · 칩 설정을 둘 곳이 없어요 | `place_favorites(user_id, place_id, created_at)` 표 + `user_settings.map_categories JSON`(보일 종류 · 직접 검색어) |
-| 9 | `place_categories` 기본 데이터가 4개뿐이에요 | 카페 · 병원 · 헬스장 · 은행 · 미용실 · 다이소 · 공원 · 식당 · 반찬가게 · 세탁소 · 주민센터 추가 (+ `icon` 칸) |
-| 10 | 경고를 확인했는지 남길 칸이 없어요 | `user_sanctions.seen_at DATETIME NULL` 추가 (경고 창 "확인했어요") |
-| 11 | 일정 카테고리를 둘 곳이 없어요 | `event_categories(id, user_id, name, ico, sort_order)` · `event_presets(id, user_id, category_id, title)` 표 + `events.category_id` (NULL = 미분류) |
-| 12 | 동네 인증 시각을 둘 곳이 없어요 | `users.region_verified_at DATETIME NULL` 추가 (위 [동네 인증](#동네-인증)) |
-| 13 | 고정 지출 태그 칸이 없어요 | `bill_items.tag ENUM('공과금','통신','구독','관리비','기타') NOT NULL DEFAULT '공과금'` 추가 (위 [4번](#4-월세--고정-지출-)) |
-| 14 | AI "사용 방법" 주제가 없어요 | `ai_topics`에 `('guide', '사용 방법', '기능이 어디 있는지 알려드려요', photo 0)` 추가, `ai_messages.card_type`에 `LINK` 허용 (위 [8번](#8-ai-)) |
-| 15 | 우리 집 좌표를 둘 곳이 없어요 | `users.home_lat DECIMAL(9,6)` · `home_lon DECIMAL(9,6)` 추가 (주소를 좌표로 바꿔 저장, 지도 🏠 · 도보 시간 · 길찾기 출발점) |
-| 16 | 지운 알림을 표시할 칸이 없어요 | 줄을 지우면 칸은 필요 없어요. 기록을 남기려면 `notifications.deleted_at DATETIME NULL` 추가 |
+| 6 | ✅ 메모 기능이 생겼는데 DB에 표가 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): 위 [12번](#12-메모-)의 `memos` 표 추가 |
+| 7 | ✅ 프로필 사진 · 한 줄 소개 칸이 DB에 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `users.bio VARCHAR(30)`, `users.avatar_file_id`(→ `uploaded_files`), `avatar_emoji`, `avatar_color` 추가 |
+| 8 | ✅ 지도 즐겨찾기 · 칩 설정을 둘 곳이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `place_favorites(user_id, place_id, created_at)` 표 + `user_settings.map_categories JSON`(보일 종류 · 직접 검색어) |
+| 9 | ✅ `place_categories` 기본 데이터가 4개뿐이에요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): 카페 · 병원 · 헬스장 · 은행 · 미용실 · 다이소 · 공원 · 식당 · 반찬가게 · 세탁소 · 주민센터 추가 (+ `icon` 칸) |
+| 10 | ✅ 경고를 확인했는지 남길 칸이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `user_sanctions.seen_at DATETIME NULL` 추가 (경고 창 "확인했어요") |
+| 11 | ✅ 일정 카테고리를 둘 곳이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `event_categories(id, user_id, name, ico, sort_order)` · `event_presets(id, user_id, category_id, title)` 표 + `events.category_id` (NULL = 미분류) |
+| 12 | ✅ 동네 인증 시각을 둘 곳이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `users.region_verified_at DATETIME NULL` 추가 (위 [동네 인증](#동네-인증)) |
+| 13 | ✅ 고정 지출 태그 칸이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `bill_items.tag ENUM('공과금','통신','구독','관리비','기타') NOT NULL DEFAULT '공과금'` 추가 (위 [4번](#4-월세--고정-지출-)) |
+| 14 | ✅ AI "사용 방법" 주제가 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `ai_topics`에 `('guide', '사용 방법', '기능이 어디 있는지 알려드려요', photo 0)` 추가, `ai_messages.card_type`에 `LINK` 허용 (위 [8번](#8-ai-)) |
+| 15 | ✅ 우리 집 좌표를 둘 곳이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `users.home_lat DECIMAL(9,6)` · `home_lon DECIMAL(9,6)` 추가 (주소를 좌표로 바꿔 저장, 지도 🏠 · 도보 시간 · 길찾기 출발점) |
+| 16 | ✅ 지운 알림을 표시할 칸이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): 줄을 지우면 칸은 필요 없어요. 기록을 남기려면 `notifications.deleted_at DATETIME NULL` 추가 |
+| 17 | 기념일(`anniv`) · 매년 반복(`yearly`) 칸이 없어요 | `events.is_anniv TINYINT(1) NOT NULL DEFAULT 0`, `events.is_yearly TINYINT(1) NOT NULL DEFAULT 0` 추가 (`db/migrations/20261101_event_anniversary.sql`) |
 
 ## 프론트에서 서버를 붙이는 순서 (예: 일정)
 
@@ -508,6 +540,8 @@
 | `zip-ai-chat` | 홈 AI 대화 (최근 40개) | `features/ai/store.ts` | 8번 |
 | `zip-map` | 지도 칩에 보일 종류 · 직접 검색어 · 즐겨찾기 | `features/map/store.ts` | 9번 |
 | `zip-memos` | 메모 | `features/memo/store.ts` | 12번 |
+| `zip-housing-survey` | 처음 로그인 설문(생년월일 · 주소 · 월세/전세 · 보증금 · 계약금 · 대출 · 관리비 · 수입) 답변 | `features/onboarding/store.ts` | 2번 (설정, ⚠️ 저장할 칸 정해야 함) |
+| `zip-support` | 고객센터 문의 · 답변 | `features/support/store.ts` | 13번 |
 | `zip-profile` | 프로필 사진 · 캐릭터 · 배경 색 · 한 줄 소개 | `features/profile/store.ts` | 1번 (프로필 꾸미기) |
 | `zip-home-noti-closed` | 홈 알림 회전창에서 오늘 닫은 알림 | `features/life/components/HomePhotoCard.tsx` | (서버 필요 없음) |
 | `zipban-records` · `zipban-warn-seen` | 정지 · 경고 기록, 확인한 경고 횟수 (데이터 초기화로 안 지워지게 `zip-`로 시작하지 않음) | `features/moderation` | 11번 |

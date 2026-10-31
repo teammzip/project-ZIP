@@ -226,6 +226,8 @@ CREATE TABLE IF NOT EXISTS `events` (
   `category_id` BIGINT UNSIGNED NULL COMMENT '일정 카테고리 번호 — NULL은 미분류',
   `is_done` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '할 일 완료 여부',
   `done_at` DATETIME NULL COMMENT '완료 일시 — 완료 해제 시 NULL',
+  `is_anniv` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '기념일 여부 — 1이면 완료 체크 없이 D-day로 표시',
+  `is_yearly` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '매년 반복 여부 — 기념일일 때만 사용',
   CONSTRAINT `fk_events_category_id` FOREIGN KEY (`category_id`) REFERENCES `event_categories` (`id`) ON DELETE SET NULL,
   PRIMARY KEY (`id`),
   KEY `idx_events_user_id_event_date` (`user_id`, `event_date`),

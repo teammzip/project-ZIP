@@ -26,8 +26,9 @@ npm run lint     # 코드 검사
 | `/signup` · `/find#id` · `/find#pw` | 회원가입 · 아이디 찾기 · 비밀번호 찾기 |
 | `/terms` · `/privacy` | 이용약관 · 개인정보 처리방침 |
 | `/` | 홈 |
-| `/photo` · `/ai` · `/map` · `/community` | 사진 · AI · 동네 · 커뮤니티 |
-| `/my/calendar` · `/my/budget` · `/my/memo` · `/my/noti` · `/my/settings` | 마이페이지: 일정(할 일 포함) · 가계부 · 메모장 · 알림 · 내 정보(프로필 · 로그인 방식 · 설정) |
+| `/ai` · `/map` · `/community` | AI(사진 첨부 상담 포함) · 동네 · 커뮤니티. `/photo` 는 `/ai` 로 이동 |
+| `/my/calendar` · `/my/budget` · `/my/memo` · `/my/noti` · `/my/settings` | 마이페이지: 일정(할 일 · 기념일 포함) · 가계부(수입 · 고정 지출 · 기타 지출) · 메모장 · 알림 · 내 정보(프로필 · 로그인 방식 · 설정) |
+| `/my/settings/support` | 고객센터: 자주 묻는 질문 · 1대1 문의하기 · 내 문의 내역 (관리자는 `/admin`에서 답변) |
 | `/admin` | 관리자 화면: 회원 정지·경고, 게시글 관리 (관리자 계정만) |
 | `/suspended` | 이용 정지 안내 (정지된 계정은 앱 대신 이 화면만). `?demo` 를 붙이면 예시 |
 | 아무 화면 + `?demo=warn` | 경고 안내 창 예시 (실제로는 확인 안 한 경고가 있을 때 한 번 뜸) |

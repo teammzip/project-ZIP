@@ -20,6 +20,8 @@ export type User = {
   status?: 'ACTIVE' | 'SUSPENDED'
   /** 약관·개인정보 수집에 동의한 시각 (ISO). 소셜 로그인으로 처음 들어온 사람은 null → 동의 화면(/welcome)으로 보냄 */
   agreedAt?: string | null
+  /** 가입 후 처음 로그인이면 true → 앱이 "우리 집 설문" 창을 한 번 띄움. 서버는 users.last_login_at 이 NULL 이었는지로 판단 */
+  firstLogin?: boolean
 }
 
 /** POST /auth/login — loginId 는 아이디 또는 이메일 */
