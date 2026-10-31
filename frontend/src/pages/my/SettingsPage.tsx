@@ -8,6 +8,8 @@ import { LegalLinks } from '@/features/legal'
 import { BudgetSummaryCard, LifeInfoForm, LifeStats, NotiSwitch, RegionVerifyDialog, useLifeStore, useLifeSummary, useRegionVerify } from '@/features/life'
 import { useMapStore } from '@/features/map'
 import { useMemoStore } from '@/features/memo'
+import { useHousingSurveyStore } from '@/features/onboarding'
+import { useAge } from '@/lib/useAge'
 import { ProfileEditor, ProfileHero, useProfileStore } from '@/features/profile'
 import { getErrorMessage } from '@/lib/apiClient'
 import { remove } from '@/lib/storage'
@@ -39,6 +41,9 @@ type Sheet = 'profile' | 'life' | 'verify' | 'password' | 'reset' | 'withdraw' |
  * 프로필 편집 · 동네 인증 · 생활 정보 · 비밀번호 변경은 창으로 열고, 로그아웃 · 초기화 · 탈퇴는 카드 밖 맨 아래 작은 글씨 */
 export function SettingsPage() {
   const user = useAuthStore((s) => s.user)
+  const survey = useHousingSurveyStore((s) => s.survey)
+  const birth = survey?.userId === user?.id ? survey?.birth ?? '' : ''
+  const { age } = useAge(birth)
   const { region, verified, left } = useRegionVerify()
   const postCount = useCommunityStore((s) => s.posts.filter((p) => p.mine).length)
   const lifeSummary = useLifeSummary()
@@ -76,6 +81,12 @@ export function SettingsPage() {
 
         <Card title="계정 · 설정">
           <ul className={styles.list}>
+            {age !== null && <li>
+              <div className={styles.row}>
+                <span className={styles.ico}>🎂</span>
+                <span className={styles.grow}>만 {age}세<small>생년월일 {birth} · 생일에 자동 갱신</small></span>
+              </div>
+            </li>}
             <li>
               <LoginMethod />
             </li>

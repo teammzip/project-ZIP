@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { monthKeyOf } from '@/lib/date'
+import { useAuthStore } from '@/features/auth/store/authStore'
 import { seedBills, seedEvents, seedIncomes, seedSpends, todosToEvents } from './data/seed'
 import { UNCATEGORIZED, defaultCategories } from './data/presets'
 import type { Bill, CalEvent, CustomPreset, EventCategory, LifeSettings, MoneyRecord, RegionVerify } from './types'
@@ -157,8 +158,12 @@ export const useLifeStore = create<LifeData & LifeActions>()(
 
       markRead: (ids) => set((s) => ({ notiRead: { ...s.notiRead, ...Object.fromEntries(ids.map((id) => [id, true])) } })),
       deleteNotis: (ids) => set((s) => ({ notiDeleted: { ...s.notiDeleted, ...Object.fromEntries(ids.map((id) => [id, true])) } })),
-      saveSettings: (settings) => set({ settings }),
-      verifyRegion: (region) => set((s) => ({ settings: { ...s.settings, region }, regionVerify: { region, at: Date.now() } })),
+      saveSettings: (settings) => set((s) => ({ settings, regionVerify: settings.region === s.settings.region ? s.regionVerify : null })),
+      verifyRegion: (region) => {
+        const userId = useAuthStore.getState().user?.id
+        if (!userId || !region) return
+        set((s) => ({ settings: { ...s.settings, region }, regionVerify: { region, at: Date.now(), userId } }))
+      },
       reset: () => set(initial()),
     }),
     {

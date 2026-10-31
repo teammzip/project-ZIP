@@ -40,7 +40,7 @@ export type IncomeType = 'fixed' | 'other'
 export type MoneyRecord = { id: number; date: string; cat: string; amount: number; memo: string; incomeType?: IncomeType }
 
 /** 동네 인증: 어느 동네를 언제 인증했는지 (VERIFY_DAYS 일 동안 유효, 우리 동네를 바꾸면 다시 인증) */
-export type RegionVerify = { region: string; at: number }
+export type RegionVerify = { region: string; at: number; userId: string }
 
 export type LifeSettings = {
   /** 우리 동네 (커뮤니티·지도 범위) 예: '서울 마포구' */

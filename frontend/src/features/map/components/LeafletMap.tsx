@@ -50,7 +50,6 @@ export function LeafletMap({ places, selectedId, onSelect, focus, fitKey, bottom
     }).setView([latest.current.viewport?.lat ?? HOME.lat, latest.current.viewport?.lon ?? HOME.lon], latest.current.viewport?.zoom ?? 16)
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 }).addTo(m)
     if (!initialReadOnly) L.control.zoom({ position: 'bottomright', zoomInTitle: '크게', zoomOutTitle: '작게' }).addTo(m)
-    if (!initialReadOnly) L.marker([HOME.lat, HOME.lon], { icon: L.divIcon({ className: 'zip-home', html: '<span>🏠</span>', iconSize: [34, 34] }), interactive: false, zIndexOffset: -100 }).addTo(m)
     pins.current = L.layerGroup().addTo(m)
     map.current = m
     const ro = new ResizeObserver(() => {

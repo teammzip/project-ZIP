@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { RegionVerifyDialog, useRegionVerify } from '@/features/life'
+import { RegionAccessGate, RegionVerifyDialog, useRegionVerify } from '@/features/life'
 import { banMessage, useActiveBan } from '@/features/moderation'
 import { cx } from '@/lib/cx'
 import { relTime } from '@/lib/date'
@@ -38,7 +38,11 @@ const SCOPES: Array<{ value: Scope; label: string }> = [
  * - PC 오른쪽: 글쓰기 · 지금 뜨는 동네 이야기 1~5위 · 인기 검색어 / 모바일: 떠 있는 + 글쓰기
  * - 글 상세는 ?post=id, 글쓰기 · 수정은 전용 화면(PostComposer). 이용 정지 중이면 쓰기 동작을 막음
  * - 글쓰기 · 댓글 · 공감은 동네 인증을 한 사람만 (안 했으면 인증 창을 띄움). 읽기는 누구나 */
-export function CommunityBoard({ region, author, uid }: Props) {
+export function CommunityBoard(props: Props) {
+  return <RegionAccessGate><VerifiedCommunityBoard {...props} /></RegionAccessGate>
+}
+
+function VerifiedCommunityBoard({ region, author, uid }: Props) {
   const { posts, addPost } = useCommunityStore()
   const ban = useActiveBan(author, uid)
   const [params, setParams] = useSearchParams()

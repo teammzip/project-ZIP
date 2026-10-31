@@ -1,10 +1,13 @@
 /* 저장된 데이터로 계산하는 값들 (다음 월세일, 알림 목록, 지출 구성 등).
  * 여러 화면(홈·알림·캘린더·가계부·AI 대화)이 같은 계산을 쓰도록 여기에 모아 둠. */
 import { useShallow } from 'zustand/react/shallow'
+import { useEffect, useState } from 'react'
+import { useAuthStore } from '@/features/auth/store/authStore'
 import { dayDiff, fmt, monthDay, monthKeyOf, todayStr } from '@/lib/date'
 import { TRASH, trashIco } from './data/catalog'
 import { useLifeStore } from './store'
 import type { Bill, CalEvent, LifeSettings, MoneyRecord, TrashEvent } from './types'
+import { regionVerification } from './regionVerification'
 
 export const sortEvents = <T extends { date: string; time: string }>(list: T[]) => [...list].sort((a, b) => (a.date + (a.time || '99:99')).localeCompare(b.date + (b.time || '99:99')))
 
@@ -160,12 +163,17 @@ export function spendBreakdown(back: number, spends: MoneyRecord[], bills: Bill[
 }
 
 /** 동네 인증 유효 기간 (일) */
-export const VERIFY_DAYS = 30
+export { VERIFY_DAYS } from './regionVerification'
 
 /** 지금 우리 동네가 인증된 상태인지 + 인증한 날 · 남은 날. 우리 동네를 바꾸거나 30일이 지나면 다시 인증 */
 export function useRegionVerify() {
+  const userId = useAuthStore((s) => s.user?.id)
+  const [now, setNow] = useState(Date.now)
   const { region, verify } = useLifeStore(useShallow((s) => ({ region: s.settings.region, verify: s.regionVerify })))
-  const left = verify ? VERIFY_DAYS + dayDiff(fmt(new Date(verify.at))) : 0 // 인증한 날부터 지난 날만큼 줄어듦
-  const verified = !!region && !!verify && verify.region === region && left > 0
-  return { region, verified, at: verified ? verify.at : null, left: verified ? left : 0 }
+  useEffect(() => {
+    const refresh = window.setTimeout(() => setNow(Date.now()), 0)
+    const timer = window.setInterval(() => setNow(Date.now()), 30000)
+    return () => { window.clearTimeout(refresh); window.clearInterval(timer) }
+  }, [verify?.at])
+  return regionVerification(region, verify, userId, now)
 }

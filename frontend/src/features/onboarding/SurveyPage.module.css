@@ -29,6 +29,45 @@
   gap: 14px;
 }
 
+.addressSearch {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+}
+
+.addressResults {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.addressResults button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 8px;
+  border-bottom: 1px solid var(--color-line);
+  text-align: left;
+}
+
+.addressResults button:hover,
+.addressResults button:focus-visible {
+  background: #eaf2ff;
+}
+
+.addressResults span {
+  flex-shrink: 0;
+  color: var(--color-primary);
+  font-size: 12px;
+}
+
 .form label {
   display: grid;
   gap: 6px;
