@@ -21,3 +21,8 @@
 @media (max-width: 420px) {
   .hours { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+@media (max-width: 900px) {
+  .region { margin-top: 2px; }
+  .summary { margin-top: 2px; font-size: 10px; line-height: 1.4; letter-spacing: -0.02em; }
+  .source { padding-top: 2px; font-size: 9px; line-height: 1.2; }
+}

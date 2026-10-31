@@ -250,5 +250,14 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  /* 전체 일정·오늘 할 일이 첫 줄, 오늘 날씨·사진 상담이 둘째 줄을 반씩 씀 */
+  /* 전체 일정·오늘 할 일이 첫 줄, 오늘 날씨·사진 상담이 둘째 줄을 반씩 씀.
+   * 두 줄 카드가 같은 크기가 되도록 줄 높이를 고정 (글이 많은 날씨·사진 카드는 안쪽을 촘촘히 맞춤) */
+  .statGrid {
+    grid-auto-rows: 136px;
+  }
+
+  .stat {
+    min-height: 0;
+    padding: 12px 14px;
+  }
 }

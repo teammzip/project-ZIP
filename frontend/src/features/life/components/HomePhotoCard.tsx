@@ -22,10 +22,11 @@ function readClosed(): string[] {
   return c && c.date === todayStr() && Array.isArray(c.ids) ? c.ids : []
 }
 
-/** 요약 카드 4번째 칸: 사진으로 생활 고민 상담 (다른 요약 카드처럼 색 바탕, 버튼만 흰색) */
+/** 요약 카드 4번째 칸: 사진으로 생활 고민 상담 (다른 요약 카드처럼 색 바탕, 안쪽 버튼 모양만 흰색).
+ * 카드 어디를 눌러도 AI 화면으로 이동 */
 export function HomePhotoCard() {
   return (
-    <article className={cx(home.stat, home.pink, styles.card)} aria-labelledby="home-photo-title">
+    <Link to="/ai" className={cx(home.stat, home.pink, styles.card)} aria-labelledby="home-photo-title">
       <div className={styles.head}>
         <span className={styles.icon} aria-hidden="true">
           <svg viewBox="0 0 24 24">
@@ -35,11 +36,11 @@ export function HomePhotoCard() {
         </span>
         <h3 id="home-photo-title">사진으로 생활 고민을 물어보세요</h3>
       </div>
-      <Link to="/photo" className={styles.cta}>
+      <span className={styles.cta}>
         <span className={styles.pcLabel}>사진 선택하고 상담 시작</span>
         <span className={styles.moLabel}>사진 찍고 상담 시작</span>
-      </Link>
-    </article>
+      </span>
+    </Link>
   )
 }
 
