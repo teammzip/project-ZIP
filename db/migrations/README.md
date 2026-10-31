@@ -1,5 +1,20 @@
 # 2026-10-31 변경 적용
 
+## 적용 순서
+
+- 새 DB: 최신 `../schema.sql`만 실행합니다.
+- 기존 35개 테이블 DB: `20261031_current_project.sql` → `20261031_02_event_anniversaries.sql` 순서로 실행합니다. 파일명 사전순으로 자동 실행하지 않습니다.
+- 첫 번째 마이그레이션까지 적용한 DB: `20261031_02_event_anniversaries.sql`만 실행합니다.
+- 기념일 컬럼까지 적용된 DB: 두 파일 모두 다시 실행하지 않습니다.
+
+기념일 추가 파일은 기존 일정의 두 플래그를 0으로 초기화하며, 일정·금액·완료 기록을 삭제하지 않습니다. 적용 후 `SHOW CREATE TABLE events`로 `is_anniversary`, `repeat_yearly`, `ck_events_anniversary_flags`를 확인합니다. `(0,0)`, `(1,0)`, `(1,1)`은 허용하고 `(0,1)`은 거부해야 합니다. 실제 MySQL 실행 검증은 별도 수행해야 합니다.
+
+```powershell
+mysql -u root -p --default-character-set=utf8mb4 --execute="source db/migrations/20261031_02_event_anniversaries.sql"
+```
+
+## 첫 번째 마이그레이션
+
 대상은 기존 schema.sql의 35개 테이블 설계입니다. 새 DB는 ../schema.sql만 실행합니다. 수정된 React 코드나 브라우저 localStorage를 이 SQL이 가져오지는 않습니다.
 
 1. 기존 DB를 백업하고 애플리케이션의 쓰기를 중단합니다.

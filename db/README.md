@@ -6,9 +6,12 @@ Git 공개 전 확인 사항과 검토 범위는 [보안 검토 문서](SECURITY
 
 ## 1. 이번에 반영한 변경
 
+추가 검토 기준 커밋: `2fa08f5`. 기념일·매년 반복을 events에 반영했습니다. 현재 위치 지도와 화면 배치 변경은 영구 저장 데이터 추가가 없어 기존 설계를 유지합니다. 테이블 수는 41개 그대로입니다.
+
 | 기능 | DB 반영 |
 |---|---|
 | 일정에 할 일 통합 | todos 제거, events.is_done·done_at 추가 |
+| 기념일·매년 반복 | events.is_anniversary·repeat_yearly 추가, 원본 한 행을 연도별로 표시 |
 | 일정 카테고리·항목 버튼 | event_categories·event_presets, events.category_id |
 | 메모·홈 메모 순서 | memos, user_settings.home_memo_ids |
 | 프로필 사진·캐릭터·소개 | user_profiles (회원당 한 행) |
@@ -38,6 +41,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 ### 기존 DB
 
+기념일 기능까지 반영하려면 기존 변경 파일 이후 [기념일 추가 마이그레이션](migrations/20261031_02_event_anniversaries.sql)을 적용합니다. 이미 첫 번째 파일을 적용했다면 기념일 파일만 실행하세요. 정확한 순서는 [마이그레이션 안내](migrations/README.md)를 따릅니다.
+
 기존 2026-10-21 설계(35개 테이블)를 적용했다면 [마이그레이션](migrations/20261031_current_project.sql)을 사용합니다. [적용 및 확인 안내](migrations/README.md)를 먼저 확인하세요. 데이터 백업 및 쓰기 중단 후 **한 번만** 적용합니다. CREATE TABLE IF NOT EXISTS는 기존 컬럼을 변경하지 않으며, MySQL DDL은 파일 전체를 자동 롤백하지 않습니다.
 
 기존 todos는 events로 이전하고 todos_legacy_20261031로 이름을 바꿔 보관합니다. 따라서 기존 DB에는 **현행 41개 + 보관용 1개** 테이블이 있습니다. 원본에 일정 날짜가 없으므로 등록 날짜를 사용하며, 이는 실제 예정일을 복원한 값이 아닙니다. 완료 여부·완료 시각은 보존합니다.
@@ -52,6 +57,13 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 ### 일정과 카테고리
 
+- API `anniv` → `is_anniversary`, `yearly` → `repeat_yearly`로 변환합니다. 생략하면 false입니다. 반복은 기념일에만 허용하고 DB CHECK로 유효한 0/1 조합을 검사합니다.
+- 기념일도 events에 원본 한 행으로 저장합니다. 현재 화면은 제목에 `🎉 `를 붙여 보내므로 서버가 중복 추가하지 않습니다. 제목으로 기념일 여부를 판정하지 않습니다.
+- 기념일은 완료 조작과 남은 할 일 집계에서 제외합니다. 서버 생성 시 is_done=0, done_at=NULL을 사용하고 기념일 완료 요청은 거부합니다. 이 규칙은 위 플래그 CHECK가 아니라 API에서 검사합니다.
+- 매년 반복 표시는 원본 event_date의 연도부터 시작합니다. 2월 29일은 평년에 2월 28일로 표시하지만 원본 날짜를 덮어쓰지 않습니다. 기간 조회 시 event_date 범위 조건만 사용하면 과거 원본을 놓치므로 반복 기념일 원본도 포함해야 합니다.
+- 현재 프론트가 연도별 표시를 펼치므로 API는 원본을 반환하고 이중 확장을 피합니다. `12@2027`은 표시용 ID이며 DB BIGINT ID가 아닙니다. 수정·삭제는 원본 ID와 소유권을 검증해 원본 전체에 적용합니다. 특정 연도만 예외 처리하는 기능은 현재 범위에 없습니다.
+- 반복 기념일 알림은 원본 ID와 발생 날짜를 함께 구분해 읽음·삭제 상태가 다른 연도로 번지지 않게 합니다. notifications.ref_id에는 표시용 문자열 대신 원본 ID를 사용합니다.
+
 - 카테고리는 사용자별로 관리합니다. 같은 회원 안에서 이름은 중복되지 않습니다. system_key=UNCATEGORIZED인 행은 미분류이며 서버에서 이름 변경·삭제를 막습니다.
 - events.category_id가 NULL이면 API의 category는 미분류입니다. event_presets는 미분류를 포함한 실제 카테고리 행에 연결합니다.
 - API가 보내는 category 이름은 로그인한 회원의 카테고리 ID로 변환합니다. 다른 회원의 카테고리·파일·메모를 연결하지 않도록 서버에서 검사합니다.
@@ -62,6 +74,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 - 기념일은 is_anniv=1인 일정입니다. 제목에는 API가 붙이는 "🎉 " 접두어가 포함될 수 있고, is_yearly=1이면 한 행만 저장하고 화면에서 매년 날짜로 펼칩니다. 기념일은 완료 처리 대상이 아니며 남은 일 수에서 제외합니다.
 
 ### 메모·지도·프로필
+
+- 내 주변 지도에서 얻은 현재 위치는 현재 코드처럼 화면 메모리에서만 사용합니다. users.home_lat/home_lon은 주소 기반 집 위치이므로 현재 GPS 위치로 덮어쓰지 않습니다. 위치 이력 테이블도 추가하지 않습니다.
 
 - 메모 items는 [{text,done}] 배열이며 본문 최대 5000자, 항목 text 최대 100자는 서버가 검사합니다. body를 생략한 POST는 빈 문자열로 저장합니다.
 - home_memo_ids는 **문자열 ID 배열**, 최대 3개이며 순서를 보존합니다. NULL은 자동 선택, []는 명시적으로 선택한 메모 없음입니다. 소유권 검사와 삭제된 메모 ID 정리는 서버 책임입니다.
@@ -399,8 +413,10 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `category_id` | BIGINT UNSIGNED | 허용 | — | 일정 카테고리 번호 — NULL은 미분류 |
 | `is_done` | TINYINT(1) | 필수 | 0 | 할 일 완료 여부 |
 | `done_at` | DATETIME | 허용 | — | 완료 일시 — 완료 해제 시 NULL |
-| `is_anniv` | TINYINT(1) | 필수 | 0 | 기념일 여부 — 1이면 완료 체크 없이 D-day로 표시 |
-| `is_yearly` | TINYINT(1) | 필수 | 0 | 매년 반복 여부 — 기념일일 때만 사용 |
+| `is_anniversary` | TINYINT(1) | 필수 | 0 | 기념일 여부 — API anniv |
+| `repeat_yearly` | TINYINT(1) | 필수 | 0 | 매년 반복 여부 — API yearly |
+
+- CHECK `ck_events_anniversary_flags`: 두 값은 0/1이며, 반복이면 기념일이어야 합니다.
 
 - 외래키 `category_id` → `event_categories`.`id`: SET NULL
 - 기본키: `id`
