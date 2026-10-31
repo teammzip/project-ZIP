@@ -1,66 +1,4 @@
-/* 홈: 사진 상담 카드 · 알림 칸 (시안 dashboard.css 의 .photo-card · .home-noti) */
-
-/* 사진 상담: 요약 카드(.stat .pink)의 색 바탕 · 무늬를 그대로 쓰고, 버튼만 흰색 */
-.card {
-  gap: 12px;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.head {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.head h3 {
-  font-size: 14px;
-  line-height: 1.4;
-  color: #fff;
-}
-
-.icon {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.25);
-  color: #fff;
-}
-
-.icon svg {
-  width: 22px;
-  height: 22px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.cta {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 100%;
-  margin-top: auto;
-  padding: 9px 10px;
-  border-radius: var(--radius-sm);
-  background: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--color-pink);
-  text-align: center;
-  text-decoration: none;
-}
-
-.moLabel {
-  display: none;
-}
+/* 홈: 알림 칸 (시안 dashboard.css 의 .home-noti) */
 
 /* 알림 칸: 세로로 쌓이고 칸 높이를 나눠 채움 */
 .noti {
@@ -245,39 +183,5 @@
     display: none;
   }
 
-  .pcLabel {
-    display: none;
-  }
-
-  .moLabel {
-    display: inline;
-  }
 }
 
-/* 모바일: 홈 카드 높이가 고정이라 안쪽을 조금 줄임 */
-@media (max-width: 900px) {
-  .card {
-    gap: 8px;
-  }
-
-  .head h3 {
-    font-size: 13px;
-    line-height: 1.35;
-  }
-
-  .icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-  }
-
-  .icon svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .cta {
-    padding: 7px 8px;
-    font-size: 12px;
-  }
-}

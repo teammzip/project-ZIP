@@ -122,10 +122,47 @@
 
 .mobIcons,
 .bottomNav,
-.aiFab,
 .menuBackdrop,
 .menuPanel {
   display: none;
+}
+
+/* AI 도우미 버튼: 화면 오른쪽 아래에 떠 있고 누르면 AI 화면으로 (AI · 동네 화면에서는 안 나옴).
+ * PC 는 오른쪽 아래 모서리, 모바일은 아래 메뉴 바로 위 (아래 모바일 규칙에서 위치만 바꿈) */
+.aiFab {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 21;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(47, 128, 237, 0.45);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.aiFab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(47, 128, 237, 0.55);
+}
+
+.aiFab svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.aiFab text {
+  fill: currentColor;
+  stroke: none;
+  font-size: 7px;
+  font-weight: 800;
 }
 
 /* ---------- 모바일 (900px 이하) ---------- */
@@ -286,21 +323,6 @@
     background: var(--color-primary);
     color: #fff;
     box-shadow: 0 4px 14px rgba(47, 128, 237, 0.45);
-  }
-
-  .aiFab svg {
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .aiFab text {
-    fill: currentColor;
-    stroke: none;
-    font-size: 7px;
-    font-weight: 800;
   }
 
   /* ☰ 전체 메뉴 */

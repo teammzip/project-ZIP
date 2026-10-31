@@ -10,7 +10,7 @@ import common from '@/styles/common.module.css'
 import { DONUT_COLORS } from '../data/catalog'
 import { spendBreakdown } from '../derive'
 import { useLifeStore } from '../store'
-import { HomePhotoCard } from './HomePhotoCard'
+import { HomeAnnivCard } from './HomeAnnivCard'
 import styles from './home.module.css'
 
 const TodayScheduleDialog = lazy(() => import('./CalendarBoard').then((module) => ({ default: module.DayDetail })))
@@ -22,7 +22,8 @@ export function LifeStatGrid() {
   const [todayOpen, setTodayOpen] = useState(false)
   const todayButton = useRef<HTMLButtonElement>(null)
   const addEvent = useLifeStore((s) => s.addEvent)
-  const events = useLifeStore((s) => s.events)
+  const allEvents = useLifeStore((s) => s.events)
+  const events = allEvents.filter((e) => !e.anniv) // 기념일은 끝낼 일이 아니라서 남은 일 개수에서 뺌
 
   const today = todayStr()
   const doneCount = events.filter((e) => e.done).length
@@ -74,7 +75,7 @@ export function LifeStatGrid() {
         <Suspense fallback={<div className={cx(styles.stat, styles.purple)} role="status"><span className={styles.statLabel}>오늘 날씨</span><span className={styles.statSub}>날씨를 준비하는 중…</span></div>}>
           <WeatherCard />
         </Suspense>
-        <HomePhotoCard />
+        <HomeAnnivCard />
       </section>
       {todayOpen && (
         <Suspense fallback={<p role="status">오늘 일정을 불러오는 중이에요.</p>}>

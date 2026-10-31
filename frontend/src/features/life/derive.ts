@@ -24,6 +24,41 @@ export function trashEventsBetween(start: string, end: string): TrashEvent[] {
   return out
 }
 
+/** 기념일이 그 해(year)에 오는 날짜. 2월 29일 기념일은 평년엔 2월 28일 */
+function annivDateIn(base: string, year: number) {
+  const md = base.slice(5)
+  if (md === '02-29' && new Date(year, 1, 29).getMonth() !== 1) return `${year}-02-28`
+  return `${year}-${md}`
+}
+
+/** 매년 반복 기념일을 fromYear~toYear 해마다 달력용 일정으로 펼침 (원래 해는 그대로, 다른 해는 "id@해" 로).
+ * 저장은 한 번만 하고 보여 줄 때만 펼침 */
+export function expandAnniversaries(events: CalEvent[], fromYear: number, toYear: number): CalEvent[] {
+  const extra: CalEvent[] = []
+  for (const ev of events) {
+    if (!ev.anniv || !ev.yearly) continue
+    const first = Number(ev.date.slice(0, 4))
+    for (let y = Math.max(fromYear, first); y <= toYear; y++) {
+      if (y === first) continue
+      extra.push({ ...ev, id: `${ev.id}@${y}`, date: annivDateIn(ev.date, y) })
+    }
+  }
+  return extra.length ? [...events, ...extra] : events
+}
+
+/** 오늘 이후 가장 가까운 기념일들 (오늘 포함, 가까운 순). 매년 반복은 올해 · 내년 중 다가오는 날 */
+export function upcomingAnniversaries(events: CalEvent[]) {
+  const year = new Date().getFullYear()
+  const out: Array<{ ev: CalEvent; date: string; diff: number }> = []
+  for (const ev of events) {
+    if (!ev.anniv) continue
+    const dates = ev.yearly ? [annivDateIn(ev.date, year), annivDateIn(ev.date, year + 1)] : [ev.date]
+    const date = dates.find((d) => dayDiff(d) >= 0)
+    if (date) out.push({ ev, date, diff: dayDiff(date) })
+  }
+  return out.sort((a, b) => a.diff - b.diff)
+}
+
 /** 그 날이 속한 주 (월요일 ~ 일요일) */
 export function weekRange(d: Date) {
   const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -59,13 +94,14 @@ export type Noti = { id: string; ico: string; t: string; s: string; time: string
 /** 알림 목록: 3일 안의 일정(끝낸 건 빼고) · 쓰레기 배출 + 월세 + 예시 알림 */
 export function buildNotis(events: CalEvent[], settings: LifeSettings): Noti[] {
   const list: Noti[] = []
-  const all = [...events, ...trashEventsBetween(todayStr(), addDays(3))]
+  const year = new Date().getFullYear()
+  const all = [...expandAnniversaries(events, year, year + 1), ...trashEventsBetween(todayStr(), addDays(3))]
   for (const ev of sortEvents(all)) {
     const diff = dayDiff(ev.date)
-    if (diff < 0 || diff > 3 || (!isTrash(ev) && ev.done)) continue
+    if (diff < 0 || diff > 3 || (!isTrash(ev) && !ev.anniv && ev.done)) continue
     list.push({
       id: isTrash(ev) ? ev.id : `ev-${ev.id}`,
-      ico: isTrash(ev) ? trashIco(ev.title) : '📌',
+      ico: isTrash(ev) ? trashIco(ev.title) : ev.anniv ? '🎉' : '📌',
       t: ev.title,
       s: `${monthDay(ev.date)} ${ev.time || '종일'}${isTrash(ev) ? ` · ${ev.detail}` : ''}`,
       time: diff === 0 ? '오늘' : `D-${diff}`,

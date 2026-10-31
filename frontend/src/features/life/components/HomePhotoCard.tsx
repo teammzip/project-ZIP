@@ -6,11 +6,9 @@ import { todayStr } from '@/lib/date'
 import { readJSON, writeJSON } from '@/lib/storage'
 import { useNotis } from '../derive'
 import { useLifeStore } from '../store'
-import home from './home.module.css'
 import styles from './HomePhotoCard.module.css'
 
-/* 홈 카드 두 개 (팀장님 시안)
- * - HomePhotoCard: 요약 카드 4번째 칸, 사진으로 생활 고민 상담
+/* 홈 알림 카드 (팀장님 시안)
  * - HomeNotiCard: 맨 위 줄 메모 옆 알림 칸 (components/home-noti.js)
  *   "닫기"를 누른 알림은 오늘 하루 안 보임(localStorage 'zip-home-noti-closed'). 다음 날이면 다시 나옴 */
 const KEY = 'zip-home-noti-closed'
@@ -20,28 +18,6 @@ const MAX_SHOWN = 3
 function readClosed(): string[] {
   const c = readJSON<{ date: string; ids: string[] }>(KEY)
   return c && c.date === todayStr() && Array.isArray(c.ids) ? c.ids : []
-}
-
-/** 요약 카드 4번째 칸: 사진으로 생활 고민 상담 (다른 요약 카드처럼 색 바탕, 안쪽 버튼 모양만 흰색).
- * 카드 어디를 눌러도 AI 화면으로 이동 */
-export function HomePhotoCard() {
-  return (
-    <Link to="/ai" className={cx(home.stat, home.pink, styles.card)} aria-labelledby="home-photo-title">
-      <div className={styles.head}>
-        <span className={styles.icon} aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3l2-3h4l2 3h3a2 2 0 0 1 2 2z" />
-            <circle cx="12" cy="13" r="4" />
-          </svg>
-        </span>
-        <h3 id="home-photo-title">사진으로 생활 고민을 물어보세요</h3>
-      </div>
-      <span className={styles.cta}>
-        <span className={styles.pcLabel}>사진 선택하고 상담 시작</span>
-        <span className={styles.moLabel}>사진 찍고 상담 시작</span>
-      </span>
-    </Link>
-  )
 }
 
 /** 메모 옆 알림 칸: 알림이 세로로 쌓여 있고, 맨 위부터 "닫기"를 누르면 옆으로 날아가며 아래 알림이 올라옴.

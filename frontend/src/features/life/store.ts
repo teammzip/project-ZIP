@@ -105,6 +105,9 @@ function moveCategory(s: LifeData, from: string, to: string, extra: Partial<Life
   }
 }
 
+/** 반복 기념일 표시용 id("12@2027")에서 원본 id 만 */
+const baseId = (id: CalEvent['id']) => String(id).split('@')[0]
+
 export const useLifeStore = create<LifeData & LifeActions>()(
   persist(
     (set, get) => ({
@@ -117,9 +120,10 @@ export const useLifeStore = create<LifeData & LifeActions>()(
       setRentPaid: (key, paid) => set((s) => ({ rentPaid: { ...s.rentPaid, [key]: paid } })),
 
       addEvent: (ev) => set((s) => ({ events: [...s.events, { done: false, ...ev, id: newId() }] })),
-      toggleEvent: (id, done) => set((s) => ({ events: s.events.map((e) => (e.id === id ? { ...e, done } : e)) })),
-      updateEvent: (ev) => set((s) => ({ events: s.events.map((e) => (e.id === ev.id ? ev : e)) })),
-      removeEvent: (id) => set((s) => ({ events: s.events.filter((e) => e.id !== id) })),
+      // 매년 반복 기념일은 달력에 "12@2027" 같은 id 로도 보이는데, 고치거나 지우면 원본 하나가 바뀜
+      toggleEvent: (id, done) => set((s) => ({ events: s.events.map((e) => (String(e.id) === baseId(id) ? { ...e, done } : e)) })),
+      updateEvent: (ev) => set((s) => ({ events: s.events.map((e) => (String(e.id) === baseId(ev.id) ? { ...ev, id: e.id } : e)) })),
+      removeEvent: (id) => set((s) => ({ events: s.events.filter((e) => String(e.id) !== baseId(id)) })),
 
       addIncome: (r) => set((s) => ({ incomes: [...s.incomes, { ...r, id: newId() }] })),
       removeIncome: (id) => set((s) => ({ incomes: s.incomes.filter((r) => r.id !== id) })),

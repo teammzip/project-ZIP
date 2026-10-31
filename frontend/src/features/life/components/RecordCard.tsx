@@ -23,16 +23,18 @@ type Props = {
   /** 직접 입력 폼의 날짜 (달력에서 고른 날을 따라감) */
   date: string
   onAdd: (title: string, date: string, time: string, category: string) => void
+  /** 기념일 저장 (이름 · 날짜 · 매년 반복) */
+  onAddAnniv: (name: string, date: string, yearly: boolean) => void
 }
 
-type Tab = 'quick' | 'custom'
+type Tab = 'quick' | 'custom' | 'anniv'
 
 /** 일정 기록하기
  * - 탭 두 개: ⚡ 빠른 추가 | ✏️ 직접 입력
  * - 빠른 추가: 단계 표시 → 카테고리 탭(색 = 달력 막대 색, 끝에 ⚙ 편집) → 그 카테고리 항목 타일 → 선택 카드(시간 · 오늘 · 이번 주)
  * - ⚙ 편집: 카테고리 추가 · 이름 변경 · 삭제(그 카테고리의 항목과 일정은 미분류로)
  * - 직접 입력: 일정을 넣으면 고른 카테고리 아래 항목 타일로도 저장. 직접 만든 항목은 수정 · 삭제 */
-export function RecordCard({ picked, onChoose, pickNote, pickTime, onPickTime, onAddToday, onAddWeek, date, onAdd }: Props) {
+export function RecordCard({ picked, onChoose, pickNote, pickTime, onPickTime, onAddToday, onAddWeek, date, onAdd, onAddAnniv }: Props) {
   const { categories, customPresets, addPreset, updatePreset, removePreset } = useLifeStore(
     useShallow((s) => ({ categories: s.categories, customPresets: s.customPresets, addPreset: s.addPreset, updatePreset: s.updatePreset, removePreset: s.removePreset })),
   )
@@ -42,12 +44,15 @@ export function RecordCard({ picked, onChoose, pickNote, pickTime, onPickTime, o
   const [form, setForm] = useState({ title: '', date, time: '', category: UNCATEGORIZED })
   const [editingId, setEditingId] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
+  const [anniv, setAnniv] = useState({ name: '', date, yearly: true })
+  const [annivMsg, setAnnivMsg] = useState('')
 
   // 달력에서 다른 날을 고르면 직접 입력 날짜도 따라감 (렌더 중에 이전 값과 비교 — effect 안에서 setState 하지 않으려고)
   const [lastDate, setLastDate] = useState(date)
   if (lastDate !== date) {
     setLastDate(date)
     setForm((f) => ({ ...f, date }))
+    setAnniv((a) => ({ ...a, date }))
   }
 
   const names = categories.map((c) => c.name)
@@ -60,7 +65,7 @@ export function RecordCard({ picked, onChoose, pickNote, pickTime, onPickTime, o
 
   const switchTab = (t: Tab) => {
     setTab(t)
-    if (t === 'custom') onChoose(null)
+    if (t !== 'quick') onChoose(null)
   }
   const startEdit = (p: CustomPreset) => {
     setEditingId(p.id)
@@ -71,6 +76,15 @@ export function RecordCard({ picked, onChoose, pickNote, pickTime, onPickTime, o
   const stopEdit = () => {
     setEditingId(null)
     setForm((f) => ({ ...f, title: '' }))
+  }
+
+  const submitAnniv = (e: FormEvent) => {
+    e.preventDefault()
+    const name = anniv.name.trim()
+    if (!name || !anniv.date) return
+    onAddAnniv(name, anniv.date, anniv.yearly)
+    setAnniv((a) => ({ ...a, name: '' }))
+    setAnnivMsg(`🎉 "${name}" 기념일을 ${Number(anniv.date.slice(5, 7))}월 ${Number(anniv.date.slice(8))}일에 넣었어요.${anniv.yearly ? ' 매년 달력에 보여요.' : ''}`)
   }
 
   const submit = (e: FormEvent) => {
@@ -106,6 +120,9 @@ export function RecordCard({ picked, onChoose, pickNote, pickTime, onPickTime, o
           </button>
           <button type="button" role="tab" className={cx(cal.recTab, tab === 'custom' && cal.on)} aria-selected={tab === 'custom'} onClick={() => switchTab('custom')}>
             ✏️ 직접 입력
+          </button>
+          <button type="button" role="tab" className={cx(cal.recTab, tab === 'anniv' && cal.on)} aria-selected={tab === 'anniv'} onClick={() => switchTab('anniv')}>
+            🎉 기념일
           </button>
         </div>
       </div>
@@ -220,6 +237,30 @@ export function RecordCard({ picked, onChoose, pickNote, pickTime, onPickTime, o
               </div>
             </div>
           )}
+        </div>
+      ) : tab === 'anniv' ? (
+        <div role="tabpanel">
+          {/* 기념일: 이름 + 날짜 + 매년 반복. 홈 화면에는 가장 가까운 기념일이 보임 */}
+          <form className={cx(common.form, cal.recForm)} onSubmit={submitAnniv}>
+            <label>
+              기념일 이름
+              <input value={anniv.name} onChange={(e) => setAnniv({ ...anniv, name: e.target.value })} maxLength={40} placeholder="예) 엄마 생신, 입주 1주년, 친구 결혼식" required autoFocus />
+            </label>
+            <label>
+              날짜
+              <input type="date" value={anniv.date} onChange={(e) => setAnniv({ ...anniv, date: e.target.value })} required />
+            </label>
+            <label className={cal.yearlyCheck}>
+              <input type="checkbox" checked={anniv.yearly} onChange={(e) => setAnniv({ ...anniv, yearly: e.target.checked })} />
+              매년 반복 (생일 · 기념일처럼 해마다 같은 날)
+            </label>
+            <Button type="submit" block>
+              기념일 추가
+            </Button>
+            <p className={cal.recTip} role="status" aria-live="polite">
+              {annivMsg || '💡 기념일은 달력과 일정 목록에 🎉 로 보이고, 홈 화면에는 다가오는 기념일이 D-day로 나와요.'}
+            </p>
+          </form>
         </div>
       ) : (
         <div role="tabpanel">

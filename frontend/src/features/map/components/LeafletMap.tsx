@@ -14,12 +14,14 @@ type Props = {
   /** 모바일에서 아래 시트가 가리는 높이(px). 지도를 맞출 때 그만큼 위로 */
   bottomInset: number
   className?: string
+  /** 홈 카드처럼 보기만 하는 지도: 끌기 · 확대 · 키보드 조작을 막아 화면 스크롤을 방해하지 않게 함 */
+  readOnly?: boolean
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 /** 움직이는 동네 지도 (Leaflet + OpenStreetMap, 색을 조금 빼서 차분하게). 장소마다 동그란 핀, 고른 곳은 크게 + 이름표. 🏠 = 우리 집 */
-export function LeafletMap({ places, selectedId, onSelect, focus, fitKey, bottomInset, className }: Props) {
+export function LeafletMap({ places, selectedId, onSelect, focus, fitKey, bottomInset, className, readOnly = false }: Props) {
   const el = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
   const pins = useRef<L.LayerGroup | null>(null)
@@ -31,9 +33,13 @@ export function LeafletMap({ places, selectedId, onSelect, focus, fitKey, bottom
   useEffect(() => {
     const box = el.current
     if (!box) return
-    const m = L.map(box, { zoomControl: false, attributionControl: true }).setView([HOME.lat, HOME.lon], 16)
+    const m = L.map(box, {
+      zoomControl: false,
+      attributionControl: true,
+      ...(readOnly ? { dragging: false, touchZoom: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false } : {}),
+    }).setView([HOME.lat, HOME.lon], 16)
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 }).addTo(m)
-    L.control.zoom({ position: 'bottomright', zoomInTitle: '크게', zoomOutTitle: '작게' }).addTo(m)
+    if (!readOnly) L.control.zoom({ position: 'bottomright', zoomInTitle: '크게', zoomOutTitle: '작게' }).addTo(m)
     L.marker([HOME.lat, HOME.lon], { icon: L.divIcon({ className: 'zip-home', html: '<span>🏠</span>', iconSize: [34, 34] }), interactive: false, zIndexOffset: -100 }).addTo(m)
     pins.current = L.layerGroup().addTo(m)
     map.current = m

@@ -1,0 +1,48 @@
+/* 홈 "우리 동네 지도" 카드. 크기는 예전 "AI와 대화" 카드와 같게 (PC 291px · 모바일 378px 높이) */
+.card {
+  display: flex;
+  flex-direction: column;
+  min-height: 291px;
+}
+
+/* 카드 제목줄의 아래 여백은 지도 칸이 대신함 */
+.card > :first-child {
+  margin-bottom: 10px;
+}
+
+.more {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-purple);
+}
+
+.frame {
+  position: relative;
+  flex: 1;
+  min-height: 200px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: #eef0f3;
+}
+
+.loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+/* 지도 위를 덮는 링크 (지도는 보기만 하고, 눌러서 동네 화면으로) */
+.cover {
+  position: absolute;
+  inset: 0;
+  z-index: 500;
+}
+
+@media (max-width: 900px) {
+  .card {
+    min-height: 378px;
+  }
+}
