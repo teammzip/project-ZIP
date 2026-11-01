@@ -8,6 +8,7 @@ import { LegalLinks } from '@/features/legal'
 import { BudgetSummaryCard, LifeInfoForm, LifeStats, NotiSwitch, RegionVerifyDialog, useLifeStore, useLifeSummary, useRegionVerify } from '@/features/life'
 import { useMapStore } from '@/features/map'
 import { useMemoStore } from '@/features/memo'
+import { SanctionHistoryDialog, useMySanctions } from '@/features/moderation'
 import { useLoanStore } from '@/features/loan'
 import { useHousingSurveyStore } from '@/features/onboarding'
 import { useHousingContract } from '@/features/onboarding/useHousingContract'
@@ -37,7 +38,7 @@ const TILES = [
   { to: '/community', ico: '💬', label: '동네 이야기' },
 ]
 
-type Sheet = 'profile' | 'life' | 'verify' | 'password' | 'reset' | 'withdraw' | null
+type Sheet = 'profile' | 'life' | 'verify' | 'password' | 'sanctions' | 'reset' | 'withdraw' | null
 
 /* 내 정보
  * - PC(1100px 이상): 왼쪽 = 프로필 · 수입·지출 카드 / 오른쪽 = 이번 달 요약 · 바로 가기 · 계정·설정
@@ -57,6 +58,8 @@ export function SettingsPage() {
   const [sheet, setSheet] = useState<Sheet>(null)
   const [toast, setToast] = useState('')
   const name = user?.nickname ?? '자취생'
+  // 받은 경고 · 정지가 있으면 계정 · 설정에 내역 줄을 보여 줌
+  const sanctions = useMySanctions(user?.nickname)
   const close = () => setSheet(null)
   const notify = (text: string) => {
     setToast(text)
@@ -131,6 +134,17 @@ export function SettingsPage() {
                 <NotiSwitch onChange={(on) => notify(on ? '알림을 켰어요.' : '알림을 껐어요.')} />
               </label>
             </li>
+            {sanctions && (
+              <li>
+                <button type="button" className={styles.row} onClick={() => setSheet('sanctions')}>
+                  <span className={styles.ico}>⚠️</span>
+                  <span className={styles.grow}>
+                    받은 경고 · 정지 내역<small>경고 {sanctions.warns}회 · 정지 {sanctions.bans}회</small>
+                  </span>
+                  <i className={styles.chev} aria-hidden="true" />
+                </button>
+              </li>
+            )}
           </ul>
           {updateMe.isError && <p className={styles.error}>{getErrorMessage(updateMe.error)}</p>}
         </Card>
@@ -171,6 +185,8 @@ export function SettingsPage() {
           }}
         />
       </Modal>
+
+      <SanctionHistoryDialog nick={user?.nickname} open={sheet === 'sanctions'} onClose={close} />
 
       <RegionVerifyDialog open={sheet === 'verify'} onClose={close} onVerified={() => notify('동네 인증을 마쳤어요.')} />
 
