@@ -1,0 +1,353 @@
+ZIP 백엔드 연동 가이드 (프론트 코드를 읽지 않고도 백엔드를 만들 수 있게)
+====================================================================
+작성일: 2026-11-01
+대상: frontend/src  (코드를 직접 확인하고 정리함)
+함께 볼 문서:
+  - frontend/API.md        API 주소와 요청/응답 모양을 정한 "계약서" (이 문서보다 자세함)
+  - db/schema.sql          DB 표 정의
+  - frontend_구조_설명.txt  폴더 구조 설명
+
+이 문서의 역할
+--------------------------------------------------------------------
+API.md 가 "어떤 주소로 무엇을 주고받나"라면,
+이 문서는 "그 데이터를 화면이 어디서 어떻게 쓰고 있나, 서버가 뭘 대신 해줘야 하나"를
+화면별로 풀어 쓴 지도다.
+읽는 순서: 1번(한눈에 표) -> 2번(id/이름 규칙) -> 3번(기능별 상세) -> 4~6번(주의점)
+
+
+0. 지금 상태 한 줄
+====================================================================
+서버와 DB가 없다. 모든 데이터는 브라우저 localStorage 에 저장된다.
+로그인만 "실제 API(realAuthApi)"와 "가짜 API(mockAuthApi)"가 둘 다 만들어져 있고,
+VITE_USE_MOCK 이 'false' 가 아니면 가짜를 쓴다. 나머지 기능은 아직 서버 호출 코드가 없다.
+-> 백엔드가 생기면 각 기능의 store.ts 가 하던 일을 API 호출로 바꾸면 된다.
+
+
+1. 한눈에 보기: 화면 - 프론트 코드 - 저장 키 - 백엔드 할 일
+====================================================================
+화면(주소)                  프론트 코드 위치                 지금 저장 위치(localStorage)  백엔드(API.md 번호)
+--------------------------  -------------------------------  ----------------------------  --------------------
+로그인/회원가입/찾기        features/auth                    zip-auth, zip-mock-users      1번 (이미 연결됨)
+  /login /signup /find
+소셜 로그인 콜백            pages/auth/OAuthCallbackPage     -                             1번 (소셜)
+  /oauth/callback
+약관 동의(소셜 첫 가입)     features/auth ConsentOnboarding  -                             1번
+  /welcome
+첫 로그인 설문 /onboarding  features/onboarding              zip-housing-survey            API/칸 아직 없음 (5번)
+홈 /                        pages/home -> features/life      (아래 기능들의 합)            2~7번, 9번, 12번
+                            (알림 회전창, 요약, 수입/지출
+                            차트, 날씨 카드), memo(메모),
+                            community(꿀팁), map(지도 카드)
+일정 /my/calendar           features/life CalendarBoard      zip-life                      3번
+가계 /my/budget             features/life MoneyLog 등        zip-life                      5번
+  수입 .../income
+  지출 .../expense (고정지출, 지출기록)
+고정지출(월세/공과금)       features/life FixedExpense       zip-life                      4번
+메모 /my/memo               features/memo                    zip-memos                     12번
+알림 /my/noti               features/life NotiCenter         zip-life(읽음/삭제)           6번
+설정 /my/settings           pages/my/SettingsPage            zip-life, zip-profile         1번, 2번
+문의 /my/settings/support   features/support                 zip-support                   13번
+AI 상담 /ai                 features/ai                      zip-ai-chat                   8번
+동네 지도 /map              features/map, weather            zip-map                       9번
+커뮤니티 /community         features/community              zip-posts                     7번
+관리자 /admin               features/admin                   (zipban-records)              11번
+이용 정지 /suspended        features/moderation              zipban-records                11번
+약관 /terms /privacy        features/legal                   -                             10번
+대출 이자 자동 기록         features/loan                    zip-loan-interest             API 약속 없음 (5번)
+
+
+2. "id"와 "이름"으로 연결되는 방식 (백엔드가 가장 헷갈릴 부분)
+====================================================================
+프론트는 DB id 를 쓰지 않고 이름(문자열)이나 임시 숫자로 연결하는 곳이 많다.
+서버를 붙일 때는 아래처럼 바꿔야 한다.
+
+[2-1] id 의 모양
+  - 프론트 코드의 id: 대부분 숫자 (Date.now() + 난수로 만든 임시 값)
+      예) Bill.id, CalEvent.id, MoneyRecord.id, Memo.id, Post.id
+  - API 약속: DB 의 BIGINT id 를 "문자열"로 준다 ("id": "12")
+  - 일부는 이미 문자열이다: User.id, Inquiry.id, CustomPreset.id, 알림 id
+  -> 서버가 문자열 id 를 주면 프론트가 타입을 string 으로 맞춰서 붙인다.
+     (서버는 항상 문자열로만 주면 된다)
+
+[2-2] 이름(문자열)으로 연결되는 것  -> 서버에서는 id(FK)로 바뀜
+  일정 카테고리   CalEvent.category = '집 관리' 같은 "이름"
+                  서버: events.category_id -> event_categories.id  (NULL = 미분류)
+                  이름을 바꾸면 그 카테고리의 일정/항목 이름도 같이 바뀐다 (프론트 renameCategory)
+                  카테고리를 지우면 일정/항목은 "미분류"로 간다 (deleteCategory)
+  우리 동네       settings.region = '서울 마포구' 같은 "이름"
+                  Post.region 도 이름
+                  서버: users.region_id -> regions.id.  주소에서 구를 찾아 연결, 못 찾으면 null
+  지도 장소 id    "종류:이름" 형태의 문자열 (예: '약국:○○약국') — zip-map 의 favs 에 저장
+                  서버: places.id, 즐겨찾기는 place_favorites
+  글 작성자       Post.author = 닉네임(문자열), Post.mine = 내 글인지(true/false)
+                  서버: 글 응답에 author(닉네임)와 mine 을 계산해서 같이 줘야 함
+  일정 반복 id    기념일이 매년 반복될 때 화면용 id 를 "12@2027" 처럼 만든다.
+                  서버로 보내는 id 는 앞부분 원본 id("12")만 쓴다. 서버는 한 번만 저장하고
+                  yearly=true 로 표시만 하면 된다 (달력에 그 해마다 보이는 건 프론트가 계산).
+
+[2-3] 값 규칙
+  금액      원 단위 정수. 예외: settings.rent(월세)만 "만원 단위". (API.md 0번)
+            온보딩 설문(zip-housing-survey)은 모두 원 단위. 설문 월세가 설정으로 들어갈 때
+            원 -> 만원 변환이 필요하다. (프론트가 처리하지만 서버에 저장할 때 단위를 정해야 함)
+  날짜      'YYYY-MM-DD', 시각 'HH:MM'(빈 문자열 = 종일), 월 'YYYY-MM'
+  시각      Post.ts 는 밀리초(ms). API 약속은 ISO 문자열 -> 서버는 ISO 로 주면 프론트가 변환
+  카테고리  커뮤니티 글 분류는 화면에서 한글('자유','꿀팁','질문','동네'),
+            API/DB 는 영문 코드(TIP, GENERAL 등). 매핑표가 필요하다 (API.md 7번, schema.sql 확인)
+  provider  로그인 방법은 소문자('email','kakao','google','naver')로 내려준다
+
+
+3. 기능별 상세
+====================================================================
+
+[3-1] 로그인 / 회원 (features/auth)  --  API.md 1번, 이미 연결 코드 있음
+--------------------------------------------------------------------
+프론트 파일
+  api/realAuthApi.ts   실제 서버 호출 (아래 주소로 이미 요청함)
+  api/mockAuthApi.ts   가짜 서버 (서버 없을 때만 사용)
+  store/authStore.ts   로그인 토큰과 내 정보 보관 (localStorage 'zip-auth')
+  types.ts             요청/응답 모양 (백엔드와 이야기할 때 기준이 되는 파일)
+  schema.ts            입력 검사 규칙 (서버에서도 똑같이 검사해야 함)
+
+이미 프론트가 호출하는 주소 (백엔드만 만들면 바로 연결됨)
+  POST   /api/auth/signup                    회원가입
+  POST   /api/auth/login                     로그인 (아이디 또는 이메일)
+  POST   /api/auth/logout
+  GET    /api/auth/me                        토큰으로 내 정보
+  PATCH  /api/auth/me                        닉네임 수정 또는 소셜 첫 가입 정보
+  PATCH  /api/auth/me/password               비밀번호 변경
+  DELETE /api/auth/me                        탈퇴
+  POST   /api/auth/phone/send, /phone/verify 휴대폰 인증번호 보내기/확인
+  POST   /api/auth/find-id                   아이디 찾기
+  POST   /api/auth/password-reset/verify, /password-reset
+  GET    /api/oauth2/authorization/{kakao|google|naver}  (끝나면 /oauth/callback?token=... 으로)
+
+공통 약속
+  - 모든 요청에 Authorization: Bearer <accessToken> 이 자동으로 붙는다 (lib/apiClient.ts)
+  - 401 이 오면 프론트가 자동 로그아웃한다 (app/setupApi.ts)
+  - 실패 응답은 { "message": "..." } 이고 그 문장이 화면에 그대로 보인다
+  - API 주소 앞부분은 VITE_API_BASE_URL (기본 '/api')
+  - 로그인 정보 저장 위치: '로그인 유지'를 켜면 localStorage, 끄면 sessionStorage (키 'zip-auth').
+    그래서 서버의 세션 만료도 remember 값에 따라 길게/짧게 달라져야 자연스럽다.
+
+서버가 판단해서 내려줘야 하는 user 필드
+  firstLogin     처음 로그인이면 true -> 프론트가 /onboarding 으로 보냄
+                 (서버는 로그인 처리 직전 users.last_login_at 이 NULL 이었는지로 판단)
+  agreedAt       null 이면 소셜 첫 가입 -> /welcome (약관 동의 + 주소 입력) 으로 보냄
+  role           'ADMIN' 이면 /admin 화면만 보임
+  status/suspension/warnCount/unseenWarnings  이용 정지/경고 (3-12 참고)
+
+[3-2] 첫 로그인 설문 (features/onboarding)  --  백엔드 API/칸이 아직 없음
+--------------------------------------------------------------------
+흐름: 로그인 응답 firstLogin=true -> /onboarding -> 설문 -> "ZIP 시작하기" -> firstLogin 해제
+질문(HousingSurvey 필드)
+  birth(생년월일) / address(간략한 주소) + addressPoint(좌표, 선택)
+  kind: 'monthly'(월세) | 'jeonse'(전세)
+  deposit(보증금) rent(월세) mgmtIncluded(관리비 포함 여부) mgmtFee(관리비)
+  contractFee(계약금) hasLoan loanAmount (+ loanAnnualRate, loanPaymentDay, loanStartDate)
+  income(수입) incomePeriod: 'monthly' | 'annual'
+  answeredAt, userId
+설문이 끝나면 프론트가 다른 곳에도 값을 채운다
+  - 월세 -> 생활 설정(settings.rent, 만원 단위)
+  - 관리비 -> 고정지출 항목(태그 '관리비')
+  - 주소 -> settings.region / 좌표
+백엔드가 정해야 할 것
+  1) 설문 답변을 저장할 표/칸 (user_settings 확장 등)
+  2) 저장 API (예: PUT /api/me/housing-survey)
+  3) firstLogin 해제 방식 (설문 완료 또는 건너뛰기 시 서버가 인식)
+  (테스트용 가짜 계정 a1 / b1 은 mock 전용. 서버에는 필요 없음)
+
+[3-3] 생활 설정 / 동네 (features/life store.ts 의 settings)  --  API.md 2번
+--------------------------------------------------------------------
+settings 필드: region, regionLocation(userId,region,source,point), rentDay, rent(만원),
+               notiOn, moveIn('YYYY-MM'), contractEnd('YYYY-MM')
+API: GET/PUT /api/me/settings, GET /api/regions, GET /api/regions/{id}/neighbors,
+     POST /api/me/region-verify { lat, lon }
+동네 인증: 프론트가 현재 위치(lat, lon)를 보내면 서버가 어느 동네인지 판단해
+           { region, verifiedAt, expiresAt } 을 돌려준다. 유효 기간은 VERIFY_DAYS(프론트 상수) 일.
+           서버 칸: users.region_verified_at
+
+[3-4] 일정 (features/life, CalEvent)  --  API.md 3번
+--------------------------------------------------------------------
+CalEvent: id, date, time, title, done(완료 체크), category(이름), anniv(기념일), yearly(매년 반복)
+  - "할 일"은 따로 없고 일정에 done 체크로 합쳐졌다 (DB events.is_done, done_at)
+  - anniv=true 인 기념일은 완료 체크/남은 일 개수에 들어가지 않는다
+  - 쓰레기 배출 일정은 저장하지 않는다: 프론트가 요일표(data/catalog.ts 의 TRASH 상수)로
+    매번 계산해서 달력에 읽기 전용(TrashEvent)으로 얹는다.
+    -> 서버는 GET /api/trash-schedules?regionId= 로 "요일별 배출 정보"를 주면 된다.
+API: GET/POST /api/events, PATCH/DELETE /api/events/{id}, PATCH /api/events/{id}/done,
+     GET /api/events/search?q=, GET/POST/PATCH/DELETE /api/event-categories,
+     GET/POST/PATCH/DELETE /api/event-presets
+카테고리 기본 5개 + 사용자가 만든 것 + '미분류'. 이름 변경/삭제 시 일정도 같이 옮겨야 함(2-2).
+[주의] 기념일 칸 이름
+       DB(schema.sql, 정식 마이그레이션 20261031_02_event_anniversaries.sql)는 is_anniversary / repeat_yearly 다.
+       API 의 JSON 키는 anniv / yearly 그대로 쓴다 (DB 칸 설명에 "API anniv/yearly"로 적혀 있음).
+       API.md 17번 행, db/README.md, db/migrations/README.md 도 이 이름으로 맞춰 두었다.
+       db/migrations/20261101_event_anniversary.sql 은 DEPRECATED(실행 금지)로 표시되어 있다.
+       백엔드는 DB 기준 이름(is_anniversary/repeat_yearly)을 쓰면 된다.
+
+[3-5] 월세 / 고정지출 (features/life FixedExpense)  --  API.md 4번
+--------------------------------------------------------------------
+월세 납부 체크: rentPaid = { 'YYYY-MM': true/false }  -> 서버 rent_payments (달마다 한 줄)
+공과금(Bill): id, name, amount(원), tag, paidMonth
+  - tag 는 '공과금','통신','구독','관리비','기타' 중 하나
+  - paidMonth = 마지막으로 납부 체크한 달('YYYY-MM'). 이번 달과 같으면 납부 완료,
+    달이 바뀌면 저절로 미납으로 돌아간다 (그래서 "새 달 시작" 버튼이 없음)
+    -> 서버는 bill_payments(bill_id, month) 로 달마다 기록하고, 조회 시 ?month= 로 그 달 납부 상태를 계산해 준다
+API: GET /api/rent-payments?from=&to=, PUT /api/rent-payments/{month},
+     GET /api/bills?month=, POST /api/bills, PUT /api/bills/{id}/payments/{month}, DELETE /api/bills/{id}
+삭제는 해지 처리(is_active = 0)
+
+[3-6] 가계부 (features/life MoneyLog, 수입/지출)  --  API.md 5번
+--------------------------------------------------------------------
+MoneyRecord: id, date, cat(분류 이름), amount(원), memo, incomeType('fixed' | 'other', 수입만)
+  - 수입과 기타 지출은 모양이 같다
+  - cat 은 이름이지만 서버에서는 ledger_categories.id (categoryId)
+통계는 프론트가 계산하는 중 (derive.ts 의 spendBreakdown 등)
+  -> 서버에서는 GET /api/stats/monthly-income, /api/stats/spend-breakdown 으로 줄 수 있음
+  (프론트 계산 결과 = 월세(월세 계약일 때만) + 고정지출 합 + 대출 이자 + 기타 지출 을 분류별로 합친 값.
+   고정지출 합은 "공과금"으로, 대출 이자는 "대출 이자"로 묶여 나온다)
+API: GET/POST/DELETE /api/incomes, /api/expenses, GET /api/ledger/categories?kind=
+
+[3-7] 알림 (features/life NotiCenter, derive.ts 의 buildNotis)  --  API.md 6번
+--------------------------------------------------------------------
+지금은 서버 알림이 아니다. 프론트가 일정과 설정을 읽어서 "알림을 계산해서 만든다".
+실제로 계산하는 알림 (buildNotis)
+  - 오늘~3일 안의 일정과 기념일 (끝낸 일정은 제외)
+  - 오늘~3일 안의 쓰레기 배출 (요일표 기준)
+  - 월세 납부일 D-day (계약 유형이 월세일 때만. 전세면 안 나옴)
+하드코딩된 "예시 알림" 7개 (id n3~n9)
+  냉장고 재료 만료, 커뮤니티 새 댓글, 전기요금 상승, 좋아요 5개, 동네 공지,
+  식비 증가, 빨래 알림 -> 코드에 TODO 로 "서버와 연결되면 실제 알림으로 바꾸기"라고 적혀 있다.
+  (냉장고 기능은 이 앱에 아직 없음. 서버 알림으로 옮길 때 이 예시들은 지우거나 실제 기능과 연결)
+저장하는 것은 "읽음/삭제 표시"뿐이다: notiRead { 알림id: true }, notiDeleted { 알림id: true }
+  알림 id 모양: 일정 'ev-{일정id}', 쓰레기 배출은 자체 문자열 id, 월세 'n2'
+서버로 옮기면: 서버가 알림을 만들어 notifications 표에 넣고(월세일 D-day 등 계산은 서버 몫),
+  프론트는 목록/읽음/삭제만 호출한다.
+API: GET /api/notifications?status=, PATCH /api/notifications/read, DELETE /api/notifications
+(홈의 "오늘 닫은 알림"은 브라우저에만 저장해도 되는 개인 설정이라 서버 불필요)
+
+[3-8] 커뮤니티 (features/community)  --  API.md 7번
+--------------------------------------------------------------------
+Post: id, region(동네 이름), cat, title, body, author(닉네임), mine, ts(ms), likes, liked,
+      comments[{ author, text, mine }], attachments[{ name, type, size, data }]
+  - 첨부는 지금 data URL(글 안에 파일 내용)로 저장한다.
+    서버에서는 POST /api/files 로 먼저 올리고(attachmentIds), 글에는 id 만 붙인다.
+  - mine, liked, 댓글의 mine 은 "내 것인지"를 서버가 요청한 사용자 기준으로 계산해 줘야 한다.
+  - 내 글/내 댓글만 수정/삭제 가능(서버가 검사, 아니면 403/404)
+API: GET/POST/PATCH/DELETE /api/posts, GET /api/posts/home-tips, PUT/DELETE /api/posts/{id}/like,
+     댓글 /api/posts/{id}/comments, /api/comments/{id}, POST /api/files, POST /api/reports
+목록은 ?scope=here|near|all&category=&q=&page= , 응답 { items, hasNext }
+
+[3-9] 메모 (features/memo)  --  API.md 12번
+--------------------------------------------------------------------
+Memo: id, title, body, color, pinned, checklist, items[{ text, done }], createdAt, updatedAt
+  checklist=true 면 body 대신 items 를 쓴다. 고정(pinned) 먼저, 그다음 최근 수정 순.
+  화면은 쓰는 대로 자동 저장한다 -> 프론트가 0.5초 정도 모아서 PATCH 를 보낼 예정(서버는 가볍게 받기)
+API: GET/POST/PATCH/DELETE /api/memos
+
+[3-10] AI 상담 (features/ai)  --  API.md 8번
+--------------------------------------------------------------------
+지금 답변은 가짜다: features/ai/topics.ts 의 reply() 가 정해진 문장을 만든다.
+  (지출 요약은 life 데이터를 읽어서 "카드"(SpendCard)로 보여줌)
+서버가 해야 할 일: 프론트가 보낸 질문(text, 선택적으로 photo)을 AI(LLM)에 넘겨 답을 돌려주기
+  - AI 키는 서버에만 둔다. 사용량 제한은 ai_usage_daily 로.
+  - 분야(topics) 10개 (프론트 features/ai/topics.ts 와 DB ai_topics 가 같음):
+      qna 자유 질문 / guide 사용 방법 / nearby 근처 탐색 / trash 분리배출 / cook 냉장고 요리 /
+      clean 청소·곰팡이 / contract 계약·보증금 / landlord 집주인 문자 / bill 공과금·생활비 /
+      summary 이번 달 지출 요약
+      사진을 받는 분야(photo=true): trash, cook, clean, landlord
+API: GET /api/ai/topics, 대화 GET/POST/DELETE /api/ai/conversations,
+     GET/POST /api/ai/conversations/{id}/messages
+[참고] ai/components 의 HomeAiCard, ChatModal 은 index.ts 에서 내보내기만 하고
+       어느 화면에서도 가져다 쓰지 않는다 (코드로 확인함). 대화 기록 저장소(zip-ai-chat,
+       useChatStore)도 ChatModal 만 쓰고, 설정 화면의 "데이터 초기화"에서 비우기만 한다.
+       실제 AI 화면은 /ai -> AiPage -> AiAssistant -> AiChat 순서로 이어지고,
+       AiChat 은 useChatStore 나 localStorage 를 쓰지 않는다 (코드로 확인함).
+       즉 지금 /ai 화면의 대화는 어디에도 저장되지 않는다.
+       서버 대화 기록(GET /api/ai/conversations)을 붙이면 "지난 대화 보기"가 새로 생기는 셈이다.
+
+[3-11] 지도 / 날씨 (features/map, features/weather)  --  API.md 9번
+--------------------------------------------------------------------
+날씨: 지금 브라우저가 Open-Meteo(날씨), Nominatim(동네->좌표)을 직접 호출한다. 키 없음.
+      서버를 만들면 서버가 대신 호출하고 캐시한다 (외부API_정리.txt 참고).
+지도: Leaflet + OpenStreetMap. 주변 장소는 예시 데이터(data/places.ts).
+      zip-map = { on: 보일 종류, custom: 직접 추가한 검색어, favs: 즐겨찾기 장소 id }
+API: GET /api/places/categories, GET /api/places?regionId=&category=|q=,
+     POST /api/places/ai-search, GET/PUT /api/me/place-favorites, GET/PUT /api/me/map-settings
+
+[3-12] 이용 정지 / 경고 / 관리자 (features/moderation, features/admin)  --  API.md 11번
+--------------------------------------------------------------------
+BanRecord: nick(닉네임이 키), uid, phone, count(정지 횟수), warns(경고 횟수), perm(영구),
+           until(풀리는 시각 ms), history[{ at, days, reason, warn }]
+  - 정지 일수: 1, 3, 5, 10, 영구(0). 경고는 정지 없이 기록만.
+  - 기간이 끝나 풀려도 횟수/이력은 남는다. 정지된 아이디/닉네임/휴대폰으로는 가입 불가.
+  - 일부러 'zip-' 으로 시작하지 않는 저장 키(zipban-records)를 쓴다: 데이터 초기화로 정지를 못 풀게.
+  서버에서는 이 모든 판단을 서버가 한다 (user_sanctions 표, 탈퇴 후에도 정지 기록 유지).
+관리자 화면(/admin)은 role='ADMIN' 만. 회원 목록/정지/해제, 글/댓글 삭제, 신고 처리.
+API: /api/admin/... (회원, 정지, 게시글, 신고, 통계)
+
+[3-13] 고객센터 (features/support)  --  API.md 13번
+--------------------------------------------------------------------
+Inquiry: id, userId, nickname, category(이용 문의/오류 신고/개선 제안/계정 문의/기타),
+         title(100자 이내), content(3000자 이내), createdAt, answer { content, createdAt } | null
+  - 내 문의만 보이고, 관리자는 전체. 답변은 문의당 하나.
+  - 입력 길이 검사는 서버에서도 똑같이 한다.
+API: GET/POST /api/support/inquiries, POST /api/admin/support/inquiries/{id}/answer
+
+[3-14] 프로필 (features/profile)  --  API.md 1번 "프로필 꾸미기"
+--------------------------------------------------------------------
+ProfileLook: avatarImg(사진), avatarEmoji, avatarColor, bio(한 줄 소개, 최대 30자)
+  사진은 프론트가 가운데를 정사각형으로 잘라 240px JPEG 로 줄여 보낸다 (15~30KB).
+  서버: POST /api/files 로 올리고 PATCH /api/auth/me 에 { avatarFileId, bio } 또는
+        { avatarEmoji, avatarColor, avatarFileId: null }. DB: users.bio, avatar_file_id 등(추가됨)
+
+[3-15] 대출 이자 자동 기록 (features/loan)  --  API 약속 없음
+--------------------------------------------------------------------
+전세 대출이 있으면 이자를 계산해 가계부(지출)에 자동으로 넣는다 (interest.ts).
+저장: zip-loan-interest = { plans[], charges[] }. 실제 출금은 하지 않는다(기록만).
+백엔드에서 정해야 함: 대출 정보 저장 표, 납부일마다 이자 기록을 만드는 방식(서버 스케줄러 또는 조회 시 계산).
+
+
+4. 서버가 "대신 계산/판단"해야 하는 것 (지금은 프론트가 하고 있음)
+====================================================================
+  - 알림 만들기 (월세 D-day, 일정/기념일 D-3, 쓰레기 배출)    -> notifications
+  - 쓰레기 배출 요일 -> 달력에 얹기                           -> trash_schedules (요일별 정보)
+  - 달이 바뀌면 고정지출 미납으로 되돌리기                    -> bill_payments 를 달마다 기록
+  - 이용 정지 판정/가입 차단                                  -> user_sanctions, 탈퇴 후 정지 기록 유지
+  - 첫 로그인 판단 (firstLogin)                               -> users.last_login_at
+  - 동네 인증 (좌표 -> 어느 동네)                             -> /api/me/region-verify
+  - 입력값 검사: 아이디 6~16자 영소문자+숫자, 비번 8~16자(영문+숫자+특수), 닉네임 2~12자,
+    문의 제목 100자/내용 3000자, 한 줄 소개 30자  (프론트와 똑같이 서버도 검사)
+  - AI 답변 (LLM 호출, 사용량 제한)
+
+
+5. API 약속이 아직 없거나 DB와 맞춰야 하는 것
+====================================================================
+  1) 처음 로그인 설문 답변 저장 (3-2)
+  2) 대출 이자 기록 (3-15)
+  3) 기념일 칸 이름: API.md(is_anniv/is_yearly) vs DB(is_anniversary/repeat_yearly)
+  4) 월세 단위: 설정은 만원, 설문은 원 (3-3, 2-3)
+  5) 커뮤니티 카테고리 한글 <-> 영문 코드 매핑
+  6) 프론트의 숫자 id -> 서버의 문자열 id (2-1)
+  7) password_resets.method 의 EMAIL 은 화면에서 안 씀 (PHONE 만)
+
+
+6. 백엔드를 붙일 때 프론트에서 바뀌는 순서 (참고)
+====================================================================
+  1) features/<기능>/api/ 에 API 호출 함수를 만든다 (lib/apiClient.ts 사용)
+  2) features/<기능>/hooks/ 에 useQuery/useMutation 훅을 만든다 (React Query 설치되어 있음)
+  3) 화면이 store 대신 그 훅을 쓰게 바꾼다
+  4) 다 옮기면 localStorage 저장을 지운다
+  -> 화면(pages/, components/)은 거의 그대로 둘 수 있다.
+  로그인(auth)은 이미 이 구조(api/ 와 hooks/ 와 store/)로 되어 있어서 따라 하면 된다.
+
+
+7. 백엔드가 가장 먼저 만들면 좋은 순서 (제안)
+====================================================================
+  1) 인증: signup / login / me / logout  (프론트 연결 코드가 이미 있어서 바로 테스트 가능)
+  2) 설정 + 동네 (settings, regions)
+  3) 일정 + 월세/고정지출 + 가계부  (홈과 마이페이지의 핵심)
+  4) 알림, 메모
+  5) 커뮤니티 + 파일 업로드 + 신고
+  6) 관리자 / 이용 정지
+  7) AI, 지도 장소, 날씨 서버화
