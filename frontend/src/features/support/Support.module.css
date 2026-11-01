@@ -4,6 +4,13 @@
   min-width: 0;
 }
 
+/* 내 정보 화면처럼 넓은 화면에서는 가운데 860px */
+.wrap {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
 .head, .meta, .tools {
   display: flex;
   flex-wrap: wrap;

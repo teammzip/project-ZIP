@@ -2,12 +2,14 @@ import { useState, type FormEvent } from 'react'
 import { Button, Card } from '@/components/ui'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { useHousingSurveyStore } from '@/features/onboarding/store'
+import { cx } from '@/lib/cx'
 import { won } from '@/lib/date'
 import common from '@/styles/common.module.css'
 import { loanMonthSummary, loanToday, monthlyInterest, type HousingLoan } from './interest'
 import { LoanFields, type LoanDraft } from './LoanFields'
 import { useLoanStore } from './store'
 import { useLoanInterest } from './useLoanInterest'
+import styles from './Loan.module.css'
 
 export function LoanInterestCard() {
   const { plan, charges } = useLoanInterest()
@@ -19,7 +21,7 @@ export function LoanInterestCard() {
   const summary = loanMonthSummary(plan, charges, month)
   const history = [...charges].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12)
   return <Card title="전세 대출 이자" actions={<Button variant="line" onClick={() => { setEditing(!editing); setMessage('') }}>{editing ? '설정 닫기' : plan ? '대출 정보 수정' : '대출 이자 설정'}</Button>}>
-    <div className={common.stack}>
+    <div className={styles.card}>
       {plan ? <>
         <div className={common.sumRow}>
           <div><small>대출 금액</small><b>{won(plan.principal)}</b></div>
@@ -27,7 +29,7 @@ export function LoanInterestCard() {
           <div><small>월 예상 이자</small><b>{won(monthlyInterest(plan.principal, plan.annualRate))}</b></div>
         </div>
         <p>매월 {plan.paymentDay}일 · {summary.recordedCount ? `이번 달 ${won(summary.recordedAmount)} 자동 기록` : summary.scheduledCount ? `${summary.dueDate} 자동 기록 예정` : '기록 시작일 이후 납부일부터 반영'}</p>
-      </> : <p className={common.note}>대출 금액·연 이율·납부일을 설정하면 매달 이자 지출을 자동으로 기록해요.</p>}
+      </> : <div className={styles.empty}><span aria-hidden="true">🏦</span><div><b>전세 대출이 있다면 이자를 자동으로 기록해 드려요</b><small>대출 금액·연 이율·납부일을 설정하면 매달 이자 지출을 가계부에 남겨요.</small></div></div>}
       {editing && <LoanPlanForm key={`${userId}:${plan?.id ?? 'new'}`} plan={plan} onSaved={() => { setEditing(false); setMessage('대출 이자 설정을 저장했어요.') }} />}
       {plan && !editing && <div className={common.actions}><Button variant="line" onClick={() => { stopPlan(); setMessage('자동 기록을 중지했어요. 기존 기록은 유지돼요.') }}>자동 기록 중지</Button></div>}
       {message && <p className={common.saved} role="status">{message}</p>}
@@ -65,7 +67,7 @@ function LoanPlanForm({ plan, onSaved }: { plan?: HousingLoan; onSaved: () => vo
       setError(cause instanceof Error ? cause.message : '대출 정보를 저장하지 못했어요.')
     }
   }
-  return <form className={common.form} onSubmit={submit}>
+  return <form className={cx(common.form, styles.form)} onSubmit={submit}>
     <LoanFields value={draft} onChange={setDraft} lockStart={!!plan} />
     <p className={common.note}>시작일 이후 지난 납부일도 기록해요. 이미 기록한 이자는 유지하고 수정한 금액·이율은 아직 기록하지 않은 납부일부터 적용해요.</p>
     {error && <p className={common.formError} role="alert">{error}</p>}

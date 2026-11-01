@@ -75,6 +75,7 @@
   font-weight: 700;
 }
 
+.form input[type='text'],
 .form input[type='number'],
 .form input[type='date'],
 .form input:not([type]) {
