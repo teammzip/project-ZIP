@@ -325,7 +325,9 @@
   - 최대 5개 · 합계 2MB · 이미지/문서 형식만 · 내가 올린 파일만 붙일 수 있게 서버에서 검사
   - 수정할 때 `attachmentIds`에서 빠진 파일은 연결을 끊고 지워 주세요.
   - 지금 프론트는 첨부를 브라우저에 data URL로 저장해요 (`Attachment { name, type, size, data }`). 서버가 생기면 `data` 대신 `url`을 써요.
-- **신고**: `targetType` `POST` · `COMMENT`, `reason` `ABUSE` · `FALSE_INFO` · `PRIVACY` · `AD_ILLEGAL` · `COPYRIGHT` · `OTHER` (`reports`). 신고 버튼 화면은 아직 없어요.
+- **신고**: `targetType` `POST` · `COMMENT`, `reason` `ABUSE` · `FALSE_INFO` · `PRIVACY` · `AD_ILLEGAL` · `COPYRIGHT` · `OTHER` (`reports`).
+  - 화면: 남의 글은 작성자 줄, 남의 댓글은 오른쪽의 **[신고]** → 사유 하나 + 자세한 내용(기타는 필수, 200자) → 접수 후 "신고됨". 같은 사람이 같은 대상을 두 번 신고하면 409로 막아 주세요.
+  - 지금 프론트는 브라우저 `zip-reports`에 저장하고(`features/community/reports.ts`), 관리자 화면 게시글 관리에 "신고 N" 배지 · "신고된 글만" · 신고 내역이 보여요.
 - 정지된 회원은 글쓰기 · 댓글 · 좋아요가 403이어야 해요.
 - [동네 인증](#동네-인증)을 안 했거나 30일이 지난 회원도 글쓰기 · 댓글 · 좋아요가 403이어야 해요 (읽기는 누구나).
 - 프론트 대응: `features/community/types.ts` (지금은 댓글에 `id`가 없어 순서로 고쳐요. 서버가 생기면 `id`로 바꿔요)

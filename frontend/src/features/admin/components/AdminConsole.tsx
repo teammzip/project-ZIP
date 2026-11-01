@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button, Modal } from '@/components/ui'
-import { useCommunityStore } from '@/features/community'
+import { reasonLabel, type Report, useCommunityStore, useReportStore } from '@/features/community'
 import { AdminInquiries } from '@/features/support'
 import { banLabel, fmtAt, isActive, useBanStore, type BanRecord } from '@/features/moderation'
 import { cx } from '@/lib/cx'
@@ -365,11 +365,14 @@ function Posts({ posts, isBanned, onDelete, removePost, removeComment }: PostsPr
   const [cat, setCat] = useState('')
   const [region, setRegion] = useState('')
   const [openId, setOpenId] = useState<number | null>(null)
+  const [reportedOnly, setReportedOnly] = useState(false)
+  const reports = useReportStore((s) => s.reports)
+  const reportsOf = (id: number) => reports.filter((r) => r.postId === id)
   const cats = [...new Set(posts.map((p) => p.cat))]
   const regions = [...new Set(posts.map((p) => p.region).filter(Boolean))]
   const list = posts
-    .filter((p) => (!cat || p.cat === cat) && (!region || p.region === region) && (!q || `${p.title} ${p.body} ${p.author}`.toLowerCase().includes(q.toLowerCase())))
-    .sort((a, b) => b.ts - a.ts)
+    .filter((p) => (!reportedOnly || reportsOf(p.id).length > 0) && (!cat || p.cat === cat) && (!region || p.region === region) && (!q || `${p.title} ${p.body} ${p.author}`.toLowerCase().includes(q.toLowerCase())))
+    .sort((a, b) => (reportedOnly ? reportsOf(b.id).length - reportsOf(a.id).length : 0) || b.ts - a.ts)
 
   return (
     <main className={styles.pane}>
@@ -387,6 +390,10 @@ function Posts({ posts, isBanned, onDelete, removePost, removeComment }: PostsPr
             <option key={r}>{r}</option>
           ))}
         </select>
+        <label className={styles.check}>
+          <input type="checkbox" checked={reportedOnly} onChange={(e) => setReportedOnly(e.target.checked)} />
+          신고된 글만 ({new Set(reports.map((r) => r.postId)).size})
+        </label>
       </div>
       <div className={styles.tableWrap}>
         <table>
@@ -415,6 +422,7 @@ function Posts({ posts, isBanned, onDelete, removePost, removeComment }: PostsPr
               <PostRow
                 key={p.id}
                 p={p}
+                reports={reportsOf(p.id)}
                 open={openId === p.id}
                 onToggle={() => setOpenId(openId === p.id ? null : p.id)}
                 banned={isBanned(p.author)}
@@ -432,6 +440,7 @@ function Posts({ posts, isBanned, onDelete, removePost, removeComment }: PostsPr
 
 type PostRowProps = {
   p: PostsProps['posts'][number]
+  reports: Report[]
   open: boolean
   onToggle: () => void
   banned: boolean
@@ -439,7 +448,7 @@ type PostRowProps = {
   onDeleteComment: (index: number) => void
 }
 
-function PostRow({ p, open, onToggle, banned, onDeletePost, onDeleteComment }: PostRowProps) {
+function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteComment }: PostRowProps) {
   const idText = String(p.id).length > 6 ? `…${String(p.id).slice(-4)}` : String(p.id)
   return (
     <>
@@ -452,6 +461,7 @@ function PostRow({ p, open, onToggle, banned, onDeletePost, onDeleteComment }: P
           <button type="button" className={styles.titleBtn} onClick={onToggle} aria-expanded={open}>
             {p.title}
           </button>
+          {reports.length > 0 && <span className={cx(styles.badge, styles.ban, styles.reportBadge)}>신고 {reports.length}</span>}
         </td>
         <td>
           {p.author} {banned && <span className={cx(styles.badge, styles.ban)}>정지 중</span>}
@@ -470,6 +480,17 @@ function PostRow({ p, open, onToggle, banned, onDeletePost, onDeleteComment }: P
         <tr className={styles.detail}>
           <td colSpan={9}>
             <div className={styles.detailBody}>{p.body}</div>
+            {reports.length > 0 && (
+              <div className={styles.reportBox}>
+                <b>🚨 신고 {reports.length}건</b>
+                {reports.map((r) => (
+                  <div key={r.id} className={styles.sub}>
+                    [{r.targetType === 'POST' ? '글' : `댓글 · ${r.targetAuthor}: "${r.targetText}"`}] {reasonLabel(r.reason)}
+                    {r.detail && ` — ${r.detail}`} · 신고 {r.reporter} · {relTime(r.at)}
+                  </div>
+                ))}
+              </div>
+            )}
             {!!p.attachments?.length && <div className={styles.sub}>첨부 {p.attachments.length}개: {p.attachments.map((a) => a.name).join(', ')}</div>}
             {p.comments.map((c, i) => (
               <div key={i} className={styles.cmtRow}>

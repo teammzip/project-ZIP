@@ -183,6 +183,27 @@
   color: var(--color-danger);
 }
 
+.reportBadge {
+  margin-left: 6px;
+}
+
+.reportBox {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: #fff5f6;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .sub {
   margin-top: 2px;
   font-size: 12px;

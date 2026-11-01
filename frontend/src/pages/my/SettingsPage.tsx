@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button, Card, Modal } from '@/components/ui'
 import { useChatStore } from '@/features/ai'
 import { LoginBadge, LoginMethod, PasswordChangeForm, useAuthStore, useLogout, useUpdateMe, useWithdraw } from '@/features/auth'
-import { useCommunityStore } from '@/features/community'
+import { useCommunityStore, useReportStore } from '@/features/community'
 import { LegalLinks } from '@/features/legal'
 import { BudgetSummaryCard, LifeInfoForm, LifeStats, NotiSwitch, RegionVerifyDialog, useLifeStore, useLifeSummary, useRegionVerify } from '@/features/life'
 import { useMapStore } from '@/features/map'
@@ -23,6 +23,7 @@ function resetAppData() {
   useLoanStore.getState().resetCurrentUser()
   useLifeStore.getState().reset()
   useCommunityStore.getState().reset()
+  useReportStore.getState().reset()
   useChatStore.getState().reset()
   useMemoStore.getState().reset()
   useProfileStore.getState().reset()
@@ -223,7 +224,7 @@ function WithdrawDialog({ open, onClose }: { open: boolean; onClose: () => void 
     withdraw.mutate(undefined, {
       onSuccess: () => {
         resetAppData()
-        for (const key of ['zip-life', 'zip-posts', 'zip-ai-chat', 'zip-memos', 'zip-profile', 'zip-map']) remove(key)
+        for (const key of ['zip-life', 'zip-posts', 'zip-reports', 'zip-ai-chat', 'zip-memos', 'zip-profile', 'zip-map']) remove(key)
       },
     })
   const finish = () => {

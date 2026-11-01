@@ -2,4 +2,5 @@
 export { CommunityBoard } from './components/CommunityBoard'
 export { HomeTips } from './components/HomeTips'
 export { useCommunityStore } from './store'
+export { REPORT_REASONS, reasonLabel, useReportStore, type Report } from './reports'
 export type { Post } from './types'
