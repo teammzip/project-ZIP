@@ -9,7 +9,6 @@ import {
   CinemaSection,
   CloudSection,
   CtaSection,
-  FlyingRobot,
   FocusSection,
   HeroSection,
   MobileIntro,
@@ -20,7 +19,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import styles from './StartPage.module.css'
 
 /* 시작 화면
- * - PC: 브랜드 스토리 + 날아다니는 집사 로봇 (섹션 순서를 바꾸거나 빼려면 여기서 줄만 옮기면 됩니다)
+ * - PC: 브랜드 스토리 (섹션 순서를 바꾸거나 빼려면 여기서 줄만 옮기면 됩니다)
  * - 모바일(900px 이하): PC와 같은 환영 문구·생활 카드와 로봇 인트로
  * 로그인은 AuthModal, 회원가입·아이디/비밀번호 찾기는 별도 페이지(/signup, /find).
  * /start#login 으로 오면(가입·찾기 페이지의 "로그인") PC 는 로그인 창을 바로 열고, 모바일도 로그인 창을 바로 열음 */
@@ -66,8 +65,6 @@ export function StartPage() {
           <CtaSection onLogin={openLogin} onSignup={goSignup} />
         </main>
         <BrandFooter />
-        {/* 맨 위에서부터 스크롤을 따라 날아다니는 집사 로봇 (PC) */}
-        <FlyingRobot />
       </div>
       {modal}
     </MotionConfig>

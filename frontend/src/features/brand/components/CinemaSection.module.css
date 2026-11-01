@@ -36,6 +36,14 @@
   background: linear-gradient(180deg, rgba(10, 8, 6, 0.85) 0%, rgba(10, 8, 6, 0.55) 45%, rgba(10, 8, 6, 0.9) 100%);
 }
 
+.robot {
+  position: absolute;
+  right: 8%;
+  bottom: 10%;
+  width: clamp(120px, 14vw, 220px);
+  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.5)) brightness(0.92);
+}
+
 .line {
   position: absolute;
   top: 50%;

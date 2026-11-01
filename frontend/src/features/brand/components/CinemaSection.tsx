@@ -1,12 +1,12 @@
 import { motion, useScroll, useTransform, type MotionValue } from 'motion/react'
 import { useRef } from 'react'
 import scene from '@/assets/images/cinema-room.jpg'
+import robot from '@/assets/images/robot-cut.png'
 import { CINEMA } from '../content'
 import { Lines } from './SectionHead'
 import styles from './CinemaSection.module.css'
 
-/** 어두운 화면: 둥근 큰 사진(밤에 불 켜진 자취방) 위에서 문장이 빈틈없이 차례로 바뀌고, 마지막에 그림이 화면 가득 펼쳐지며 큰 문장.
- * (로봇은 페이지 위를 날아다니는 FlyingRobot 하나로) */
+/** 어두운 화면: 둥근 큰 사진(밤에 불 켜진 자취방) 위에서 문장이 빈틈없이 차례로 바뀌고, 마지막에 그림이 화면 가득 펼쳐지며 큰 문장. */
 export function CinemaSection() {
   const ref = useRef<HTMLElement>(null)
   const { scrollYProgress: p } = useScroll({ target: ref, offset: ['start start', 'end end'] })
@@ -15,6 +15,7 @@ export function CinemaSection() {
   const radius = useTransform(p, [0.56, 0.8], [28, 0])
   const sceneScale = useTransform(p, [0, 1], [1.15, 1])
   const dim = useTransform(p, [0, 0.6, 0.85], [0.62, 0.62, 0.5])
+  const robotY = useTransform(p, [0, 1], [40, -120])
   const finalOpacity = useTransform(p, [0.66, 0.84], [0, 1])
   const finalScale = useTransform(p, [0.66, 0.9], [0.9, 1])
 
@@ -24,6 +25,7 @@ export function CinemaSection() {
         <motion.div className={styles.card} style={{ width, height, borderRadius: radius }}>
           <motion.img src={scene} alt="" className={styles.scene} style={{ scale: sceneScale }} />
           <motion.div className={styles.dim} style={{ opacity: dim }} />
+          <motion.img src={robot} alt="" className={styles.robot} style={{ y: robotY }} />
           {CINEMA.lines.map((line, i) => (
             <Line key={i} text={line} progress={p} range={i === 0 ? [0, 0.04, 0.26, 0.32] : [0.3, 0.36, 0.54, 0.62]} first={i === 0} />
           ))}
