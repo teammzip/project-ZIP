@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
-import { Button } from '@/components/ui'
+import { AmountInput, Button } from '@/components/ui'
+import { useLoanInterest } from '@/features/loan'
 import { monthKeyOf, todayStr, won } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
 import common from '@/styles/common.module.css'
@@ -13,10 +14,11 @@ import styles from './myinfo.module.css'
 
 /** 이번 달 수입·지출 카드. 홈과 같은 기준으로 합산하고 가계부로 연결. */
 export function BudgetSummaryCard() {
+  const { charges } = useLoanInterest()
   const { incomes, spends, bills, settings } = useLifeStore(useShallow((s) => ({ incomes: s.incomes, spends: s.spends, bills: s.bills, settings: s.settings })))
   const month = todayStr().slice(0, 7)
   const income = sumAmount(incomes.filter((r) => r.date.slice(0, 7) === month))
-  const expense = spendBreakdown(0, spends, bills, settings).total
+  const expense = spendBreakdown(0, spends, bills, settings, charges).total
   return (
     <Link to="/my/budget" className={styles.budget}>
       <strong>이번 달 수입·지출</strong>
@@ -24,7 +26,7 @@ export function BudgetSummaryCard() {
         <div><dt>총수입</dt><dd>{won(income)}</dd></div>
         <div><dt>총지출</dt><dd>{won(expense)}</dd></div>
       </dl>
-      <small>월세·공과금·기타 지출 포함</small>
+      <small>월세·공과금·대출 이자·기타 지출 포함</small>
       <span className={styles.budgetLink}>가계부 보기 →</span>
     </Link>
   )
@@ -93,7 +95,7 @@ export function LifeInfoForm({ onSaved }: { onSaved?: () => void }) {
         </label>
         <label>
           월세 (만원)
-          <input type="number" value={form.rent} onChange={(e) => setForm({ ...form, rent: e.target.value })} min={0} max={9999} required />
+          <AmountInput value={form.rent} onValueChange={(rent) => setForm({ ...form, rent })} max={9999} decimalPlaces={4} required />
         </label>
       </div>
       <div className={common.two}>

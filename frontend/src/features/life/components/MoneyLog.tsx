@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { Button, Card } from '@/components/ui'
+import { AmountInput, Button, Card } from '@/components/ui'
 import { cssVar } from '@/lib/cssVar'
 import { cx } from '@/lib/cx'
 import { DOW, monthKeyOf, monthLabel, todayStr, won } from '@/lib/date'
@@ -114,12 +114,11 @@ export function MoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeTyp
         </div>
       )}
       <label className={styles.quickAmount}>
-        <input
-          inputMode="numeric"
-          value={form.amount ? Number(form.amount).toLocaleString('ko-KR') : ''}
-          onChange={(e) => {
-            const digits = e.target.value.replace(/\D/g, '').slice(0, String(t.max).length)
-            setForm({ ...form, amount: digits && String(Math.min(Number(digits), t.max)) })
+        <AmountInput
+          value={form.amount}
+          max={t.max}
+          onValueChange={(amount) => {
+            setForm({ ...form, amount })
             setSaved('')
           }}
           placeholder="0"

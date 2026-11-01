@@ -8,6 +8,7 @@ import { LegalLinks } from '@/features/legal'
 import { BudgetSummaryCard, LifeInfoForm, LifeStats, NotiSwitch, RegionVerifyDialog, useLifeStore, useLifeSummary, useRegionVerify } from '@/features/life'
 import { useMapStore } from '@/features/map'
 import { useMemoStore } from '@/features/memo'
+import { useLoanStore } from '@/features/loan'
 import { useHousingSurveyStore } from '@/features/onboarding'
 import { useAge } from '@/lib/useAge'
 import { ProfileEditor, ProfileHero, useProfileStore } from '@/features/profile'
@@ -18,6 +19,7 @@ import styles from './SettingsPage.module.css'
 
 /** 이 기기에 저장된 앱 기록(일정·가계부·알림·커뮤니티 글·AI 대화·메모·프로필·설정)을 처음 상태로 */
 function resetAppData() {
+  useLoanStore.getState().resetCurrentUser()
   useLifeStore.getState().reset()
   useCommunityStore.getState().reset()
   useChatStore.getState().reset()

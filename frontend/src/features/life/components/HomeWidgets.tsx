@@ -2,6 +2,7 @@ import { lazy, Suspense, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { Card } from '@/components/ui'
+import { useLoanInterest } from '@/features/loan'
 import { cssVar } from '@/lib/cssVar'
 import { cx } from '@/lib/cx'
 import { man, monthKeyOf, todayStr, won } from '@/lib/date'
@@ -144,9 +145,10 @@ export function IncomeChart() {
 
 /** 이번 달(지난 달) 지출 구성 도넛: 월세 + 공과금 + 기타 지출 분류별 */
 export function SpendDonut() {
+  const { charges } = useLoanInterest()
   const { spends, bills, settings } = useLifeStore(useShallow((s) => ({ spends: s.spends, bills: s.bills, settings: s.settings })))
   const [back, setBack] = useState(0)
-  let rows = spendBreakdown(back, spends, bills, settings).rows
+  let rows = spendBreakdown(back, spends, bills, settings, charges).rows
   if (rows.length > 5) {
     // 많으면 상위 4개 + 나머지는 "그 외"로 묶음
     const rest = rows.slice(4).reduce((t, r) => t + r[1], 0)
