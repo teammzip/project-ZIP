@@ -213,7 +213,7 @@
 - **기념일** (일정 기록하기 > 🎉 기념일): `anniv: true`인 일정이에요. 카테고리 · 시간 · 완료 체크가 없고, 제목 앞에 `🎉 `를 붙여 저장해요(프론트가 보여 줄 때 뗌).
   - `yearly: true`면 **매년 반복**이에요. 서버는 한 줄만 저장하고, 프론트가 달력 · 목록 · 알림에 해당 연도 날짜로 펼쳐 보여요(윤년 2/29는 평년에 2/28). 펼친 일정의 id는 `"<id>@<연도>"`지만 서버에는 원래 `id`로만 요청해요.
   - 기념일은 "남은 일" 수에 안 들어가고, 홈 요약 카드 **다가오는 기념일**(오늘 포함 가장 가까운 것, D-day)과 알림(3일 전부터)에 쓰여요.
-  - ⚠️ DB에 `events.is_anniv` · `is_yearly` 칸이 필요해요 (아래 표 17번, `db/migrations/20261101_event_anniversary.sql`).
+  - ✅ DB 칸은 `events.is_anniversary` · `repeat_yearly`예요 (`anniv` → `is_anniversary`, `yearly` → `repeat_yearly`로 매핑. 아래 표 17번, `db/migrations/20261031_02_event_anniversaries.sql`).
 - 쓰레기 배출은 일정으로 저장하지 않고, 프론트가 `trash_schedules` 요일표로 달력에 그려요.
   - `weekday` 0=일 ~ 6=토, `wasteType`: `GENERAL`(일반) · `RECYCLE`(재활용) · `FOOD`(음식물)
 
@@ -521,7 +521,7 @@
 | 14 | ✅ AI "사용 방법" 주제가 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `ai_topics`에 `('guide', '사용 방법', '기능이 어디 있는지 알려드려요', photo 0)` 추가, `ai_messages.card_type`에 `LINK` 허용 (위 [8번](#8-ai-)) |
 | 15 | ✅ 우리 집 좌표를 둘 곳이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `users.home_lat DECIMAL(9,6)` · `home_lon DECIMAL(9,6)` 추가 (주소를 좌표로 바꿔 저장, 지도 🏠 · 도보 시간 · 길찾기 출발점) |
 | 16 | ✅ 지운 알림을 표시할 칸이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): 줄을 지우면 칸은 필요 없어요. 기록을 남기려면 `notifications.deleted_at DATETIME NULL` 추가 |
-| 17 | 기념일(`anniv`) · 매년 반복(`yearly`) 칸이 없어요 | `events.is_anniv TINYINT(1) NOT NULL DEFAULT 0`, `events.is_yearly TINYINT(1) NOT NULL DEFAULT 0` 추가 (`db/migrations/20261101_event_anniversary.sql`) |
+| 17 | ✅ 기념일(`anniv`) · 매년 반복(`yearly`) 칸이 없어요 | 반영됨 (`schema.sql` · `db/migrations/20261031_02_event_anniversaries.sql`): `events.is_anniversary`, `events.repeat_yearly` 추가 (`20261101_event_anniversary.sql`의 `is_anniv`/`is_yearly`는 DEPRECATED) |
 
 ## 프론트에서 서버를 붙이는 순서 (예: 일정)
 

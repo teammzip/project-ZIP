@@ -1,0 +1,170 @@
+ZIP frontend 구조 설명
+====================================================================
+작성일: 2026-11-01
+대상: frontend/src (React 19 + TypeScript + Vite)
+그림: 같은 폴더의 frontend_구조도.png (또는 .svg)
+
+한 줄 요약
+--------------------------------------------------------------------
+"기능(feature)별 + 페이지 분리" 구조다.
+화면(pages/)은 얇게 두고, 실제 로직과 부품은 features/ 에 기능별로 모아 둔다.
+
+
+전체 구조
+====================================================================
+src/
+├─ main.tsx          앱 시작점
+├─ app/              앱 전체 설정
+├─ pages/            화면 (주소 하나 = 폴더 하나)
+├─ features/         기능별 묶음 (로직 + 부품 + 데이터)
+├─ components/       여러 곳에서 같이 쓰는 공용 부품
+│   ├─ ui/           버튼, 카드, 입력창, 모달 등 작은 부품
+│   └─ layout/       공통 틀 (PC 사이드바, 모바일 하단바, 로그인 화면 틀)
+├─ lib/              공용 도구 함수 (저장소 읽기/쓰기 등)
+├─ styles/           전체 공통 스타일
+└─ assets/           이미지 등
+
+
+1. app/ : 앱 전체 설정
+--------------------------------------------------------------------
+- router.tsx   주소별로 어떤 화면을 보여줄지 연결한다. (페이지는 필요할 때만 불러온다)
+- guards.tsx   ProtectedRoute(로그인한 사람만)와 GuestRoute(로그인 안 한 사람만).
+               로그인 안 했으면 시작 화면으로, 이용 정지면 정지 화면으로,
+               소셜 첫 가입이면 약관 동의(/welcome)로, 첫 로그인이면 설문(/onboarding)으로,
+               관리자 계정이면 /admin 으로 보낸다.
+- setupApi.ts  서버 요청에 로그인 토큰을 붙이고(401이면 로그아웃),
+               로그인한 회원의 저장 주소를 동네 설정에 맞춘다.
+- useProfile.ts 화면 여러 곳에서 쓰는 "나" 정보(닉네임 + 우리 동네)
+- useRedirectAfterAuth.ts  로그인 뒤 원래 가려던 곳으로 보낸다.
+- App.tsx
+
+
+2. pages/ : 주소별 화면
+--------------------------------------------------------------------
+화면 하나가 폴더 하나다.
+  home         홈
+  auth         로그인, 회원가입, 아이디/비밀번호 찾기,
+               소셜 로그인 콜백(OAuthCallback), 약관 동의(Welcome)
+  ai           AI 상담
+  map          동네 지도
+  community    커뮤니티
+  my           /my 아래 화면들 (MyLayout 틀 안에서 바뀜)
+                 calendar 일정 / budget 가계(income 수입, expense 지출 -> 고정지출 · 지출 기록)
+                 memo 메모 / noti 알림 / settings 설정 / settings/support 문의
+  onboarding   첫 로그인 설문
+  legal        이용약관, 개인정보 처리방침
+  admin        관리자 화면
+  start        시작(인트로) 화면
+  suspended    이용 정지 안내
+  NotFoundPage 없는 주소
+
+내용은 대부분 얇다. features/ 의 부품을 가져다 배치만 한다.
+(대부분 75줄 이하. 가장 큰 SettingsPage 도 약 270줄)
+
+
+3. features/ : 기능별 묶음
+--------------------------------------------------------------------
+기능 하나가 폴더 하나이고, 그 안에 필요한 것을 다 모아 둔다.
+
+  auth         로그인, 회원가입, 소셜 로그인 버튼, 비밀번호 변경
+               api/(mockAuthApi 가짜 + realAuthApi 진짜), hooks/, store/authStore.ts, schema.ts, types.ts
+               VITE_USE_MOCK 이 'false' 가 아니면 가짜 API 를 쓴다.
+  life         달력, 고정지출, 기념일, 가계부, 내 정보, 알림, 동네 인증
+  weather      날씨 (Open-Meteo 날씨 + Nominatim 동네 좌표)
+  map          지도 (Leaflet + OpenStreetMap), 주변 장소(예시 데이터)
+  ai           AI 상담 (지금은 예시 답변)
+  community    커뮤니티 (글 목록, 상세, 작성)
+  memo         메모
+  loan         대출 이자 계산
+  onboarding   첫 로그인 설문 (주소 검색, 월세/전세 계약, 수입)
+  admin        관리자 콘솔
+  moderation   신고, 경고, 이용 정지
+  support      문의 (내 문의 + 관리자 문의 목록)
+  legal        약관, 개인정보 처리방침, 동의 체크
+  profile      프로필 (아바타, 편집, 이미지 줄이기)
+  brand        시작(인트로) 화면의 섹션들 (Hero, Cinema, Cloud, Stories, Showcase,
+               Cta 등)과 모바일 인트로, 머리글/바닥글
+
+기능 폴더는 크기에 따라 모양이 다르다.
+  [큰 기능] auth, life, community, map, memo, ai, profile, legal, admin, moderation, brand
+      components/ 폴더 + 필요에 따라 store.ts, types.ts 등
+  [작은 기능] weather, loan, support, onboarding
+      components/ 폴더 없이 폴더 안에 파일이 그냥 나란히 있다.
+  모든 기능 폴더에 index.ts 가 있어서, 밖에서는 index.ts 에 내보낸 것만 가져다 쓴다.
+
+features/life 안쪽 모습 (큰 기능의 예)
+  components/  그 기능의 화면 부품 + .module.css
+  store.ts     그 기능의 저장 데이터 (zustand, 브라우저에 저장)
+  types.ts     데이터 모양 정의
+  derive.ts    계산 로직 (D-day, 합계 등)
+  data/        catalog.ts, presets.ts, seed.ts (예시 데이터와 기본값)
+  locateRegion.ts, neighborhood.ts, regionVerification.ts 등  동네 인증 관련 로직
+  index.ts     밖에서 가져다 쓸 것만 내보내는 출입구
+
+
+4. components/ : 공용 부품
+--------------------------------------------------------------------
+여러 기능이 같이 쓰는 작은 부품이다.
+  ui/      Button, Card, Modal, TextField, Checkbox, AmountInput, TabNav 등
+  layout/  AppLayout (PC 사이드바 + 모바일 하단바), AuthLayout, AccountLayout
+
+
+4-1. lib/ : 공용 도구 함수 (기능을 몰라도 쓸 수 있는 것)
+--------------------------------------------------------------------
+  apiClient.ts   서버 요청 도구(axios). 토큰 자동 첨부, 401이면 로그아웃 처리
+  storage.ts     localStorage/sessionStorage 를 안전하게 읽고 쓰기 (키는 zip- 로 시작)
+  date.ts, age.ts, useAge.ts, useToday.ts   날짜와 만 나이
+  amountInput.ts  금액 입력 처리
+  useMediaQuery.ts  화면 폭 조건 확인
+  cx.ts, cssVar.ts  className 합치기, CSS 변수 넘기기
+
+
+5. 스타일
+--------------------------------------------------------------------
+부품마다 "파일이름.module.css" 가 붙어 있다 (CSS Modules).
+다른 부품과 클래스 이름이 겹치지 않는다.
+공통 스타일은 styles/ (tokens.css 색/간격 값, global.css, common.module.css).
+화면 폭 기준: 모바일 900px 이하, PC 901px 이상. (CSS 에서 가장 많이 쓰는 기준)
+
+
+6. 데이터 흐름 (지금 단계)
+--------------------------------------------------------------------
+서버와 DB가 아직 없어서 입력한 데이터는 브라우저(localStorage)에만 저장된다.
+- 대부분의 기능은 store.ts 가 zustand persist 로 저장한다.
+  (ai, community, life, loan, map, memo, moderation, onboarding, profile)
+- auth(로그인 정보)는 'zip-auth' 키에 직접 저장한다. '로그인 유지'를 켜면 localStorage,
+  끄면 sessionStorage (탭을 닫으면 로그아웃).
+- moderation(이용 정지/경고)은 'zipban-records', 'zipban-warn-seen' 키를 쓴다.
+  일부러 'zip-' 으로 시작하지 않아서 "데이터 초기화"로 지워지지 않는다.
+- support(문의)는 zustand persist 가 아니라 직접 localStorage('zip-support')에 저장한다.
+- weather 는 store 없이, 찾은 동네 좌표만 localStorage 에 90일 캐시한다.
+- 로그인은 mock API 가 흉내 낸다. (VITE_USE_MOCK=false 면 realAuthApi 로 바뀜)
+(백엔드와 맞출 약속은 frontend/API.md 참고)
+
+
+6-1. frontend 폴더 바깥쪽 파일 (src 밖)
+--------------------------------------------------------------------
+  tests/            node 로 돌리는 테스트 7개 (*.test.mjs). 파일마다 따로 실행한다.
+  public/           favicon.png
+  API.md            백엔드와 맞출 API 약속
+  README.md         frontend 사용 설명
+  package.json      실행 명령: dev, build, lint, preview
+  vite.config.ts    개발 서버 포트 3000, '@' = src 경로 별칭
+  .env.example      환경변수 견본 (실제 .env 는 깃에 올리지 않음)
+  tsconfig*.json, .oxlintrc.json, .nvmrc   설정 파일
+  dist/, node_modules/   빌드 결과와 설치된 패키지 (직접 건드리지 않음)
+
+
+7. 새 기능을 만들 때 순서
+--------------------------------------------------------------------
+1) features/ 에 기능 폴더를 만들고 store, types, components 를 넣는다.
+2) pages/ 에 화면을 만들어 그 기능의 부품을 배치한다.
+3) app/router.tsx 에 주소를 등록한다. 로그인이 필요하면 ProtectedRoute 안에 넣는다.
+공용으로 쓸 버튼/입력창은 components/ui/ 에 둔다.
+
+
+8. 이 구조의 장점
+--------------------------------------------------------------------
+- "뭐가 어디 있나?"가 분명하다. 화면은 pages/, 기능 로직은 features/기능이름/ 에서 찾는다.
+- 팀원이 기능별로 나눠 작업하기 쉽고 충돌이 적다.
+- 기능 폴더를 통째로 옮기거나 지우기 쉽다.
