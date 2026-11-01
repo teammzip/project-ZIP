@@ -33,7 +33,7 @@ const TEXT: Record<Kind, { title: string; topLabel: string; formTitle: string; q
     catLabel: '분류',
     memoPh: '예) 점심 김밥, 세제',
     empty: '이 달에는 기록이 없어요. 첫 지출을 기록해 보세요.',
-    note: '월세·공과금은 "고정 지출"에 따로 있어요.',
+    note: '정기적으로 나가는 비용은 "고정 지출"에 따로 있어요.',
     max: 99999999,
   },
 }

@@ -4,7 +4,7 @@ import { authApi } from '@/features/auth/api'
 import { Button, Modal } from '@/components/ui'
 import { fmt, monthDay } from '@/lib/date'
 import { VERIFY_DAYS, useRegionVerify } from '../derive'
-import { locateRegion } from '../locateRegion'
+import { locateNeighborhood } from '../locateRegion'
 import { useLifeStore } from '../store'
 import styles from './verify.module.css'
 
@@ -38,14 +38,14 @@ export function RegionVerifyDialog({ open, onClose, onVerified }: Props) {
     const userId = useAuthStore.getState().user?.id
     setStep({ kind: 'locating' })
     try {
-      const found = await locateRegion()
+      const found = await locateNeighborhood()
       if (attempt !== request.current.id || userId !== useAuthStore.getState().user?.id || region !== useLifeStore.getState().settings.region) return
-      const user = await authApi.updateMe({ address: found })
+      const user = await authApi.updateMe({ address: found.region })
       if (attempt !== request.current.id || userId !== useAuthStore.getState().user?.id || region !== useLifeStore.getState().settings.region) return
       const firstLogin = useAuthStore.getState().user?.firstLogin
       useAuthStore.getState().updateUser({ ...user, firstLogin })
-      verifyRegion(found)
-      setStep({ kind: 'done', region: found })
+      verifyRegion(found.region, found.point)
+      setStep({ kind: 'done', region: found.region })
     } catch (err) {
       if (attempt !== request.current.id) return
       setStep({ kind: 'error', message: err instanceof Error ? err.message : '위치를 확인하지 못했어요.' })

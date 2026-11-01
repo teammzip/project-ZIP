@@ -2,15 +2,17 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Modal } from '@/components/ui'
 import { useLifeStore } from '@/features/life/store'
+import { useNeighborhoodLocation } from '@/features/life/useNeighborhoodLocation'
 import { RegionVerifyDialog, useRegionVerify } from '@/features/life'
 import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
 import home from '@/features/life/components/home.module.css'
-import { fetchForecast, koreaTime, probabilityText, resolveWeatherPlace, temperatureText, upcomingHours, weatherDescription } from './api'
+import { fetchForecast, koreaTime, probabilityText, temperatureText, upcomingHours, weatherDescription } from './api'
 import styles from './WeatherCard.module.css'
 
 export function WeatherCard() {
-  const region = useLifeStore((s) => s.settings.region.trim())
+  const location = useNeighborhoodLocation()
+  const { region, place } = location
   const [open, setOpen] = useState(false)
   const [verifyOpen, setVerifyOpen] = useState(false)
   const { verified } = useRegionVerify()
@@ -21,24 +23,20 @@ export function WeatherCard() {
     return () => window.clearInterval(timer)
   }, [])
   const day = koreaTime(now).slice(0, 10)
-  const location = useQuery({
-    queryKey: ['weather-place', region], queryFn: ({ signal }) => resolveWeatherPlace(region, signal),
-    enabled: !!region, staleTime: Infinity, retry: false,
-  })
   const forecast = useQuery({
-    queryKey: ['weather', location.data?.latitude, location.data?.longitude, day],
-    queryFn: ({ signal }) => fetchForecast(location.data!, signal), enabled: !!location.data,
+    queryKey: ['weather', place?.latitude, place?.longitude, day],
+    queryFn: ({ signal }) => fetchForecast(place!, signal), enabled: !!place,
     staleTime: 10 * 60 * 1000, refetchInterval: 15 * 60 * 1000, refetchOnWindowFocus: true, retry: false,
   })
   const data = forecast.data
   const error = location.error || forecast.error
-  const loading = location.isFetching || forecast.isFetching
+  const loading = location.loading || forecast.isFetching
   const condition = weatherDescription(data?.current.weather_code, data?.current.is_day !== 0)
   const index = data?.daily.time.indexOf(day) ?? -1
   const low = data?.daily.temperature_2m_min[index]
   const high = data?.daily.temperature_2m_max[index]
   const rain = data?.daily.precipitation_probability_max[index]
-  const retry = () => { if (!location.data) void location.refetch(); else void forecast.refetch() }
+  const retry = () => { if (!place) location.retry(); else void forecast.refetch() }
   const close = () => { setOpen(false); trigger.current?.focus() }
 
   return <>
@@ -67,7 +65,7 @@ export function WeatherCard() {
         </div>
         {!region && <p className={common.empty}>우리 동네를 저장하면 날씨를 보여드려요.</p>}
         {region && !data && !error && <p role="status">날씨를 불러오는 중이에요.</p>}
-        {region && error && <p className={common.formError} role="alert">{error instanceof Error && error.message.includes('동네') ? error.message : '날씨를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.'}{data && ' 아래는 마지막으로 받은 정보예요.'}</p>}
+        {region && error && <p className={common.formError} role="alert">{typeof error === 'string' ? error : '날씨를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.'}{data && ' 아래는 마지막으로 받은 정보예요.'}</p>}
         {region && data && <>
           <div className={styles.current}>
             <span aria-hidden="true">{condition.icon}</span><strong>{temperatureText(data.current.temperature_2m)}</strong><span>{condition.text}</span>
@@ -90,7 +88,7 @@ export function WeatherCard() {
           </section>
         </>}
         {region && <Button variant="line" onClick={retry} disabled={loading}>{loading ? '불러오는 중…' : error ? '다시 시도' : '새로고침'}</Button>}
-        <p className={styles.updated}>동네 중심 좌표의 예보이며 실제 날씨와 다를 수 있어요.</p>
+        <p className={styles.updated}>{location.source === 'verified' ? '인증한 위치' : '선택한 동네 중심'}의 예보이며 실제 날씨와 다를 수 있어요.</p>
         <footer className={styles.attribution}>날씨: <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> · 지역: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap 기여자</a></footer>
       </div>
     </Modal>
@@ -106,7 +104,7 @@ function RegionForm({ region }: { region: string }) {
     if (value.trim()) saveSettings({ ...useLifeStore.getState().settings, region: value.trim() })
   }
   return <form className={cx(common.form, styles.regionForm)} onSubmit={submit}>
-    <label>우리 동네<input value={value} onChange={(e) => setValue(e.target.value)} required maxLength={30} placeholder="예: 서울 마포구" /></label>
+    <label>우리 동네<input value={value} onChange={(e) => setValue(e.target.value)} required maxLength={120} placeholder="예: 서울 마포구" /></label>
     <Button type="submit" variant="line" disabled={!value.trim() || value.trim() === region}>동네 저장</Button>
   </form>
 }

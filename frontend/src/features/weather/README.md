@@ -1,6 +1,8 @@
 # 홈 날씨
 
-- `WeatherCard`는 생활 정보의 `settings.region`으로 지역을 조회한다. 동네 저장 시 생활 정보도 함께 변경된다.
+- 날씨·홈 지도·동네 지도는 `useNeighborhoodLocation`의 같은 지역과 좌표를 사용한다. 설문에서 선택한 주소의 좌표는 `survey.addressPoint`와 `settings.regionLocation`에 저장하며 재검색 없이 사용한다.
+- 동네 인증에 성공하면 주소와 실제 GPS 좌표를 `settings.regionLocation`에 함께 저장한다. 인증한 위치는 설문 주소보다 우선하며 새로고침 후에도 유지된다. GPS는 인증 버튼을 눌렀을 때만 요청한다.
+- 좌표가 없는 기존 설문·인증 기록은 해당 동네 이름으로 지역을 조회한다. 수동으로 주소를 바꾸면 이전 좌표와 인증을 해제한다. 회원 ID가 다른 지역·좌표는 사용하지 않는다.
 - 첫 로그인에서 저장한 주소로 날씨와 지도를 인증 없이 이용한다. 위치 인증이 성공하면 회원 주소와 생활 정보가 인증한 동네로 변경된다. 커뮤니티만 위치 인증이 필요하다.
 - 지역은 Nominatim의 대한민국 주소 검색 결과와 입력한 행정구역이 일치할 때만 사용한다. 결과가 없거나 모호하면 지역 수정 안내를 보여준다. GPS 권한은 요청하지 않는다.
 - 위치 검색은 입력할 때마다 실행하지 않는다. 저장한 지역만 검색하며 결과는 `zip-weather-place:<지역>`에 90일 저장한다. 같은 탭의 요청은 직렬화하고 1.1초 이상 간격을 둔다.
@@ -16,4 +18,4 @@
 - [Nominatim 검색 API](https://nominatim.org/release-docs/latest/api/Search/)
 - [Nominatim 이용 정책](https://operations.osmfoundation.org/policies/nominatim/)
 
-검증: `node --test tests/weather.test.mjs`
+검증: `node --test tests/weather.test.mjs tests/neighborhood-location.test.mjs`

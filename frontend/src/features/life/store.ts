@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { monthKeyOf } from '@/lib/date'
 import { useAuthStore } from '@/features/auth/store/authStore'
+import { readMapPoint, type MapPoint } from '@/features/map/location'
 import { seedBills, seedEvents, seedIncomes, seedSpends, todosToEvents } from './data/seed'
 import { UNCATEGORIZED, defaultCategories } from './data/presets'
 import type { Bill, CalEvent, CustomPreset, EventCategory, LifeSettings, MoneyRecord, RegionVerify } from './types'
@@ -63,7 +64,7 @@ type LifeActions = {
   deleteNotis: (ids: string[]) => void
   saveSettings: (s: LifeSettings) => void
   /** 위치로 확인한 동네를 우리 동네로 정하고 인증 완료 */
-  verifyRegion: (region: string) => void
+  verifyRegion: (region: string, point?: MapPoint) => void
   /** 모든 기록을 처음 상태(예시 데이터)로 되돌림 */
   reset: () => void
 }
@@ -158,11 +159,25 @@ export const useLifeStore = create<LifeData & LifeActions>()(
 
       markRead: (ids) => set((s) => ({ notiRead: { ...s.notiRead, ...Object.fromEntries(ids.map((id) => [id, true])) } })),
       deleteNotis: (ids) => set((s) => ({ notiDeleted: { ...s.notiDeleted, ...Object.fromEntries(ids.map((id) => [id, true])) } })),
-      saveSettings: (settings) => set((s) => ({ settings, regionVerify: settings.region === s.settings.region ? s.regionVerify : null })),
-      verifyRegion: (region) => {
+      saveSettings: (settings) => set((s) => {
         const userId = useAuthStore.getState().user?.id
-        if (!userId || !region) return
-        set((s) => ({ settings: { ...s.settings, region }, regionVerify: { region, at: Date.now(), userId } }))
+        const proposed = settings.regionLocation
+        const selected = proposed?.userId === userId && proposed?.region === settings.region
+          ? { ...proposed, point: readMapPoint(proposed.point) ?? undefined }
+          : userId && settings.region !== s.settings.region ? { userId, region: settings.region, source: 'manual' as const } : undefined
+        return {
+          settings: { ...settings, regionLocation: selected },
+          regionVerify: settings.region === s.settings.region && selected?.source !== 'survey' ? s.regionVerify : null,
+        }
+      }),
+      verifyRegion: (region, point) => {
+        const userId = useAuthStore.getState().user?.id
+        const coordinates = readMapPoint(point)
+        if (!userId || !region || (point && !coordinates)) return
+        set((s) => ({
+          settings: { ...s.settings, region, regionLocation: { userId, region, source: 'verified', point: coordinates ?? undefined } },
+          regionVerify: { region, at: Date.now(), userId },
+        }))
       },
       reset: () => set(initial()),
     }),

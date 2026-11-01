@@ -14,6 +14,8 @@ export type HousingSurvey = {
   birth: string
   /** 2. 간략한 주소 */
   address: string
+  /** 주소 검색에서 선택한 행정구역의 중심 좌표. 기존 설문에는 없을 수 있음. */
+  addressPoint?: { lat: number; lon: number }
   /** 3. 계약 유형 */
   kind: ContractKind
   /** 3-1 월세: 보증금 / 월세 / 월세에 관리비가 포함인지 / 포함이 아니면 관리비 */

@@ -1,15 +1,13 @@
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button, Modal } from '@/components/ui'
-import { RegionVerifyDialog, useLifeStore, useRegionVerify } from '@/features/life'
-import { useAuthStore } from '@/features/auth'
+import { RegionVerifyDialog, useRegionVerify } from '@/features/life'
 import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
 import { aiFind } from '../aiFind'
 import { ALL_PLACES, CAT_ICON, DEFAULT_CATS, HOME, PLACE_KINDS, PLACES, walkMin, type PlaceItem } from '../data/places'
 import { useMapStore } from '../store'
 import { useNeighborhoodPosition } from '../useNeighborhoodPosition'
-import { getCurrentMapPosition, type MapPoint } from '../location'
 import styles from './MapView.module.css'
 
 // 지도 라이브러리(Leaflet)는 크기가 커서 이 화면에 들어올 때만 받아 옴
@@ -55,28 +53,21 @@ type Found = { q: string; items: Array<{ p: PlaceItem; why: string[] }> }
  * - ★ 저장(즐겨찾기), 종류 편집(켜기 · 끄기 · 직접 검색어), ?cat=세탁방 으로 열면 그 종류부터 */
 export function MapView() {
   const { on, custom, favs, ensureCat } = useMapStore()
-  const region = useLifeStore((s) => s.settings.region)
   const mobile = useMobile()
   const [params] = useSearchParams()
   const position = useNeighborhoodPosition()
+  const region = position.region
   const { verified } = useRegionVerify()
-  const userId = useAuthStore((s) => s.user?.id)
   const [verifyOpen, setVerifyOpen] = useState(false)
-  const [locating, setLocating] = useState(false)
-  const [locationError, setLocationError] = useState('')
-  const [current, setCurrent] = useState<{ point: MapPoint; region: string; userId: string | undefined } | null>(null)
-  const request = useRef({ id: 0 })
-  useEffect(() => {
-    const pending = request.current
-    return () => { pending.id++ }
-  }, [])
-  const currentPoint = verified && current?.region === region && current.userId === userId ? current.point : null
-  const mapPoint = currentPoint ?? position.point
+  const currentPoint = position.verifiedPoint
+  const mapPoint = position.point
+  const locationKey = `${region}|${position.source}|${mapPoint?.lat}|${mapPoint?.lon}|${position.verifiedAt}`
   const asked = params.get('cat')
   const [cat, setCat] = useState(() => (asked && PLACES[asked] ? asked : (on[0] ?? DEFAULT_CATS[0])))
   const [tab, setTab] = useState<'near' | 'fav'>('near')
   const [filter, setFilter] = useState('near')
   const [selId, setSelId] = useState<string | null>(null)
+  const [selectedLocationKey, setSelectedLocationKey] = useState('')
   const [query, setQuery] = useState('')
   const [found, setFound] = useState<Found | null>(null)
   const [editing, setEditing] = useState(false)
@@ -101,7 +92,8 @@ export function MapView() {
   })()
   const rule = FILTERS.find((f) => f.key === filter)?.re
   const list = (found ? base : [...base].sort((a, b) => walkMin(a) - walkMin(b))).filter((p) => !rule || rule.test(p.d))
-  const selected = selId ? ALL_PLACES.find((p) => p.id === selId) : undefined
+  const activeSelectedId = selectedLocationKey === locationKey ? selId : null
+  const selected = activeSelectedId ? ALL_PLACES.find((p) => p.id === activeSelectedId) : undefined
   // 지도에는 목록 + (목록에 없으면) 고른 곳
   const pins = selected && !list.some((p) => p.id === selected.id) ? [...list, selected] : list
   const fitKey = `${found?.q ?? ''}|${tab}|${cat}|${filter}|${centerRequest}`
@@ -109,6 +101,7 @@ export function MapView() {
   const bottomInset = mobile && sheet === 'peek' ? Math.round(window.innerHeight * 0.4) : 0
 
   const select = (p: PlaceItem) => {
+    setSelectedLocationKey(locationKey)
     setSelId(p.id)
     setFocus({ lat: p.lat, lon: p.lon, n: Date.now() })
     setSheet('peek')
@@ -132,31 +125,7 @@ export function MapView() {
     setFocus(null)
     setSheet('peek')
   }
-  const moveCurrent = async () => {
-    const attempt = ++request.current.id
-    const targetRegion = useLifeStore.getState().settings.region
-    const targetUser = useAuthStore.getState().user?.id
-    setLocating(true)
-    setLocationError('')
-    try {
-      const point = await getCurrentMapPosition()
-      if (attempt !== request.current.id) return
-      if (targetRegion !== useLifeStore.getState().settings.region || targetUser !== useAuthStore.getState().user?.id) return
-      setCurrent({ point, region: targetRegion, userId: targetUser })
-      setSelId(null)
-      setSheet('peek')
-      setFocus({ ...point, n: Date.now() })
-      setCenterRequest((value) => value + 1)
-    } catch (error) {
-      if (attempt === request.current.id) setLocationError(error instanceof Error ? error.message : '현재 위치를 확인하지 못했어요.')
-    } finally {
-      if (attempt === request.current.id) setLocating(false)
-    }
-  }
-  const goCurrent = () => {
-    if (!verified) { setVerifyOpen(true); return }
-    void moveCurrent()
-  }
+  const goCurrent = () => setVerifyOpen(true)
 
   // 시트 손잡이: 위로 끌면 펼치고 아래로 끌면 접기, 누르기만 하면 바꾸기
   const onGrab = (e: PointerEvent) => {
@@ -207,12 +176,15 @@ export function MapView() {
       <div className={styles.mapArea}>
         {mapPoint ? <Suspense fallback={<div className={styles.map} />}>
           <LeafletMap
-            className={styles.map} places={pins} selectedId={selId} onSelect={(id) => select(ALL_PLACES.find((p) => p.id === id)!)}
-            focus={focus} fitKey={fitKey} bottomInset={bottomInset}
+            className={styles.map} places={pins} selectedId={activeSelectedId} onSelect={(id) => select(ALL_PLACES.find((p) => p.id === id)!)}
+            focus={selectedLocationKey === locationKey ? focus : null} fitKey={fitKey} bottomInset={bottomInset}
             viewport={!selected && mapPoint ? { ...mapPoint, zoom: 16 } : undefined}
             currentPosition={currentPoint}
           />
-        </Suspense> : <p role="status">{position.loading ? '저장한 동네를 찾고 있어요.' : position.error}</p>}
+        </Suspense> : <div className={cx(styles.map, styles.mapLoading)} role="status">
+          <p>{position.loading ? '선택한 동네의 지도를 준비하고 있어요.' : position.error}</p>
+          {position.error && <Button variant="line" onClick={position.retry}>다시 불러오기</Button>}
+        </div>}
 
         <div className={styles.overlayTop}>
           <div className={styles.mobileOnly}>{searchBox}</div>
@@ -249,7 +221,7 @@ export function MapView() {
           >
             ★
           </button>
-          <button type="button" className={styles.fab} onClick={goCurrent} disabled={locating} aria-label="현 위치로 이동" title={locating ? '현 위치 확인 중…' : '현 위치로 이동'} aria-haspopup={!verified ? 'dialog' : undefined}>
+          <button type="button" className={styles.fab} onClick={goCurrent} aria-label={verified ? '현 위치 다시 인증' : '현 위치 인증'} title={verified ? '현 위치 다시 인증' : '현 위치 인증'} aria-haspopup="dialog">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="12" r="7" />
               <circle cx="12" cy="12" r="2.4" />
@@ -268,7 +240,7 @@ export function MapView() {
 
         <div className={styles.panelScroll}>
           <p className={styles.note} role="status">
-            {locating ? '현 위치를 확인하고 있어요.' : locationError || (currentPoint ? '파란 점이 현 위치예요.' : position.loading ? '저장한 동네를 찾고 있어요.' : position.error || `${region} 중심을 표시해요. 위치 인증 시 인증한 동네로 변경돼요.`)}
+            {position.loading ? '저장한 동네를 찾고 있어요.' : position.error || `${region} · ${currentPoint ? '파란 점이 인증한 위치예요.' : '선택한 동네 중심을 표시해요. 위치 인증 시 인증한 위치로 변경돼요.'}`}
           </p>
           {selected ? (
             <PlaceDetail p={selected} onBack={() => {
@@ -358,7 +330,12 @@ export function MapView() {
         </div>
       </section>
 
-      <RegionVerifyDialog open={verifyOpen} onClose={() => setVerifyOpen(false)} onVerified={() => void moveCurrent()} />
+      <RegionVerifyDialog open={verifyOpen} onClose={() => setVerifyOpen(false)} onVerified={() => {
+        setSelId(null)
+        setFocus(null)
+        setSheet('peek')
+        setCenterRequest((value) => value + 1)
+      }} />
       <Modal open={editing} onClose={() => setEditing(false)} title="장소 종류 편집">
         <h3 className={styles.editTitle}>장소 종류 편집</h3>
         <CategoryEditor current={cat} onCurrentGone={(next) => pickCat(next)} onAdded={(k) => pickCat(CUSTOM + k)} />
