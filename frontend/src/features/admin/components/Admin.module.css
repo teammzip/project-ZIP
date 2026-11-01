@@ -282,6 +282,29 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  min-width: 0;
+}
+
+/* 삭제 창의 '경고도 주기' */
+.warnBox {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: #f7f8fb;
+}
+
+.warnBox .check {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.reasonInput {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
 }
 
 .dialogRow label {
@@ -302,7 +325,11 @@
 
 .grow {
   flex: 1;
-  min-width: 160px;
+  min-width: 0;
+}
+
+.grow input {
+  width: 100%;
 }
 
 .dialogBtns {

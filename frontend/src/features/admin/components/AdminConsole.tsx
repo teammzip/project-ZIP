@@ -19,10 +19,10 @@ type DialogState = {
   title: string
   msg: string
   okText: string
-  /** 조치 안 함 선택지 (글 삭제할 때) */
-  allowNone?: boolean
   /** 경고만 (기간 고르기 없음) */
   warnOnly?: boolean
+  /** 글 · 댓글 삭제 창: 삭제가 중심이고, 작성자에게는 '경고도 주기' 체크만 (정지는 회원 관리에서) */
+  deleteFor?: { author: string; banned: boolean }
   initial: string
   onOk: (action: Action, reason: string) => void
 }
@@ -117,9 +117,9 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
           onDelete={(title, msg, author, doDelete) =>
             setDialog({
               title,
-              msg: `${msg} 작성자 "${author}"${isActive(records[author]) ? '는 이미 정지 중이에요.' : ' 님께 경고나 정지를 줄까요?'}`,
+              msg,
               okText: '삭제',
-              allowNone: true,
+              deleteFor: { author, banned: isActive(records[author]) },
               initial: 'none',
               onOk: (a, reason) => {
                 doDelete()
@@ -426,8 +426,8 @@ function Posts({ posts, isBanned, onDelete, removePost, removeComment }: PostsPr
                 open={openId === p.id}
                 onToggle={() => setOpenId(openId === p.id ? null : p.id)}
                 banned={isBanned(p.author)}
-                onDeletePost={() => onDelete('글 삭제', `"${p.title}" 글을 삭제해요. 댓글도 함께 사라져요.`, p.author, () => removePost(p.id))}
-                onDeleteComment={(i) => onDelete('댓글 삭제', '이 댓글을 삭제해요.', p.comments[i].author, () => removeComment(p.id, i))}
+                onDeletePost={() => onDelete('글 삭제', `"${p.title}" 글을 삭제할까요? 댓글도 함께 사라지고 되돌릴 수 없어요.`, p.author, () => removePost(p.id))}
+                onDeleteComment={(i) => onDelete('댓글 삭제', `"${p.comments[i].text}" 댓글을 삭제할까요? 되돌릴 수 없어요.`, p.comments[i].author, () => removeComment(p.id, i))}
               />
             ))}
           </tbody>
@@ -513,8 +513,10 @@ function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteCom
 function ActionDialog({ state, onClose }: { state: DialogState; onClose: () => void }) {
   const [value, setValue] = useState(state.initial)
   const [reason, setReason] = useState('')
+  const [warnToo, setWarnToo] = useState(false)
+  const del = state.deleteFor
   const confirm = () => {
-    const a: Action = value === 'none' ? null : value === 'warn' ? 'warn' : value === 'perm' ? 0 : Number(value)
+    const a: Action = del ? (warnToo ? 'warn' : null) : value === 'none' ? null : value === 'warn' ? 'warn' : value === 'perm' ? 0 : Number(value)
     state.onOk(a, reason.trim())
     onClose()
   }
@@ -523,32 +525,53 @@ function ActionDialog({ state, onClose }: { state: DialogState; onClose: () => v
       <div className={styles.dialog}>
         <h3>{state.title}</h3>
         <p>{state.msg}</p>
-        <div className={styles.dialogRow}>
-          {!state.warnOnly && (
-            <label>
-              조치
-              <select value={value} onChange={(e) => setValue(e.target.value)}>
-                {state.allowNone && <option value="none">조치 안 함</option>}
-                <option value="warn">경고만 (정지 없음)</option>
-                {[1, 3, 5, 10].map((d) => (
-                  <option key={d} value={String(d)}>
-                    {d}일 정지
-                  </option>
-                ))}
-                <option value="perm">영구 정지</option>
-              </select>
+        {del ? (
+          // 삭제 창: 작성자에게는 경고만 (정지 · 영구 정지는 회원 관리에서)
+          <div className={styles.warnBox}>
+            {del.banned ? (
+              <p className={styles.sub}>작성자 "{del.author}" 님은 이미 정지 중이에요.</p>
+            ) : (
+              <>
+                <label className={styles.check}>
+                  <input type="checkbox" checked={warnToo} onChange={(e) => setWarnToo(e.target.checked)} />
+                  작성자 "{del.author}" 님에게 경고도 줄래요
+                </label>
+                {warnToo && (
+                  <input className={styles.reasonInput} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={60} placeholder="경고 사유 (예: 욕설 · 비방)" aria-label="경고 사유" autoFocus />
+                )}
+                <p className={styles.sub}>기간 정지 · 영구 정지는 회원 관리 탭에서 할 수 있어요.</p>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className={styles.dialogRow}>
+            {!state.warnOnly && (
+              <label>
+                조치
+                <select value={value} onChange={(e) => setValue(e.target.value)}>
+                  <option value="warn">경고만 (정지 없음)</option>
+                  {[1, 3, 5, 10].map((d) => (
+                    <option key={d} value={String(d)}>
+                      {d}일 정지
+                    </option>
+                  ))}
+                  <option value="perm">영구 정지</option>
+                </select>
+              </label>
+            )}
+            <label className={styles.grow}>
+              사유
+              <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={60} placeholder="예: 운영 정책 위반 (선택)" />
             </label>
-          )}
-          <label className={styles.grow}>
-            사유
-            <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={60} placeholder="예: 운영 정책 위반 (선택)" />
-          </label>
-        </div>
+          </div>
+        )}
         <div className={styles.dialogBtns}>
           <Button variant="line" onClick={onClose}>
             취소
           </Button>
-          <Button onClick={confirm}>{state.okText}</Button>
+          <Button variant={del ? 'danger' : 'primary'} onClick={confirm}>
+            {del && warnToo ? '삭제하고 경고' : state.okText}
+          </Button>
         </div>
       </div>
     </Modal>
