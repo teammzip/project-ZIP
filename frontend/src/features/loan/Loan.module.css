@@ -32,8 +32,77 @@
   color: var(--color-muted);
 }
 
-.form {
-  max-width: 640px;
+/* 설정 폼: PC 는 왼쪽 입력 · 오른쪽 미리보기 (두 칸이 카드 폭을 채움), 모바일은 입력 → 미리보기 → 저장 */
+form.form {
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr);
+  grid-template-areas:
+    'fields preview'
+    'save preview';
+  gap: 12px 24px;
+  align-items: start;
+}
+
+.fields {
+  display: grid;
+  grid-area: fields;
+  gap: 10px;
+}
+
+.save {
+  display: grid;
+  grid-area: save;
+  align-self: end; /* 오른쪽 미리보기 아래 끝과 저장 버튼을 맞춤 */
+  gap: 8px;
+}
+
+.preview {
+  display: grid;
+  grid-area: preview;
+  gap: 4px;
+  align-self: stretch;
+  padding: 18px 20px;
+  border-radius: var(--radius-md);
+  background: #f3f7ff;
+}
+
+.preview small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.preview b {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--color-primary);
+}
+
+.preview span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3c4254;
+}
+
+.preview ul {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 12px 0 0 16px;
+  border-top: 1px solid #dfe8f7;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+@media (max-width: 900px) {
+  form.form {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'fields'
+      'preview'
+      'save';
+  }
 }
 
 /* 계산 안내 글 여러 줄을 한 덩어리로 */
