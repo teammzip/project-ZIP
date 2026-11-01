@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Button, Modal } from '@/components/ui'
-import { reasonLabel, type Report, useCommunityStore, useReportStore } from '@/features/community'
+import { isPending, reasonLabel, type Report, useCommunityStore, useReportStore } from '@/features/community'
 import { AdminInquiries } from '@/features/support'
 import { banLabel, fmtAt, isActive, useBanStore, type BanRecord } from '@/features/moderation'
 import { cx } from '@/lib/cx'
 import { relTime } from '@/lib/date'
+import { AdminReports } from './AdminReports'
 import styles from './Admin.module.css'
 
 /* 관리자 화면
@@ -12,7 +13,7 @@ import styles from './Admin.module.css'
  * - 게시글 관리: 분류 · 동네 · 검색어로 거르기, 내용·댓글 펼쳐 보기, 글·댓글 삭제 + 작성자 경고/정지
  * 서버가 없어서 회원 목록 대신 커뮤니티 글 · 댓글 작성자와 정지 기록을 모아 보여 줘요. */
 
-type Tab = 'members' | 'posts' | 'inquiries'
+type Tab = 'members' | 'reports' | 'posts' | 'inquiries'
 /** 고른 조치: null = 조치 안 함, 'warn' = 경고, 0 = 영구 정지, 그 밖 = 정지 일수 */
 type Action = null | 'warn' | number
 type DialogState = {
@@ -44,6 +45,32 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
   const { records, ban, warn, unban } = useBanStore()
   const [tab, setTab] = useState<Tab>('members')
   const [dialog, setDialog] = useState<DialogState | null>(null)
+  const reports = useReportStore((s) => s.reports)
+  const resolveReports = useReportStore((s) => s.resolve)
+  // 처리 대기 신고 = 신고가 들어온 대상(글 · 댓글) 중 아직 처리 안 한 것
+  const pendingTargets = new Set(reports.filter(isPending).map((r) => (r.targetType === 'POST' ? `P${r.postId}` : `C${r.postId}|${r.targetAuthor}|${r.targetText}`))).size
+  /** 글 · 댓글을 지우면 거기 들어온 신고도 '삭제함'으로 처리 */
+  const deletePost = (id: number) => {
+    removePost(id)
+    resolveReports((r) => r.postId === id, 'HIDDEN')
+  }
+  const deleteComment = (id: number, index: number) => {
+    const c = posts.find((p) => p.id === id)?.comments[index]
+    removeComment(id, index)
+    if (c) resolveReports((r) => r.targetType === 'COMMENT' && r.postId === id && r.targetAuthor === c.author && r.targetText === c.text, 'HIDDEN')
+  }
+  const confirmDelete = (title: string, msg: string, author: string, doDelete: () => void) =>
+    setDialog({
+      title,
+      msg,
+      okText: '삭제',
+      deleteFor: { author, banned: isActive(records[author]) },
+      initial: 'none',
+      onOk: (a, reason) => {
+        doDelete()
+        act(author, a, reason)
+      },
+    })
 
   // 회원 = 글·댓글 작성자 + 정지 기록이 있는 사람 (나는 빼고)
   const map = new Map<string, Member>()
@@ -75,6 +102,7 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
     [members.filter((m) => m.active).length, '지금 정지 중'],
     [members.reduce((t, m) => t + m.count, 0), '누적 정지 횟수'],
     [members.reduce((t, m) => t + m.warns, 0), '누적 경고'],
+    [pendingTargets, '처리 대기 신고'],
     [posts.length, '게시글'],
     [comments, '댓글'],
   ]
@@ -84,9 +112,10 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
       <header className={styles.top}>
         <h1>ZIP 관리자</h1>
         <nav className={styles.tabs} aria-label="관리 메뉴">
-          {(['members', 'posts', 'inquiries'] as const).map((t) => (
+          {(['members', 'reports', 'posts', 'inquiries'] as const).map((t) => (
             <button key={t} type="button" className={cx(tab === t && styles.on)} aria-pressed={tab === t} onClick={() => setTab(t)}>
-              {t === 'members' ? '회원 관리' : t === 'posts' ? '게시글 관리' : '문의 관리'}
+              {t === 'members' ? '회원 관리' : t === 'reports' ? '신고 관리' : t === 'posts' ? '게시글 관리' : '문의 관리'}
+              {t === 'reports' && pendingTargets > 0 && <span className={styles.tabBadge}>{pendingTargets}</span>}
             </button>
           ))}
         </nav>
@@ -108,28 +137,12 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
 
       {tab === 'members' ? (
         <Members members={members} openDialog={setDialog} act={act} unban={unban} />
+      ) : tab === 'reports' ? (
+        <AdminReports posts={posts} records={records} onDelete={confirmDelete} removePost={deletePost} removeComment={deleteComment} />
       ) : tab === 'inquiries' ? (
         <main className={styles.pane}><AdminInquiries /></main>
       ) : (
-        <Posts
-          posts={posts}
-          isBanned={(nick) => isActive(records[nick])}
-          onDelete={(title, msg, author, doDelete) =>
-            setDialog({
-              title,
-              msg,
-              okText: '삭제',
-              deleteFor: { author, banned: isActive(records[author]) },
-              initial: 'none',
-              onOk: (a, reason) => {
-                doDelete()
-                act(author, a, reason)
-              },
-            })
-          }
-          removePost={removePost}
-          removeComment={removeComment}
-        />
+        <Posts posts={posts} isBanned={(nick) => isActive(records[nick])} onDelete={confirmDelete} removePost={deletePost} removeComment={deleteComment} />
       )}
 
       {dialog && <ActionDialog state={dialog} onClose={() => setDialog(null)} />}

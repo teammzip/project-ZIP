@@ -29,7 +29,11 @@ export type Report = {
   detail: string
   reporter: string
   at: number
+  /** 처리 상태: 접수(처리 대기) · 숨김(내용 삭제) · 기각(문제없음). 예전 기록엔 없을 수 있음 → 접수로 봄 */
+  status?: 'RECEIVED' | 'HIDDEN' | 'DISMISSED'
 }
+
+export const isPending = (r: Report) => (r.status ?? 'RECEIVED') === 'RECEIVED'
 
 export const reasonLabel = (code: ReportReason) => REPORT_REASONS.find((r) => r.code === code)?.label ?? code
 
@@ -39,7 +43,9 @@ const sameTarget = (r: Pick<Report, 'targetType' | 'postId' | 'commentIndex'>, t
 type State = {
   reports: Report[]
   /** 신고 접수. 이미 같은 대상을 신고했으면 false */
-  add: (r: Omit<Report, 'id' | 'at'>) => boolean
+  add: (r: Omit<Report, 'id' | 'at' | 'status'>) => boolean
+  /** 조건에 맞는 신고들을 처리 완료로 (HIDDEN = 내용 삭제, DISMISSED = 문제없음) */
+  resolve: (match: (r: Report) => boolean, status: 'HIDDEN' | 'DISMISSED') => void
   reset: () => void
 }
 
@@ -49,9 +55,10 @@ export const useReportStore = create<State>()(
       reports: [],
       add: (r) => {
         if (get().reports.some((x) => x.reporter === r.reporter && sameTarget(x, r))) return false
-        set((s) => ({ reports: [...s.reports, { ...r, id: crypto.randomUUID(), at: Date.now() }] }))
+        set((s) => ({ reports: [...s.reports, { ...r, id: crypto.randomUUID(), at: Date.now(), status: 'RECEIVED' }] }))
         return true
       },
+      resolve: (match, status) => set((s) => ({ reports: s.reports.map((r) => (isPending(r) && match(r) ? { ...r, status } : r)) })),
       reset: () => set({ reports: [] }),
     }),
     { name: 'zip-reports', storage: createJSONStorage(() => localStorage), version: 1 },

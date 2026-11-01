@@ -430,6 +430,7 @@
   "posts": 1, "comments": 0, "warns": 0, "bans": 1,
   "status": "SUSPENDED", "until": "2026-10-27T18:00:00+09:00", "permanent": false }
 ```
+- **신고 관리 탭**: 같은 대상(글 하나 · 댓글 하나)에 들어온 신고를 묶어 보여요 (처리 대기 · 처리 완료). `GET /api/admin/reports`는 `{ id, targetType, targetId, target: { title | text, author, deleted }, reason, detail, reporter, status, createdAt }`로 주세요. [문제없음] = `DISMISSED`, 내용 삭제 = `HIDDEN` (같은 대상의 신고는 한 번에 바꿔 주면 좋아요: `PATCH /api/admin/reports?targetType=&targetId=`). 글 · 댓글을 지우면 관련 신고도 `HIDDEN`으로.
 - **조치 → DB** (`user_sanctions`)
 
 | 화면의 조치 | `type` · `days` | `sanction_type` | `ends_at` | `users.status` |
