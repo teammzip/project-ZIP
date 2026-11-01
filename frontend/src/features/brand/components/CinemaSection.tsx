@@ -1,6 +1,5 @@
 import { motion, useScroll, useTransform, type MotionValue } from 'motion/react'
 import { useRef } from 'react'
-import { useMediaQuery } from '@/lib/useMediaQuery'
 import scene from '@/assets/images/cinema-room.jpg'
 import { CINEMA } from '../content'
 import { Lines } from './SectionHead'
@@ -11,10 +10,8 @@ import styles from './CinemaSection.module.css'
 export function CinemaSection() {
   const ref = useRef<HTMLElement>(null)
   const { scrollYProgress: p } = useScroll({ target: ref, offset: ['start start', 'end end'] })
-  const mobile = useMediaQuery('(max-width: 900px)')
-  // 둥근 카드 크기: 모바일은 화면에 맞게 더 크게
-  const width = useTransform(p, [0.56, 0.8], [mobile ? '88%' : '74%', '100%'])
-  const height = useTransform(p, [0.56, 0.8], [mobile ? '72%' : '64%', '100%'])
+  const width = useTransform(p, [0.56, 0.8], ['74%', '100%'])
+  const height = useTransform(p, [0.56, 0.8], ['64%', '100%'])
   const radius = useTransform(p, [0.56, 0.8], [28, 0])
   const sceneScale = useTransform(p, [0, 1], [1.15, 1])
   const dim = useTransform(p, [0, 0.6, 0.85], [0.62, 0.62, 0.5])

@@ -60,19 +60,3 @@
   text-align: center;
   color: #fff;
 }
-
-@media (max-width: 900px) {
-  .section {
-    height: 280vh;
-  }
-
-  .line {
-    left: 8%;
-    right: 8%;
-    font-size: 26px;
-  }
-
-  .final {
-    font-size: 44px;
-  }
-}
