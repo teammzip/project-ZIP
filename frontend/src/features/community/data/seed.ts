@@ -34,3 +34,30 @@ export function seedPosts(): Post[] {
     { id: 7, region: '서울 강남구', cat: '자유', title: '역삼 점심 맛집 공유해요', body: '혼밥하기 좋은 곳 위주로 모아봤어요.', author: '직장인', mine: false, ts: now - h * 30, likes: 4, liked: false, comments: [] },
   ]
 }
+
+/** 내 동네에 이웃 글이 하나도 없을 때 채우는 예시 글 (그 동네 이름으로). 글 · 댓글 신고도 해 볼 수 있게 이웃 댓글 포함 */
+export function seedRegionPosts(region: string): Post[] {
+  const now = Date.now()
+  const h = 3600000
+  const gu = region.split(' ').pop() ?? region
+  const base = now + Math.floor(Math.random() * 1000)
+  const rows: Array<[string, string, string, string, number, number, Array<[string, string]>]> = [
+    ['동네', `${gu} 분리배출 요일 바뀐 거 아시나요?`, '이번 달부터 재활용 수거 요일이 바뀌었대요. 구청 공지 확인해 보세요.', '동네주민', 1, 6, [['새로이사', '헉 몰랐어요 감사합니다!']]],
+    ['질문', `${gu}에 24시간 코인세탁방 있나요?`, '이불 빨래하려는데 밤에도 열린 곳이면 좋겠어요.', '이불빨래', 3, 2, [['근처사는사람', '역 근처 큰길 쪽에 하나 있어요.']]],
+    ['꿀팁', '원룸 곰팡이, 이렇게 잡았어요', '환기 하루 두 번 + 제습기 + 락스 희석액으로 닦으니 확실히 줄었어요.', '자취3년차', 5, 11, [['초보자취', '제습기 용량은 어느 정도 쓰세요?'], ['자취3년차', '10L 정도면 원룸은 충분해요.']]],
+    ['자유', `${gu} 혼밥하기 좋은 곳 공유해요`, '1인 좌석 있는 국밥집이랑 분식집 알려 주세요!', '혼밥러', 9, 4, [['맛집탐방', '시장 안 칼국수집 1인석 있어요.']]],
+  ]
+  return rows.map(([cat, title, body, author, ago, likes, comments], i) => ({
+    id: base + i,
+    region,
+    cat,
+    title,
+    body,
+    author,
+    mine: false,
+    ts: now - ago * h,
+    likes,
+    liked: false,
+    comments: comments.map(([a, t]) => ({ author: a, text: t })),
+  }))
+}

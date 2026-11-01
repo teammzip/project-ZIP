@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { RegionAccessGate, RegionVerifyDialog, useRegionVerify } from '@/features/life'
+import { normRegion, RegionAccessGate, RegionVerifyDialog, useRegionVerify } from '@/features/life'
 import { banMessage, useActiveBan } from '@/features/moderation'
 import { cx } from '@/lib/cx'
 import { relTime } from '@/lib/date'
@@ -43,7 +43,7 @@ export function CommunityBoard(props: Props) {
 }
 
 function VerifiedCommunityBoard({ region, author, uid }: Props) {
-  const { posts, addPost } = useCommunityStore()
+  const { posts, addPost, seedRegion } = useCommunityStore()
   const ban = useActiveBan(author, uid)
   const [params, setParams] = useSearchParams()
   const [scope, setScope] = useState<Scope>('here')
@@ -57,8 +57,15 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
   const locked = !!ban
   const place = region ? shortRegion(region) : '우리 동네'
 
-  const near = NEARBY[region] ?? []
-  const inScope = (p: Post) => !region || scope === 'all' || (scope === 'near' ? near.includes(p.region) : p.region === region)
+  // 동네 이름은 '서울시 마포구' · '서울특별시 마포구' · '서울 마포구'를 같은 동네로 봄
+  const here = normRegion(region)
+  const near = NEARBY[here] ?? []
+  const inScope = (p: Post) => !region || scope === 'all' || (scope === 'near' ? near.includes(normRegion(p.region)) : normRegion(p.region) === here)
+  // 내 동네에 이웃 글이 하나도 없으면 이웃 예시 글을 한 번 채움 (예시 글이 없는 동네로 설정했을 때)
+  const hasNeighbors = posts.some((p) => !p.mine && normRegion(p.region) === here)
+  useEffect(() => {
+    if (region) seedRegion(region, here, hasNeighbors)
+  }, [region, here, hasNeighbors, seedRegion])
   const q = query.trim().toLowerCase()
   const items = posts.filter((p) => inScope(p) && (cat === '전체' || p.cat === cat) && (!q || `${p.title} ${p.body}`.toLowerCase().includes(q))).sort((a, b) => b.ts - a.ts)
   // 지금 뜨는 이야기: 공감 + 댓글×2 가 많은 순 (지금 보는 동네 범위 안에서)

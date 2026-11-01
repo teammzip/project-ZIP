@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
-import { seedPosts } from './data/seed'
+import { seedPosts, seedRegionPosts } from './data/seed'
 import type { Post, PostDraft } from './types'
 
 /* 커뮤니티 글 목록. 서버가 없어서 이 브라우저(localStorage 'zip-posts')에만 저장됩니다.
@@ -23,6 +23,8 @@ const safeStorage: StateStorage = {
 
 type State = {
   posts: Post[]
+  /** 예시 글을 채워 준 동네 (한 번만 채우고, 지운 뒤 다시 생기지 않게) */
+  seededRegions: string[]
   /** 저장에 실패하면 false (저장 공간 부족) */
   addPost: (p: PostDraft & Pick<Post, 'region' | 'author'>) => boolean
   updatePost: (id: number, draft: PostDraft) => boolean
@@ -32,6 +34,8 @@ type State = {
   addComment: (id: number, author: string, text: string, staff?: boolean) => void
   updateComment: (id: number, index: number, text: string) => void
   removeComment: (id: number, index: number) => void
+  /** 내 동네(key = 비교용 동네 이름)에 이웃 글이 없으면 예시 글을 한 번 채움 */
+  seedRegion: (region: string, key: string, hasNeighbors: boolean) => void
   reset: () => void
 }
 
@@ -52,6 +56,7 @@ export const useCommunityStore = create<State>()(
       }
       return {
         posts: seedPosts(),
+        seededRegions: [],
         addPost: (p) => tryChange([{ ...p, id: Date.now(), mine: true, ts: Date.now(), likes: 0, liked: false, comments: [] }, ...get().posts]),
         updatePost: (id, draft) => tryChange(patch(get().posts, id, (p) => ({ ...p, ...draft }))),
         removePost: (id) => set((s) => ({ posts: s.posts.filter((p) => p.id !== id) })),
@@ -61,7 +66,11 @@ export const useCommunityStore = create<State>()(
         updateComment: (id, index, text) =>
           set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, comments: p.comments.map((c, i) => (i === index ? { ...c, text } : c)) })) })),
         removeComment: (id, index) => set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, comments: p.comments.filter((_, i) => i !== index) })) })),
-        reset: () => set({ posts: seedPosts() }),
+        seedRegion: (region, key, hasNeighbors) => {
+          if (hasNeighbors || get().seededRegions.includes(key)) return
+          set((s) => ({ posts: [...seedRegionPosts(region), ...s.posts], seededRegions: [...s.seededRegions, key] }))
+        },
+        reset: () => set({ posts: seedPosts(), seededRegions: [] }),
       }
     },
     { name: 'zip-posts', storage: createJSONStorage(() => safeStorage), version: 1 },
