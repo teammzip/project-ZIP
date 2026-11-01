@@ -62,7 +62,7 @@ v_monthly_spend_breakdown에 실제 생성된 행만 '전세 대출 이자'로 �
 - user_settings.rent_amount는 기존 만원 단위를 유지하되 DECIMAL(14,4)로 변경합니다. 예: 555,555원 → 55.5555만원. 기존 정수 값은 그대로 유지됩니다.
 - bill_items.default_amount 및 bill_payments/rent_payments/incomes/expenses.amount를 BIGINT UNSIGNED로 확장합니다. API는 JS 안전 정수 및 화면별 상한을 검사해야 하며 큰 DB 값을 무조건 Number로 변환하면 안 됩니다.
 - 지도·날씨는 현재 코드에서 등록 동네 주소 기반 좌표를 공유합니다. GPS는 동네 인증에 사용하며 집 좌표와 혼동하지 않습니다. users.region_verified_at을 주소 변경 시 비우고 로그인 회원·미래 시각·30일 만료를 검사합니다. 추가 GPS 이력 표는 만들지 않습니다.
-- API 문서의 is_anniv/is_yearly와 달리 정식 DB 이름은 기존 is_anniversary/repeat_yearly를 유지합니다. anniv/yearly를 이 두 컬럼으로 매핑합니다.
+- 기념일 정식 DB 이름은 is_anniversary/repeat_yearly입니다. API의 anniv/yearly를 이 두 컬럼으로 매핑합니다. (예전 이름 is_anniv/is_yearly는 사용하지 않습니다.)
 
 ## 개인정보와 검증 범위
 

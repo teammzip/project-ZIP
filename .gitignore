@@ -45,3 +45,4 @@ mysqldump*.sql
 비밀메모.txt
 secrets/
 test.txt
+##frontend_analyze/
