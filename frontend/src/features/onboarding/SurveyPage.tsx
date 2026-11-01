@@ -1,4 +1,5 @@
 import { useCallback, useState, type FormEvent } from 'react'
+import house from '@/assets/images/house-mobile.png'
 import logo from '@/assets/images/logo-zip.png'
 import { AmountInput, Button } from '@/components/ui'
 import { authApi, useAuthStore } from '@/features/auth'
@@ -107,11 +108,42 @@ export function SurveyPage() {
     }
   }
 
+  // 왼쪽(모바일은 위) 진행 단계: 칸을 채우면 ✓
+  const steps = [
+    { label: '생년월일', ok: age !== null },
+    { label: '사는 곳', ok: !!selectedAddress },
+    { label: '계약 정보', ok: kind === 'monthly' ? !!f.deposit && !!f.rent : !!f.contractFee },
+    { label: '수입', ok: !!f.income },
+  ]
+  const doneCount = done ? steps.length : steps.filter((st) => st.ok).length
+
   return (
     <div className={styles.page}>
-      <header className={styles.top}>
-        <img src={logo} alt="ZIP" />
-      </header>
+      {/* PC: 왼쪽 소개 칸 (따라 내려옴) / 모바일: 위 머리 띠 */}
+      <aside className={styles.side}>
+        <img className={styles.logo} src={logo} alt="ZIP" />
+        <p className={styles.hello}>
+          <b>{user.nickname}</b>님, 환영해요! 👋
+        </p>
+        <h1 className={styles.title}>
+          우리 집 정보를
+          <br />
+          알려 주세요
+        </h1>
+        <p className={styles.sub}>월세 알림과 고정 지출 계산에 써요. 1분이면 끝나요.</p>
+        <div className={styles.progress} role="progressbar" aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={doneCount} aria-label="설문 진행">
+          <i style={{ width: `${(doneCount / steps.length) * 100}%` }} />
+        </div>
+        <ol className={styles.steps}>
+          {steps.map((st, i) => (
+            <li key={st.label} className={cx((done || st.ok) && styles.stepOk)}>
+              <span>{done || st.ok ? '✓' : i + 1}</span>
+              {st.label}
+            </li>
+          ))}
+        </ol>
+        <img className={styles.house} src={house} alt="" aria-hidden="true" />
+      </aside>
       <main className={styles.card}>
         {done ? (
           <div className={styles.doneBox}>
@@ -124,14 +156,8 @@ export function SurveyPage() {
           </div>
         ) : (
           <form className={styles.form} onSubmit={submit}>
-            <p className={styles.hello}>
-              <b>{user.nickname}</b>님, 환영해요! 👋
-            </p>
-            <h1 className={styles.title}>우리 집 정보를 알려 주세요</h1>
-            <p className={styles.sub}>월세 알림과 고정 지출 계산에 써요.</p>
-
             <section className={styles.sec}>
-              <h2>생년월일</h2>
+              <h2><i aria-hidden="true">🎂</i>생년월일</h2>
               <label>
                 <span className={styles.srOnly}>생년월일</span>
                 <input type="date" value={f.birth} onChange={(e) => set('birth', e.target.value)} min="1900-01-01" max={today} required autoFocus aria-describedby="survey-age" />
@@ -142,7 +168,7 @@ export function SurveyPage() {
             </section>
 
             <section className={styles.sec}>
-              <h2>사는 곳</h2>
+              <h2><i aria-hidden="true">📍</i>사는 곳</h2>
               <div className={styles.addrRow}>
                 <label htmlFor="survey-address">
                   <span className={styles.srOnly}>사는 곳 (시·군·구 또는 동·읍·면)</span>
@@ -156,7 +182,7 @@ export function SurveyPage() {
             </section>
 
             <section className={styles.sec}>
-              <h2>계약 유형</h2>
+              <h2><i aria-hidden="true">🏠</i>계약 유형</h2>
               <div className={styles.kindGrid} role="group" aria-label="계약 유형">
                 {([['monthly', '월세'], ['jeonse', '전세']] as const).map(([v, label]) => (
                   <button key={v} type="button" className={cx(styles.ynBtn, kind === v && styles.kindOn)} aria-pressed={kind === v} onClick={() => setKind(v)}>
@@ -223,7 +249,7 @@ export function SurveyPage() {
             </section>
 
             <section className={styles.sec}>
-              <h2>수입</h2>
+              <h2><i aria-hidden="true">💰</i>수입</h2>
               <div className={styles.yn} role="group" aria-label="수입 기준">
                 {([['monthly', '월 수입'], ['annual', '연 수입']] as const).map(([period, label]) => (
                   <button key={period} type="button" className={cx(styles.ynBtn, incomePeriod === period && styles.kindOn)} aria-pressed={incomePeriod === period} onClick={() => setIncomePeriod(period)}>
