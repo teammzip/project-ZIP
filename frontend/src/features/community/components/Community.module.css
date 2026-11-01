@@ -670,6 +670,16 @@
   font-size: 13px;
 }
 
+.staffTag {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
 .commentMain p {
   margin-top: 2px;
   font-size: 14px;

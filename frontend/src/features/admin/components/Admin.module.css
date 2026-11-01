@@ -269,6 +269,31 @@
   flex: 1;
 }
 
+.staff {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* 운영자 댓글 쓰기 */
+.replyForm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--color-line);
+}
+
+.replyForm input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: 14px;
+}
+
 .hint {
   margin-top: 10px;
   font-size: 12px;

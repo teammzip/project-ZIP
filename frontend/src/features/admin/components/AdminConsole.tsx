@@ -23,7 +23,7 @@ type DialogState = {
   /** 경고만 (기간 고르기 없음) */
   warnOnly?: boolean
   /** 글 · 댓글 삭제 창: 삭제가 중심이고, 작성자에게는 '경고도 주기' 체크만 (정지는 회원 관리에서) */
-  deleteFor?: { author: string; banned: boolean }
+  deleteFor?: { author: string; banned: boolean; staff?: boolean }
   initial: string
   onOk: (action: Action, reason: string) => void
 }
@@ -41,7 +41,7 @@ function joinedAt(nick: string) {
 const actionText = (e: { warn?: boolean; days: number | null }) => (e.warn ? '경고' : e.days ? `${e.days}일 정지` : '영구 정지')
 
 export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLogout: () => void; logoutPending?: boolean }) {
-  const { posts, removePost, removeComment } = useCommunityStore()
+  const { posts, removePost, removeComment, addComment } = useCommunityStore()
   const { records, ban, warn, unban } = useBanStore()
   const [tab, setTab] = useState<Tab>('members')
   const [dialog, setDialog] = useState<DialogState | null>(null)
@@ -59,12 +59,13 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
     removeComment(id, index)
     if (c) resolveReports((r) => r.targetType === 'COMMENT' && r.postId === id && r.targetAuthor === c.author && r.targetText === c.text, 'HIDDEN')
   }
-  const confirmDelete = (title: string, msg: string, author: string, doDelete: () => void) =>
+  /** staff = 운영자 댓글 (경고 고르기 없이 삭제만) */
+  const confirmDelete = (title: string, msg: string, author: string, doDelete: () => void, staff?: boolean) =>
     setDialog({
       title,
       msg,
       okText: '삭제',
-      deleteFor: { author, banned: isActive(records[author]) },
+      deleteFor: { author, banned: isActive(records[author]), staff },
       initial: 'none',
       onOk: (a, reason) => {
         doDelete()
@@ -142,7 +143,14 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
       ) : tab === 'inquiries' ? (
         <main className={styles.pane}><AdminInquiries /></main>
       ) : (
-        <Posts posts={posts} isBanned={(nick) => isActive(records[nick])} onDelete={confirmDelete} removePost={deletePost} removeComment={deleteComment} />
+        <Posts
+          posts={posts}
+          isBanned={(nick) => isActive(records[nick])}
+          onDelete={confirmDelete}
+          removePost={deletePost}
+          removeComment={deleteComment}
+          onAddComment={(id, text) => addComment(id, me, text, true)}
+        />
       )}
 
       {dialog && <ActionDialog state={dialog} onClose={() => setDialog(null)} />}
@@ -368,12 +376,14 @@ function MemberRow({ m, checked, onCheck, histOpen, onHist, onWarn, onBan }: Row
 type PostsProps = {
   posts: ReturnType<typeof useCommunityStore.getState>['posts']
   isBanned: (nick: string) => boolean
-  onDelete: (title: string, msg: string, author: string, doDelete: () => void) => void
+  onDelete: (title: string, msg: string, author: string, doDelete: () => void, staff?: boolean) => void
+  /** 운영자로 댓글 쓰기 */
+  onAddComment: (id: number, text: string) => void
   removePost: (id: number) => void
   removeComment: (id: number, index: number) => void
 }
 
-function Posts({ posts, isBanned, onDelete, removePost, removeComment }: PostsProps) {
+function Posts({ posts, isBanned, onDelete, removePost, removeComment, onAddComment }: PostsProps) {
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('')
   const [region, setRegion] = useState('')
@@ -440,7 +450,8 @@ function Posts({ posts, isBanned, onDelete, removePost, removeComment }: PostsPr
                 onToggle={() => setOpenId(openId === p.id ? null : p.id)}
                 banned={isBanned(p.author)}
                 onDeletePost={() => onDelete('글 삭제', `"${p.title}" 글을 삭제할까요? 댓글도 함께 사라지고 되돌릴 수 없어요.`, p.author, () => removePost(p.id))}
-                onDeleteComment={(i) => onDelete('댓글 삭제', `"${p.comments[i].text}" 댓글을 삭제할까요? 되돌릴 수 없어요.`, p.comments[i].author, () => removeComment(p.id, i))}
+                onDeleteComment={(i) => onDelete('댓글 삭제', `"${p.comments[i].text}" 댓글을 삭제할까요? 되돌릴 수 없어요.`, p.comments[i].author, () => removeComment(p.id, i), p.comments[i].staff)}
+                onAddComment={(text) => onAddComment(p.id, text)}
               />
             ))}
           </tbody>
@@ -459,9 +470,11 @@ type PostRowProps = {
   banned: boolean
   onDeletePost: () => void
   onDeleteComment: (index: number) => void
+  onAddComment: (text: string) => void
 }
 
-function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteComment }: PostRowProps) {
+function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteComment, onAddComment }: PostRowProps) {
+  const [reply, setReply] = useState('')
   const idText = String(p.id).length > 6 ? `…${String(p.id).slice(-4)}` : String(p.id)
   return (
     <>
@@ -507,7 +520,9 @@ function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteCom
             {!!p.attachments?.length && <div className={styles.sub}>첨부 {p.attachments.length}개: {p.attachments.map((a) => a.name).join(', ')}</div>}
             {p.comments.map((c, i) => (
               <div key={i} className={styles.cmtRow}>
-                <b>{c.author}</b>
+                <b>
+                  {c.author} {c.staff && <span className={cx(styles.badge, styles.staff)}>운영자</span>}
+                </b>
                 <span>{c.text}</span>
                 <Button variant="danger" onClick={() => onDeleteComment(i)}>
                   댓글 삭제
@@ -515,6 +530,23 @@ function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteCom
               </div>
             ))}
             {!p.comments.length && <div className={styles.sub}>댓글이 없어요.</div>}
+            {/* 운영자로 댓글 쓰기 (커뮤니티에 "운영자" 표시와 함께 보여요) */}
+            <form
+              className={styles.replyForm}
+              onSubmit={(e) => {
+                e.preventDefault()
+                const t = reply.trim()
+                if (!t) return
+                onAddComment(t)
+                setReply('')
+              }}
+            >
+              <span className={cx(styles.badge, styles.staff)}>운영자</span>
+              <input value={reply} onChange={(e) => setReply(e.target.value)} maxLength={100} placeholder="운영자로 댓글 남기기 (예: 안내 · 답변)" aria-label="운영자 댓글" />
+              <Button type="submit" disabled={!reply.trim()}>
+                등록
+              </Button>
+            </form>
           </td>
         </tr>
       )}
@@ -541,7 +573,9 @@ function ActionDialog({ state, onClose }: { state: DialogState; onClose: () => v
         {del ? (
           // 삭제 창: 작성자에게는 경고만 (정지 · 영구 정지는 회원 관리에서)
           <div className={styles.warnBox}>
-            {del.banned ? (
+            {del.staff ? (
+              <p className={styles.sub}>운영자가 쓴 댓글이에요.</p>
+            ) : del.banned ? (
               <p className={styles.sub}>작성자 "{del.author}" 님은 이미 정지 중이에요.</p>
             ) : (
               <>

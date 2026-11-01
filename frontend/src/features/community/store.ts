@@ -28,7 +28,8 @@ type State = {
   updatePost: (id: number, draft: PostDraft) => boolean
   removePost: (id: number) => void
   toggleLike: (id: number) => void
-  addComment: (id: number, author: string, text: string) => void
+  /** staff = 관리자 화면에서 운영자로 쓴 댓글 */
+  addComment: (id: number, author: string, text: string, staff?: boolean) => void
   updateComment: (id: number, index: number, text: string) => void
   removeComment: (id: number, index: number) => void
   reset: () => void
@@ -55,7 +56,8 @@ export const useCommunityStore = create<State>()(
         updatePost: (id, draft) => tryChange(patch(get().posts, id, (p) => ({ ...p, ...draft }))),
         removePost: (id) => set((s) => ({ posts: s.posts.filter((p) => p.id !== id) })),
         toggleLike: (id) => set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) })) })),
-        addComment: (id, author, text) => set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, comments: [...p.comments, { author, text, mine: true }] })) })),
+        addComment: (id, author, text, staff) =>
+          set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, comments: [...p.comments, staff ? { author, text, staff: true } : { author, text, mine: true }] })) })),
         updateComment: (id, index, text) =>
           set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, comments: p.comments.map((c, i) => (i === index ? { ...c, text } : c)) })) })),
         removeComment: (id, index) => set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, comments: p.comments.filter((_, i) => i !== index) })) })),

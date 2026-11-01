@@ -129,12 +129,15 @@ export function PostDetail({ post, author, locked, verified, onVerify, onBack, o
       {/* 댓글 */}
       <ul className={styles.comments}>
         {post.comments.map((c, i) => {
-          const mine = c.mine || c.author === author
+          const mine = !c.staff && (c.mine || c.author === author)
           return (
             <li key={i} className={styles.comment}>
               <NameAvatar name={c.author} size={30} />
               <div className={styles.commentMain}>
-                <b>{c.author}</b>
+                <b>
+                  {c.author}
+                  {c.staff && <span className={styles.staffTag}>운영자</span>}
+                </b>
                 {editCmt?.index === i ? (
                   <form
                     className={styles.commentEdit}
@@ -156,7 +159,7 @@ export function PostDetail({ post, author, locked, verified, onVerify, onBack, o
                   <p>{c.text}</p>
                 )}
               </div>
-              {!mine && (
+              {!mine && !c.staff && (
                 <span className={styles.commentBtns}>
                   <button type="button" className={styles.danger} onClick={() => setReportTarget({ index: i })} disabled={commentReported(i)} aria-label={`${c.author} 댓글 신고`}>
                     {commentReported(i) ? '신고됨' : '🚨 신고'}
