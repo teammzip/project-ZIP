@@ -4,48 +4,19 @@ import styles from './BrandFooter.module.css'
 
 const REPO = 'https://github.com/teammzip/project-ZIP'
 
-/** 고객센터로 가는 카드 (로그인 전이면 로그인 → 그 화면으로 이어짐) */
-const HELP = [
-  { to: '/my/settings/support', title: '1:1 문의', desc: '24시간 접수 · 평일 09:00-18:00 답변' },
-  { to: '/ai', title: 'AI 도우미 상담', desc: '24시간 언제든 · 기능 위치도 알려드려요' },
-]
-
 const LINKS = [
   { to: '/start', label: '서비스 소개' },
   { to: '/terms', label: '이용약관' },
   { to: '/privacy', label: '개인정보 처리방침', strong: true },
-  { to: '/my/settings/support', label: '고객센터' },
   { to: '/signup', label: '회원가입' },
 ]
 
-/** 브랜드 페이지 맨 아래 (오늘의집 브랜드 페이지처럼): 고객센터 카드 → 링크 줄 → 팀 정보(펼치기) → 안내 → 깃허브 → 저작권. PC · 모바일 같은 구성 */
+/** 브랜드 페이지 맨 아래: 링크 줄 → 팀 정보(펼치기) → 안내 → 깃허브 → 저작권. PC · 모바일 같은 구성 */
 export function BrandFooter() {
   const [open, setOpen] = useState(false)
   return (
     <footer className={styles.footer}>
       <div className={styles.inner}>
-        <Link to="/my/settings/support" className={styles.helpTitle}>
-          고객센터
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M9 5l7 7-7 7" />
-          </svg>
-        </Link>
-        <ul className={styles.help}>
-          {HELP.map((h) => (
-            <li key={h.title}>
-              <Link to={h.to} className={styles.helpCard}>
-                <span>
-                  <b>{h.title}</b>
-                  <small>{h.desc}</small>
-                </span>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </li>
-          ))}
-        </ul>
-
         <nav className={styles.links} aria-label="서비스 정보">
           {LINKS.map((l) => (
             <Link key={l.label} to={l.to} className={l.strong ? styles.strong : undefined}>
@@ -60,9 +31,6 @@ export function BrandFooter() {
           </button>
           {open && <p className={styles.companyInfo}>자취생 생활 도우미 ZIP · 프론트엔드 · 백엔드 · 풀스택</p>}
           <p>ZIP은 팀 프로젝트로 만든 서비스예요. 지금은 입력한 정보가 이 브라우저에만 저장되고, AI 답변 · 장소 정보는 예시예요.</p>
-          <p>
-            문의는 고객센터의 1:1 문의로 남겨 주세요. <Link to="/privacy" className={styles.strong}>개인정보 처리방침</Link>
-          </p>
         </div>
 
         <a className={styles.social} href={REPO} target="_blank" rel="noopener noreferrer" aria-label="ZIP 깃허브 (새 창)" title="GitHub">
