@@ -28,6 +28,33 @@
   gap: 14px;
 }
 
+/* 화면에서는 숨기고 화면 읽기 도구에만 읽히는 칸 이름 (위 제목과 같은 말이라) */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 주소: 입력칸 + 검색 버튼 한 줄 */
+.addrRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.addrRow input {
+  cursor: pointer;
+}
+
+.addrRow button {
+  height: 46px;
+  padding-inline: 18px;
+}
+
 .addressSearch {
   display: grid;
   gap: 10px;
@@ -97,6 +124,7 @@
 }
 
 .title {
+  margin-top: 2px;
   font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.3px;
@@ -110,27 +138,22 @@
 .sec {
   display: grid;
   gap: 10px;
-  padding-top: 14px;
-  border-top: 1px solid var(--color-line);
+  margin-top: 14px;
 }
 
 .sec h2 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
+}
+
+.sec .sub:empty {
+  display: none;
 }
 
 .sub3 {
   display: grid;
   gap: 12px;
-  padding: 14px;
-  border-radius: 14px;
-  background: #f3f8ff;
-}
-
-.sub3 h3 {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--color-primary);
+  margin-top: 4px;
 }
 
 .q {
@@ -145,37 +168,20 @@
   gap: 10px;
 }
 
-.kind,
 .ynBtn {
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  padding: 14px 8px;
-  border: 2px solid var(--color-line);
-  border-radius: 14px;
+  padding: 12px 8px;
+  border: 1.5px solid var(--color-line);
+  border-radius: 12px;
   background: #fff;
   font-size: 14px;
   font-weight: 700;
+  color: #4b5263;
   transition: border-color 0.15s, background 0.15s;
-}
-
-.kind span {
-  font-size: 26px;
-}
-
-.kind b {
-  font-size: 17px;
-}
-
-.kind small {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--color-muted);
 }
 
 .kindOn {
   border-color: var(--color-primary);
-  background: #eaf2ff;
+  background: #f2f7ff;
   color: var(--color-primary);
 }
 

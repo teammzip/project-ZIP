@@ -128,47 +128,45 @@ export function SurveyPage() {
               <b>{user.nickname}</b>님, 환영해요! 👋
             </p>
             <h1 className={styles.title}>우리 집 정보를 알려 주세요</h1>
-            <p className={styles.sub}>월세 알림 · 고정 지출 계산에 써요. 모든 금액은 원 단위로 입력해 주세요.</p>
+            <p className={styles.sub}>월세 알림과 고정 지출 계산에 써요.</p>
 
             <section className={styles.sec}>
-              <h2>1. 생년월일</h2>
+              <h2>생년월일</h2>
               <label>
-                생년월일
+                <span className={styles.srOnly}>생년월일</span>
                 <input type="date" value={f.birth} onChange={(e) => set('birth', e.target.value)} min="1900-01-01" max={today} required autoFocus aria-describedby="survey-age" />
               </label>
               <p id="survey-age" className={styles.sub} aria-live="polite">
-                {age !== null ? `현재 만 ${age}세예요. 생일이 지나면 자동으로 갱신돼요.` : f.birth ? '올바른 생년월일을 입력해 주세요.' : '생년월일을 입력하면 만 나이를 자동으로 계산해요.'}
+                {age !== null ? `만 ${age}세` : f.birth ? '올바른 생년월일을 입력해 주세요.' : ''}
               </p>
             </section>
 
             <section className={styles.sec}>
-              <h2>2. 간략한 주소</h2>
-              <label htmlFor="survey-address">
-                사는 곳
-                <input id="survey-address" value={selectedAddress} readOnly placeholder="주소 검색으로 동네를 선택해 주세요" aria-describedby="survey-address-help" />
-              </label>
-              <Button variant="line" onClick={() => setSearchOpen((open) => !open)} disabled={saving} aria-expanded={searchOpen}>
-                {searchOpen ? '검색 닫기' : selectedAddress ? '주소 다시 검색' : '주소 검색'}
-              </Button>
-              <p id="survey-address-help" className={styles.sub}>시·군·구 또는 동·읍·면 이름으로 검색해 주세요. 간략한 주소만 선택하고 저장할 수 있어요.</p>
+              <h2>사는 곳</h2>
+              <div className={styles.addrRow}>
+                <label htmlFor="survey-address">
+                  <span className={styles.srOnly}>사는 곳 (시·군·구 또는 동·읍·면)</span>
+                  <input id="survey-address" value={selectedAddress} readOnly placeholder="동네를 검색해 주세요" onClick={() => setSearchOpen(true)} />
+                </label>
+                <Button variant="line" onClick={() => setSearchOpen((open) => !open)} disabled={saving} aria-expanded={searchOpen}>
+                  {searchOpen ? '닫기' : selectedAddress ? '다시 검색' : '검색'}
+                </Button>
+              </div>
               {searchOpen && <AddressSearch onSelect={selectAddress} />}
             </section>
 
             <section className={styles.sec}>
-              <h2>3. 계약 유형</h2>
+              <h2>계약 유형</h2>
               <div className={styles.kindGrid} role="group" aria-label="계약 유형">
-                {([['monthly', '🗓️', '월세', '보증금 + 매달 월세'], ['jeonse', '🏠', '전세', '보증금만 맡기고 월세는 없어요']] as const).map(([v, ico, label, desc]) => (
-                  <button key={v} type="button" className={cx(styles.kind, kind === v && styles.kindOn)} aria-pressed={kind === v} onClick={() => setKind(v)}>
-                    <span aria-hidden>{ico}</span>
-                    <b>{label}</b>
-                    <small>{desc}</small>
+                {([['monthly', '월세'], ['jeonse', '전세']] as const).map(([v, label]) => (
+                  <button key={v} type="button" className={cx(styles.ynBtn, kind === v && styles.kindOn)} aria-pressed={kind === v} onClick={() => setKind(v)}>
+                    {label}
                   </button>
                 ))}
               </div>
 
               {kind === 'monthly' ? (
                 <div className={styles.sub3}>
-                  <h3>월세 계약</h3>
                   <div className={common.two}>
                     <label>
                       보증금 (원)
@@ -197,7 +195,6 @@ export function SurveyPage() {
                 </div>
               ) : (
                 <div className={styles.sub3}>
-                  <h3>전세 계약</h3>
                   <label>
                     계약금 (원)
                     <AmountInput value={f.contractFee} onValueChange={(value) => set('contractFee', value)} max={9999990000} placeholder="예) 20,000,000" required />
@@ -226,7 +223,7 @@ export function SurveyPage() {
             </section>
 
             <section className={styles.sec}>
-              <h2>4. 수입</h2>
+              <h2>수입</h2>
               <div className={styles.yn} role="group" aria-label="수입 기준">
                 {([['monthly', '월 수입'], ['annual', '연 수입']] as const).map(([period, label]) => (
                   <button key={period} type="button" className={cx(styles.ynBtn, incomePeriod === period && styles.kindOn)} aria-pressed={incomePeriod === period} onClick={() => setIncomePeriod(period)}>
