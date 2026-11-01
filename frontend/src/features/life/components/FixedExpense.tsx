@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { AmountInput, Button, Card } from '@/components/ui'
 import { LoanInterestCard, loanMonthSummary, loanToday, useLoanInterest } from '@/features/loan'
+import { useHousingContract } from '@/features/onboarding/useHousingContract'
 import { cx } from '@/lib/cx'
 import { DOW, dayDiff, fmt, monthKeyOf, won } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
@@ -14,40 +15,42 @@ import styles from './life.module.css'
 
 /** 고정 지출 = 합계 카드 + 이번 달 납부 체크리스트 (월세와 공과금을 한 카드에 합침) */
 export function FixedExpense() {
+  const { isJeonse } = useHousingContract()
   return (
     <div className={common.stack}>
       <FixedSummary />
-      <LoanInterestCard />
+      {isJeonse && <LoanInterestCard />}
       <PayChecklist />
     </div>
   )
 }
 
 function FixedSummary() {
+  const { isJeonse, isMonthly } = useHousingContract()
   const { bills, settings } = useLifeStore(useShallow((s) => ({ bills: s.bills, settings: s.settings })))
   const month = monthKeyOf(useToday())
   const loan = useLoanInterest()
-  const interest = loanMonthSummary(loan.plan, loan.charges, loanToday().slice(0, 7))
-  const rent = (Number(settings.rent) || 0) * 10000 // 월세는 만원 단위로 저장돼 있음
+  const interest = loanMonthSummary(isJeonse ? loan.plan : undefined, isJeonse ? loan.charges : [], loanToday().slice(0, 7))
+  const rent = isMonthly ? (Number(settings.rent) || 0) * 10000 : 0
   const billSum = sumAmount(bills)
   const utilities = bills.filter((b) => b.tag === '공과금') // 공과금 태그가 붙은 항목만 따로 합산
   const utilSum = sumAmount(utilities)
   const paid = sumAmount(utilities.filter((b) => b.paidMonth === month))
 
   return (
-    <div className={styles.fixedSum}>
+    <div className={cx(styles.fixedSum, isJeonse && styles.fixedSumJeonse)}>
       <article className={cx(styles.sumCard, styles.sumTotal)}>
         <small>이번 달 고정 지출 합계</small>
         <b>{won(rent + billSum + interest.expectedAmount)}</b>
         <span>
-          월세 {won(rent)} + 그 밖의 고정 지출 {won(billSum)}{interest.scheduledCount > 0 && ` + 대출 이자 ${won(interest.expectedAmount)}`}
+          {isMonthly && `월세 ${won(rent)} + `}그 밖의 고정 지출 {won(billSum)}{interest.scheduledCount > 0 && ` + 대출 이자 ${won(interest.expectedAmount)}`}
         </span>
       </article>
-      <article className={styles.sumCard}>
+      {isMonthly && <article className={styles.sumCard}>
         <small>월세</small>
         <b>{won(rent)}</b>
         <span>매달 {settings.rentDay}일 납부</span>
-      </article>
+      </article>}
       <article className={styles.sumCard}>
         <small>공과금</small>
         <b>{won(utilSum)}</b>
@@ -60,6 +63,7 @@ function FixedSummary() {
 /** 이번 달 납부 체크리스트: 월세 줄 + 공과금 줄을 같은 방식으로 체크.
  * 월세 줄의 '자세히'를 누르면 금액 · 납부일 · 납부 방법과 캘린더 추가가 펼쳐짐 */
 function PayChecklist() {
+  const { isMonthly, isJeonse } = useHousingContract()
   const { settings, rentPaid, setRentPaid, events, addEvent, bills, addBill, toggleBill, removeBill } = useLifeStore(
     useShallow((s) => ({
       settings: s.settings,
@@ -77,7 +81,7 @@ function PayChecklist() {
   const month = now.getMonth() + 1
   const monthKey = monthKeyOf(now)
   const loan = useLoanInterest()
-  const interest = loanMonthSummary(loan.plan, loan.charges, monthKey)
+  const interest = loanMonthSummary(isJeonse ? loan.plan : undefined, isJeonse ? loan.charges : [], monthKey)
   const next = nextRentDate(settings.rentDay)
   const nextStr = fmt(next)
 
@@ -88,12 +92,12 @@ function PayChecklist() {
   const [amount, setAmount] = useState('')
   const [tag, setTag] = useState<string>(BILL_TAGS[0])
 
-  const rent = (Number(settings.rent) || 0) * 10000
-  const rentDone = !!rentPaid[monthKey]
+  const rent = isMonthly ? (Number(settings.rent) || 0) * 10000 : 0
+  const rentDone = isMonthly && !!rentPaid[monthKey]
   const total = rent + sumAmount(bills) + interest.expectedAmount
   const isPaid = (b: { paidMonth: string | null }) => b.paidMonth === monthKey // 달이 바뀌면 저절로 미납으로 돌아옴
   const paid = (rentDone ? rent : 0) + sumAmount(bills.filter(isPaid)) + interest.recordedAmount
-  const count = 1 + bills.length + interest.scheduledCount
+  const count = Number(isMonthly) + bills.length + interest.scheduledCount
   const doneCount = (rentDone ? 1 : 0) + bills.filter(isPaid).length + interest.recordedCount
   const pct = total ? Math.round((paid / total) * 100) : 0
   // 태그별 합계 (월세는 따로 보여 주므로 제외)
@@ -119,7 +123,7 @@ function PayChecklist() {
   return (
     <Card
       title={`${month}월 납부 체크리스트`}
-      actions={<span className={styles.nextTag}>다음 월세 {ddayText(dayDiff(nextStr))} · {next.getMonth() + 1}/{next.getDate()}</span>}
+      actions={isMonthly ? <span className={styles.nextTag}>다음 월세 {ddayText(dayDiff(nextStr))} · {next.getMonth() + 1}/{next.getDate()}</span> : undefined}
     >
       <div className={common.bar}>
         <i style={{ width: `${pct}%` }} />
@@ -140,7 +144,7 @@ function PayChecklist() {
         </div>
       )}
 
-      <div className={styles.checkRent}>
+      {isMonthly && <div className={styles.checkRent}>
         <div className={cx(styles.bill, rentDone && styles.billPaid)}>
           <input type="checkbox" className={common.checkbox} checked={rentDone} onChange={(e) => setRentPaid(monthKey, e.target.checked)} aria-label="월세 납부" />
           <div className={styles.billName}>
@@ -182,7 +186,7 @@ function PayChecklist() {
             </p>
           </div>
         )}
-      </div>
+      </div>}
 
       {interest.scheduledCount > 0 && <div className={cx(styles.bill, interest.recordedCount === interest.scheduledCount && styles.billPaid)}>
         <span aria-hidden="true">💳</span>
@@ -209,7 +213,7 @@ function PayChecklist() {
           </button>
         </div>
       ))}
-      {!bills.length && <p className={common.empty}>등록된 항목이 없어요.</p>}
+      {count === 0 && <p className={common.empty}>등록된 항목이 없어요.</p>}
 
       {adding ? (
         <form className={cx(common.form, styles.addForm)} onSubmit={submit}>

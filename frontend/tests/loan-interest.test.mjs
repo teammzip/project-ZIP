@@ -51,6 +51,7 @@ function setup(date = '2026-10-24', initialSaved = null) {
       if (name === './store') return {}
       if (name === './data/catalog') return {}
       if (name === './regionVerification') return { VERIFY_DAYS: 30 }
+      if (name === '@/features/onboarding/useHousingContract') return { useHousingContract: () => ({ kind: 'monthly', isMonthly: true, isJeonse: false, survey: null }) }
       if (name === '@/features/auth/store/authStore') return { useAuthStore: authStore }
       return require(name)
     },

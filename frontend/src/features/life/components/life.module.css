@@ -46,6 +46,10 @@
   gap: 14px;
 }
 
+.fixedSumJeonse {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+
 .sumCard {
   display: flex;
   flex-direction: column;

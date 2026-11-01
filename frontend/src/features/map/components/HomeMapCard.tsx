@@ -39,7 +39,7 @@ export function HomeMapCard() {
           <LeafletMap
             className={mapStyles.map} places={places} selectedId={null} onSelect={noop}
             focus={NO_FOCUS} fitKey={kinds.join(',')} bottomInset={0} readOnly
-            viewport={{ ...center, zoom: PREVIEW_ZOOM }}
+            viewport={{ ...center, zoom: PREVIEW_ZOOM }} currentPosition={position.verifiedPoint}
           />
         </Suspense> : <p role="status">{position.loading ? '저장한 동네를 찾고 있어요.' : position.error}</p>}
         {/* 지도 위를 덮는 링크: 어디를 눌러도 동네 화면으로 */}
@@ -49,8 +49,9 @@ export function HomeMapCard() {
         </button>
       </div>
       <p className={styles.status} role="status">
-        {position.loading ? '저장한 동네를 찾고 있어요.' : position.error || '설정한 동네 중심을 표시해요. 주변 장소 표시는 예시 데이터예요.'}
+        {position.loading ? '저장한 동네를 찾고 있어요.' : position.error || `${position.region} · ${position.source === 'verified' ? '인증한 위치' : position.source === 'survey' ? '설문 주소' : '설정한 주소'} 기준이에요. 주변 장소 표시는 예시 데이터예요.`}
       </p>
+      {position.error && <button type="button" className={styles.more} onClick={position.retry}>지도 다시 불러오기</button>}
       <RegionVerifyDialog open={verifyOpen} onClose={() => setVerifyOpen(false)} />
     </Card>
   )

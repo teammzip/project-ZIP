@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useAuthStore } from '@/features/auth/store/authStore'
+import { useHousingContract } from '@/features/onboarding/useHousingContract'
 import { useLoanStore } from './store'
 
 export function useLoanInterest() {
@@ -11,12 +12,13 @@ export function useLoanInterest() {
 
 /** 앱 실행·화면 복귀·날짜 변경 시 지나간 납부일의 기록을 보완. */
 export function LoanInterestSync() {
+  const { isJeonse } = useHousingContract()
   const userId = useAuthStore((s) => s.user?.id)
   const token = useAuthStore((s) => s.token)
   const plans = useLoanStore((s) => s.plans)
   const syncDue = useLoanStore((s) => s.syncDue)
   useEffect(() => {
-    if (!userId || !token) return
+    if (!userId || !token || !isJeonse) return
     const refresh = () => { if (document.visibilityState === 'visible') syncDue() }
     syncDue()
     const timer = window.setInterval(refresh, 60000)
@@ -27,6 +29,6 @@ export function LoanInterestSync() {
       window.removeEventListener('focus', refresh)
       document.removeEventListener('visibilitychange', refresh)
     }
-  }, [userId, token, plans, syncDue])
+  }, [userId, token, plans, syncDue, isJeonse])
   return null
 }

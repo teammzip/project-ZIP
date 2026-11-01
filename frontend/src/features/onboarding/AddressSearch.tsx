@@ -1,29 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui'
 import styles from './SurveyPage.module.css'
+import { addressOption, type AddressOption, type RegionResult } from './addressResult'
 
-type RegionResult = {
-  name: string
-  addresstype: string
-  address: Partial<Record<'country_code' | 'province' | 'state' | 'city' | 'county' | 'borough' | 'city_district' | 'district' | 'municipality' | 'town' | 'village' | 'suburb' | 'quarter' | 'neighbourhood', string>>
-}
-const regionTypes = new Set(['state', 'province', 'city', 'county', 'borough', 'city_district', 'district', 'municipality', 'town', 'village', 'suburb', 'quarter', 'neighbourhood'])
-const cache = new Map<string, string[]>()
+const cache = new Map<string, AddressOption[]>()
 let nextSearchAt = 0
 
-/** 행정구역만 조합한다. 도로·건물·번지·우편번호는 표시하지 않는다. */
-function simpleRegion(result: RegionResult): string | null {
-  if (!regionTypes.has(result.addresstype) || result.address.country_code !== 'kr') return null
-  const a = result.address
-  const parts = [a.province ?? a.state, a.city, a.county, a.borough ?? a.city_district ?? a.district,
-    a.municipality, a.town, a.village, a.suburb, a.quarter, a.neighbourhood, result.name]
-    .filter((part): part is string => !!part && /[시도군구동읍면리가]$/.test(part))
-  return parts.length ? [...new Set(parts)].join(' ') : null
-}
-
-export function AddressSearch({ onSelect }: { onSelect: (address: string) => void }) {
+export function AddressSearch({ onSelect }: { onSelect: (address: string, point: AddressOption['point']) => void }) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<string[] | null>(null)
+  const [results, setResults] = useState<AddressOption[] | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const request = useRef<AbortController | null>(null)
@@ -48,7 +33,8 @@ export function AddressSearch({ onSelect }: { onSelect: (address: string) => voi
       const response = await fetch(url, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]) })
       if (!response.ok) throw new Error('검색 실패')
       const data: RegionResult[] = await response.json()
-      const addresses = [...new Set(data.map(simpleRegion).filter((address): address is string => !!address))]
+      const options = data.map(addressOption).filter((option): option is AddressOption => !!option)
+      const addresses = [...new Map(options.map((option) => [option.address, option])).values()]
       if (!controller.signal.aborted) { cache.set(keyword, addresses); setResults(addresses) }
     } catch {
       if (!controller.signal.aborted) setError('동네를 검색하지 못했어요. 인터넷 연결을 확인하고 다시 검색해 주세요.')
@@ -68,7 +54,7 @@ export function AddressSearch({ onSelect }: { onSelect: (address: string) => voi
     <div aria-live="polite">
       {results?.length === 0 && <p>검색 결과가 없어요. 시·군·구 또는 동·읍·면 이름으로 다시 검색해 주세요.</p>}
       {!!results?.length && <ul className={styles.addressResults} aria-label="간략한 주소 검색 결과">
-        {results.map((address) => <li key={address}><button type="button" onClick={() => onSelect(address)}>{address}<span>선택</span></button></li>)}
+        {results.map(({ address, point }) => <li key={address}><button type="button" onClick={() => onSelect(address, point)}>{address}<span>선택</span></button></li>)}
       </ul>}
     </div>
     <a className={styles.sub} href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a>

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { AmountInput, Button } from '@/components/ui'
 import { useLoanInterest } from '@/features/loan'
+import { useHousingContract } from '@/features/onboarding/useHousingContract'
+import { useHousingSurveyStore } from '@/features/onboarding/store'
 import { monthKeyOf, todayStr, won } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
 import common from '@/styles/common.module.css'
@@ -14,11 +16,12 @@ import styles from './myinfo.module.css'
 
 /** 이번 달 수입·지출 카드. 홈과 같은 기준으로 합산하고 가계부로 연결. */
 export function BudgetSummaryCard() {
+  const { kind, isJeonse } = useHousingContract()
   const { charges } = useLoanInterest()
   const { incomes, spends, bills, settings } = useLifeStore(useShallow((s) => ({ incomes: s.incomes, spends: s.spends, bills: s.bills, settings: s.settings })))
   const month = todayStr().slice(0, 7)
   const income = sumAmount(incomes.filter((r) => r.date.slice(0, 7) === month))
-  const expense = spendBreakdown(0, spends, bills, settings, charges).total
+  const expense = spendBreakdown(0, spends, bills, settings, charges, kind).total
   return (
     <Link to="/my/budget" className={styles.budget}>
       <strong>이번 달 수입·지출</strong>
@@ -26,7 +29,7 @@ export function BudgetSummaryCard() {
         <div><dt>총수입</dt><dd>{won(income)}</dd></div>
         <div><dt>총지출</dt><dd>{won(expense)}</dd></div>
       </dl>
-      <small>월세·공과금·대출 이자·기타 지출 포함</small>
+      <small>{isJeonse ? '공과금·대출 이자·기타 지출 포함' : '월세·공과금·기타 지출 포함'}</small>
       <span className={styles.budgetLink}>가계부 보기 →</span>
     </Link>
   )
@@ -59,6 +62,8 @@ export function LifeStats({ postCount }: { postCount: number }) {
 
 /** 생활 정보 폼: 우리 동네, 월세 납부일·금액, 입주한 달, 계약 끝나는 달 */
 export function LifeInfoForm({ onSaved }: { onSaved?: () => void }) {
+  const { isMonthly, isJeonse, survey } = useHousingContract()
+  const saveSurvey = useHousingSurveyStore((s) => s.save)
   const settings = useLifeStore((s) => s.settings)
   const saveSettings = useLifeStore((s) => s.saveSettings)
   const [form, setForm] = useState({
@@ -67,6 +72,7 @@ export function LifeInfoForm({ onSaved }: { onSaved?: () => void }) {
     rent: String(settings.rent),
     moveIn: settings.moveIn,
     contractEnd: settings.contractEnd,
+    contractFee: String(survey?.contractFee ?? 0),
   })
 
   const submit = (e: FormEvent) => {
@@ -75,20 +81,22 @@ export function LifeInfoForm({ onSaved }: { onSaved?: () => void }) {
       ...settings,
       region: form.region.trim(),
       rentDay: Math.min(31, Math.max(1, Number(form.rentDay) || 15)),
-      rent: Math.max(0, Number(form.rent) || 0),
+      rent: isMonthly ? Math.max(0, Number(form.rent) || 0) : 0,
       moveIn: form.moveIn || settings.moveIn,
       contractEnd: form.contractEnd || settings.contractEnd,
     })
+    if (isJeonse && survey) saveSurvey({ ...survey, contractFee: Number(form.contractFee) || 0 })
     onSaved?.()
   }
 
   return (
     <form className={common.form} onSubmit={submit}>
+      <p className={common.note}>계약 유형: {isMonthly ? '월세' : '전세'}</p>
       <label>
         우리 동네
         <input value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} maxLength={30} placeholder="예) 서울 마포구" />
       </label>
-      <div className={common.two}>
+      {isMonthly && <div className={common.two}>
         <label>
           월세 납부일 (매월)
           <input type="number" value={form.rentDay} onChange={(e) => setForm({ ...form, rentDay: e.target.value })} min={1} max={31} required />
@@ -97,7 +105,11 @@ export function LifeInfoForm({ onSaved }: { onSaved?: () => void }) {
           월세 (만원)
           <AmountInput value={form.rent} onValueChange={(rent) => setForm({ ...form, rent })} max={9999} decimalPlaces={4} required />
         </label>
-      </div>
+      </div>}
+      {isJeonse && <>
+        {survey && <label>전세 계약금 (원)<AmountInput value={form.contractFee} onValueChange={(contractFee) => setForm({ ...form, contractFee })} max={9999990000} required /></label>}
+        <Link to="/my/budget/expense" className={common.link}>전세 대출 이자 관리</Link>
+      </>}
       <div className={common.two}>
         <label>
           입주한 달
