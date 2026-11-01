@@ -488,6 +488,85 @@
   color: #e5484d;
 }
 
+/* 신고 */
+.ownerBtns button:disabled,
+.commentBtns button:disabled {
+  color: #b8bec9;
+  cursor: default;
+}
+
+.reportNote {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff4f0;
+  font-size: 13px;
+  color: #b4532a;
+}
+
+.report {
+  display: grid;
+  gap: 12px;
+}
+
+.report h3 {
+  font-size: 18px;
+}
+
+.report > p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+
+.reasons {
+  display: grid;
+  gap: 6px;
+}
+
+.reason {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reason:has(input:checked) {
+  border-color: var(--color-danger);
+  background: #fff5f6;
+}
+
+.reason input {
+  accent-color: var(--color-danger);
+}
+
+.reportDetail {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.reportDetail textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.reportBtns {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+}
+
 .topicTag {
   display: inline-block;
   margin-top: 16px;
@@ -589,6 +668,16 @@
 
 .commentMain b {
   font-size: 13px;
+}
+
+.staffTag {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
 }
 
 .commentMain p {

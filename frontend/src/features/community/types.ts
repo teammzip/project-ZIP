@@ -4,6 +4,8 @@ export type Comment = {
   text: string
   /** 내가 쓴 댓글이면 수정·삭제 버튼이 보임 */
   mine?: boolean
+  /** 운영자(관리자 화면)가 쓴 댓글: "운영자" 표시, 신고 버튼 없음 */
+  staff?: boolean
 }
 
 /** 첨부 파일 (지금은 브라우저에 data URL 로 저장. 서버가 생기면 uploaded_files 의 주소로 바뀜) */

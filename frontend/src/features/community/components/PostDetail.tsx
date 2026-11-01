@@ -2,10 +2,12 @@ import { useState, type FormEvent } from 'react'
 import { cx } from '@/lib/cx'
 import { relTime } from '@/lib/date'
 import { CAT_ICON, shortRegion } from '../data/display'
+import { useReportStore, useReported, type ReportReason } from '../reports'
 import { useCommunityStore } from '../store'
 import type { Post } from '../types'
 import styles from './Community.module.css'
 import { Attachments, PostComposer } from './PostEditor'
+import { ReportDialog } from './ReportDialog'
 
 /** 이름 첫 글자 동그라미 (이름마다 색이 정해짐) */
 export function NameAvatar({ name, size = 36 }: { name: string; size?: number }) {
@@ -34,6 +36,29 @@ export function PostDetail({ post, author, locked, verified, onVerify, onBack, o
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
   const [editCmt, setEditCmt] = useState<{ index: number; text: string } | null>(null)
+  // 신고: 대상(글 또는 몇 번째 댓글) · 접수 안내
+  const [reportTarget, setReportTarget] = useState<{ index?: number } | null>(null)
+  const [reportNote, setReportNote] = useState('')
+  const addReport = useReportStore((s) => s.add)
+  const postReported = useReported(author, { targetType: 'POST', postId: post.id })
+  const myReports = useReportStore((s) => s.reports)
+  const commentReported = (i: number) => myReports.some((r) => r.reporter === author && r.targetType === 'COMMENT' && r.postId === post.id && r.commentIndex === i)
+  const sendReport = (reason: ReportReason, detail: string) => {
+    if (!reportTarget) return
+    const comment = reportTarget.index !== undefined ? post.comments[reportTarget.index] : undefined
+    const ok = addReport({
+      targetType: comment ? 'COMMENT' : 'POST',
+      postId: post.id,
+      commentIndex: reportTarget.index,
+      targetAuthor: comment ? comment.author : post.author,
+      targetText: comment ? comment.text : post.title,
+      reason,
+      detail,
+      reporter: author,
+    })
+    setReportTarget(null)
+    setReportNote(ok ? '🚨 신고가 접수됐어요. 운영자가 확인한 뒤 처리할게요.' : '🚨 이미 신고한 내용이에요.')
+  }
 
   const submitComment = (e: FormEvent) => {
     e.preventDefault()
@@ -63,6 +88,13 @@ export function PostDetail({ post, author, locked, verified, onVerify, onBack, o
             {relTime(post.ts)}
           </small>
         </div>
+        {!post.mine && (
+          <div className={styles.ownerBtns}>
+            <button type="button" className={styles.danger} onClick={() => setReportTarget({})} disabled={postReported} aria-label="이 글 신고">
+              {postReported ? '신고됨' : '🚨 신고'}
+            </button>
+          </div>
+        )}
         {post.mine && (
           <div className={styles.ownerBtns}>
             <button type="button" onClick={() => setEditing(true)} disabled={locked}>
@@ -75,6 +107,11 @@ export function PostDetail({ post, author, locked, verified, onVerify, onBack, o
         )}
       </div>
 
+      {reportNote && (
+        <p className={styles.reportNote} role="status">
+          {reportNote}
+        </p>
+      )}
       <span className={styles.topicTag}>
         {CAT_ICON[post.cat]} {post.cat}
       </span>
@@ -92,12 +129,15 @@ export function PostDetail({ post, author, locked, verified, onVerify, onBack, o
       {/* 댓글 */}
       <ul className={styles.comments}>
         {post.comments.map((c, i) => {
-          const mine = c.mine || c.author === author
+          const mine = !c.staff && (c.mine || c.author === author)
           return (
             <li key={i} className={styles.comment}>
               <NameAvatar name={c.author} size={30} />
               <div className={styles.commentMain}>
-                <b>{c.author}</b>
+                <b>
+                  {c.author}
+                  {c.staff && <span className={styles.staffTag}>운영자</span>}
+                </b>
                 {editCmt?.index === i ? (
                   <form
                     className={styles.commentEdit}
@@ -119,6 +159,13 @@ export function PostDetail({ post, author, locked, verified, onVerify, onBack, o
                   <p>{c.text}</p>
                 )}
               </div>
+              {!mine && !c.staff && (
+                <span className={styles.commentBtns}>
+                  <button type="button" className={styles.danger} onClick={() => setReportTarget({ index: i })} disabled={commentReported(i)} aria-label={`${c.author} 댓글 신고`}>
+                    {commentReported(i) ? '신고됨' : '🚨 신고'}
+                  </button>
+                </span>
+              )}
               {mine && editCmt?.index !== i && (
                 <span className={styles.commentBtns}>
                   <button type="button" onClick={() => setEditCmt({ index: i, text: c.text })} disabled={locked}>
@@ -147,6 +194,8 @@ export function PostDetail({ post, author, locked, verified, onVerify, onBack, o
           </button>
         </form>
       )}
+
+      {reportTarget && <ReportDialog what={reportTarget.index !== undefined ? '댓글' : '글'} onClose={() => setReportTarget(null)} onSubmit={sendReport} />}
 
       <PostComposer open={editing} onClose={() => setEditing(false)} initial={post} locked={locked} region={post.region && shortRegion(post.region)} onSave={(draft) => updatePost(post.id, draft)} />
     </article>

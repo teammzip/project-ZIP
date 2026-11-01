@@ -1,7 +1,7 @@
-/* 어두운 화면: 화면 3.4장 길이 동안 가운데 고정 */
+/* 어두운 화면: 화면 3장 길이 동안 가운데 고정 */
 .section {
   position: relative;
-  height: 340vh;
+  height: 300vh;
   background: #000;
 }
 

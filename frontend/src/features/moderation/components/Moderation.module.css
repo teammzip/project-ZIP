@@ -121,3 +121,85 @@
 .dark {
   background: var(--color-text);
 }
+
+/* 받은 경고 · 정지 내역 (내 정보) */
+.history {
+  display: grid;
+  gap: 12px;
+}
+
+.history h3 {
+  font-size: 18px;
+}
+
+.historySum {
+  font-size: 14px;
+  color: #3c4254;
+}
+
+.historySum em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--color-danger);
+}
+
+.history ul {
+  display: grid;
+  gap: 8px;
+  max-height: 50vh;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.history li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+}
+
+.tagWarn,
+.tagBan {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tagWarn {
+  background: #fff4e0;
+  color: #b26a00;
+}
+
+.tagBan {
+  background: #ffe9ee;
+  color: var(--color-danger);
+}
+
+.historyMain {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.historyMain b {
+  font-size: 14px;
+}
+
+.historyMain small {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.history .historyEmpty {
+  justify-content: center;
+  color: var(--color-muted);
+}
+
+.historyNote {
+  font-size: 12px;
+  color: var(--color-muted);
+}

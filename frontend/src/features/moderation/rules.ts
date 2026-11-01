@@ -43,3 +43,10 @@ export function useActiveBan(nick?: string, uid?: string) {
   if (!nick && !uid) return null
   return Object.values(records).find((r) => isActive(r) && (r.nick === nick || (!!uid && r.uid === uid))) ?? null
 }
+
+/** 내가 받은 경고 · 정지 횟수 (한 번도 없으면 null → 내 정보에 줄을 안 보여 줌) */
+export function useMySanctions(nick?: string) {
+  const record = useBanStore((s) => (nick ? s.records[nick] : undefined))
+  if (!record || !record.history.length) return null
+  return { warns: record.warns, bans: record.count }
+}

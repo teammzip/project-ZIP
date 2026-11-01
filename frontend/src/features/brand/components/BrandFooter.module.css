@@ -1,39 +1,102 @@
+/* 브랜드 페이지 맨 아래 (오늘의집 브랜드 페이지처럼 밝은 회색 바탕) */
 .footer {
-  padding: 48px 32px 56px;
-  background: var(--color-text);
-  color: rgba(255, 255, 255, 0.6);
+  padding: 56px 32px 64px;
+  border-top: 1px solid var(--color-line);
+  background: #f7f8fa;
+  color: var(--color-muted);
   font-size: 13px;
 }
 
 .inner {
   display: grid;
-  gap: 8px;
-  max-width: 1200px;
+  gap: 0;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
-.logo {
-  height: 32px;
-  width: auto;
-  margin-bottom: 8px;
-  filter: brightness(0) invert(1);
-  opacity: 0.9;
-}
-
+/* 링크 줄 */
 .links {
   display: flex;
-  gap: 16px;
-  margin-top: 8px;
-  color: rgba(255, 255, 255, 0.85);
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  padding: 0 0 28px;
+  border-bottom: 1px solid var(--color-line);
+  font-size: 15px;
+  color: #3c4254;
+}
+
+.links a:hover {
+  text-decoration: underline;
+}
+
+.strong {
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+/* 팀 정보 · 안내 */
+.company {
+  display: grid;
+  gap: 10px;
+  margin-top: 28px;
+  line-height: 1.6;
+}
+
+.companyBtn {
+  justify-self: start;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.companyBtn span {
+  display: inline-block;
+  margin-left: 2px;
+  transition: transform 0.15s;
+}
+
+.companyBtn .up {
+  transform: rotate(180deg);
+}
+
+.companyInfo {
+  color: #3c4254;
+}
+
+.social {
+  display: grid;
+  justify-self: start;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-top: 24px;
+  border-radius: 50%;
+  background: #6b7280;
+  color: #fff;
+}
+
+.social svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.social:hover {
+  background: var(--color-text);
 }
 
 .copy {
-  margin-top: 8px;
-  color: rgba(255, 255, 255, 0.4);
+  margin-top: 20px;
 }
 
 @media (max-width: 900px) {
   .footer {
     padding: 40px 16px calc(48px + env(safe-area-inset-bottom));
+  }
+
+  .links {
+    gap: 10px 18px;
+    padding: 0 0 22px;
+    font-size: 14px;
   }
 }
