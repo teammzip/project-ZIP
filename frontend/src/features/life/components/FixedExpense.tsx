@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
-import { Button, Card } from '@/components/ui'
+import { AmountInput, Button, Card } from '@/components/ui'
+import { LoanInterestCard, loanMonthSummary, loanToday, useLoanInterest } from '@/features/loan'
 import { cx } from '@/lib/cx'
 import { DOW, dayDiff, fmt, monthKeyOf, won } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
@@ -16,6 +17,7 @@ export function FixedExpense() {
   return (
     <div className={common.stack}>
       <FixedSummary />
+      <LoanInterestCard />
       <PayChecklist />
     </div>
   )
@@ -24,6 +26,8 @@ export function FixedExpense() {
 function FixedSummary() {
   const { bills, settings } = useLifeStore(useShallow((s) => ({ bills: s.bills, settings: s.settings })))
   const month = monthKeyOf(useToday())
+  const loan = useLoanInterest()
+  const interest = loanMonthSummary(loan.plan, loan.charges, loanToday().slice(0, 7))
   const rent = (Number(settings.rent) || 0) * 10000 // 월세는 만원 단위로 저장돼 있음
   const billSum = sumAmount(bills)
   const utilities = bills.filter((b) => b.tag === '공과금') // 공과금 태그가 붙은 항목만 따로 합산
@@ -34,9 +38,9 @@ function FixedSummary() {
     <div className={styles.fixedSum}>
       <article className={cx(styles.sumCard, styles.sumTotal)}>
         <small>이번 달 고정 지출 합계</small>
-        <b>{won(rent + billSum)}</b>
+        <b>{won(rent + billSum + interest.expectedAmount)}</b>
         <span>
-          월세 {won(rent)} + 그 밖의 고정 지출 {won(billSum)}
+          월세 {won(rent)} + 그 밖의 고정 지출 {won(billSum)}{interest.scheduledCount > 0 && ` + 대출 이자 ${won(interest.expectedAmount)}`}
         </span>
       </article>
       <article className={styles.sumCard}>
@@ -72,6 +76,8 @@ function PayChecklist() {
   const now = useToday()
   const month = now.getMonth() + 1
   const monthKey = monthKeyOf(now)
+  const loan = useLoanInterest()
+  const interest = loanMonthSummary(loan.plan, loan.charges, monthKey)
   const next = nextRentDate(settings.rentDay)
   const nextStr = fmt(next)
 
@@ -84,11 +90,11 @@ function PayChecklist() {
 
   const rent = (Number(settings.rent) || 0) * 10000
   const rentDone = !!rentPaid[monthKey]
-  const total = rent + sumAmount(bills)
+  const total = rent + sumAmount(bills) + interest.expectedAmount
   const isPaid = (b: { paidMonth: string | null }) => b.paidMonth === monthKey // 달이 바뀌면 저절로 미납으로 돌아옴
-  const paid = (rentDone ? rent : 0) + sumAmount(bills.filter(isPaid))
-  const count = 1 + bills.length
-  const doneCount = (rentDone ? 1 : 0) + bills.filter(isPaid).length
+  const paid = (rentDone ? rent : 0) + sumAmount(bills.filter(isPaid)) + interest.recordedAmount
+  const count = 1 + bills.length + interest.scheduledCount
+  const doneCount = (rentDone ? 1 : 0) + bills.filter(isPaid).length + interest.recordedCount
   const pct = total ? Math.round((paid / total) * 100) : 0
   // 태그별 합계 (월세는 따로 보여 주므로 제외)
   const tagSums = BILL_TAGS.map((t) => ({ tag: t, sum: sumAmount(bills.filter((b) => b.tag === t)), n: bills.filter((b) => b.tag === t).length })).filter((x) => x.n)
@@ -178,6 +184,15 @@ function PayChecklist() {
         )}
       </div>
 
+      {interest.scheduledCount > 0 && <div className={cx(styles.bill, interest.recordedCount === interest.scheduledCount && styles.billPaid)}>
+        <span aria-hidden="true">💳</span>
+        <div className={styles.billName}>
+          <b>전세 대출 이자</b>
+          <small>이번 달 예정 {won(interest.expectedAmount)} · 지출 기록 {won(interest.recordedAmount)}{interest.pendingAmount > 0 && ` · ${interest.dueDate} 기록 예정`}</small>
+        </div>
+        <span className={styles.tagBadge}>자동 기록</span>
+      </div>}
+
       {bills.map((b) => (
         <div key={b.id} className={cx(styles.bill, isPaid(b) && styles.billPaid)}>
           <input type="checkbox" className={common.checkbox} checked={isPaid(b)} onChange={(e) => toggleBill(b.id, e.target.checked)} aria-label={`${b.name} 납부`} />
@@ -204,7 +219,7 @@ function PayChecklist() {
           </label>
           <label>
             금액 (원)
-            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} min={0} max={9999999} required />
+            <AmountInput value={amount} onValueChange={setAmount} max={9999999} required />
           </label>
           <div className={styles.tagPick} role="group" aria-label="태그">
             {BILL_TAGS.map((t) => (

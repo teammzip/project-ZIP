@@ -2,6 +2,8 @@ import { useEffect, useEffectEvent, useRef, useState, type FormEvent } from 'rea
 import { useNavigate } from 'react-router-dom'
 import { Button, Modal } from '@/components/ui'
 import { spendBreakdown, useLifeStore } from '@/features/life'
+import { useLoanStore } from '@/features/loan'
+import { useAuthStore } from '@/features/auth/store/authStore'
 import { man, won } from '@/lib/date'
 import { useChatStore, type ChatMsg, type SpendCard } from '../store'
 import { CHAT_TOPICS, SUMMARY_ASK, chatReply, type AiContext, type Topic } from '../topics'
@@ -34,9 +36,11 @@ const subj = (w: string) => {
 /** 가계부 기록으로 이번 달 지출 요약 카드 숫자를 만듦 */
 function makeSpendCard(): SpendCard {
   const { spends, bills, settings } = useLifeStore.getState()
-  const cur = spendBreakdown(0, spends, bills, settings)
-  const prev = spendBreakdown(1, spends, bills, settings)
-  const vari = cur.rows.filter(([n]) => n !== '월세' && n !== '공과금')
+  const userId = useAuthStore.getState().user?.id
+  const charges = useLoanStore.getState().charges.filter((charge) => charge.userId === userId)
+  const cur = spendBreakdown(0, spends, bills, settings, charges)
+  const prev = spendBreakdown(1, spends, bills, settings, charges)
+  const vari = cur.rows.filter(([n]) => n !== '월세' && n !== '공과금' && n !== '대출 이자')
   return { month: cur.month, total: cur.total, prevTotal: prev.total, fixed: cur.fixed, rows: cur.rows.slice(0, 5), top: vari[0] ?? null }
 }
 

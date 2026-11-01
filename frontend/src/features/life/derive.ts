@@ -8,6 +8,7 @@ import { TRASH, trashIco } from './data/catalog'
 import { useLifeStore } from './store'
 import type { Bill, CalEvent, LifeSettings, MoneyRecord, TrashEvent } from './types'
 import { regionVerification } from './regionVerification'
+import type { LoanCharge } from '@/features/loan/interest'
 
 export const sortEvents = <T extends { date: string; time: string }>(list: T[]) => [...list].sort((a, b) => (a.date + (a.time || '99:99')).localeCompare(b.date + (b.time || '99:99')))
 
@@ -142,15 +143,17 @@ export function useLifeSummary() {
 export const sumAmount = (list: { amount: number }[]) => list.reduce((t, r) => t + r.amount, 0)
 
 /** back달 전(0=이번 달)의 지출을 분류별로 합침. 월세·공과금은 매달 같은 금액으로 봄. 홈 도넛과 AI "지출 요약"이 같이 씀 */
-export function spendBreakdown(back: number, spends: MoneyRecord[], bills: Bill[], settings: LifeSettings) {
+export function spendBreakdown(back: number, spends: MoneyRecord[], bills: Bill[], settings: LifeSettings, loanCharges: LoanCharge[] = []) {
   const now = new Date()
   const d = new Date(now.getFullYear(), now.getMonth() - back, 1)
   const key = monthKeyOf(d)
   const sums: Record<string, number> = {}
   const rent = (Number(settings.rent) || 0) * 10000
   const billSum = sumAmount(bills)
+  const interest = sumAmount(loanCharges.filter((charge) => charge.date.slice(0, 7) === key))
   if (rent) sums['월세'] = rent
   if (billSum) sums['공과금'] = billSum
+  if (interest) sums['대출 이자'] = interest
   let variable = 0
   for (const s of spends) {
     if (s.date.slice(0, 7) !== key) continue
@@ -159,7 +162,7 @@ export function spendBreakdown(back: number, spends: MoneyRecord[], bills: Bill[
   }
   const rows = Object.entries(sums).sort((a, b) => b[1] - a[1])
   const total = rows.reduce((t, r) => t + r[1], 0)
-  return { month: d.getMonth() + 1, rows, total, fixed: rent + billSum, variable }
+  return { month: d.getMonth() + 1, rows, total, fixed: rent + billSum + interest, variable }
 }
 
 /** 동네 인증 유효 기간 (일) */

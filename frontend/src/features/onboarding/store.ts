@@ -26,6 +26,10 @@ export type HousingSurvey = {
   contractFee: number
   hasLoan: boolean
   loanAmount: number
+  /** 전세 대출 이자 자동 기록 설정. 기존 설문에는 없으므로 선택 항목. */
+  loanAnnualRate?: number
+  loanPaymentDay?: number
+  loanStartDate?: string
   /** 4. 선택한 기간의 수입 (원) */
   income: number
   incomePeriod: IncomePeriod

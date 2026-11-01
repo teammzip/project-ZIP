@@ -46,6 +46,7 @@ export const SPEND_CATS: Category[] = [
 
 /** 홈 "지출 구성" 도넛 색 (월세·공과금 포함) */
 export const DONUT_COLORS: Record<string, string> = {
+  '대출 이자': '#e58a29',
   월세: 'var(--color-purple)',
   공과금: 'var(--color-primary)',
   식비: 'var(--color-teal)',

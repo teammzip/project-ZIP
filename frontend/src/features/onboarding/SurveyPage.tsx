@@ -1,8 +1,9 @@
 import { useCallback, useState, type FormEvent } from 'react'
 import logo from '@/assets/images/logo-zip.png'
-import { Button } from '@/components/ui'
+import { AmountInput, Button } from '@/components/ui'
 import { authApi, useAuthStore } from '@/features/auth'
 import { useLifeStore } from '@/features/life'
+import { LoanFields, loanToday, useLoanStore, validateLoanTerms, type LoanTerms } from '@/features/loan'
 import { cx } from '@/lib/cx'
 import { useAge } from '@/lib/useAge'
 import common from '@/styles/common.module.css'
@@ -21,6 +22,8 @@ export function SurveyPage() {
   const settings = useLifeStore((s) => s.settings)
   const saveSettings = useLifeStore((s) => s.saveSettings)
   const addBill = useLifeStore((s) => s.addBill)
+  const saveLoan = useLoanStore((s) => s.savePlan)
+  const stopLoan = useLoanStore((s) => s.stopPlan)
 
   const [done, setDone] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -36,7 +39,7 @@ export function SurveyPage() {
   const [incomePeriod, setIncomePeriod] = useState<IncomePeriod>('monthly')
   const [mgmtIncluded, setMgmtIncluded] = useState(true)
   const [hasLoan, setHasLoan] = useState(false)
-  const [f, setF] = useState({ birth: '', deposit: '', rent: '', mgmtFee: '', contractFee: '', loanAmount: '', income: '' })
+  const [f, setF] = useState({ birth: '', deposit: '', rent: '', mgmtFee: '', contractFee: '', loanAmount: '', income: '', loanAnnualRate: '', loanPaymentDay: '25', loanStartDate: loanToday() })
   const { age, today } = useAge(f.birth)
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }))
 
@@ -55,6 +58,15 @@ export function SurveyPage() {
       setSearchOpen(true)
       return
     }
+    let loan: LoanTerms | undefined
+    if (kind === 'jeonse' && hasLoan) {
+      try {
+        loan = validateLoanTerms({ principal: Number(f.loanAmount), annualRate: Number(f.loanAnnualRate), paymentDay: Number(f.loanPaymentDay), startDate: f.loanStartDate })
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : '대출 정보를 확인해 주세요.')
+        return
+      }
+    }
     setError('')
     setSaving(true)
     const monthly = kind === 'monthly'
@@ -71,6 +83,9 @@ export function SurveyPage() {
       contractFee: monthly ? 0 : num(f.contractFee),
       hasLoan: monthly ? false : hasLoan,
       loanAmount: !monthly && hasLoan ? num(f.loanAmount) : 0,
+      loanAnnualRate: loan?.annualRate,
+      loanPaymentDay: loan?.paymentDay,
+      loanStartDate: loan?.startDate,
       income: num(f.income),
       incomePeriod,
       answeredAt: new Date().toISOString(),
@@ -82,6 +97,8 @@ export function SurveyPage() {
       // 생활 설정의 월세는 기존 만원 단위를 유지하므로 경계에서 변환한다.
       saveSettings({ ...settings, region: answers.address, rent: answers.rent / 10000 })
       if (mgmtFee > 0) addBill('관리비', mgmtFee, '관리비')
+      if (loan) saveLoan(loan)
+      else stopLoan()
       setDone(true)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '정보를 저장하지 못했어요. 다시 시도해 주세요.')
@@ -100,7 +117,7 @@ export function SurveyPage() {
           <div className={styles.doneBox}>
             <div className={styles.doneIco} aria-hidden>🎉</div>
             <h1>설문이 끝났어요!</h1>
-            <p>입력한 월세와 관리비는 고정 지출과 알림에 바로 반영됐어요. 나머지 정보는 저장해 뒀어요.</p>
+            <p>입력한 월세·관리비를 반영했어요. 전세 대출이 있으면 설정한 납부일에 이자가 가계부에 자동 기록돼요.</p>
             <Button block size="lg" onClick={close}>
               ZIP 시작하기
             </Button>
@@ -155,11 +172,11 @@ export function SurveyPage() {
                   <div className={common.two}>
                     <label>
                       보증금 (원)
-                      <input type="number" inputMode="numeric" value={f.deposit} onChange={(e) => set('deposit', e.target.value)} min={0} max={9999990000} step={1} placeholder="예) 10000000" required />
+                      <AmountInput value={f.deposit} onValueChange={(value) => set('deposit', value)} max={9999990000} placeholder="예) 10,000,000" required />
                     </label>
                     <label>
                       월세 (원)
-                      <input type="number" inputMode="numeric" value={f.rent} onChange={(e) => set('rent', e.target.value)} min={0} max={99990000} step={1} placeholder="예) 550000" required />
+                      <AmountInput value={f.rent} onValueChange={(value) => set('rent', value)} max={99990000} placeholder="예) 550,000" required />
                     </label>
                   </div>
                   <p className={styles.q}>월세에 관리비가 포함돼 있나요?</p>
@@ -174,7 +191,7 @@ export function SurveyPage() {
                   {!mgmtIncluded && (
                     <label>
                       관리비 (원, 매달)
-                      <input type="number" inputMode="numeric" step={1} value={f.mgmtFee} onChange={(e) => set('mgmtFee', e.target.value)} min={0} max={9990000} placeholder="예) 70000" required />
+                      <AmountInput value={f.mgmtFee} onValueChange={(value) => set('mgmtFee', value)} max={9990000} placeholder="예) 70,000" required />
                     </label>
                   )}
                 </div>
@@ -183,7 +200,7 @@ export function SurveyPage() {
                   <h3>전세 계약</h3>
                   <label>
                     계약금 (원)
-                    <input type="number" inputMode="numeric" value={f.contractFee} onChange={(e) => set('contractFee', e.target.value)} min={0} max={9999990000} step={1} placeholder="예) 20000000" required />
+                    <AmountInput value={f.contractFee} onValueChange={(value) => set('contractFee', value)} max={9999990000} placeholder="예) 20,000,000" required />
                   </label>
                   <p className={styles.q}>전세 대출을 받았나요?</p>
                   <div className={styles.yn} role="group" aria-label="대출 여부">
@@ -195,14 +212,14 @@ export function SurveyPage() {
                     </button>
                   </div>
                   {hasLoan && (
-                    <label>
-                      대출 금액 (원)
-                      <input type="number" inputMode="numeric" value={f.loanAmount} onChange={(e) => set('loanAmount', e.target.value)} min={0} max={9999990000} step={1} placeholder="예) 120000000" required />
-                    </label>
+                    <LoanFields
+                      value={{ principal: f.loanAmount, annualRate: f.loanAnnualRate, paymentDay: f.loanPaymentDay, startDate: f.loanStartDate }}
+                      onChange={(value) => setF((previous) => ({ ...previous, loanAmount: value.principal, loanAnnualRate: value.annualRate, loanPaymentDay: value.paymentDay, loanStartDate: value.startDate }))}
+                    />
                   )}
                   <label>
                     관리비 (원, 매달)
-                    <input type="number" inputMode="numeric" step={1} value={f.mgmtFee} onChange={(e) => set('mgmtFee', e.target.value)} min={0} max={9990000} placeholder="없으면 0" required />
+                    <AmountInput value={f.mgmtFee} onValueChange={(value) => set('mgmtFee', value)} max={9990000} placeholder="없으면 0" required />
                   </label>
                 </div>
               )}
@@ -219,7 +236,7 @@ export function SurveyPage() {
               </div>
               <label>
                 {incomePeriod === 'monthly' ? '월 수입 (원)' : '연 수입 (원)'}
-                <input type="number" inputMode="numeric" value={f.income} onChange={(e) => set('income', e.target.value)} min={0} max={incomePeriod === 'monthly' ? 999990000 : 11999880000} step={1} placeholder={incomePeriod === 'monthly' ? '예) 2500000' : '예) 30000000'} required />
+                <AmountInput value={f.income} onValueChange={(value) => set('income', value)} max={incomePeriod === 'monthly' ? 999990000 : 11999880000} placeholder={incomePeriod === 'monthly' ? '예) 2,500,000' : '예) 30,000,000'} required />
               </label>
             </section>
 
