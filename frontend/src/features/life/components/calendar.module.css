@@ -938,3 +938,7 @@
   width: 18px;
   height: 18px;
 }
+
+.recordAnchor {
+  scroll-margin-top: 88px;
+}

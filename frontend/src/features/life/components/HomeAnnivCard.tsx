@@ -7,7 +7,7 @@ import home from './home.module.css'
 import styles from './HomeAnnivCard.module.css'
 
 /** 요약 카드 4번째 칸: 오늘이거나 앞으로 올 가장 가까운 기념일 (D-day).
- * 기념일은 마이페이지 일정 > 일정 기록하기 > 🎉 기념일 에서 추가. 카드를 누르면 일정 화면으로 */
+ * 카드를 누르면 마이페이지 일정의 기념일 탭을 열고 해당 카드로 이동. */
 export function HomeAnnivCard() {
   const events = useLifeStore((s) => s.events)
   const list = upcomingAnniversaries(events)
@@ -15,7 +15,7 @@ export function HomeAnnivCard() {
   const name = next?.ev.title.replace(/^🎉\s*/, '')
 
   return (
-    <Link to="/my/calendar" className={cx(home.stat, home.pink, styles.card)} aria-label={next ? `기념일 ${name} ${ddayText(next.diff)}, 일정 보기` : '기념일 추가하러 가기'}>
+    <Link to="/my/calendar?tab=anniv#calendar-record" className={cx(home.stat, home.pink, styles.card)} aria-label={next ? `기념일 ${name} ${ddayText(next.diff)}, 기념일 탭 보기` : '기념일 추가하러 가기'}>
       <span className={home.statLabel}>🎉 다가오는 기념일</span>
       {next ? (
         <>
