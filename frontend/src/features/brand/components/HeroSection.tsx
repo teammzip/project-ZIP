@@ -1,7 +1,6 @@
 import { motion, useScroll, useTransform, type MotionValue } from 'motion/react'
 import { useRef } from 'react'
 import house from '@/assets/images/last-house.png'
-import robot from '@/assets/images/robot-cut.png'
 import { HERO, HERO_TILES, type FloatTile } from '../content'
 import styles from './HeroSection.module.css'
 
@@ -75,7 +74,6 @@ function Tile({ tile, index, progress }: { tile: FloatTile; index: number; progr
             </span>
           </div>
         )}
-        {tile.kind === 'robot' && <img src={robot} alt="" className={styles.cutout} />}
         {tile.kind === 'house' && <img src={house} alt="" className={styles.cutout} />}
       </div>
     </motion.div>

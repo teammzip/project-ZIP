@@ -83,7 +83,7 @@ ol {
 
   body {
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip; /* hidden 이면 body 가 스크롤 상자가 되어 화면 고정(sticky) 장면이 깨짐 */
     touch-action: pan-y pinch-zoom; /* 손가락으로 좌우로 밀리지 않게 (안쪽의 가로 스크롤 영역은 그대로 동작) */
   }
 

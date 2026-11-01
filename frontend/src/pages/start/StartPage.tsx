@@ -9,29 +9,25 @@ import {
   CinemaSection,
   CloudSection,
   CtaSection,
+  FlyingRobot,
   FocusSection,
   HeroSection,
-  MobileIntro,
   ShowcaseSection,
   StoriesSection,
 } from '@/features/brand'
-import { useMediaQuery } from '@/lib/useMediaQuery'
 import styles from './StartPage.module.css'
 
-/* 시작 화면
- * - PC: 브랜드 스토리 (섹션 순서를 바꾸거나 빼려면 여기서 줄만 옮기면 됩니다)
- * - 모바일(900px 이하): 앱 시작 → 로봇 → 문 → 로그인 인트로
+/* 시작 화면 = 브랜드 스토리 (오늘의집 브랜드 페이지처럼). PC · 모바일이 같은 구성이고 모바일은 화면에 맞게 줄여 보여 줌
+ * 섹션 순서를 바꾸거나 빼려면 여기서 줄만 옮기면 됩니다.
  * 로그인은 AuthModal, 회원가입·아이디/비밀번호 찾기는 별도 페이지(/signup, /find).
- * /start#login 으로 오면(가입·찾기 페이지의 "로그인") PC 는 로그인 창을 바로 열고, 모바일은 문이 저절로 열린 뒤 로그인 창이 뜸 */
+ * /start#login 으로 오면(가입·찾기 페이지의 "로그인") 로그인 창을 바로 엶 */
 export function StartPage() {
   const navigate = useNavigate()
   const { hash, pathname, search, state } = useLocation()
   const redirectTo = useRedirectAfterAuth()
-  const isMobile = useMediaQuery('(max-width: 900px)')
   const fromLogin = hash === '#login'
-  const [loginOpen, setLoginOpen] = useState(fromLogin && !isMobile)
+  const [loginOpen, setLoginOpen] = useState(fromLogin)
   // #login 은 한 번만 쓰고 지움 (새로고침해도 또 자동으로 열리지 않게)
-  const [autoDoor] = useState(fromLogin && isMobile)
   useEffect(() => {
     if (fromLogin) navigate({ pathname, search }, { replace: true, state })
   }, [fromLogin, navigate, pathname, search, state])
@@ -39,15 +35,6 @@ export function StartPage() {
   const openLogin = () => setLoginOpen(true)
   const goSignup = () => navigate('/signup', { state })
   const modal = <AuthModal open={loginOpen} onClose={() => setLoginOpen(false)} onSuccess={() => navigate(redirectTo, { replace: true })} />
-
-  if (isMobile) {
-    return (
-      <MotionConfig reducedMotion="user">
-        <MobileIntro onEnter={openLogin} onSignup={goSignup} paused={loginOpen} autoDoor={autoDoor} />
-        {modal}
-      </MotionConfig>
-    )
-  }
 
   return (
     // reducedMotion="user": 기기에서 '동작 줄이기'를 켠 사람에게는 움직임을 끔
@@ -65,6 +52,8 @@ export function StartPage() {
           <CtaSection onLogin={openLogin} onSignup={goSignup} />
         </main>
         <BrandFooter />
+        {/* 맨 위에서부터 스크롤을 따라 날아다니는 집사 로봇 */}
+        <FlyingRobot />
       </div>
       {modal}
     </MotionConfig>

@@ -1,7 +1,7 @@
-/* 어두운 화면: 화면 3.4장 길이 동안 가운데 고정 */
+/* 어두운 화면: 화면 3장 길이 동안 가운데 고정 */
 .section {
   position: relative;
-  height: 340vh;
+  height: 300vh;
   background: #000;
 }
 
@@ -36,14 +36,6 @@
   background: linear-gradient(180deg, rgba(10, 8, 6, 0.85) 0%, rgba(10, 8, 6, 0.55) 45%, rgba(10, 8, 6, 0.9) 100%);
 }
 
-.robot {
-  position: absolute;
-  right: 8%;
-  bottom: 10%;
-  width: clamp(120px, 14vw, 220px);
-  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.5)) brightness(0.92);
-}
-
 .line {
   position: absolute;
   top: 50%;
@@ -67,4 +59,20 @@
   letter-spacing: -0.04em;
   text-align: center;
   color: #fff;
+}
+
+@media (max-width: 900px) {
+  .section {
+    height: 280vh;
+  }
+
+  .line {
+    left: 8%;
+    right: 8%;
+    font-size: 26px;
+  }
+
+  .final {
+    font-size: 44px;
+  }
 }

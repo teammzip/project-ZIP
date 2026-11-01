@@ -1,0 +1,76 @@
+/* 날아다니는 로봇: 화면 왼쪽 위(0, 0) 기준으로 x · y 만큼 옮김. 아래 섹션을 가리지 않게 누를 수 없음 */
+.robot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.still {
+  top: auto;
+  right: 16px;
+  bottom: 16px;
+  left: auto;
+}
+
+/* 말풍선은 로봇 머리 위. 로봇이 오른쪽에 있으면 왼쪽으로(.toLeft), 왼쪽에 있으면 오른쪽으로(.toRight) 펼침 */
+.bubble {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  max-width: 200px;
+  padding: 8px 12px;
+  border-radius: 14px 14px 14px 4px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(20, 30, 60, 0.18);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.toLeft {
+  right: 30%;
+  border-radius: 14px 14px 4px 14px;
+}
+
+.toRight {
+  left: 30%;
+}
+
+/* 제자리에서도 둥실둥실 */
+.body {
+  width: 100%;
+  animation: float 3s ease-in-out infinite;
+}
+
+.body img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 16px 20px rgba(20, 30, 60, 0.25));
+}
+
+@keyframes float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -10px;
+  }
+}
+
+@media (max-width: 900px) {
+  .bubble {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .body {
+    animation: none;
+  }
+}

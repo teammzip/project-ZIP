@@ -14,14 +14,13 @@ export const HERO = {
 export type FloatTile =
   | { kind: 'illust'; emoji: string; bg: string; x: number; y: number; w: number; h: number; speed: number; image?: string }
   | { kind: 'widget'; icon: string; label: string; value: string; tone: string; x: number; y: number; w: number; speed: number }
-  | { kind: 'robot' | 'house'; x: number; y: number; w: number; speed: number }
+  | { kind: 'house'; x: number; y: number; w: number; speed: number }
 
 export const HERO_TILES: FloatTile[] = [
   { kind: 'illust', emoji: '🛋️', bg: 'linear-gradient(160deg,#ffe3d3,#ffb999)', x: 2, y: 6, w: 150, h: 190, speed: 120 },
   { kind: 'widget', icon: '💸', label: '월세 납부일', value: 'D-3', tone: '#7c6cf5', x: 15, y: 16, w: 168, speed: 60 },
   { kind: 'illust', emoji: '🪴', bg: 'linear-gradient(160deg,#dff5e3,#9fdcae)', x: 64, y: 8, w: 120, h: 160, speed: 90 },
   { kind: 'illust', emoji: '💡', bg: 'linear-gradient(160deg,#fff4cc,#ffd76b)', x: 80, y: 4, w: 200, h: 230, speed: 160 },
-  { kind: 'robot', x: 84, y: 54, w: 190, speed: 80 },
   { kind: 'widget', icon: '♻️', label: '오늘 배출', value: '재활용', tone: '#1fb5a3', x: 66, y: 72, w: 170, speed: 140 },
   { kind: 'illust', emoji: '🍳', bg: 'linear-gradient(160deg,#ffe7ea,#ff9db3)', x: 46, y: 80, w: 220, h: 150, speed: 70 },
   { kind: 'house', x: 1, y: 50, w: 170, speed: 110 },
@@ -37,6 +36,16 @@ export const CLOUD = {
 /** 구름을 이루는 작은 카드 그림 (돌려 가며 씀) */
 export const CLOUD_ICONS = ['🛏️', '🪴', '🍳', '🧺', '💡', '📦', '🧹', '🛋️', '☕', '🎧', '🖼️', '🧴', '🍜', '🚲', '📚', '🕯️', '🧸', '🪞', '🍓', '🧊']
 export const CLOUD_COLORS = ['#ffe3d3', '#dff5e3', '#fff4cc', '#e3eeff', '#ffe7ea', '#f1efff', '#e9f7f2', '#fff1e6']
+
+/* ---------- 페이지 위를 날아다니는 로봇의 말풍선 (at = 페이지 스크롤 0~1 중 이 지점부터) ---------- */
+export const ROBOT_TALKS = [
+  { at: 0, text: '안녕! 나는 집사 로봇이야 👋' },
+  { at: 0.1, text: '흩어진 자취 생활, 내가 모아 줄게' },
+  { at: 0.3, text: '월세 날짜는 내가 먼저 알려 줄게' },
+  { at: 0.48, text: '할 일 · 가계부 · 분리배출까지!' },
+  { at: 0.7, text: '이웃 이야기도 같이 들어 보자' },
+  { at: 0.88, text: '이제 같이 집으로 들어가자!' },
+]
 
 /* ---------- 3. 어두운 화면: 문장이 바뀌다가 화면 가득 ---------- */
 export const CINEMA = {
