@@ -1,11 +1,11 @@
 -- ============================================================================
 -- ZIP – 자취생 생활 도우미 : 데이터베이스 (MySQL 8.0.16 이상)
--- 2026-10-31: frontend/API.md와 현재 React 데이터 모델(메모·지도·프로필·고객센터 포함) 기준입니다.
---   · 표 41개 + 집계용 VIEW 2개
+-- 2026-11-01: frontend/API.md와 현재 React 데이터 모델(메모·지도·프로필·고객센터 포함) 기준입니다.
+--   · 표 44개 + 집계용 VIEW 2개
 --   · 2fa08f5 기준 기념일·매년 반복 반영. 기존 DB 적용 순서는 db/migrations/README.md 참고
 --   · 한글 설명: db/README.md, 기존 DB 변경: db/migrations/20261031_current_project.sql
 -- 사용법:  mysql -u root -p < db/schema.sql      (zip 데이터베이스가 새로 만들어집니다)
--- 규칙:   금액은 원 단위 정수(INT), 단 user_settings.rent_amount는 화면과 같은 만원 단위, 날짜·시간은 DATE/TIME/DATETIME, 글자는 utf8mb4,
+-- 규칙:   금액은 원 단위 정수(BIGINT), 단 user_settings.rent_amount는 화면과 같은 만원 단위, 날짜·시간은 DATE/TIME/DATETIME, 글자는 utf8mb4,
 --         비밀번호·인증번호·토큰은 원문 대신 해시만 저장, 회원 탈퇴 시 개인 데이터는 CASCADE, 재가입 차단 해시만 별도 보존
 -- ============================================================================
 SET NAMES utf8mb4;
@@ -169,7 +169,7 @@ CREATE TABLE IF NOT EXISTS `withdrawal_logs` (
 -- 사용자 설정: 내 정보 화면의 설정값(월세·월세 납부일·입주한 달·계약 끝나는 달·알림 수신). 사용자 한 명당 한 줄. 이름(닉네임)과 동네는 users 에 있습니다.
 CREATE TABLE IF NOT EXISTS `user_settings` (
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '사용자 아이디',
-  `rent_amount` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '월세 금액 — 만원 단위 (55 = 55만원)',
+  `rent_amount` DECIMAL(14,4) UNSIGNED NOT NULL DEFAULT 0 COMMENT '월세 금액 — 만원 단위 (55 = 55만원)',
   `rent_day` TINYINT UNSIGNED NOT NULL DEFAULT 15 COMMENT '월세 납부일 — 매월 며칠 (1~31)',
   `move_in_ym` CHAR(7) NULL COMMENT '입주한 달 — 오른쪽 패널의 "거주 N개월" 계산 (예: 2026-02)',
   `contract_end_ym` CHAR(7) NULL COMMENT '계약 끝나는 달 — "계약 N개월 남음" 계산',
@@ -183,6 +183,61 @@ CREATE TABLE IF NOT EXISTS `user_settings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자 설정: 내 정보 화면의 설정값(월세·월세 납부일·입주한 달·계약 끝나는 달·알림 수신).';
 
 -- 할 일은 events.is_done / done_at으로 통합합니다. 기존 데이터 이전은 migrations를 참고하세요.
+
+CREATE TABLE IF NOT EXISTS `housing_surveys` (
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `birth_date` DATE NOT NULL COMMENT '생년월일 — 나이는 조회 시 계산',
+  `address` VARCHAR(200) NOT NULL COMMENT '응답 당시 간략한 주소',
+  `contract_kind` ENUM('MONTHLY','JEONSE') NOT NULL,
+  `deposit` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '월세 보증금 — 원',
+  `rent` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '월세 — 원',
+  `management_included` TINYINT(1) NOT NULL DEFAULT 0,
+  `management_fee` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '별도 관리비 — 원',
+  `contract_fee` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '전세 계약금 — 원, 보증금으로 임의 재해석하지 않음',
+  `has_loan` TINYINT(1) NOT NULL DEFAULT 0,
+  `loan_amount` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '응답 당시 대출 금액 — 원',
+  `loan_annual_rate` DECIMAL(5,2) NULL,
+  `loan_payment_day` TINYINT UNSIGNED NULL,
+  `loan_start_date` DATE NULL,
+  `income` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '선택한 기간의 수입 — 원, 가계부 실적과 별개',
+  `income_period` ENUM('MONTHLY','ANNUAL') NOT NULL,
+  `answered_at` DATETIME NOT NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_housing_surveys_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `ck_survey_flags` CHECK (`management_included` IN (0,1) AND `has_loan` IN (0,1)),
+  CONSTRAINT `ck_survey_loan_rate` CHECK (`loan_annual_rate` BETWEEN 0 AND 100),
+  CONSTRAINT `ck_survey_loan_day` CHECK (`loan_payment_day` BETWEEN 1 AND 31)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='회원별 최신 주거 설문 — 실제 개인정보를 seed로 넣지 않음';
+
+CREATE TABLE IF NOT EXISTS `housing_loans` (
+  `id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT 'UUID — 프론트 loanId',
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `principal` BIGINT UNSIGNED NOT NULL COMMENT '원금 — 원',
+  `annual_rate` DECIMAL(5,2) NOT NULL COMMENT '연 이율 — 퍼센트',
+  `payment_day` TINYINT UNSIGNED NOT NULL,
+  `start_date` DATE NOT NULL,
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_housing_loans_user` (`user_id`),
+  CONSTRAINT `fk_housing_loans_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `ck_housing_loan_terms` CHECK (`principal` BETWEEN 1 AND 9999990000 AND `annual_rate` BETWEEN 0 AND 100 AND `payment_day` BETWEEN 1 AND 31 AND `is_active` IN (0,1) AND `start_date` BETWEEN '2000-01-01' AND '2100-12-31')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='회원당 전세 대출 설정 하나 — 중지 후에도 같은 ID 재사용';
+
+CREATE TABLE IF NOT EXISTS `loan_interest_charges` (
+  `loan_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `charge_date` DATE NOT NULL COMMENT '한국 날짜 기준 납부일 — 실제 출금 증빙 아님',
+  `period_ym` INT GENERATED ALWAYS AS (EXTRACT(YEAR_MONTH FROM `charge_date`)) STORED COMMENT 'YYYYMM — 날짜에서 생성하여 월 불일치 방지',
+  `principal` BIGINT UNSIGNED NOT NULL COMMENT '기록 당시 원금 스냅샷',
+  `annual_rate` DECIMAL(5,2) NOT NULL COMMENT '기록 당시 금리 스냅샷',
+  `amount` BIGINT UNSIGNED NOT NULL COMMENT '기록 당시 월 예상 이자 — 원',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`loan_id`, `charge_date`),
+  UNIQUE KEY `uk_loan_interest_month` (`loan_id`, `period_ym`),
+  CONSTRAINT `fk_loan_interest_loan` FOREIGN KEY (`loan_id`) REFERENCES `housing_loans` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `ck_loan_interest_snapshot` CHECK (`principal` BETWEEN 1 AND 9999990000 AND `annual_rate` BETWEEN 0 AND 100 AND `amount` = ROUND(`principal` * `annual_rate` / 1200, 0))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='월별 이자 자동 기록 — 설정 변경 후에도 과거 스냅샷 보존';
 
 CREATE TABLE IF NOT EXISTS `event_categories` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '고유 번호',
@@ -258,7 +313,7 @@ CREATE TABLE IF NOT EXISTS `bill_items` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '공과금 항목 아이디 — 자동 증가',
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '공과금 주인 아이디',
   `name` VARCHAR(30) NOT NULL COMMENT '공과금 이름 — 가스, 전기, 수도 등',
-  `default_amount` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '평소 금액 — 원 단위',
+  `default_amount` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '평소 금액 — 원 단위',
   `is_active` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '사용 여부 — 해지한 항목은 0',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록 일시',
   `tag` ENUM('공과금','통신','구독','관리비','기타') NOT NULL DEFAULT '공과금' COMMENT '고정 지출 태그',
@@ -271,7 +326,7 @@ CREATE TABLE IF NOT EXISTS `bill_payments` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '공과금납부 아이디 — 자동 증가',
   `bill_item_id` BIGINT UNSIGNED NOT NULL COMMENT '공과금 항목 아이디',
   `period_ym` CHAR(7) NOT NULL COMMENT '대상 연월 — 예: 2026-10',
-  `amount` INT UNSIGNED NOT NULL COMMENT '그 달 금액 — 원 단위',
+  `amount` BIGINT UNSIGNED NOT NULL COMMENT '그 달 금액 — 원 단위',
   `paid_at` DATETIME NULL COMMENT '납부 일시 — 비어 있으면 미납',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_bill_payments_bill_item_id_period_ym` (`bill_item_id`, `period_ym`),
@@ -283,7 +338,7 @@ CREATE TABLE IF NOT EXISTS `rent_payments` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '월세납부 아이디 — 자동 증가',
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '월세 내는 사용자 아이디',
   `period_ym` CHAR(7) NOT NULL COMMENT '대상 연월 — 예: 2026-10',
-  `amount` INT UNSIGNED NOT NULL COMMENT '그 달 월세 — 원 단위 (설정의 월세 × 10000)',
+  `amount` BIGINT UNSIGNED NOT NULL COMMENT '그 달 월세 — 원 단위 (설정의 월세 × 10000)',
   `paid_at` DATETIME NULL COMMENT '납부 일시 — 비어 있으면 미납',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_rent_payments_user_id_period_ym` (`user_id`, `period_ym`),
@@ -328,7 +383,7 @@ CREATE TABLE IF NOT EXISTS `incomes` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '수입 아이디 — 자동 증가',
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '수입 주인 아이디',
   `category_id` BIGINT UNSIGNED NOT NULL COMMENT '수입 종류 아이디 — 월급, 아르바이트 등',
-  `amount` INT UNSIGNED NOT NULL COMMENT '수입 금액 — 원 단위',
+  `amount` BIGINT UNSIGNED NOT NULL COMMENT '수입 금액 — 원 단위',
   `income_date` DATE NOT NULL COMMENT '번 날짜',
   `memo` VARCHAR(100) NULL COMMENT '메모 — 예: 주말 카페 알바',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '기록 일시',
@@ -345,7 +400,7 @@ CREATE TABLE IF NOT EXISTS `expenses` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '지출 아이디 — 자동 증가',
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '지출 주인 아이디',
   `category_id` BIGINT UNSIGNED NOT NULL COMMENT '지출 분류 아이디 — 식비, 교통 등',
-  `amount` INT UNSIGNED NOT NULL COMMENT '지출 금액 — 원 단위',
+  `amount` BIGINT UNSIGNED NOT NULL COMMENT '지출 금액 — 원 단위',
   `expense_date` DATE NOT NULL COMMENT '쓴 날짜',
   `memo` VARCHAR(100) NULL COMMENT '메모 — 예: 점심 제육덮밥',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '기록 일시',
@@ -669,7 +724,11 @@ GROUP BY b.user_id, p.period_ym
 UNION ALL
 SELECT e.user_id, DATE_FORMAT(e.expense_date, '%Y-%m') AS period_ym, c.name AS label, SUM(e.amount) AS amount
 FROM expenses e JOIN ledger_categories c ON c.id = e.category_id
-GROUP BY e.user_id, DATE_FORMAT(e.expense_date, '%Y-%m'), c.name;
+GROUP BY e.user_id, DATE_FORMAT(e.expense_date, '%Y-%m'), c.name
+UNION ALL
+SELECT l.user_id, DATE_FORMAT(c.charge_date, '%Y-%m') AS period_ym, '전세 대출 이자' AS label, SUM(c.amount) AS amount
+FROM loan_interest_charges c JOIN housing_loans l ON l.id = c.loan_id
+GROUP BY l.user_id, DATE_FORMAT(c.charge_date, '%Y-%m');
 
 -- ----------------------------------------------------------------------------
 -- 기본 데이터 (프로그램이 처음부터 알고 있어야 하는 값)

@@ -42,9 +42,18 @@ export type MoneyRecord = { id: number; date: string; cat: string; amount: numbe
 /** 동네 인증: 어느 동네를 언제 인증했는지 (VERIFY_DAYS 일 동안 유효, 우리 동네를 바꾸면 다시 인증) */
 export type RegionVerify = { region: string; at: number; userId: string }
 
+/** 날씨·지도가 함께 사용하는 회원별 지역과 좌표. */
+export type RegionLocation = {
+  userId: string
+  region: string
+  source: 'survey' | 'verified' | 'manual'
+  point?: { lat: number; lon: number }
+}
+
 export type LifeSettings = {
   /** 우리 동네 (커뮤니티·지도 범위) 예: '서울 마포구' */
   region: string
+  regionLocation?: RegionLocation
   /** 매월 월세 납부일 (1~31) */
   rentDay: number
   /** 월세 (만원 단위) */

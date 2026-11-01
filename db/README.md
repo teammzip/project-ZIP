@@ -2,11 +2,14 @@
 
 Git 공개 전 확인 사항과 검토 범위는 [보안 검토 문서](SECURITY.md)를 참고하세요. 실제 사용자 데이터·DB 백업·인증정보는 저장소에 포함하지 않습니다.
 
-**2026-10-31 기준** [schema.sql](schema.sql)은 현재 프로젝트의 React 데이터 모델과 [백엔드 API 약속](../frontend/API.md)을 반영한 MySQL **8.0.16 이상** 설계입니다. 테이블 **41개**, 집계 VIEW **2개**입니다. 서버 API는 별도 구현 대상이며, 브라우저에 저장된 데이터가 이 SQL만으로 DB에 들어오지는 않습니다.
+**2026-11-01 기준** [schema.sql](schema.sql)은 현재 프로젝트의 React 데이터 모델과 [백엔드 API 약속](../frontend/API.md)을 반영한 MySQL **8.0.16 이상** 설계입니다. 테이블 **44개**, 집계 VIEW **2개**입니다. 서버 API는 별도 구현 대상이며, 브라우저에 저장된 데이터가 이 SQL만으로 DB에 들어오지는 않습니다.
 
 ## 1. 이번에 반영한 변경
 
-추가 검토 기준 커밋: `2fa08f5`. 기념일·매년 반복을 events에 반영했습니다. 현재 위치 지도와 화면 배치 변경은 영구 저장 데이터 추가가 없어 기존 설계를 유지합니다. 테이블 수는 41개 그대로입니다.
+최신 검토 기준은 `3aed321`입니다. 주거 설문·대출 설정·월별 이자 내역 3개 표, 금액 타입 확장 및 이자 지출 집계를 반영했습니다. 전체 컬럼 매핑·서비스 처리 규칙은 [주거·대출 설계](HOUSING_AND_LOAN.md)를 참고하세요. 약관은 새 개인정보 항목 검토 후 별도 버전으로 반영해야 하므로 자동 수정하지 않았습니다.
+
+
+추가 검토 기준 커밋: `2fa08f5`. 기념일·매년 반복을 events에 반영했습니다. 현재 위치 지도와 화면 배치 변경은 영구 저장 데이터 추가가 없어 기존 설계를 유지합니다. 이후 주거 설문·대출 변경으로 현재 테이블 수는 44개입니다.
 
 | 기능 | DB 반영 |
 |---|---|
@@ -41,11 +44,13 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 ### 기존 DB
 
+기념일 정식 컬럼까지 적용한 41개 테이블 DB는 [주거·대출 마이그레이션](migrations/20261101_housing_and_loan.sql)을 추가 적용합니다. 기념일 중복 파일에 대한 주의사항과 전체 순서는 migrations/README.md를 확인하세요.
+
 기념일 기능까지 반영하려면 기존 변경 파일 이후 [기념일 추가 마이그레이션](migrations/20261031_02_event_anniversaries.sql)을 적용합니다. 이미 첫 번째 파일을 적용했다면 기념일 파일만 실행하세요. 정확한 순서는 [마이그레이션 안내](migrations/README.md)를 따릅니다.
 
 기존 2026-10-21 설계(35개 테이블)를 적용했다면 [마이그레이션](migrations/20261031_current_project.sql)을 사용합니다. [적용 및 확인 안내](migrations/README.md)를 먼저 확인하세요. 데이터 백업 및 쓰기 중단 후 **한 번만** 적용합니다. CREATE TABLE IF NOT EXISTS는 기존 컬럼을 변경하지 않으며, MySQL DDL은 파일 전체를 자동 롤백하지 않습니다.
 
-기존 todos는 events로 이전하고 todos_legacy_20261031로 이름을 바꿔 보관합니다. 따라서 기존 DB에는 **현행 41개 + 보관용 1개** 테이블이 있습니다. 원본에 일정 날짜가 없으므로 등록 날짜를 사용하며, 이는 실제 예정일을 복원한 값이 아닙니다. 완료 여부·완료 시각은 보존합니다.
+기존 todos는 events로 이전하고 todos_legacy_20261031로 이름을 바꿔 보관합니다. 따라서 기존 DB에는 **현행 44개 + 보관용 1개** 테이블이 있습니다. 원본에 일정 날짜가 없으므로 등록 날짜를 사용하며, 이는 실제 예정일을 복원한 값이 아닙니다. 완료 여부·완료 시각은 보존합니다.
 
 ### 가입 시 초기 데이터
 
@@ -75,7 +80,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 ### 메모·지도·프로필
 
-- 내 주변 지도에서 얻은 현재 위치는 현재 코드처럼 화면 메모리에서만 사용합니다. users.home_lat/home_lon은 주소 기반 집 위치이므로 현재 GPS 위치로 덮어쓰지 않습니다. 위치 이력 테이블도 추가하지 않습니다.
+- 현재 지도·날씨는 등록 동네 주소 기반 좌표를 사용하고 GPS는 동네 인증에만 사용합니다. users.home_lat/home_lon을 인증 GPS 위치로 덮어쓰지 않으며 위치 이력 표를 추가하지 않습니다.
 
 - 메모 items는 [{text,done}] 배열이며 본문 최대 5000자, 항목 text 최대 100자는 서버가 검사합니다. body를 생략한 POST는 빈 문자열로 저장합니다.
 - home_memo_ids는 **문자열 ID 배열**, 최대 3개이며 순서를 보존합니다. NULL은 자동 선택, []는 명시적으로 선택한 메모 없음입니다. 소유권 검사와 삭제된 메모 ID 정리는 서버 책임입니다.
@@ -106,6 +111,9 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 |---|---|
 | `regions` | 동네 |
 | `region_neighbors` | 이웃 동네 |
+| `housing_surveys` | 최신 주거 설문 |
+| `housing_loans` | 회원별 전세 대출 설정 |
+| `loan_interest_charges` | 월별 이자 스냅샷 |
 | `users` | 회원 |
 | `social_accounts` | 소셜 계정 |
 | `auth_sessions` | 로그인 세션 |
@@ -343,7 +351,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
 |---|---|---|---|---|
 | `user_id` | BIGINT UNSIGNED | 필수 | — | 사용자 아이디 |
-| `rent_amount` | INT UNSIGNED | 필수 | 0 | 월세 금액 — 만원 단위 (55 = 55만원) |
+| `rent_amount` | DECIMAL(14,4) UNSIGNED | 필수 | 0 | 월세 금액 — 만원 단위 (55 = 55만원) |
 | `rent_day` | TINYINT UNSIGNED | 필수 | 15 | 월세 납부일 — 매월 며칠 (1~31) |
 | `move_in_ym` | CHAR(7) | 허용 | — | 입주한 달 — 오른쪽 패널의 "거주 N개월" 계산 (예: 2026-02) |
 | `contract_end_ym` | CHAR(7) | 허용 | — | 계약 끝나는 달 — "계약 N개월 남음" 계산 |
@@ -454,7 +462,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `id` | BIGINT UNSIGNED | 필수 | — | 공과금 항목 아이디 — 자동 증가 / 자동 번호 |
 | `user_id` | BIGINT UNSIGNED | 필수 | — | 공과금 주인 아이디 |
 | `name` | VARCHAR(30) | 필수 | — | 공과금 이름 — 가스, 전기, 수도 등 |
-| `default_amount` | INT UNSIGNED | 필수 | 0 | 평소 금액 — 원 단위 |
+| `default_amount` | BIGINT UNSIGNED | 필수 | 0 | 평소 금액 — 원 단위 |
 | `is_active` | TINYINT(1) | 필수 | 1 | 사용 여부 — 해지한 항목은 0 |
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 등록 일시 |
 | `tag` | ENUM('공과금','통신','구독','관리비','기타') | 필수 | '공과금' | 고정 지출 태그 |
@@ -471,7 +479,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `id` | BIGINT UNSIGNED | 필수 | — | 공과금납부 아이디 — 자동 증가 / 자동 번호 |
 | `bill_item_id` | BIGINT UNSIGNED | 필수 | — | 공과금 항목 아이디 |
 | `period_ym` | CHAR(7) | 필수 | — | 대상 연월 — 예: 2026-10 |
-| `amount` | INT UNSIGNED | 필수 | — | 그 달 금액 — 원 단위 |
+| `amount` | BIGINT UNSIGNED | 필수 | — | 그 달 금액 — 원 단위 |
 | `paid_at` | DATETIME | 허용 | — | 납부 일시 — 비어 있으면 미납 |
 
 - 기본키: `id`
@@ -487,7 +495,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `id` | BIGINT UNSIGNED | 필수 | — | 월세납부 아이디 — 자동 증가 / 자동 번호 |
 | `user_id` | BIGINT UNSIGNED | 필수 | — | 월세 내는 사용자 아이디 |
 | `period_ym` | CHAR(7) | 필수 | — | 대상 연월 — 예: 2026-10 |
-| `amount` | INT UNSIGNED | 필수 | — | 그 달 월세 — 원 단위 (설정의 월세 × 10000) |
+| `amount` | BIGINT UNSIGNED | 필수 | — | 그 달 월세 — 원 단위 (설정의 월세 × 10000) |
 | `paid_at` | DATETIME | 허용 | — | 납부 일시 — 비어 있으면 미납 |
 
 - 기본키: `id`
@@ -540,7 +548,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `id` | BIGINT UNSIGNED | 필수 | — | 수입 아이디 — 자동 증가 / 자동 번호 |
 | `user_id` | BIGINT UNSIGNED | 필수 | — | 수입 주인 아이디 |
 | `category_id` | BIGINT UNSIGNED | 필수 | — | 수입 종류 아이디 — 월급, 아르바이트 등 |
-| `amount` | INT UNSIGNED | 필수 | — | 수입 금액 — 원 단위 |
+| `amount` | BIGINT UNSIGNED | 필수 | — | 수입 금액 — 원 단위 |
 | `income_date` | DATE | 필수 | — | 번 날짜 |
 | `memo` | VARCHAR(100) | 허용 | — | 메모 — 예: 주말 카페 알바 |
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 기록 일시 |
@@ -561,7 +569,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `id` | BIGINT UNSIGNED | 필수 | — | 지출 아이디 — 자동 증가 / 자동 번호 |
 | `user_id` | BIGINT UNSIGNED | 필수 | — | 지출 주인 아이디 |
 | `category_id` | BIGINT UNSIGNED | 필수 | — | 지출 분류 아이디 — 식비, 교통 등 |
-| `amount` | INT UNSIGNED | 필수 | — | 지출 금액 — 원 단위 |
+| `amount` | BIGINT UNSIGNED | 필수 | — | 지출 금액 — 원 단위 |
 | `expense_date` | DATE | 필수 | — | 쓴 날짜 |
 | `memo` | VARCHAR(100) | 허용 | — | 메모 — 예: 점심 제육덮밥 |
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 기록 일시 |

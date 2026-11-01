@@ -10,6 +10,7 @@ import { useMapStore } from '@/features/map'
 import { useMemoStore } from '@/features/memo'
 import { useLoanStore } from '@/features/loan'
 import { useHousingSurveyStore } from '@/features/onboarding'
+import { useHousingContract } from '@/features/onboarding/useHousingContract'
 import { useAge } from '@/lib/useAge'
 import { ProfileEditor, ProfileHero, useProfileStore } from '@/features/profile'
 import { getErrorMessage } from '@/lib/apiClient'
@@ -42,6 +43,7 @@ type Sheet = 'profile' | 'life' | 'verify' | 'password' | 'reset' | 'withdraw' |
  * - 모바일: 위에서부터 한 줄로
  * 프로필 편집 · 동네 인증 · 생활 정보 · 비밀번호 변경은 창으로 열고, 로그아웃 · 초기화 · 탈퇴는 카드 밖 맨 아래 작은 글씨 */
 export function SettingsPage() {
+  const { isMonthly } = useHousingContract()
   const user = useAuthStore((s) => s.user)
   const survey = useHousingSurveyStore((s) => s.survey)
   const birth = survey?.userId === user?.id ? survey?.birth ?? '' : ''
@@ -123,7 +125,7 @@ export function SettingsPage() {
               <label className={styles.row}>
                 <span className={styles.ico}>🔔</span>
                 <span className={styles.grow}>
-                  알림 받기<small>일정 · 쓰레기 배출 · 월세 알림</small>
+                  알림 받기<small>{isMonthly ? '일정 · 쓰레기 배출 · 월세 알림' : '일정 · 쓰레기 배출 알림'}</small>
                 </span>
                 <NotiSwitch onChange={(on) => notify(on ? '알림을 켰어요.' : '알림을 껐어요.')} />
               </label>

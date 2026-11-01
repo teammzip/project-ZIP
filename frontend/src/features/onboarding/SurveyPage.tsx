@@ -11,6 +11,7 @@ import common from '@/styles/common.module.css'
 import { useHousingSurveyStore, type ContractKind, type HousingSurvey, type IncomePeriod } from './store'
 import styles from './SurveyPage.module.css'
 import { AddressSearch } from './AddressSearch'
+import type { AddressOption } from './addressResult'
 
 const num = (v: string) => Math.max(0, Number(v) || 0)
 
@@ -29,10 +30,12 @@ export function SurveyPage() {
   const [done, setDone] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [selectedAddress, setSelectedAddress] = useState('')
+  const [selectedPoint, setSelectedPoint] = useState<AddressOption['point'] | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const selectAddress = useCallback((address: string) => {
+  const selectAddress = useCallback((address: string, point: AddressOption['point']) => {
     setSelectedAddress(address)
+    setSelectedPoint(point)
     setSearchOpen(false)
     setError('')
   }, [])
@@ -76,6 +79,7 @@ export function SurveyPage() {
       userId: user.id,
       birth: f.birth,
       address: selectedAddress,
+      addressPoint: selectedPoint ?? undefined,
       kind,
       deposit: monthly ? num(f.deposit) : 0,
       rent: monthly ? num(f.rent) : 0,
@@ -93,10 +97,11 @@ export function SurveyPage() {
     }
     try {
       const savedUser = await authApi.updateMe({ address: answers.address })
+      if (useAuthStore.getState().user?.id !== user.id) return
       updateUser({ ...savedUser, firstLogin: user.firstLogin })
       saveSurvey(answers)
       // 생활 설정의 월세는 기존 만원 단위를 유지하므로 경계에서 변환한다.
-      saveSettings({ ...settings, region: answers.address, rent: answers.rent / 10000 })
+      saveSettings({ ...settings, region: answers.address, regionLocation: { userId: user.id, region: answers.address, source: 'survey', point: selectedPoint ?? undefined }, rent: answers.rent / 10000 })
       if (mgmtFee > 0) addBill('관리비', mgmtFee, '관리비')
       if (loan) saveLoan(loan)
       else stopLoan()
@@ -130,7 +135,7 @@ export function SurveyPage() {
           <br />
           알려 주세요
         </h1>
-        <p className={styles.sub}>월세 알림과 고정 지출 계산에 써요. 1분이면 끝나요.</p>
+        <p className={styles.sub}>계약 유형에 맞는 주거비와 고정 지출 계산에 써요. 1분이면 끝나요.</p>
         <div className={styles.progress} role="progressbar" aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={doneCount} aria-label="설문 진행">
           <i style={{ width: `${(doneCount / steps.length) * 100}%` }} />
         </div>
@@ -149,7 +154,7 @@ export function SurveyPage() {
           <div className={styles.doneBox}>
             <div className={styles.doneIco} aria-hidden>🎉</div>
             <h1>설문이 끝났어요!</h1>
-            <p>입력한 월세·관리비를 반영했어요. 전세 대출이 있으면 설정한 납부일에 이자가 가계부에 자동 기록돼요.</p>
+            <p>{kind === 'monthly' ? '입력한 월세·관리비를 고정 지출에 반영했어요.' : `전세 계약 정보와 관리비를 저장했어요.${hasLoan ? ' 설정한 납부일에 대출 이자가 가계부에 자동 기록돼요.' : ''}`}</p>
             <Button block size="lg" onClick={close}>
               ZIP 시작하기
             </Button>

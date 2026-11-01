@@ -2,6 +2,18 @@
 
 ## 적용 순서
 
+### 2026-11-01 주거 설문·대출 추가
+
+최신 schema.sql은 44개 테이블입니다. 새 DB에는 schema.sql만 실행합니다. 기존 41개 테이블 DB에는 기념일 정식 컬럼을 확인한 뒤 `20261101_housing_and_loan.sql`을 한 번 실행합니다. 기존 35개 테이블이라면 아래 두 10월 마이그레이션 다음에 이 파일을 실행합니다. 모든 작업 전 백업하고 쓰기를 중지합니다. 금액 타입 확장으로 테이블 잠금/재구성이 발생할 수 있으므로 복제한 테스트 DB에서 먼저 확인합니다.
+
+**`20261101_event_anniversary.sql`은 이름이 다른 중복 경로이므로 실행하지 마세요.** 정식 컬럼은 `is_anniversary`, `repeat_yearly`입니다. 이미 `is_anniv`, `is_yearly`로 적용한 DB는 SHOW CREATE TABLE events로 확인하고 별도 정리해야 합니다. 정식 컬럼이 없다면 이전 컬럼을 정식 이름으로 RENAME COLUMN하고 기념일 CHECK를 추가하는 방식으로 데이터를 보존합니다. 두 쌍이 모두 있으면 값을 비교해 충돌을 해결한 뒤 정식 컬럼으로 이관하며, 확인 없이 이전 컬럼을 삭제하지 않습니다. 새 주거 마이그레이션은 이 충돌을 자동으로 해결하지 않습니다.
+
+```powershell
+mysql -u root -p --default-character-set=utf8mb4 --execute="source db/migrations/20261101_housing_and_loan.sql"
+```
+
+아래는 이전 41개 테이블까지의 적용 순서입니다.
+
 - 새 DB: 최신 `../schema.sql`만 실행합니다.
 - 기존 35개 테이블 DB: `20261031_current_project.sql` → `20261031_02_event_anniversaries.sql` 순서로 실행합니다. 파일명 사전순으로 자동 실행하지 않습니다.
 - 첫 번째 마이그레이션까지 적용한 DB: `20261031_02_event_anniversaries.sql`만 실행합니다.

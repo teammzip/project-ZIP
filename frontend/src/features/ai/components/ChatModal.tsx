@@ -4,6 +4,7 @@ import { Button, Modal } from '@/components/ui'
 import { spendBreakdown, useLifeStore } from '@/features/life'
 import { useLoanStore } from '@/features/loan'
 import { useAuthStore } from '@/features/auth/store/authStore'
+import { getHousingContractKind } from '@/features/onboarding/useHousingContract'
 import { man, won } from '@/lib/date'
 import { useChatStore, type ChatMsg, type SpendCard } from '../store'
 import { CHAT_TOPICS, SUMMARY_ASK, chatReply, type AiContext, type Topic } from '../topics'
@@ -38,8 +39,9 @@ function makeSpendCard(): SpendCard {
   const { spends, bills, settings } = useLifeStore.getState()
   const userId = useAuthStore.getState().user?.id
   const charges = useLoanStore.getState().charges.filter((charge) => charge.userId === userId)
-  const cur = spendBreakdown(0, spends, bills, settings, charges)
-  const prev = spendBreakdown(1, spends, bills, settings, charges)
+  const kind = getHousingContractKind()
+  const cur = spendBreakdown(0, spends, bills, settings, charges, kind)
+  const prev = spendBreakdown(1, spends, bills, settings, charges, kind)
   const vari = cur.rows.filter(([n]) => n !== '월세' && n !== '공과금' && n !== '대출 이자')
   return { month: cur.month, total: cur.total, prevTotal: prev.total, fixed: cur.fixed, rows: cur.rows.slice(0, 5), top: vari[0] ?? null }
 }
@@ -173,7 +175,7 @@ function SpendCardView({ card: c, onGo }: { card: SpendCard; onGo: () => void })
         ))}
       </div>
       <p className={styles.sumNote}>
-        고정 지출(월세·공과금) {pct}% · 변동 지출 {100 - pct}%
+        고정 지출 {pct}% · 변동 지출 {100 - pct}%
         {c.top && `\n변동 지출 중 ${c.top[0]}${subj(c.top[0])} 가장 커요 (${man(c.top[1])})`}
       </p>
       <button type="button" className={styles.sumGo} onClick={onGo}>

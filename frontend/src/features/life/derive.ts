@@ -9,6 +9,8 @@ import { useLifeStore } from './store'
 import type { Bill, CalEvent, LifeSettings, MoneyRecord, TrashEvent } from './types'
 import { regionVerification } from './regionVerification'
 import type { LoanCharge } from '@/features/loan/interest'
+import type { ContractKind } from '@/features/onboarding/store'
+import { useHousingContract } from '@/features/onboarding/useHousingContract'
 
 export const sortEvents = <T extends { date: string; time: string }>(list: T[]) => [...list].sort((a, b) => (a.date + (a.time || '99:99')).localeCompare(b.date + (b.time || '99:99')))
 
@@ -96,7 +98,7 @@ export const monthKeyRentPaid = (rentPaid: Record<string, boolean>, d: Date) => 
 export type Noti = { id: string; ico: string; t: string; s: string; time: string }
 
 /** 알림 목록: 3일 안의 일정(끝낸 건 빼고) · 쓰레기 배출 + 월세 + 예시 알림 */
-export function buildNotis(events: CalEvent[], settings: LifeSettings): Noti[] {
+export function buildNotis(events: CalEvent[], settings: LifeSettings, contractKind: ContractKind = 'monthly'): Noti[] {
   const list: Noti[] = []
   const year = new Date().getFullYear()
   const all = [...expandAnniversaries(events, year, year + 1), ...trashEventsBetween(todayStr(), addDays(3))]
@@ -112,8 +114,8 @@ export function buildNotis(events: CalEvent[], settings: LifeSettings): Noti[] {
     })
   }
   const rdiff = dayDiff(fmt(nextRentDate(settings.rentDay)))
+  if (contractKind === 'monthly') list.push({ id: 'n2', ico: '💸', t: `월세 납부일이 ${rdiff === 0 ? '오늘이에요' : `${rdiff}일 남았어요`}`, s: `매월 ${settings.rentDay}일 · ${settings.rent}만원`, time: '1시간 전' })
   list.push(
-    { id: 'n2', ico: '💸', t: `월세 납부일이 ${rdiff === 0 ? '오늘이에요' : `${rdiff}일 남았어요`}`, s: `매월 ${settings.rentDay}일 · ${settings.rent}만원`, time: '1시간 전' },
     // TODO: 아래 일곱 개는 예시 알림. 냉장고·커뮤니티 기능이 서버와 연결되면 실제 알림으로 바꾸기
     { id: 'n3', ico: '🧊', t: '냉장고 재료 3개가 곧 만료돼요', s: '두부 · 방울토마토 · 우유', time: '오늘' },
     { id: 'n4', ico: '💬', t: '커뮤니티에 새 댓글이 달렸어요', s: '쓰레기 배출 시간 바뀐 건가요?', time: '어제' },
@@ -128,27 +130,29 @@ export function buildNotis(events: CalEvent[], settings: LifeSettings): Noti[] {
 
 /** 알림 목록 + 안 읽은 개수 (알림을 끄면 빨간 점은 안 보이게 showDot=false) */
 export function useNotis() {
+  const { kind } = useHousingContract()
   const { events, settings, notiRead, notiDeleted } = useLifeStore(useShallow((s) => ({ events: s.events, settings: s.settings, notiRead: s.notiRead, notiDeleted: s.notiDeleted })))
-  const notis = buildNotis(events, settings).filter((n) => !notiDeleted?.[n.id]) // 저장된 예전 데이터엔 notiDeleted 가 없을 수 있음
+  const notis = buildNotis(events, settings, kind).filter((n) => !notiDeleted?.[n.id]) // 저장된 예전 데이터엔 notiDeleted 가 없을 수 있음
   const unread = notis.filter((n) => !notiRead[n.id]).length
   return { notis, notiRead, unread, showDot: settings.notiOn && unread > 0 }
 }
 
 /** 내 정보 "생활 정보" 줄 아래 작은 글씨: 동네 · 월세 · 납부일 */
 export function useLifeSummary() {
+  const { isJeonse, survey } = useHousingContract()
   const { region, rent, rentDay } = useLifeStore(useShallow((s) => ({ region: s.settings.region, rent: s.settings.rent, rentDay: s.settings.rentDay })))
-  return `${region || '동네 미설정'} · 월세 ${rent}만원 · 매월 ${rentDay}일`
+  return isJeonse ? `${region || '동네 미설정'} · 전세${survey ? ` · 계약금 ${Number(survey.contractFee).toLocaleString('ko-KR')}원` : ''}` : `${region || '동네 미설정'} · 월세 ${rent}만원 · 매월 ${rentDay}일`
 }
 
 export const sumAmount = (list: { amount: number }[]) => list.reduce((t, r) => t + r.amount, 0)
 
 /** back달 전(0=이번 달)의 지출을 분류별로 합침. 월세·공과금은 매달 같은 금액으로 봄. 홈 도넛과 AI "지출 요약"이 같이 씀 */
-export function spendBreakdown(back: number, spends: MoneyRecord[], bills: Bill[], settings: LifeSettings, loanCharges: LoanCharge[] = []) {
+export function spendBreakdown(back: number, spends: MoneyRecord[], bills: Bill[], settings: LifeSettings, loanCharges: LoanCharge[] = [], contractKind: ContractKind = 'monthly') {
   const now = new Date()
   const d = new Date(now.getFullYear(), now.getMonth() - back, 1)
   const key = monthKeyOf(d)
   const sums: Record<string, number> = {}
-  const rent = (Number(settings.rent) || 0) * 10000
+  const rent = contractKind === 'monthly' ? (Number(settings.rent) || 0) * 10000 : 0
   const billSum = sumAmount(bills)
   const interest = sumAmount(loanCharges.filter((charge) => charge.date.slice(0, 7) === key))
   if (rent) sums['월세'] = rent

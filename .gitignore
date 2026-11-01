@@ -40,3 +40,8 @@ backup.sql
 backup-*.sql
 backup_*.sql
 mysqldump*.sql
+
+# 비밀 메모 (키/비밀번호 기록용, 깃에 올리지 않음)
+비밀메모.txt
+secrets/
+test.txt
