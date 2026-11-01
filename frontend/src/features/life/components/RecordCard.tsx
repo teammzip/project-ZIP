@@ -1,4 +1,5 @@
-import { useState, type CSSProperties, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { Button, Card } from '@/components/ui'
 import { cx } from '@/lib/cx'
@@ -30,7 +31,7 @@ type Props = {
 type Tab = 'quick' | 'custom' | 'anniv'
 
 /** 일정 기록하기
- * - 탭 두 개: ⚡ 빠른 추가 | ✏️ 직접 입력
+ * - 탭 세 개: ⚡ 빠른 추가 | ✏️ 직접 입력 | 🎉 기념일
  * - 빠른 추가: 단계 표시 → 카테고리 탭(색 = 달력 막대 색, 끝에 ⚙ 편집) → 그 카테고리 항목 타일 → 선택 카드(시간 · 오늘 · 이번 주)
  * - ⚙ 편집: 카테고리 추가 · 이름 변경 · 삭제(그 카테고리의 항목과 일정은 미분류로)
  * - 직접 입력: 일정을 넣으면 고른 카테고리 아래 항목 타일로도 저장. 직접 만든 항목은 수정 · 삭제 */
@@ -38,7 +39,14 @@ export function RecordCard({ picked, onChoose, pickNote, pickTime, onPickTime, o
   const { categories, customPresets, addPreset, updatePreset, removePreset } = useLifeStore(
     useShallow((s) => ({ categories: s.categories, customPresets: s.customPresets, addPreset: s.addPreset, updatePreset: s.updatePreset, removePreset: s.removePreset })),
   )
-  const [tab, setTab] = useState<Tab>('quick')
+  const [params, setParams] = useSearchParams()
+  const { hash } = useLocation()
+  const requestedTab = params.get('tab')
+  const tab: Tab = requestedTab === 'custom' || requestedTab === 'anniv' ? requestedTab : 'quick'
+  const cardRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (tab === 'anniv' && hash === '#calendar-record') cardRef.current?.scrollIntoView({ block: 'start' })
+  }, [tab, hash])
   const [catName, setCatName] = useState(categories[0]?.name ?? UNCATEGORIZED)
   const [managing, setManaging] = useState(false)
   const [form, setForm] = useState({ title: '', date, time: '', category: UNCATEGORIZED })
@@ -64,7 +72,12 @@ export function RecordCard({ picked, onChoose, pickNote, pickTime, onPickTime, o
   const hasPick = (category: string) => !!picked && picked.category === category
 
   const switchTab = (t: Tab) => {
-    setTab(t)
+    setParams((previous) => {
+      const next = new URLSearchParams(previous)
+      if (t === 'quick') next.delete('tab')
+      else next.set('tab', t)
+      return next
+    }, { replace: true })
     if (t !== 'quick') onChoose(null)
   }
   const startEdit = (p: CustomPreset) => {
@@ -111,7 +124,7 @@ export function RecordCard({ picked, onChoose, pickNote, pickTime, onPickTime, o
   }
 
   return (
-    <Card>
+    <Card id="calendar-record" ref={cardRef} className={cal.recordAnchor}>
       <div className={cal.recHead}>
         <h2>일정 기록하기</h2>
         <div className={cal.recTabs} role="tablist" aria-label="일정 기록 방법">

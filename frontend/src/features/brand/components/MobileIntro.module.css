@@ -1,279 +1,74 @@
-/* 모바일 시작 화면 */
 .scene {
-  position: fixed;
-  inset: 0;
+  min-height: 100dvh;
   overflow: hidden;
-  background: rgb(254, 254, 254); /* 집 그림 배경색과 같게 해서 그림 가장자리가 티 나지 않음 */
-}
-
-/* 줌인할 때 함께 확대되는 풍경(집·로봇) */
-.world {
-  position: absolute;
-  inset: 0;
-  transform-origin: 0 0;
-  will-change: transform;
-}
-
-.house {
-  position: absolute;
-  max-width: none;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
-.doorway,
-.doorPanel,
-.glow,
-.dim,
-.door {
-  position: absolute;
-}
-
-/* 문이 열릴 때만 보이는 것: 문 뒤의 따뜻한 실내, 오른쪽 경첩(손잡이가 왼쪽)으로 안쪽으로 열리는 문짝 */
-.doorway,
-.doorPanel {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.doorway,
-.doorPanel {
-  clip-path: polygon(0 0, 100% 7%, 100% 100%, 0 100%); /* 그림 속 문 윗변이 비스듬함 */
-}
-
-.doorway {
-  background: radial-gradient(ellipse at 50% 85%, #fff6e0 0%, #ffd99a 35%, #e9a85c 70%, #9a6232 100%);
-  box-shadow: inset 0 0 14px rgba(60, 30, 0, 0.45);
-}
-
-.doorPanel {
-  background-repeat: no-repeat;
-  transform-origin: right center;
-  backface-visibility: hidden;
-  box-shadow: -4px 0 10px rgba(0, 0, 0, 0.25);
-}
-
-/* 불 꺼진 거실 (로봇이 들어가면 사라짐) */
-.dim {
-  clip-path: polygon(0 0, 100% 16%, 100% 100%, 0 100%); /* 창 윗변이 비스듬함 */
-  background: linear-gradient(180deg, rgba(30, 40, 84, 0.72), rgba(22, 30, 66, 0.62));
-  pointer-events: none;
-}
-
-/* 로봇이 들어간 뒤 켜지는 창문 불빛 */
-.glow {
-  opacity: 0;
-  border-radius: 2px;
-  background: rgba(255, 236, 190, 0.12);
-  box-shadow: 0 0 30px 10px rgba(255, 206, 120, 0.55);
-  pointer-events: none;
-}
-
-/* 문 누르기 유도: 반짝이는 테두리 + "눌러서 입장" */
-.door {
-  display: block;
-  padding: 0;
-  background: transparent;
-  animation: ring 1.6s ease-out infinite;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.door:focus-visible {
-  outline: 3px solid var(--color-text);
-  outline-offset: 3px;
-}
-
-.off {
-  animation: none;
-  pointer-events: none;
-}
-
-@keyframes ring {
-  0% {
-    box-shadow: 0 0 0 0 rgba(255, 122, 69, 0.8);
-  }
-
-  70%,
-  100% {
-    box-shadow: 0 0 0 16px rgba(255, 122, 69, 0);
-  }
-}
-
-.doorLabel {
-  position: absolute;
-  left: 50%;
-  bottom: 22%;
-  padding: 0.55em 0.9em;
-  border-radius: 999px;
   background: #fff;
-  font-size: calc(13px / var(--z, 1)); /* 줌인해도 글자 크기는 그대로 */
-  font-weight: 800;
-  color: #ff5a1f;
-  white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  animation: bounce 1s ease-in-out infinite;
-  transform: translateX(-50%);
+  color: var(--color-text);
 }
-
-.doorLabel::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 100%;
-  margin-left: -6px;
-  border: 6px solid transparent;
-  border-top-color: #fff;
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(18px, env(safe-area-inset-top)) 24px 12px;
 }
-
-.off .doorLabel {
-  display: none;
-}
-
-@keyframes bounce {
-  50% {
-    transform: translate(-50%, -8px);
-  }
-}
-
-.robot {
-  position: absolute;
-  left: 0;
-  top: 0;
-  max-width: none;
-  opacity: 0;
-  pointer-events: none;
-  will-change: transform, opacity;
-}
-
-/* ---------- 확대되지 않는 글자·버튼 ---------- */
-.caption {
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  top: 52px;
-  font-size: clamp(18px, 5.4vw, 26px);
-  font-weight: 800;
-  line-height: 1.4;
-  letter-spacing: -0.3px;
-  color: #123b5c;
-  text-align: center;
-  animation: pop 0.5s ease-out;
-}
-
-@keyframes pop {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-}
-
-.replay {
-  position: absolute;
-  top: max(10px, env(safe-area-inset-top));
-  right: 14px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: #ff7a45;
-  font-size: 13px;
-  font-weight: 700;
-  color: #fff;
-}
-
-/* 모션 건너뛰기: 모션이 도는 동안만 왼쪽 위에 (화면 아무 곳이나 눌러도 건너뜀) */
-.skip {
-  position: absolute;
-  top: max(10px, env(safe-area-inset-top));
-  left: 14px;
-  z-index: 5;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: rgba(31, 36, 48, 0.55);
-  font-size: 13px;
-  font-weight: 700;
-  color: #fff;
-}
-
-.signup {
-  position: absolute;
-  left: 50%;
-  bottom: max(22px, env(safe-area-inset-bottom));
-  padding: 12px 22px;
-  border-radius: 999px;
-  background: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-  box-shadow: 0 6px 18px rgba(31, 36, 48, 0.18);
-  transform: translateX(-50%);
-}
-
-.signup b {
-  margin-left: 4px;
-  font-weight: 800;
-  color: var(--color-primary);
-}
-
-/* ---------- 앱 시작 화면(스플래시) ---------- */
-.splash {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
+.header img { width: 64px; height: auto; }
+.hero {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: #fff;
-  transition: opacity 0.55s ease;
+  width: min(100%, 600px);
+  min-height: calc(100dvh - 80px);
+  margin: 0 auto;
+  padding: 28px 24px max(24px, env(safe-area-inset-bottom));
 }
-
-.splashHide {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.sIcon {
-  width: clamp(96px, 30vw, 132px);
-  height: auto;
-  border-radius: 28%;
-  box-shadow: 0 14px 30px rgba(47, 128, 237, 0.35);
-  animation: sIcon 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
-}
-
-.sName {
-  margin-top: 18px;
-  font-size: clamp(38px, 12vw, 52px);
-  font-weight: 900;
-  letter-spacing: -0.04em;
-  color: #1f2a44;
-  animation: sUp 0.6s ease 0.45s both;
-}
-
-.sSub {
-  font-size: 15px;
-  font-weight: 700;
+.copy { position: relative; z-index: 1; text-align: center; animation: appear .7s ease both; }
+.kicker {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: #eaf2fe;
   color: var(--color-primary);
-  animation: sUp 0.6s ease 0.7s both;
-}
-
-.sTag {
-  margin-top: 4px;
   font-size: 13px;
-  letter-spacing: 0.14em;
-  color: #6b7280;
-  animation: sUp 0.6s ease 0.95s both;
+  font-weight: 700;
 }
-
-@keyframes sIcon {
-  from {
-    opacity: 0;
-    transform: scale(0.55) rotate(-8deg);
-  }
+.title {
+  display: grid;
+  gap: 4px;
+  margin-top: 20px;
+  font-size: clamp(34px, 8.4vw, 56px);
+  font-weight: 900;
+  line-height: 1.16;
+  letter-spacing: -.04em;
 }
-
-@keyframes sUp {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
+.description { margin-top: 18px; color: var(--color-muted); font-size: 14px; line-height: 1.7; }
+.visual { position: relative; flex: 1; width: 100%; min-height: 280px; max-height: 400px; margin: 16px 0; display: grid; place-items: center; }
+.tiles { position: absolute; inset: 0; pointer-events: none; }
+.tile { position: absolute; animation: bob 6s ease-in-out infinite; }
+.tile0 { left: 0; top: 8%; transform: rotate(-10deg); }
+.tile1 { right: -8px; top: 14%; animation-delay: -1.5s; }
+.tile2 { right: 0; bottom: 8%; animation-delay: -3s; }
+.tile3 { left: 2%; bottom: 12%; animation-delay: -4.5s; }
+.illustration { display: grid; place-items: center; width: 76px; height: 88px; border-radius: 18px; font-size: 38px; box-shadow: 0 12px 28px #1f243014; }
+.widget { display: flex; align-items: center; gap: 8px; padding: 12px; background: #fff; border-radius: 16px; box-shadow: 0 12px 32px #1f24301a; }
+.icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; font-size: 17px; }
+.widget small { display: block; font-size: 10px; color: var(--color-muted); }
+.widget b { font-size: 18px; font-weight: 800; }
+.robot { position: relative; width: clamp(132px, 38vw, 200px); height: auto; filter: drop-shadow(0 18px 24px #1f243025); animation: bob 5s ease-in-out infinite; }
+.greeting { position: absolute; bottom: 0; padding: 8px 14px; background: #eaf2fe; color: var(--color-primary); border-radius: 999px; font-size: 12px; font-weight: 700; }
+.actions { display: grid; gap: 10px; width: 100%; max-width: 360px; margin-top: auto; position: relative; }
+.primary { min-height: 54px; border-radius: 16px; background: var(--color-primary); color: #fff; font-size: 16px; font-weight: 800; }
+.signup { min-height: 44px; border-radius: 14px; background: transparent; color: var(--color-muted); font-size: 14px; }
+.signup b { margin-left: 5px; color: var(--color-primary); }
+.scene button { border: 0; cursor: pointer; }
+.scene button:focus-visible, .header a:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 4px; }
+.scene button:disabled { cursor: default; }
+@keyframes bob { 50% { translate: 0 -10px; } }
+@keyframes appear { from { opacity: 0; transform: translateY(12px); } }
+@media (max-height: 700px) {
+  .hero { padding-top: 12px; }
+  .visual { min-height: 230px; margin: 8px 0 16px; }
+  .title { margin-top: 14px; }
+  .description { margin-top: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene *, .scene *::after { animation: none !important; transition: none !important; }
 }
