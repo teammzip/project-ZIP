@@ -461,7 +461,7 @@ function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteCom
           <button type="button" className={styles.titleBtn} onClick={onToggle} aria-expanded={open}>
             {p.title}
           </button>
-          {reports.length > 0 && <span className={cx(styles.badge, styles.ban, styles.reportBadge)}>신고 {reports.length}</span>}
+          {reports.length > 0 && <span className={cx(styles.badge, styles.ban, styles.reportBadge)}>🚨 신고 {reports.length}</span>}
         </td>
         <td>
           {p.author} {banned && <span className={cx(styles.badge, styles.ban)}>정지 중</span>}

@@ -26,7 +26,7 @@ export function ReportDialog({ what, onClose, onSubmit }: Props) {
   return (
     <Modal open onClose={onClose} title={`${what} 신고`}>
       <form className={styles.report} onSubmit={submit}>
-        <h3>이 {what}을 신고할까요?</h3>
+        <h3>🚨 이 {what}을 신고할까요?</h3>
         <p>신고 사유를 골라 주세요. 운영자가 확인한 뒤 운영 정책에 따라 처리해요.</p>
         <div className={styles.reasons} role="radiogroup" aria-label="신고 사유">
           {REPORT_REASONS.map((r) => (

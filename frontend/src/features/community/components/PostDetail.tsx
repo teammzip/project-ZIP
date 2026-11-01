@@ -57,7 +57,7 @@ export function PostDetail({ post, author, locked, verified, onVerify, onBack, o
       reporter: author,
     })
     setReportTarget(null)
-    setReportNote(ok ? '신고가 접수됐어요. 운영자가 확인한 뒤 처리할게요.' : '이미 신고한 내용이에요.')
+    setReportNote(ok ? '🚨 신고가 접수됐어요. 운영자가 확인한 뒤 처리할게요.' : '🚨 이미 신고한 내용이에요.')
   }
 
   const submitComment = (e: FormEvent) => {
@@ -91,7 +91,7 @@ export function PostDetail({ post, author, locked, verified, onVerify, onBack, o
         {!post.mine && (
           <div className={styles.ownerBtns}>
             <button type="button" className={styles.danger} onClick={() => setReportTarget({})} disabled={postReported} aria-label="이 글 신고">
-              {postReported ? '신고됨' : '신고'}
+              {postReported ? '신고됨' : '🚨 신고'}
             </button>
           </div>
         )}
@@ -159,7 +159,7 @@ export function PostDetail({ post, author, locked, verified, onVerify, onBack, o
               {!mine && (
                 <span className={styles.commentBtns}>
                   <button type="button" className={styles.danger} onClick={() => setReportTarget({ index: i })} disabled={commentReported(i)} aria-label={`${c.author} 댓글 신고`}>
-                    {commentReported(i) ? '신고됨' : '신고'}
+                    {commentReported(i) ? '신고됨' : '🚨 신고'}
                   </button>
                 </span>
               )}
