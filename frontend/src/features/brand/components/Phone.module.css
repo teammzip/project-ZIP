@@ -105,71 +105,165 @@
   background: var(--color-purple);
 }
 
-.card {
+.navy {
+  background: #3d5a99;
+}
+
+.stat em {
+  font-size: 0.8em;
+  font-style: normal;
+  opacity: 0.85;
+}
+
+/* 홈 메모 위젯: 노란 머리줄 + 쪽지 2장 + 빠른 메모 */
+.memo {
   margin-top: 0.7em;
-  padding: 0.9em;
+  overflow: hidden;
   border-radius: 1em;
   background: #fff;
 }
 
-.bars {
+.memoHead {
+  padding: 0.6em 0.8em;
+  background: #ffd23f;
+  font-weight: 800;
+}
+
+.memoHead small {
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.memoNotes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5em;
+  padding: 0.6em;
+}
+
+.note {
+  display: grid;
+  align-content: start;
+  gap: 0.25em;
+  min-height: 7em;
+  padding: 0.6em;
+  border-left: 0.25em solid;
+  border-radius: 0.5em;
+  font-size: 0.9em;
+}
+
+.noteYellow {
+  border-color: #f5c400;
+  background: #fff6c8;
+}
+
+.notePink {
+  border-color: #ff8aa3;
+  background: #ffe6ec;
+}
+
+.memoQuick {
   display: flex;
-  align-items: flex-end;
-  gap: 0.6em;
-  height: 6.5em;
-  margin-top: 0.6em;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0.6em 0.6em;
+  padding: 0.5em 0.6em 0.5em 0.8em;
+  border-radius: 2em;
+  background: #f4f5f8;
+  color: var(--color-muted);
 }
 
-.bars span {
-  flex: 1;
-  border-radius: 0.4em 0.4em 0 0;
-  background: #e8ecfb;
-}
-
-.bars .barOn {
-  background: var(--color-primary);
+.memoQuick i {
+  display: grid;
+  place-items: center;
+  width: 1.6em;
+  height: 1.6em;
+  border-radius: 50%;
+  background: #ffc21a;
+  font-style: normal;
+  font-weight: 800;
+  color: var(--color-text);
 }
 
 /* 달력 */
-.cal {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+.calBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6em;
+}
+
+.calBar b {
+  font-size: 1.15em;
+}
+
+.pills {
+  display: flex;
   gap: 0.3em;
-  padding: 0.6em;
+}
+
+.pills i {
+  padding: 0.3em 0.8em;
+  border: 1px solid var(--color-line);
   border-radius: 1em;
   background: #fff;
+  font-style: normal;
 }
 
-.cal span {
-  position: relative;
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1;
-  border-radius: 0.5em;
-  background: #f7f8fc;
-  font-size: 0.85em;
-}
-
-.cal span i {
-  position: absolute;
-  bottom: 0.2em;
-  width: 0.3em;
-  height: 0.3em;
-  border-radius: 50%;
-  background: var(--color-purple);
-}
-
-.cal .calSel {
-  background: var(--color-primary);
+.pills .pillOn {
+  border-color: var(--color-text);
+  background: var(--color-text);
   color: #fff;
 }
 
-.cal .calSel i {
+/* 달력: 실제 앱처럼 칸 안에 일정 막대 */
+.cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 0.8em;
   background: #fff;
 }
 
+.cal em {
+  padding: 0.35em 0;
+  border-bottom: 1px solid var(--color-line);
+  font-size: 0.8em;
+  font-style: normal;
+  font-weight: 700;
+  text-align: center;
+}
+
+.cal .sun {
+  color: var(--color-pink);
+}
+
+.cal span {
+  display: grid;
+  align-content: start;
+  gap: 0.15em;
+  min-height: 3.1em;
+  padding: 0.25em 0.2em;
+  border-right: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+  font-size: 0.75em;
+  font-weight: 600;
+}
+
+.cal span i {
+  height: 0.38em;
+  border-radius: 0.1em;
+  opacity: 0.85;
+}
+
+.cal .calSel {
+  box-shadow: inset 0 0 0 1.5px #f2a46b;
+  background: #fff7f1;
+}
+
 .cal .calEmpty {
-  background: transparent;
+  background: #fafbfd;
 }
 
 .row {
@@ -321,80 +415,160 @@
   font-size: 2.6em;
 }
 
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4em;
-  margin-top: 0.4em;
-}
-
-.chips span {
-  padding: 0.45em 0.8em;
-  border: 1px solid #cfe0fb;
-  border-radius: 1em;
-  background: #fff;
-  font-weight: 700;
-}
-
-/* 커뮤니티 */
-.tabs {
-  display: flex;
-  gap: 0.4em;
-  margin-bottom: 0.8em;
-}
-
-.tabs span {
-  padding: 0.35em 0.8em;
-  border: 1px solid var(--color-line);
-  border-radius: 1em;
-  background: #fff;
-}
-
-.tabs .tabOn {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.post {
+.askBar {
   display: flex;
   align-items: center;
-  gap: 0.7em;
-  margin-bottom: 0.5em;
-  padding: 0.6em;
-  border-radius: 0.9em;
+  gap: 0.6em;
+  margin-top: 0.8em;
+  padding: 0.45em 0.45em 0.45em 0.8em;
+  border-radius: 2em;
   background: #fff;
-}
-
-.thumb {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 3.2em;
-  height: 3.2em;
-  border-radius: 0.8em;
-  font-size: 1.6em;
-}
-
-.postText {
-  display: grid;
-  gap: 0.2em;
-}
-
-.postText small {
+  box-shadow: 0 0.2em 0.6em rgba(0, 0, 0, 0.06);
   color: var(--color-muted);
 }
 
-/* 지도 */
-.map {
-  position: relative;
-  height: 15em;
-  margin-bottom: 0.7em;
+.askBar i {
+  font-style: normal;
+  font-size: 1.3em;
+  color: var(--color-text);
+}
+
+.askBar span {
+  flex: 1;
+}
+
+.askBar b {
+  display: grid;
+  place-items: center;
+  width: 1.9em;
+  height: 1.9em;
+  border-radius: 50%;
+  background: #dfe4ee;
+  color: #fff;
+}
+
+.addBtn {
+  margin: 0.8em 0 0.6em;
+  padding: 0.6em;
+  border: 1.5px solid var(--color-primary);
+  border-radius: 0.8em;
+  background: #eaf3ff;
+  font-weight: 800;
+  color: var(--color-primary);
+  text-align: center;
+}
+
+/* 커뮤니티: 동네생활 (머리말 + 범위 + 주제 칩 + 줄로 나뉜 글 목록) */
+.commHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.2em;
+}
+
+.commHead .title {
+  margin: 0;
+}
+
+.blue {
+  color: var(--color-primary);
+}
+
+.scope {
+  display: flex;
+  padding: 0.15em;
+  border-radius: 1em;
+  background: #e9ebf2;
+  font-size: 0.8em;
+}
+
+.scope i {
+  padding: 0.25em 0.5em;
+  border-radius: 1em;
+  font-style: normal;
+  color: var(--color-muted);
+}
+
+.scope .scopeOn {
+  background: #fff;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.topics {
+  display: flex;
+  gap: 0.35em;
+  margin: 0.7em 0;
+  overflow: hidden;
+}
+
+.topics span,
+.mapChips span {
+  flex: none;
+  padding: 0.35em 0.75em;
+  border: 1px solid var(--color-line);
+  border-radius: 1em;
+  background: #fff;
+  font-weight: 600;
+}
+
+.topics .topicOn,
+.mapChips .topicOn {
+  border-color: var(--color-text);
+  background: var(--color-text);
+  color: #fff;
+}
+
+.feed {
   overflow: hidden;
   border-radius: 1em;
+  background: #fff;
+}
+
+.item {
+  display: grid;
+  gap: 0.3em;
+  padding: 0.8em;
+}
+
+.item + .item {
+  border-top: 1px solid var(--color-line);
+}
+
+.item span {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #5b6172;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.item small {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-muted);
+}
+
+.item small em {
+  font-style: normal;
+  color: var(--color-pink);
+}
+
+/* 지도: 네이버 지도처럼 화면 가득 지도 + 위 검색창 · 종류 칩 + 아래 목록 시트 */
+.mapScreen {
+  position: relative;
+  height: calc(100% + 3.2em);
+  margin: -2.3em -0.9em -0.9em;
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px) 0 0 / 2.2em 2.2em,
     linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px) 0 0 / 2.2em 2.2em,
-    #eaf3e6;
+    #eef0ea;
 }
 
 .road1,
@@ -404,7 +578,7 @@
 }
 
 .road1 {
-  top: 48%;
+  top: 40%;
   left: -10%;
   width: 120%;
   height: 1.4em;
@@ -423,13 +597,19 @@
   position: absolute;
   display: grid;
   place-items: center;
-  width: 2.4em;
-  height: 2.4em;
-  border: 0.2em solid #fff;
+  width: 2.2em;
+  height: 2.2em;
+  border: 0.18em solid #fff;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0.3em 0.8em rgba(0, 0, 0, 0.18);
-  font-size: 1.1em;
+  background: #ff6f8f;
+  box-shadow: 0 0.3em 0.8em rgba(0, 0, 0, 0.2);
+  font-size: 1em;
+}
+
+.pinOn {
+  width: 2.8em;
+  height: 2.8em;
+  background: var(--color-primary);
 }
 
 .me {
@@ -438,17 +618,106 @@
   height: 1.2em;
   border: 0.25em solid #fff;
   border-radius: 50%;
-  background: var(--color-primary);
+  background: #1f2430;
   box-shadow: 0 0 0 0.6em rgba(47, 128, 237, 0.2);
 }
 
-.place {
-  display: grid;
-  gap: 0.2em;
-  margin-bottom: 0.4em;
-  padding: 0.6em 0.8em;
-  border-radius: 0.8em;
+.mapSearch {
+  position: absolute;
+  top: 2.6em;
+  right: 0.8em;
+  left: 0.8em;
+  padding: 0.7em 0.9em;
+  border-radius: 1em;
   background: #fff;
+  box-shadow: 0 0.2em 0.8em rgba(0, 0, 0, 0.12);
+  color: var(--color-muted);
+}
+
+.mapChips {
+  position: absolute;
+  top: 5.6em;
+  left: 0.8em;
+  display: flex;
+  gap: 0.35em;
+}
+
+.mapChips span {
+  box-shadow: 0 0.15em 0.5em rgba(0, 0, 0, 0.1);
+}
+
+.sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  gap: 0.5em;
+  padding: 0.4em 0.9em 1em;
+  border-radius: 1.4em 1.4em 0 0;
+  background: #fff;
+  box-shadow: 0 -0.3em 1em rgba(0, 0, 0, 0.1);
+}
+
+.grab {
+  justify-self: center;
+  width: 2.6em;
+  height: 0.3em;
+  border-radius: 1em;
+  background: #d5d8df;
+}
+
+.sheetTabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 0.2em;
+  border-radius: 0.8em;
+  background: #f1f2f6;
+  font-weight: 700;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.sheetTabs span {
+  padding: 0.45em 0;
+  border-radius: 0.6em;
+}
+
+.sheetTabs .sheetTabOn {
+  background: #fff;
+  color: var(--color-text);
+}
+
+.sheetTitle {
+  font-size: 1.1em;
+  font-weight: 800;
+}
+
+.sheetTitle small {
+  font-size: 0.8em;
+  color: var(--color-primary);
+}
+
+.place {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+}
+
+.place > span:last-child {
+  display: grid;
+  gap: 0.15em;
+}
+
+.placeThumb {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.8em;
+  height: 2.8em;
+  border-radius: 0.6em;
+  background: #e9eefc;
+  font-size: 1.3em;
 }
 
 .place small {
