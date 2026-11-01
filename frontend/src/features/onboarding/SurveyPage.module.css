@@ -1,13 +1,14 @@
-/* 처음 로그인 설문 페이지 (AccountLayout 과 같은 하늘색 바탕 + 흰 카드) */
+/* 처음 로그인 설문 페이지: 하얀 바탕 + 가운데 560px (테두리 없는 깔끔한 한 장) */
 .page {
   min-height: 100dvh;
   padding: 24px 16px 60px;
-  background: rgb(229, 255, 255);
+  background: #fff;
 }
 
 .top {
-  width: min(1100px, 100%);
-  margin: 0 auto 22px;
+  width: min(560px, 100%);
+  margin: 0 auto 8px;
+  padding: 0 4px;
 }
 
 .top img {
@@ -18,9 +19,7 @@
 .card {
   width: min(560px, 100%);
   margin: 0 auto;
-  padding: 28px 44px 36px;
-  border: 1px solid #e3e6eb;
-  border-radius: 16px;
+  padding: 16px 4px 36px;
   background: #fff;
 }
 
@@ -213,9 +212,6 @@
 
 @media (max-width: 560px) {
   .card {
-    padding: 22px 18px 32px;
-    border-right: 0;
-    border-left: 0;
-    border-radius: 0;
+    padding: 12px 2px 32px;
   }
 }
