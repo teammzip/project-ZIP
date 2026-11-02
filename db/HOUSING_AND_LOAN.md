@@ -2,6 +2,8 @@
 
 검토 기준: `3aed321` 및 `frontend/src/features/onboarding/store.ts`, `loan/interest.ts`, `loan/store.ts`. 아래는 DB 저장 계약이며 API 구현 완료를 의미하지 않습니다. 신규 표 3개를 더해 전체 44개 테이블·2개 VIEW입니다.
 
+주소 검색 좌표 addressPoint는 이후 추가한 address_lat/address_lon에 저장합니다. 현재 동네 좌표는 user_settings의 region_* 묶음으로 구분합니다. [최신 저장 계약](LATEST_REQUIREMENTS.md)을 함께 확인하세요.
+
 ## housing_surveys — 회원당 최신 설문 한 건
 
 | API/프론트 | DB 컬럼 | 의미 |

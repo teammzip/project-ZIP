@@ -2,9 +2,12 @@
 
 Git 공개 전 확인 사항과 검토 범위는 [보안 검토 문서](SECURITY.md)를 참고하세요. 실제 사용자 데이터·DB 백업·인증정보는 저장소에 포함하지 않습니다.
 
-**2026-11-01 기준** [schema.sql](schema.sql)은 현재 프로젝트의 React 데이터 모델과 [백엔드 API 약속](../frontend/API.md)을 반영한 MySQL **8.0.16 이상** 설계입니다. 테이블 **44개**, 집계 VIEW **2개**입니다. 서버 API는 별도 구현 대상이며, 브라우저에 저장된 데이터가 이 SQL만으로 DB에 들어오지는 않습니다.
+**2026-11-02 기준** [schema.sql](schema.sql)은 현재 프로젝트의 React 데이터 모델과 [백엔드 API 약속](../frontend/API.md)을 반영한 MySQL **8.0.16 이상** 설계입니다. 테이블 **44개**, 집계 VIEW **2개**입니다. 서버 API는 별도 구현 대상이며, 브라우저에 저장된 데이터가 이 SQL만으로 DB에 들어오지는 않습니다.
 
 ## 1. 이번에 반영한 변경
+
+최신 `7bb1c90` 요구사항에 맞춰 신고 중복 방지·대상 스냅샷, 설문/현재 동네의 위치 출처·좌표, 좌표·별점·요일·설정 JSON 제약을 보완했습니다. [최신 저장 계약과 API 예외 기준](LATEST_REQUIREMENTS.md), [적용·테스트 순서](tests/LATEST_REQUIREMENTS_GUIDE.md)를 확인하세요. 테이블 44개는 유지하며 컬럼 356개, 기본키/UNIQUE 71개, CHECK 14개입니다.
+
 
 최신 검토 기준은 `3aed321`입니다. 주거 설문·대출 설정·월별 이자 내역 3개 표, 금액 타입 확장 및 이자 지출 집계를 반영했습니다. 전체 컬럼 매핑·서비스 처리 규칙은 [주거·대출 설계](HOUSING_AND_LOAN.md)를 참고하세요. 약관은 새 개인정보 항목 검토 후 별도 버전으로 반영해야 하므로 자동 수정하지 않았습니다.
 
@@ -30,7 +33,7 @@ Git 공개 전 확인 사항과 검토 범위는 [보안 검토 문서](SECURITY
 | 기념일·매년 반복 | events.is_anniversary·repeat_yearly (20261031_02_event_anniversaries.sql) |
 | 장소 분류 확대 | place_categories.icon, 15개 분류 기본 데이터 |
 
-현재 frontend/API.md는 10월 25일 문서이므로 DB에 없다고 적힌 항목은 이 설계로 보완했습니다. 그 이후 코드에 추가된 고정·기타 수입과 고객센터도 포함합니다. React 코드는 변경하지 않았습니다.
+API 문서와 코드의 저장 모델을 함께 대조했습니다. 프론트 코드의 모든 서비스 규칙이 DB 제약으로 구현되는 것은 아니므로 최신 저장 계약의 API 인수 기준도 확인해야 합니다.
 
 ## 2. 적용 방법
 
@@ -43,6 +46,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 ```
 
 ### 기존 DB
+
+기존 최신 44개 표 DB는 [20261102_requirements_hardening.sql](migrations/20261102_requirements_hardening.sql)을 추가 적용합니다. 사전 위반 조회·백업 후 한 번만 적용하며 새 DB에는 실행하지 않습니다. 자세한 안내는 최신 적용·테스트 순서를 따릅니다.
 
 기념일 정식 컬럼까지 적용한 41개 테이블 DB는 [주거·대출 마이그레이션](migrations/20261101_housing_and_loan.sql)을 추가 적용합니다. 기념일 중복 파일에 대한 주의사항과 전체 순서는 migrations/README.md를 확인하세요.
 
@@ -360,6 +365,10 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `home_memo_ids` | JSON | 허용 | — | 홈 메모 ID 문자열 배열 — NULL은 자동, 최대 3개, 배열 순서로 표시 |
 | `map_categories` | JSON | 허용 | — | 지도에 표시할 장소 분류 이름 배열 — NULL은 기본 4개 |
 | `map_keywords` | JSON | 허용 | — | 지도에서 직접 추가한 검색어 배열 — NULL은 없음 |
+| `region_name` | VARCHAR(200) | 허용 | — | 현재 동네 표시명 |
+| `region_source` | ENUM('SURVEY','VERIFIED','MANUAL') | 허용 | — | 선택 출처 |
+| `region_lat` | DECIMAL(9,6) | 허용 | — | 현재 동네 위도 |
+| `region_lon` | DECIMAL(9,6) | 허용 | — | 현재 동네 경도 |
 
 - 기본키: `user_id`
 - 외래키 `user_id` → `users`.`id`: CASCADE
@@ -657,6 +666,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 신고 일시 |
 | `handled_by` | BIGINT UNSIGNED | 허용 | — | 처리한 운영자 아이디 |
 | `handled_at` | DATETIME | 허용 | — | 처리 일시 |
+| `target_author_snapshot` | VARCHAR(12) | 허용 | — | 신고 당시 작성자 표시명 |
+| `target_text_snapshot` | VARCHAR(200) | 허용 | — | 신고 당시 제목/댓글 내용 |
 
 - 기본키: `id`
 - 조회 색인: `target_type`, `target_id`
