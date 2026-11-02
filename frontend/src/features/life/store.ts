@@ -6,6 +6,7 @@ import { readMapPoint, type MapPoint } from '@/features/map/location'
 import { seedBills, seedEvents, seedIncomes, seedSpends, todosToEvents } from './data/seed'
 import { UNCATEGORIZED, defaultCategories } from './data/presets'
 import type { Bill, CalEvent, CustomPreset, EventCategory, LifeSettings, MoneyRecord, RegionVerify } from './types'
+import { updateBillPayment } from './payments'
 
 /* 생활 관리 데이터(일정·공과금·월세·수입·지출·알림 읽음·설정)를 한곳에서 들고 있음.
  * 아직 서버가 없어서 이 브라우저(localStorage 'zip-life')에만 저장됩니다.
@@ -33,8 +34,9 @@ type LifeData = {
 
 type LifeActions = {
   addBill: (name: string, amount: number, tag: string) => void
+  updateBill: (id: number, values: Pick<Bill, 'name' | 'amount' | 'tag'>) => void
   /** 이번 달 납부 체크 (달이 바뀌면 저절로 풀림) */
-  toggleBill: (id: number, paid: boolean) => void
+  toggleBill: (id: number, paid: boolean, month?: string) => void
   removeBill: (id: number) => void
 
   setRentPaid: (monthKey: string, paid: boolean) => void
@@ -116,7 +118,8 @@ export const useLifeStore = create<LifeData & LifeActions>()(
       ...initial(),
 
       addBill: (name, amount, tag) => set((s) => ({ bills: [...s.bills, { id: newId(), name, amount, tag, paidMonth: null }] })),
-      toggleBill: (id, paid) => set((s) => ({ bills: s.bills.map((b) => (b.id === id ? { ...b, paidMonth: paid ? monthKeyOf(new Date()) : null } : b)) })),
+      updateBill: (id, values) => set((s) => ({ bills: s.bills.map((bill) => bill.id === id ? { ...bill, ...values } : bill) })),
+      toggleBill: (id, paid, month = monthKeyOf(new Date())) => set((s) => ({ bills: s.bills.map((b) => b.id === id ? updateBillPayment(b, month, paid, monthKeyOf(new Date())) : b) })),
       removeBill: (id) => set((s) => ({ bills: s.bills.filter((b) => b.id !== id) })),
 
       setRentPaid: (key, paid) => set((s) => ({ rentPaid: { ...s.rentPaid, [key]: paid } })),

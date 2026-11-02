@@ -40,6 +40,11 @@
 
 
 /* ---------- 고정 지출 ---------- */
+.paymentCard {
+  margin-top: 16px;
+  border: 1px solid var(--color-line);
+}
+
 .fixedSum {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);

@@ -4,7 +4,7 @@
 
 /** 공과금 한 항목. paidMonth = 마지막으로 납부 체크한 달('YYYY-MM'): 이번 달과 같으면 납부 완료,
  * 달이 바뀌면 저절로 미납으로 돌아감 (그래서 '새 달 시작' 버튼이 필요 없음) */
-export type Bill = { id: number; name: string; amount: number; tag: string; paidMonth: string | null }
+export type Bill = { id: number; name: string; amount: number; tag: string; paidMonth: string | null; paidMonths?: Record<string, boolean> }
 
 /** 고정 지출 항목에 붙일 수 있는 태그. 태그별로 합계를 따로 계산함 */
 export const BILL_TAGS = ['공과금', '통신', '구독', '관리비', '기타'] as const
@@ -51,6 +51,8 @@ export type RegionLocation = {
 }
 
 export type LifeSettings = {
+  /** 회원별 실제 거주 주소. 동네 서비스에 사용하는 region과 별도로 보관한다. */
+  homeAddresses?: Record<string, string>
   /** 우리 동네 (커뮤니티·지도 범위) 예: '서울 마포구' */
   region: string
   regionLocation?: RegionLocation
