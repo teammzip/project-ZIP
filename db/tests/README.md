@@ -1,5 +1,17 @@
 # 최신 주거·대출 DB 수동 검증
 
+최신 독립 실행 결과는 [검증 JSON](VALIDATION_20261102.json)과 [검증 기록](RESULTS.md)을 참고하세요. 격리 MySQL 9.6.0에서 정상 검증 106개·예상 오류 94개 및 전체/증분 이전이 통과했습니다. 기존 사용자 DB 적용은 별도입니다.
+
+**최신 변경 시작점:** [요구사항·예외 가이드](LATEST_REQUIREMENTS_GUIDE.md). 기존 zip_test에는 21번의 사전 조회/변경을 블록별 적용한 뒤 22번 정상 테스트, 23번 오류 테스트, 갱신된 15번 구조 감사를 실행합니다. 이전 PASS 기록은 변경 전 버전의 이력입니다.
+
+보완 제약 다음은 [마이그레이션 가이드](MIGRATION_GUIDE.md)의 `18_legacy_schema.sql` → `19_migration_upgrade.sql` → `20_migration_schema_audit.sql` 순서입니다. 현재 zip_test가 아닌 별도 zip_migration_test에서 실행합니다.
+
+전체 구조 확인 이후에는 [보완 제약 가이드](SUPPLEMENTAL_GUIDE.md)의 `17_supplemental_negative.sql`을 S00부터 블록별 실행합니다.
+
+기능별 테스트 이후 [전체 구조 대조 가이드](SCHEMA_AUDIT_GUIDE.md)의 `15_schema_audit.sql`을 실행합니다. M01~M07 및 추가 객체/컬럼 목록을 확인합니다.
+
+신고·제재 다음은 [동네·지도·AI 가이드](MAP_AI_GUIDE.md)의 `13_map_ai_positive.sql`과 `14_map_ai_negative.sql`이며 K/L 번호로 기록합니다.
+
 커뮤니티 다음은 [신고·제재·고객센터 가이드](MODERATION_GUIDE.md)의 `11_moderation_positive.sql`과 `12_moderation_negative.sql`이며 I/J 번호로 기록합니다.
 
 가계부 다음은 [커뮤니티·첨부 가이드](COMMUNITY_GUIDE.md)의 `09_community_positive.sql` 및 `10_community_negative.sql`이며 G/H 번호로 기록합니다.

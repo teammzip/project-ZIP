@@ -1,7 +1,8 @@
 -- ============================================================================
 -- ZIP – 자취생 생활 도우미 : 데이터베이스 (MySQL 8.0.16 이상)
--- 2026-11-01: frontend/API.md와 현재 React 데이터 모델(메모·지도·프로필·고객센터 포함) 기준입니다.
+-- 2026-11-02: frontend/API.md와 현재 React 데이터 모델(메모·지도·프로필·고객센터 포함) 기준입니다.
 --   · 표 44개 + 집계용 VIEW 2개
+--   · 7bb1c90 기준 중복 신고·신고 스냅샷·위치 출처/좌표·JSON 및 입력 범위 보완
 --   · 2fa08f5 기준 기념일·매년 반복 반영. 기존 DB 적용 순서는 db/migrations/README.md 참고
 --   · 한글 설명: db/README.md, 기존 DB 변경: db/migrations/20261031_current_project.sql
 -- 사용법:  mysql -u root -p < db/schema.sql      (zip 데이터베이스가 새로 만들어집니다)
@@ -62,7 +63,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   UNIQUE KEY `uk_users_login_id` (`login_id`),
   UNIQUE KEY `uk_users_email` (`email`),
   UNIQUE KEY `uk_users_phone` (`phone`),
-  CONSTRAINT `fk_users_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_users_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `ck_users_home_point` CHECK ((`home_lat` IS NULL AND `home_lon` IS NULL) OR (`home_lat` IS NOT NULL AND `home_lon` IS NOT NULL AND `home_lat` BETWEEN -90 AND 90 AND `home_lon` BETWEEN -180 AND 180))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자: 가입한 사람 한 명당 한 줄.';
 
 -- 소셜 로그인 계정: 카카오·구글·네이버로 로그인한 사용자가 어느 소셜 계정인지 연결해 두는 표. 한 사용자가 여러 소셜을 연결할 수 있고, 같은 소셜 계정은 한 사용자에게만 붙습니다.
@@ -179,7 +181,13 @@ CREATE TABLE IF NOT EXISTS `user_settings` (
   `map_categories` JSON NULL COMMENT '지도에 표시할 장소 분류 이름 배열 — NULL은 기본 4개',
   `map_keywords` JSON NULL COMMENT '지도에서 직접 추가한 검색어 배열 — NULL은 없음',
   PRIMARY KEY (`user_id`),
-  CONSTRAINT `fk_user_settings_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_user_settings_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  `region_name` VARCHAR(200) NULL COMMENT '현재 동네 표시명 — regionLocation.region',
+  `region_source` ENUM('SURVEY','VERIFIED','MANUAL') NULL COMMENT '현재 동네 선택 출처 — regionLocation.source',
+  `region_lat` DECIMAL(9,6) NULL COMMENT '현재 동네 좌표 위도 — 집 위치와 구분',
+  `region_lon` DECIMAL(9,6) NULL COMMENT '현재 동네 좌표 경도 — 출처에 따라 행정구역 중심 또는 인증 위치',
+  CONSTRAINT `ck_settings_region_location` CHECK ((`region_source` IS NULL AND `region_name` IS NULL AND `region_lat` IS NULL AND `region_lon` IS NULL) OR (`region_source` IS NOT NULL AND `region_name` IS NOT NULL AND CHAR_LENGTH(TRIM(`region_name`)) > 0 AND ((`region_lat` IS NULL AND `region_lon` IS NULL) OR (`region_lat` IS NOT NULL AND `region_lon` IS NOT NULL AND `region_lat` BETWEEN -90 AND 90 AND `region_lon` BETWEEN -180 AND 180)))),
+  CONSTRAINT `ck_settings_json_arrays` CHECK ((`home_memo_ids` IS NULL OR (JSON_TYPE(`home_memo_ids`) = 'ARRAY' AND JSON_LENGTH(`home_memo_ids`) <= 3)) AND (`map_categories` IS NULL OR JSON_TYPE(`map_categories`) = 'ARRAY') AND (`map_keywords` IS NULL OR JSON_TYPE(`map_keywords`) = 'ARRAY'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자 설정: 내 정보 화면의 설정값(월세·월세 납부일·입주한 달·계약 끝나는 달·알림 수신).';
 
 -- 할 일은 events.is_done / done_at으로 통합합니다. 기존 데이터 이전은 migrations를 참고하세요.
@@ -206,7 +214,10 @@ CREATE TABLE IF NOT EXISTS `housing_surveys` (
   CONSTRAINT `fk_housing_surveys_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `ck_survey_flags` CHECK (`management_included` IN (0,1) AND `has_loan` IN (0,1)),
   CONSTRAINT `ck_survey_loan_rate` CHECK (`loan_annual_rate` BETWEEN 0 AND 100),
-  CONSTRAINT `ck_survey_loan_day` CHECK (`loan_payment_day` BETWEEN 1 AND 31)
+  CONSTRAINT `ck_survey_loan_day` CHECK (`loan_payment_day` BETWEEN 1 AND 31),
+  `address_lat` DECIMAL(9,6) NULL COMMENT '설문 주소 검색 당시 행정구역 중심 위도 — addressPoint.lat',
+  `address_lon` DECIMAL(9,6) NULL COMMENT '설문 주소 검색 당시 행정구역 중심 경도 — addressPoint.lon',
+  CONSTRAINT `ck_survey_address_point` CHECK ((`address_lat` IS NULL AND `address_lon` IS NULL) OR (`address_lat` IS NOT NULL AND `address_lon` IS NOT NULL AND `address_lat` BETWEEN -90 AND 90 AND `address_lon` BETWEEN -180 AND 180))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='회원별 최신 주거 설문 — 실제 개인정보를 seed로 넣지 않음';
 
 CREATE TABLE IF NOT EXISTS `housing_loans` (
@@ -479,7 +490,10 @@ CREATE TABLE IF NOT EXISTS `reports` (
   PRIMARY KEY (`id`),
   KEY `idx_reports_target_type_target_id` (`target_type`, `target_id`),
   CONSTRAINT `fk_reports_reporter_id` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_reports_handled_by` FOREIGN KEY (`handled_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_reports_handled_by` FOREIGN KEY (`handled_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  `target_author_snapshot` VARCHAR(12) NULL COMMENT '신고 당시 작성자 표시명 — 삭제 후 표시용, 권한 근거로 사용 금지',
+  `target_text_snapshot` VARCHAR(200) NULL COMMENT '신고 당시 글 제목 또는 댓글 내용 — 서버가 실제 대상에서 복사',
+  UNIQUE KEY `uk_reports_reporter_target` (`reporter_id`, `target_type`, `target_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='신고: 운영 정책에 어긋나는 글·댓글을 신고한 기록(정책 제3조).';
 
 -- 이용 제한: 운영 정책 위반에 따른 조치 기록(정책 제7조: 경고 → 게시 제한 → 이용 제한 → 이용 정지). 기간이 있는 제한은 ends_at 까지 적용됩니다.
@@ -644,7 +658,8 @@ CREATE TABLE IF NOT EXISTS `trash_schedules` (
   `description` VARCHAR(100) NOT NULL COMMENT '배출 안내 — 예: 저녁 6시 ~ 자정, 종량제 봉투 사용',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_trash_schedules_region_weekday_type` (`region_id`, `weekday`, `waste_type`),
-  CONSTRAINT `fk_trash_schedules_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_trash_schedules_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `ck_trash_weekday` CHECK (`weekday` BETWEEN 0 AND 6)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='쓰레기 배출 일정: 동네별 요일 배출표.';
 
 -- 장소 분류: 지도 화면의 칩(세탁방·편의점·약국·마트) 목록.
@@ -677,7 +692,8 @@ CREATE TABLE IF NOT EXISTS `places` (
   PRIMARY KEY (`id`),
   KEY `idx_places_region_id_category_id` (`region_id`, `category_id`),
   CONSTRAINT `fk_places_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `fk_places_category_id` FOREIGN KEY (`category_id`) REFERENCES `place_categories` (`id`) ON DELETE RESTRICT
+  CONSTRAINT `fk_places_category_id` FOREIGN KEY (`category_id`) REFERENCES `place_categories` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `ck_places_point` CHECK (`lat` BETWEEN -90 AND 90 AND `lon` BETWEEN -180 AND 180)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='주변 장소: 지도 화면과 AI "근처 탐색"에 나오는 가게·시설.';
 
 CREATE TABLE IF NOT EXISTS `place_favorites` (
@@ -700,7 +716,8 @@ CREATE TABLE IF NOT EXISTS `place_reviews` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_place_reviews_place_id_user_id` (`place_id`, `user_id`),
   CONSTRAINT `fk_place_reviews_place_id` FOREIGN KEY (`place_id`) REFERENCES `places` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_place_reviews_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_place_reviews_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `ck_place_review_rating` CHECK (`rating` BETWEEN 1 AND 5)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='장소 리뷰: 사용자가 장소에 남기는 별점과 한 줄 리뷰(확장 기능).';
 
 -- ----------------------------------------------------------------------------
