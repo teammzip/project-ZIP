@@ -14,6 +14,9 @@ import { billPaidInMonth } from '../payments'
 import styles from './life.module.css'
 import { LifeInfoForm } from './MyInfo'
 import { useHousingSurveyStore } from '@/features/onboarding/store'
+import { useLedgerCategories } from '../ledgerCategories'
+import { LedgerCategoryDialog } from './LedgerCategoryDialog'
+import { useCategoryDrag } from '../useCategoryDrag'
 
 /** 고정 지출 = 합계 카드 + 이번 달 납부 체크리스트 (월세와 공과금을 한 카드에 합침) */
 export function FixedExpense() {
@@ -46,6 +49,7 @@ export function FixedExpense() {
 }
 
 function FixedSummary({ month, months, onMonthChange }: { month: string; months: string[]; onMonthChange: (month: string) => void }) {
+  const billCategories = useLedgerCategories('bill')
   const { isJeonse, isMonthly, survey } = useHousingContract()
   const { bills: storedBills, settings } = useLifeStore(useShallow((s) => ({ bills: s.bills, settings: s.settings })))
   const bills = isMonthly && survey?.mgmtIncluded ? storedBills.filter((b) => b.tag !== '관리비') : storedBills
@@ -58,7 +62,7 @@ function FixedSummary({ month, months, onMonthChange }: { month: string; months:
   const paid = (rentPaid ? rent : 0) + sumAmount(bills.filter((b) => billPaidInMonth(b, month))) + interest.recordedAmount
   const groups = [
     ...(isMonthly ? [{ name: survey?.mgmtIncluded ? '월세 · 관리비 포함' : '월세', amount: rent, color: '#6485df' }] : []),
-    ...BILL_TAGS.map((tag, index) => ({ name: tag, amount: sumAmount(bills.filter((bill) => bill.tag === tag)), color: ['#ef9b66', '#68b6a0', '#a28ad6', '#e4bd61', '#91a2b5'][index] })),
+    ...billCategories.map(({ name }, index) => ({ name, amount: sumAmount(bills.filter((bill) => bill.tag === name)), color: ['#ef9b66', '#68b6a0', '#a28ad6', '#e4bd61', '#91a2b5'][index % 5] })),
     { name: '대출 이자', amount: interest.expectedAmount, color: '#d884aa' },
   ].filter((group) => group.amount > 0).sort((a, b) => b.amount - a.amount)
   const stops = groups.map((group, index) => {
@@ -92,6 +96,9 @@ function FixedSummary({ month, months, onMonthChange }: { month: string; months:
 /** 이번 달 납부 체크리스트: 월세 줄 + 공과금 줄을 같은 방식으로 체크.
  * 월세 줄의 '자세히'를 누르면 금액 · 납부일 · 납부 방법과 캘린더 추가가 펼쳐짐 */
 function PayChecklist({ monthKey }: { monthKey: string }) {
+  const categoryDrag = useCategoryDrag('bill')
+  const billCategories = useLedgerCategories('bill')
+  const [addingCategory, setAddingCategory] = useState(false)
   const { isMonthly, isJeonse, survey } = useHousingContract()
   const updateBill = useLifeStore((s) => s.updateBill)
   const saveSurvey = useHousingSurveyStore((s) => s.save)
@@ -130,7 +137,7 @@ function PayChecklist({ monthKey }: { monthKey: string }) {
   const doneCount = (rentDone ? 1 : 0) + bills.filter(isPaid).length + interest.recordedCount
   const pct = total ? Math.round((paid / total) * 100) : 0
   // 태그별 합계 (월세는 따로 보여 주므로 제외)
-  const tagSums = BILL_TAGS.map((t) => ({ tag: t, sum: sumAmount(bills.filter((b) => b.tag === t)), n: bills.filter((b) => b.tag === t).length })).filter((x) => x.n)
+  const tagSums = billCategories.map(({ name: t }) => ({ tag: t, sum: sumAmount(bills.filter((b) => b.tag === t)), n: bills.filter((b) => b.tag === t).length })).filter((x) => x.n)
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -204,15 +211,18 @@ function PayChecklist({ monthKey }: { monthKey: string }) {
         <span className={styles.tagBadge}>자동 기록</span>
       </div>}
 
-      {bills.some((b) => b.tag === '관리비') && <Card title="관리비 · 별도 납부" className={styles.paymentCard}>
-        {bills.filter((b) => b.tag === '관리비').map((bill) => <BillPayment key={bill.id} bill={bill} month={monthKey} onToggle={toggleBill} onRemove={removeBill} onEdit={editBill} />)}
-      </Card>}
-      {bills.some((b) => b.tag !== '관리비') && <Card title="공과금 · 그 밖의 고정 지출" className={styles.paymentCard}>
-        {bills.filter((b) => b.tag !== '관리비').map((bill) => <BillPayment key={bill.id} bill={bill} month={monthKey} onToggle={toggleBill} onRemove={removeBill} onEdit={editBill} />)}
-      </Card>}
+      {[...new Set([...billCategories.map((category) => category.name), ...bills.map((bill) => bill.tag)])].map((category) => {
+        const items = bills.filter((bill) => bill.tag === category)
+        if (!items.length) return null
+        return <Card key={category} title={category === '관리비' ? '관리비 · 별도 납부' : category} className={styles.paymentCard}
+          actions={<span className={styles.tagBadge}>{items.length}건 · {won(sumAmount(items))}</span>}>
+          {items.map((bill) => <BillPayment key={bill.id} bill={bill} month={monthKey} onToggle={toggleBill} onRemove={removeBill} onEdit={editBill} />)}
+        </Card>
+      })}
       {count === 0 && <p className={common.empty}>등록된 항목이 없어요.</p>}
 
-      <Modal open={adding} onClose={closeEditor} title={editingBill !== null ? '고정 지출 수정' : '고정 지출 추가'}>
+      {addingCategory && <LedgerCategoryDialog scope="bill" onClose={() => setAddingCategory(false)} onAdded={setTag} />}
+      <Modal open={adding && !addingCategory} onClose={closeEditor} title={editingBill !== null ? '고정 지출 수정' : '고정 지출 추가'}>
         <form className={cx(common.form, styles.addForm)} onSubmit={submit}>
           <h3>{editingBill !== null ? '고정 지출 수정' : '고정 지출 추가'}</h3>
           <label>
@@ -224,13 +234,14 @@ function PayChecklist({ monthKey }: { monthKey: string }) {
             <AmountInput value={amount} onValueChange={setAmount} max={9999999} required />
           </label>
           <div className={styles.tagPick} role="group" aria-label="태그">
-            {BILL_TAGS.filter((t) => !(t === '관리비' && isMonthly && survey?.mgmtIncluded)).map((t) => (
-              <button key={t} type="button" className={cx(styles.tagOpt, tag === t && styles.tagOptOn)} aria-pressed={tag === t} onClick={() => setTag(t)}>
+            {billCategories.map((cat) => cat.name).filter((t) => !(t === '관리비' && isMonthly && survey?.mgmtIncluded)).map((t) => (
+              <button key={t} {...categoryDrag(t)} type="button" className={cx(styles.tagOpt, styles.draggableCategory, tag === t && styles.tagOptOn)} aria-pressed={tag === t} onClick={() => setTag(t)}>
                 {t}
               </button>
             ))}
           </div>
           <div className={common.actions}>
+            <Button variant="line" onClick={() => setAddingCategory(true)}>＋ 카테고리 추가</Button>
             <Button type="submit">{editingBill !== null ? '저장' : '추가'}</Button>
             <Button variant="line" onClick={closeEditor}>
               취소
@@ -258,7 +269,7 @@ function BillPayment({ bill, month, onToggle, onRemove, onEdit }: {
   return <div className={cx(styles.bill, paid && styles.billPaid)}>
     <input type="checkbox" className={common.checkbox} checked={paid} onChange={(e) => onToggle(bill.id, e.target.checked, month)} aria-label={bill.name + ' 납부'} />
     <div className={styles.billName}>
-      <b>{bill.name} <i className={styles.tagBadge}>{bill.tag}</i></b>
+      <b>{bill.name}</b>
       <small>{won(bill.amount)} · {paid ? '납부 완료' : '미납'}</small>
     </div>
     <Button variant="line" onClick={() => onEdit(bill)} aria-label={bill.name + ' 수정'}>수정</Button>
