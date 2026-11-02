@@ -40,6 +40,20 @@
 
 
 /* ---------- 고정 지출 ---------- */
+.draggableCategory {
+  cursor: grab;
+}
+
+.draggableCategory:active {
+  cursor: grabbing;
+}
+
+.draggableCategory[data-category-dragging] {
+  opacity: 0.45;
+  outline: 2px dashed var(--color-primary);
+  outline-offset: 2px;
+}
+
 .paymentCard {
   margin-top: 16px;
   border: 1px solid var(--color-line);

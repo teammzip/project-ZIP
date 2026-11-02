@@ -6,7 +6,10 @@ import { cx } from '@/lib/cx'
 import { DOW, monthKeyOf, monthLabel, todayStr, won } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
 import common from '@/styles/common.module.css'
-import { FIXED_INCOME_CATS, OTHER_INCOME_CATS, SPEND_CATS, type Category } from '../data/catalog'
+import { FIXED_INCOME_CATS, type Category } from '../data/catalog'
+import { useLedgerCategories } from '../ledgerCategories'
+import { LedgerCategoryDialog } from './LedgerCategoryDialog'
+import { useCategoryDrag } from '../useCategoryDrag'
 import { useLifeStore } from '../store'
 import type { IncomeType, MoneyRecord } from '../types'
 import styles from './life.module.css'
@@ -53,7 +56,10 @@ export function MoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeTyp
     empty: `이 달에는 ${incomeTitle} 기록이 없어요. 첫 수입을 기록해 보세요.`,
     note: incomeType === 'fixed' ? '월급·이자 등 정기적으로 들어오는 수입을 받은 날짜에 기록해요.' : '부수입·용돈 등 일정하지 않은 수입을 기록해요.',
   } : TEXT.spend
-  const cats = kind === 'income' ? (incomeType === 'fixed' ? FIXED_INCOME_CATS : OTHER_INCOME_CATS) : SPEND_CATS
+  const scope = kind === 'income' ? incomeType === 'fixed' ? 'fixed-income' : 'other-income' : 'spend'
+  const cats = useLedgerCategories(scope)
+  const categoryDrag = useCategoryDrag(scope)
+  const [addingCategory, setAddingCategory] = useState(false)
   const { records, add, remove } = useLifeStore(
     useShallow((s) =>
       kind === 'income'
@@ -78,7 +84,7 @@ export function MoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeTyp
     .filter((r) => r.date.slice(0, 7) === monthKey)
     .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
   const total = rows.reduce((s, r) => s + r.amount, 0)
-  const byCat: Record<string, number> = {}
+  const byCat: Record<string, number> = Object.create(null)
   for (const r of rows) byCat[r.cat] = (byCat[r.cat] ?? 0) + r.amount
   // 분류별 비율 원형 그래프 (큰 분류부터 시계 방향)
   const catRows = cats.filter((c) => byCat[c.name]).sort((a, b) => byCat[b.name] - byCat[a.name])
@@ -130,10 +136,11 @@ export function MoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeTyp
         {cats.map((c) => (
           <button
             key={c.name}
+            {...categoryDrag(c.name)}
             type="button"
             role="radio"
             aria-checked={form.cat === c.name}
-            className={cx(styles.quickCat, form.cat === c.name && styles.on)}
+            className={cx(styles.quickCat, styles.draggableCategory, form.cat === c.name && styles.on)}
             style={cssVar({ '--c': c.color })}
             onClick={() => setForm({ ...form, cat: c.name })}
           >
@@ -141,6 +148,7 @@ export function MoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeTyp
           </button>
         ))}
       </div>
+      <Button variant="line" onClick={() => setAddingCategory(true)}>＋ 카테고리 추가</Button>
       {/* 날짜 · 메모: 입력칸 모양 두 칸 나란히 */}
       <div className={styles.quickFields}>
         <label className={styles.quickField}>
@@ -182,6 +190,7 @@ export function MoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeTyp
 
   return (
     <div className={common.layout}>
+      {addingCategory && <LedgerCategoryDialog scope={scope} onClose={() => setAddingCategory(false)} onAdded={(cat) => setForm((value) => ({ ...value, cat }))} />}
       <Card
         title={`${Number(monthKey.slice(5))}월 ${t.title}`}
         actions={
