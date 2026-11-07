@@ -25,7 +25,7 @@ ZIP 백엔드 기술 스택 추천 (Spring 확정 기준)
 ----------------  --------------------------------  -----  ------------------------------------
 언어              Java 21 (LTS)                     필수   Spring Boot 3 가 지원하는 안정 LTS. 자료가 가장 많음
 프레임워크        Spring Boot 3.x (최신 안정)       필수   확정
-빌드 도구         Gradle                            추천   설정이 짧고 Spring 공식 생성기 기본값. Maven 도 무방
+빌드 도구         Gradle (Groovy)                   확정   팀 결정(2026-11-07): Gradle 사용, Maven(pom.xml) 은 쓰지 않음
 DB                MySQL 8                           필수   이미 schema.sql 이 MySQL 8 기준
 DB 접근           Spring Data JPA (+ Hibernate)     필수   표 40여 개를 객체로 다루기 쉬움
 복잡한 조회       QueryDSL 또는 JPQL                선택   통계, 관리자 검색처럼 조건이 많은 조회에만
@@ -48,8 +48,10 @@ CI                GitHub Actions                    추천   push 마다 빌드/
   - 팀원이 자바 문법을 배우면서 쓰기에도 자료가 가장 많다.
 
 [Gradle]
-  - build.gradle 한 파일에 의존성(라이브러리)을 적는다. Maven(pom.xml)보다 짧다.
-  - 어느 쪽이든 동작은 같다. 팀원이 Maven 에 익숙하면 Maven 도 괜찮다.
+  - 2026-11-07 팀에서 Gradle 로 확정. build.gradle 한 파일에 의존성(라이브러리)을 적는다.
+  - 프로젝트는 Gradle 로만 만든다. pom.xml 이나 IntelliJ 의 Maven 설정을 섞지 않는다
+    (섞이면 IntelliJ External Libraries 에 "Maven: ..." 항목이 따로 생겨 헷갈린다).
+  - IntelliJ 에서는 backend 폴더를 프로젝트로 열고 Load Gradle Project 를 한다. Gradle 은 첫 실행 때 자동으로 받아진다.
 
 [Spring Data JPA]
   - events, bills, posts 같은 표를 클래스(Entity)로 만들면 저장/조회가 쉬워진다.
