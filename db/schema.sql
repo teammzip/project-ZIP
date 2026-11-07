@@ -1,11 +1,12 @@
 -- ============================================================================
 -- ZIP – 자취생 생활 도우미 : 데이터베이스 (MySQL 8.0.16 이상)
--- 2026-11-02: frontend/API.md와 현재 React 데이터 모델(메모·지도·프로필·고객센터 포함) 기준입니다.
---   · 표 44개 + 집계용 VIEW 2개
+-- 2026-11-07: frontend/API.md와 현재 React 데이터 모델(설문·대출·개인 카테고리·집 주소 포함) 기준입니다.
+--   · 표 44개 / 컬럼 358개 / 기본키·UNIQUE 71개 / 외래키 62개 / CHECK 15개 / VIEW 2개
+--   · 20261107_life_categories.sql 반영: 개인 설정 JSON·집 주소, 사용자 태그 및 분류 이름·색 길이 확장
 --   · 7bb1c90 기준 중복 신고·신고 스냅샷·위치 출처/좌표·JSON 및 입력 범위 보완
 --   · 2fa08f5 기준 기념일·매년 반복 반영. 기존 DB 적용 순서는 db/migrations/README.md 참고
---   · 한글 설명: db/README.md, 기존 DB 변경: db/migrations/20261031_current_project.sql
--- 사용법:  mysql -u root -p < db/schema.sql      (zip 데이터베이스가 새로 만들어집니다)
+--   · 한글 설명: db/README.md, 기존 DB 적용 순서: db/migrations/README.md
+-- 사용법:  mysql -u root -p < db/schema.sql      (신규 zip DB용; 기존 테이블 구조는 자동 갱신하지 않음)
 -- 규칙:   금액은 원 단위 정수(BIGINT), 단 user_settings.rent_amount는 화면과 같은 만원 단위, 날짜·시간은 DATE/TIME/DATETIME, 글자는 utf8mb4,
 --         비밀번호·인증번호·토큰은 원문 대신 해시만 저장, 회원 탈퇴 시 개인 데이터는 CASCADE, 재가입 차단 해시만 별도 보존
 -- ============================================================================
