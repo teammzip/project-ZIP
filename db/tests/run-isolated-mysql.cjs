@@ -152,6 +152,8 @@ async function main() {
     [3819,'ck_users_home_point'],[3819,'ck_users_home_point'],
     [3819,'ck_places_point'],[3819,'ck_place_review_rating'],[3819,'ck_trash_weekday'],
   ])
+  successful('life categories', read('db/tests/24_life_categories_positive.sql'), 5)
+  rejected('life categories rejection', '25_life_categories_negative.sql', 'Y', [[3819,'ck_settings_ledger_object']])
   successful('fresh structure audit', read('db/tests/15_schema_audit.sql'), 7)
   successful('legacy schema', read('db/tests/18_legacy_schema.sql'), 0)
   successful('full migration and data preservation', read('db/tests/19_migration_upgrade.sql'), 14)
@@ -168,6 +170,7 @@ async function main() {
   for (const row of violations) assert(row.endsWith('\t0'), `preflight: ${row}`)
   successful('incremental hardening', read('db/migrations/20261102_requirements_hardening.sql')
     .replace('USE `zip`;','USE `zip_incremental_test`;'), 0)
+  successful('life category upgrade', read('db/migrations/20261107_life_categories.sql').replace('USE `zip`;', 'USE `zip_incremental_test`;'), 0)
   successful('incremental structure audit', read('db/tests/15_schema_audit.sql')
     .replace('USE zip_test;','USE zip_incremental_test;'), 7)
   successful('duplicate upgrade legacy fixture',oldSchema.replaceAll('zip_incremental_test','zip_dirty_upgrade_test'),0)

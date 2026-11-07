@@ -180,6 +180,9 @@ CREATE TABLE IF NOT EXISTS `user_settings` (
   `home_memo_ids` JSON NULL COMMENT '홈 메모 ID 문자열 배열 — NULL은 자동, 최대 3개, 배열 순서로 표시',
   `map_categories` JSON NULL COMMENT '지도에 표시할 장소 분류 이름 배열 — NULL은 기본 4개',
   `map_keywords` JSON NULL COMMENT '지도에서 직접 추가한 검색어 배열 — NULL은 없음',
+  `home_address` VARCHAR(200) NULL COMMENT '현재 실제 거주 상세주소 — 동네 표시명 및 가입 주소와 구분',
+  `ledger_category_settings` JSON NULL COMMENT '회원별 scope의 custom 카테고리와 order 배열 — NULL은 기본 목록',
+  CONSTRAINT `ck_settings_ledger_object` CHECK (`ledger_category_settings` IS NULL OR JSON_TYPE(`ledger_category_settings`) = 'OBJECT'),
   PRIMARY KEY (`user_id`),
   CONSTRAINT `fk_user_settings_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   `region_name` VARCHAR(200) NULL COMMENT '현재 동네 표시명 — regionLocation.region',
@@ -327,7 +330,7 @@ CREATE TABLE IF NOT EXISTS `bill_items` (
   `default_amount` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '평소 금액 — 원 단위',
   `is_active` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '사용 여부 — 해지한 항목은 0',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록 일시',
-  `tag` ENUM('공과금','통신','구독','관리비','기타') NOT NULL DEFAULT '공과금' COMMENT '고정 지출 태그',
+  `tag` VARCHAR(24) NOT NULL DEFAULT '공과금' COMMENT '회원별 고정 지출 카테고리 이름',
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_bill_items_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='공과금 항목: 내가 관리하는 공과금 종류(가스·전기·수도 등)와 평소 금액.';
@@ -382,8 +385,8 @@ CREATE TABLE IF NOT EXISTS `notifications` (
 CREATE TABLE IF NOT EXISTS `ledger_categories` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '분류 아이디 — 자동 증가',
   `kind` ENUM('INCOME','EXPENSE') NOT NULL COMMENT '분류 구분 — 수입 / 기타 지출',
-  `name` VARCHAR(20) NOT NULL COMMENT '분류 이름 — 월급, 식비 등',
-  `color` VARCHAR(20) NOT NULL COMMENT '표시 색 — 예: #1fb5a3',
+  `name` VARCHAR(24) NOT NULL COMMENT '분류 이름 — 회원별 표시 목록은 설정 JSON에서 관리',
+  `color` VARCHAR(32) NOT NULL COMMENT '기본 표시 색 — 회원별 색은 설정 JSON 우선',
   `sort_order` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '정렬 순서',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_ledger_categories_kind_name` (`kind`, `name`)
