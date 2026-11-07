@@ -64,7 +64,10 @@ export async function resolveWeatherPlace(region: string, signal: AbortSignal): 
     const result = z.array(z.object({ lat: z.string(), lon: z.string(), display_name: z.string() })).parse(await fetchJSON(url.toString(), signal))
     const matches = result.filter((r) => sameRegion(normalized, r.display_name.replaceAll(',', ' ')))
     const unique = [...new Map(matches.map((r) => [r.display_name, r])).values()]
-    if (unique.length !== 1) throw new Error('동네를 찾기 어려워요. “서울 마포구”처럼 시·도와 시·군·구를 함께 입력해 주세요.')
+    // 동까지 넣으면 같은 동네가 '동' · '우편번호 구역'으로 두 번 나올 수 있음 → 모두 5km 안이면 같은 곳으로 보고 첫 번째를 씀.
+    // 서울 중구 · 부산 중구처럼 멀리 떨어진 다른 지역이 섞이면 고르지 않음
+    const near = unique.every((r) => Math.abs(Number(r.lat) - Number(unique[0].lat)) < 0.05 && Math.abs(Number(r.lon) - Number(unique[0].lon)) < 0.05)
+    if (!unique.length || !near) throw new Error('동네를 찾기 어려워요. “서울 마포구”처럼 시·도와 시·군·구를 함께 입력해 주세요.')
     const place = placeSchema.parse({ latitude: Number(unique[0].lat), longitude: Number(unique[0].lon), name: normalized })
     writeJSON(key, { place, expires: Date.now() + 90 * 24 * 60 * 60 * 1000 })
     return place
