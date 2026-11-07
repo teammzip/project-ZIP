@@ -1,3 +1,5 @@
+> 2026-11-07 후속 변경은 [LIFE_CATEGORIES.md](LIFE_CATEGORIES.md)에 반영했습니다. 아래 내용과 수치는 2026-11-02 검토 이력입니다.
+
 # 최신 요구사항 반영 및 검증 범위 (2026-11-02)
 
 검토 기준은 HEAD `7bb1c90`의 API.md, community/reports.ts, life/types.ts·store.ts, onboarding/store.ts·SurveyPage.tsx입니다. 스키마는 44개 테이블·356개 컬럼·기본키/UNIQUE 71개·외래키 62개·CHECK 14개·VIEW 2개입니다. 이 문서는 DB와 미래 백엔드의 저장 계약을 정리하며 API 구현 완료를 뜻하지 않습니다.
