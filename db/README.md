@@ -1,20 +1,14 @@
-> 2026-11-07 최신 변경: [생활 카테고리·월별 납부·집 주소 가이드](LIFE_CATEGORIES.md). 기존 DB는 `20261102` 다음 `20261107_life_categories.sql`을 적용합니다. 최신 감사 기준: 44테이블 / 358컬럼 / 71키 / 62FK / 15CHECK / 2VIEW. 아래 이전 날짜의 수치는 당시 이력입니다.
-
 # ZIP 데이터베이스 설계
 
 Git 공개 전 확인 사항과 검토 범위는 [보안 검토 문서](SECURITY.md)를 참고하세요. 실제 사용자 데이터·DB 백업·인증정보는 저장소에 포함하지 않습니다.
 
-**2026-11-02 기준** [schema.sql](schema.sql)은 현재 프로젝트의 React 데이터 모델과 [백엔드 API 약속](../frontend/API.md)을 반영한 MySQL **8.0.16 이상** 설계입니다. 테이블 **44개**, 집계 VIEW **2개**입니다. 서버 API는 별도 구현 대상이며, 브라우저에 저장된 데이터가 이 SQL만으로 DB에 들어오지는 않습니다.
+**2026-11-07 기준** [schema.sql](schema.sql)은 현재 프로젝트의 React 데이터 모델과 [백엔드 API 약속](../frontend/API.md)을 반영한 MySQL **8.0.16 이상** 설계입니다. 테이블 **44개**, 집계 VIEW **2개**입니다. 서버 API는 별도 구현 대상이며, 브라우저에 저장된 데이터가 이 SQL만으로 DB에 들어오지는 않습니다.
 
 ## 1. 이번에 반영한 변경
 
-최신 `7bb1c90` 요구사항에 맞춰 신고 중복 방지·대상 스냅샷, 설문/현재 동네의 위치 출처·좌표, 좌표·별점·요일·설정 JSON 제약을 보완했습니다. [최신 저장 계약과 API 예외 기준](LATEST_REQUIREMENTS.md), [적용·테스트 순서](tests/LATEST_REQUIREMENTS_GUIDE.md)를 확인하세요. 테이블 44개는 유지하며 컬럼 356개, 기본키/UNIQUE 71개, CHECK 14개입니다.
+최신 프로젝트의 신고·위치·주거 설문·대출·개인 카테고리·집 주소 변경을 반영했습니다. 현재 기준은 **44테이블·358컬럼·기본키/UNIQUE 71개·외래키 62개·CHECK 15개·VIEW 2개**입니다.
 
-
-최신 검토 기준은 `3aed321`입니다. 주거 설문·대출 설정·월별 이자 내역 3개 표, 금액 타입 확장 및 이자 지출 집계를 반영했습니다. 전체 컬럼 매핑·서비스 처리 규칙은 [주거·대출 설계](HOUSING_AND_LOAN.md)를 참고하세요. 약관은 새 개인정보 항목 검토 후 별도 버전으로 반영해야 하므로 자동 수정하지 않았습니다.
-
-
-추가 검토 기준 커밋: `2fa08f5`. 기념일·매년 반복을 events에 반영했습니다. 현재 위치 지도와 화면 배치 변경은 영구 저장 데이터 추가가 없어 기존 설계를 유지합니다. 이후 주거 설문·대출 변경으로 현재 테이블 수는 44개입니다.
+[위치·신고 저장 계약](LATEST_REQUIREMENTS.md), [주거·대출 저장 계약](HOUSING_AND_LOAN.md), [개인 카테고리·월별 납부·집 주소](LIFE_CATEGORIES.md), [백엔드 착수 전 점검](PRE_BACKEND_REVIEW.md)을 함께 확인하세요. 이전 문서에 날짜별 구조 수치가 나오면 당시 이력이며 이 문서의 현재 기준과 구분합니다.
 
 | 기능 | DB 반영 |
 |---|---|
@@ -25,7 +19,10 @@ Git 공개 전 확인 사항과 검토 범위는 [보안 검토 문서](SECURITY
 | 프로필 사진·캐릭터·소개 | user_profiles (회원당 한 행) |
 | 지도 즐겨찾기·칩·검색어 | place_favorites, 설정의 map_categories·map_keywords |
 | 동네 인증·집 위치 | users.region_verified_at·home_lat·home_lon |
-| 고정 지출 태그 | bill_items.tag: 공과금·통신·구독·관리비·기타 |
+| 고정 지출 태그 | bill_items.tag VARCHAR(24): 기본 5개 + 회원별 사용자 분류 |
+| 개인 카테고리·순서 | user_settings.ledger_category_settings JSON, 4개 scope별 custom/order |
+| 실제 집 주소 | user_settings.home_address, 가입 주소·동네·설문 스냅샷과 구분 |
+| 주거 설문·대출·이자 | housing_surveys·housing_loans·loan_interest_charges, 과거 금액 스냅샷 보존 |
 | 고정·기타 수입 | incomes.income_type: FIXED·OTHER, 수입 분류 4개 추가 |
 | 알림 삭제 | notifications.deleted_at |
 | AI 사용 방법 | guide 주제, ai_messages.card_type에 LINK 추가 |
@@ -49,7 +46,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 ### 기존 DB
 
-기존 최신 44개 표 DB는 [20261102_requirements_hardening.sql](migrations/20261102_requirements_hardening.sql)을 추가 적용합니다. 사전 위반 조회·백업 후 한 번만 적용하며 새 DB에는 실행하지 않습니다. 자세한 안내는 최신 적용·테스트 순서를 따릅니다.
+20261102까지 적용된 DB는 [20261107_life_categories.sql](migrations/20261107_life_categories.sql)을 한 번 적용합니다. 이미 최신 컬럼·타입이 있으면 재실행하지 않습니다. [적용 여부 확인·검증 순서](LIFE_CATEGORIES.md)를 따르세요. 20261102 이전 44개 표 DB는 먼저 [20261102_requirements_hardening.sql](migrations/20261102_requirements_hardening.sql)의 사전 검사를 마친 뒤 순서대로 적용합니다. 테이블 수만으로 적용 버전을 판단하지 않습니다.
 
 기념일 정식 컬럼까지 적용한 41개 테이블 DB는 [주거·대출 마이그레이션](migrations/20261101_housing_and_loan.sql)을 추가 적용합니다. 기념일 중복 파일에 대한 주의사항과 전체 순서는 migrations/README.md를 확인하세요.
 
@@ -92,20 +89,24 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 - 메모 items는 [{text,done}] 배열이며 본문 최대 5000자, 항목 text 최대 100자는 서버가 검사합니다. body를 생략한 POST는 빈 문자열로 저장합니다.
 - home_memo_ids는 **문자열 ID 배열**, 최대 3개이며 순서를 보존합니다. NULL은 자동 선택, []는 명시적으로 선택한 메모 없음입니다. 소유권 검사와 삭제된 메모 ID 정리는 서버 책임입니다.
 - map_categories와 map_keywords는 각각 문자열 배열입니다. NULL이면 API가 기본 4개 분류 및 빈 검색어 배열을 반환합니다. API의 {categories,keywords}로 조합합니다.
-- 프로필 필드를 users에 직접 넣는 API 문서의 제안 대신 **user_profiles**로 분리했습니다. /auth/me에서 LEFT JOIN하고 avatar_file_id를 uploaded_files.storage_url로 변환해 bio·avatarUrl·avatarEmoji·avatarColor를 반환합니다. 사진→캐릭터→기본 표시 우선순위는 화면과 동일합니다.
+- 프로필은 최신 API 문서와 같이 **user_profiles**에 저장합니다. /auth/me에서 LEFT JOIN하고 avatar_file_id를 uploaded_files.storage_url로 변환해 bio·avatarUrl·avatarEmoji·avatarColor를 반환합니다. 사진→캐릭터→기본 표시 우선순위는 화면과 동일합니다.
 - 주소가 바뀌면 집 좌표를 재계산합니다. 동네 인증 위치는 집 위치와 다를 수 있으므로 인증 좌표를 집 위치로 자동 간주하지 않습니다. 동네 변경 시 region_verified_at=NULL, 30일 경과 시 API에서 인증 무효로 판단합니다.
 
 ### 가계부·알림·AI
 
+- 실제 집 주소는 user_settings.home_address, 현재 동네는 region_name/source/lat/lon, 가입 주소는 users.address, 설문 주소/좌표는 housing_surveys 스냅샷입니다. 서로 자동 덮어쓰지 않습니다.
+- ledger_category_settings는 fixed-income/other-income/spend/bill별 {custom,order} 객체입니다. NULL은 기본 목록, 개인 표시색·순서는 이 설정을 우선합니다. ledger_categories는 수입/지출 기록 FK용 공용 사전이므로 다른 회원의 사용자 목록으로 노출하지 않습니다.
+- 월별 납부 true/false는 해당 월의 paid_at 값으로 변환하며 다른 달을 덮어쓰지 않습니다. 항목의 default_amount 수정은 기존 월별 amount를 변경하지 않습니다. 일반 항목 제거는 is_active=0으로 과거 납부 기록을 보존합니다.
+
 - 월세 설정만 만원 단위이며 나머지 금액은 원 단위입니다. 고정 지출의 현재 기본 금액과 월별 기록 금액을 구분합니다.
 - incomes.income_type은 API의 incomeType fixed/other를 FIXED/OTHER로 변환합니다. 월별 수입 VIEW는 두 종류 전체를 합산합니다. 종류별 조회는 incomes를 필터링합니다.
-- 월별 지출 VIEW는 고정 지출의 모든 태그를 기존 계약대로 **공과금** 라벨에 합산합니다. 화면의 공과금 전용 합계는 bill_items.tag='공과금'으로 별도 필터링합니다. VIEW는 미납 금액도 포함합니다.
+- 월별 지출 VIEW는 고정 지출의 모든 태그를 기존 계약대로 **공과금** 라벨에 합산합니다. 회원별 태그 차트는 bill_items.tag로 별도 집계합니다. VIEW는 미납 청구도 포함하므로 실제 납부 합계는 paid_at 조건으로 구분해야 합니다.
 - deleted_at이 있는 알림은 목록·미확인 개수에서 제외하고 재생성하지 않아야 합니다. 홈에서 하루만 숨기는 상태는 기존처럼 브라우저에서 관리합니다.
 - AI LINK 카드의 card_data는 {label,to}입니다. to는 API 문서에 나열된 앱 내부 경로만 허용합니다. 사진은 처리 후 보관하지 않으며 attachment_id는 현재 NULL로 둡니다.
 
 ### 제재·탈퇴·고객센터
 
-- 경고 확인은 seen_at에 저장합니다. 조기 해제는 **원래 ends_at을 유지**하고 revoked_at·revoked_by·revoke_reason을 기록합니다. API 문서의 ends_at 덮어쓰기 제안과 다른 점이며, 유효 정지는 시작·종료 시각과 revoked_at을 함께 검사해야 합니다.
+- 경고 확인은 seen_at에 저장합니다. 조기 해제는 **원래 ends_at을 유지**하고 revoked_at·revoked_by·revoke_reason을 기록합니다. API 문서도 이 해제 규칙을 따르며, 유효 정지는 시작·종료 시각과 revoked_at을 함께 검사해야 합니다.
 - banned_identities는 로그인 ID·닉네임·휴대전화 각각을 정규화한 뒤 서버 비밀키 기반 HMAC-SHA256으로 저장합니다. SQL에서 임의 키나 단순 SHA 해시를 생성하지 않습니다. 차단 키 버전도 저장합니다.
 - 제재 시 차단 행들을 함께 만들고 해제 시 관련 행을 함께 해제해야 합니다. 탈퇴 시 회원·제재 FK만 NULL로 바뀌어 차단 해시는 남습니다. 제재 원문 이력은 회원 삭제 시 CASCADE되지만 활성 차단 식별값은 보존됩니다. 만료 행 정리는 서버 작업입니다.
 - **기존 제재의 HMAC 채우기는 마이그레이션에 포함하지 않았습니다.** 서버 키로 별도 이관한 뒤 탈퇴를 허용해야 기존 정지자의 재가입 차단이 유지됩니다. 닉네임만 같은 다른 사용자의 차단 가능성은 현재 API 요구사항에 따른 정책입니다.
@@ -177,8 +178,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `level` | TINYINT UNSIGNED | 필수 | — | 동네 단계 — 1=시·도, 2=구·군 |
 
 - 기본키: `id`
-- 중복 불가: `parent_id`, `name`
-- 외래키 `parent_id` → `regions`.`id`: RESTRICT
+- UNIQUE `uk_regions_parent_id_name`: `parent_id`, `name`
+- 외래키 `fk_regions_parent_id`: `parent_id` → `regions` (`id`), ON DELETE RESTRICT
 
 ### `region_neighbors` — 이웃 동네
 
@@ -190,8 +191,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `neighbor_region_id` | BIGINT UNSIGNED | 필수 | — | 주변 동네 아이디 — 이웃한 동네 |
 
 - 기본키: `region_id`, `neighbor_region_id`
-- 외래키 `region_id` → `regions`.`id`: CASCADE
-- 외래키 `neighbor_region_id` → `regions`.`id`: CASCADE
+- 외래키 `fk_region_neighbors_region_id`: `region_id` → `regions` (`id`), ON DELETE CASCADE
+- 외래키 `fk_region_neighbors_neighbor_region_id`: `neighbor_region_id` → `regions` (`id`), ON DELETE CASCADE
 
 ### `users` — 회원
 
@@ -221,10 +222,11 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `home_lon` | DECIMAL(9,6) | 허용 | — | 집 위치 경도 — 주소를 좌표로 변환한 값 |
 
 - 기본키: `id`
-- 중복 불가: `login_id`
-- 중복 불가: `email`
-- 중복 불가: `phone`
-- 외래키 `region_id` → `regions`.`id`: SET NULL
+- UNIQUE `uk_users_login_id`: `login_id`
+- UNIQUE `uk_users_email`: `email`
+- UNIQUE `uk_users_phone`: `phone`
+- 외래키 `fk_users_region_id`: `region_id` → `regions` (`id`), ON DELETE SET NULL
+- CHECK: CONSTRAINT `ck_users_home_point` CHECK ((`home_lat` IS NULL AND `home_lon` IS NULL) OR (`home_lat` IS NOT NULL AND `home_lon` IS NOT NULL AND `home_lat` BETWEEN -90 AND 90 AND `home_lon` BETWEEN -180 AND 180))
 
 ### `social_accounts` — 소셜 계정
 
@@ -239,9 +241,9 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 연결 일시 |
 
 - 기본키: `id`
-- 중복 불가: `provider`, `provider_user_id`
-- 중복 불가: `user_id`, `provider`
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- UNIQUE `uk_social_accounts_provider_provider_user_id`: `provider`, `provider_user_id`
+- UNIQUE `uk_social_accounts_user_id_provider`: `user_id`, `provider`
+- 외래키 `fk_social_accounts_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `auth_sessions` — 로그인 세션
 
@@ -260,8 +262,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `revoked_at` | DATETIME | 허용 | — | 로그아웃(무효) 일시 — 비어 있으면 아직 유효 |
 
 - 기본키: `id`
-- 중복 불가: `refresh_token_hash`
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- UNIQUE `uk_auth_sessions_refresh_token_hash`: `refresh_token_hash`
+- 외래키 `fk_auth_sessions_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `phone_verifications` — 휴대전화 인증
 
@@ -282,9 +284,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `consumed_at` | DATETIME | 허용 | — | 사용 일시 — 인증 완료 값을 가입·재설정에 쓴 시각(한 번만 사용) |
 
 - 기본키: `id`
-- 중복 불가: `verified_token_hash`
-- 조회 색인: `phone`, `requested_at`
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- UNIQUE `uk_phone_verifications_verified_token_hash`: `verified_token_hash`
+- 외래키 `fk_phone_verifications_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `password_resets` — 비밀번호 재설정
 
@@ -301,8 +302,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `used_at` | DATETIME | 허용 | — | 사용 일시 — 비어 있으면 아직 안 씀 |
 
 - 기본키: `id`
-- 중복 불가: `token_hash`
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- UNIQUE `uk_password_resets_token_hash`: `token_hash`
+- 외래키 `fk_password_resets_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `terms_documents` — 약관 원문
 
@@ -321,7 +322,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 등록 일시 |
 
 - 기본키: `id`
-- 중복 불가: `doc_type`, `version`
+- UNIQUE `uk_terms_documents_doc_type_version`: `doc_type`, `version`
 
 ### `user_term_agreements` — 약관 동의 이력
 
@@ -335,9 +336,9 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `agreed_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 동의 일시 |
 
 - 기본키: `id`
-- 중복 불가: `user_id`, `terms_id`
-- 외래키 `user_id` → `users`.`id`: CASCADE
-- 외래키 `terms_id` → `terms_documents`.`id`: RESTRICT
+- UNIQUE `uk_user_term_agreements_user_id_terms_id`: `user_id`, `terms_id`
+- 외래키 `fk_user_term_agreements_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_user_term_agreements_terms_id`: `terms_id` → `terms_documents` (`id`), ON DELETE RESTRICT
 
 ### `withdrawal_logs` — 탈퇴 기록
 
@@ -367,13 +368,91 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `home_memo_ids` | JSON | 허용 | — | 홈 메모 ID 문자열 배열 — NULL은 자동, 최대 3개, 배열 순서로 표시 |
 | `map_categories` | JSON | 허용 | — | 지도에 표시할 장소 분류 이름 배열 — NULL은 기본 4개 |
 | `map_keywords` | JSON | 허용 | — | 지도에서 직접 추가한 검색어 배열 — NULL은 없음 |
-| `region_name` | VARCHAR(200) | 허용 | — | 현재 동네 표시명 |
-| `region_source` | ENUM('SURVEY','VERIFIED','MANUAL') | 허용 | — | 선택 출처 |
-| `region_lat` | DECIMAL(9,6) | 허용 | — | 현재 동네 위도 |
-| `region_lon` | DECIMAL(9,6) | 허용 | — | 현재 동네 경도 |
+| `home_address` | VARCHAR(200) | 허용 | — | 현재 실제 거주 상세주소 — 동네 표시명 및 가입 주소와 구분 |
+| `ledger_category_settings` | JSON | 허용 | — | 회원별 scope의 custom 카테고리와 order 배열 — NULL은 기본 목록 |
+| `region_name` | VARCHAR(200) | 허용 | — | 현재 동네 표시명 — regionLocation.region |
+| `region_source` | ENUM('SURVEY','VERIFIED','MANUAL') | 허용 | — | 현재 동네 선택 출처 — regionLocation.source |
+| `region_lat` | DECIMAL(9,6) | 허용 | — | 현재 동네 좌표 위도 — 집 위치와 구분 |
+| `region_lon` | DECIMAL(9,6) | 허용 | — | 현재 동네 좌표 경도 — 출처에 따라 행정구역 중심 또는 인증 위치 |
 
 - 기본키: `user_id`
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- 외래키 `fk_user_settings_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- CHECK: CONSTRAINT `ck_settings_ledger_object` CHECK (`ledger_category_settings` IS NULL OR JSON_TYPE(`ledger_category_settings`) = 'OBJECT')
+- CHECK: CONSTRAINT `ck_settings_region_location` CHECK ((`region_source` IS NULL AND `region_name` IS NULL AND `region_lat` IS NULL AND `region_lon` IS NULL) OR (`region_source` IS NOT NULL AND `region_name` IS NOT NULL AND CHAR_LENGTH(TRIM(`region_name`)) > 0 AND ((`region_lat` IS NULL AND `region_lon` IS NULL) OR (`region_lat` IS NOT NULL AND `region_lon` IS NOT NULL AND `region_lat` BETWEEN -90 AND 90 AND `region_lon` BETWEEN -180 AND 180))))
+- CHECK: CONSTRAINT `ck_settings_json_arrays` CHECK ((`home_memo_ids` IS NULL OR (JSON_TYPE(`home_memo_ids`) = 'ARRAY' AND JSON_LENGTH(`home_memo_ids`) <= 3)) AND (`map_categories` IS NULL OR JSON_TYPE(`map_categories`) = 'ARRAY') AND (`map_keywords` IS NULL OR JSON_TYPE(`map_keywords`) = 'ARRAY'))
+
+### `housing_surveys` — 최신 주거 설문
+
+회원별 최신 주거 설문 — 실제 개인정보를 seed로 넣지 않음
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `user_id` | BIGINT UNSIGNED | 필수 | — | — |
+| `birth_date` | DATE | 필수 | — | 생년월일 — 나이는 조회 시 계산 |
+| `address` | VARCHAR(200) | 필수 | — | 응답 당시 간략한 주소 |
+| `contract_kind` | ENUM('MONTHLY','JEONSE') | 필수 | — | — |
+| `deposit` | BIGINT UNSIGNED | 필수 | 0 | 월세 보증금 — 원 |
+| `rent` | BIGINT UNSIGNED | 필수 | 0 | 월세 — 원 |
+| `management_included` | TINYINT(1) | 필수 | 0 | — |
+| `management_fee` | BIGINT UNSIGNED | 필수 | 0 | 별도 관리비 — 원 |
+| `contract_fee` | BIGINT UNSIGNED | 필수 | 0 | 전세 계약금 — 원, 보증금으로 임의 재해석하지 않음 |
+| `has_loan` | TINYINT(1) | 필수 | 0 | — |
+| `loan_amount` | BIGINT UNSIGNED | 필수 | 0 | 응답 당시 대출 금액 — 원 |
+| `loan_annual_rate` | DECIMAL(5,2) | 허용 | — | — |
+| `loan_payment_day` | TINYINT UNSIGNED | 허용 | — | — |
+| `loan_start_date` | DATE | 허용 | — | — |
+| `income` | BIGINT UNSIGNED | 필수 | 0 | 선택한 기간의 수입 — 원, 가계부 실적과 별개 |
+| `income_period` | ENUM('MONTHLY','ANNUAL') | 필수 | — | — |
+| `answered_at` | DATETIME | 필수 | — | — |
+| `address_lat` | DECIMAL(9,6) | 허용 | — | 설문 주소 검색 당시 행정구역 중심 위도 — addressPoint.lat |
+| `address_lon` | DECIMAL(9,6) | 허용 | — | 설문 주소 검색 당시 행정구역 중심 경도 — addressPoint.lon |
+
+- 기본키: `user_id`
+- 외래키 `fk_housing_surveys_user`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- CHECK: CONSTRAINT `ck_survey_flags` CHECK (`management_included` IN (0,1) AND `has_loan` IN (0,1))
+- CHECK: CONSTRAINT `ck_survey_loan_rate` CHECK (`loan_annual_rate` BETWEEN 0 AND 100)
+- CHECK: CONSTRAINT `ck_survey_loan_day` CHECK (`loan_payment_day` BETWEEN 1 AND 31)
+- CHECK: CONSTRAINT `ck_survey_address_point` CHECK ((`address_lat` IS NULL AND `address_lon` IS NULL) OR (`address_lat` IS NOT NULL AND `address_lon` IS NOT NULL AND `address_lat` BETWEEN -90 AND 90 AND `address_lon` BETWEEN -180 AND 180))
+
+### `housing_loans` — 회원별 전세 대출 설정
+
+회원당 전세 대출 설정 하나 — 중지 후에도 같은 ID 재사용
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `id` | CHAR(36) | 필수 | — | UUID — 프론트 loanId |
+| `user_id` | BIGINT UNSIGNED | 필수 | — | — |
+| `principal` | BIGINT UNSIGNED | 필수 | — | 원금 — 원 |
+| `annual_rate` | DECIMAL(5,2) | 필수 | — | 연 이율 — 퍼센트 |
+| `payment_day` | TINYINT UNSIGNED | 필수 | — | — |
+| `start_date` | DATE | 필수 | — | — |
+| `is_active` | TINYINT(1) | 필수 | 1 | — |
+| `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | — |
+| `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | — / 수정 시 자동 갱신 |
+
+- 기본키: `id`
+- UNIQUE `uk_housing_loans_user`: `user_id`
+- 외래키 `fk_housing_loans_user`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- CHECK: CONSTRAINT `ck_housing_loan_terms` CHECK (`principal` BETWEEN 1 AND 9999990000 AND `annual_rate` BETWEEN 0 AND 100 AND `payment_day` BETWEEN 1 AND 31 AND `is_active` IN (0,1) AND `start_date` BETWEEN '2000-01-01' AND '2100-12-31')
+
+### `loan_interest_charges` — 월별 이자 스냅샷
+
+월별 이자 자동 기록 — 설정 변경 후에도 과거 스냅샷 보존
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `loan_id` | CHAR(36) | 필수 | — | — |
+| `charge_date` | DATE | 필수 | — | 한국 날짜 기준 납부일 — 실제 출금 증빙 아님 |
+| `period_ym` | INT | 허용 | — | YYYYMM — 날짜에서 생성하여 월 불일치 방지 / 생성 컬럼 — 직접 입력 불가 |
+| `principal` | BIGINT UNSIGNED | 필수 | — | 기록 당시 원금 스냅샷 |
+| `annual_rate` | DECIMAL(5,2) | 필수 | — | 기록 당시 금리 스냅샷 |
+| `amount` | BIGINT UNSIGNED | 필수 | — | 기록 당시 월 예상 이자 — 원 |
+| `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | — |
+
+- 기본키: `loan_id`, `charge_date`
+- UNIQUE `uk_loan_interest_month`: `loan_id`, `period_ym`
+- 외래키 `fk_loan_interest_loan`: `loan_id` → `housing_loans` (`id`), ON DELETE CASCADE
+- CHECK: CONSTRAINT `ck_loan_interest_snapshot` CHECK (`principal` BETWEEN 1 AND 9999990000 AND `annual_rate` BETWEEN 0 AND 100 AND `amount` = ROUND(`principal` * `annual_rate` / 1200, 0))
 
 ### `event_categories` — 일정 카테고리
 
@@ -391,9 +470,9 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 수정 일시 / 수정 시 자동 갱신 |
 
 - 기본키: `id`
-- 중복 불가: `user_id`, `name`
-- 중복 불가: `user_id`, `system_key`
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- UNIQUE `uk_event_categories_user_name`: `user_id`, `name`
+- UNIQUE `uk_event_categories_user_system`: `user_id`, `system_key`
+- 외래키 `fk_event_categories_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `event_presets` — 빠른 일정 항목
 
@@ -411,9 +490,9 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 수정 일시 / 수정 시 자동 갱신 |
 
 - 기본키: `id`
-- 중복 불가: `category_id`, `title`
-- 외래키 `user_id` → `users`.`id`: CASCADE
-- 외래키 `category_id` → `event_categories`.`id`: CASCADE
+- UNIQUE `uk_event_presets_category_title`: `category_id`, `title`
+- 외래키 `fk_event_presets_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_event_presets_category_id`: `category_id` → `event_categories` (`id`), ON DELETE CASCADE
 
 ### `events` — 일정 및 할 일
 
@@ -432,15 +511,13 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `category_id` | BIGINT UNSIGNED | 허용 | — | 일정 카테고리 번호 — NULL은 미분류 |
 | `is_done` | TINYINT(1) | 필수 | 0 | 할 일 완료 여부 |
 | `done_at` | DATETIME | 허용 | — | 완료 일시 — 완료 해제 시 NULL |
-| `is_anniversary` | TINYINT(1) | 필수 | 0 | 기념일 여부 — API anniv |
-| `repeat_yearly` | TINYINT(1) | 필수 | 0 | 매년 반복 여부 — API yearly |
+| `is_anniversary` | TINYINT(1) | 필수 | 0 | 기념일 여부 — API anniv, 할 일 완료 및 남은 일 집계에서 제외 |
+| `repeat_yearly` | TINYINT(1) | 필수 | 0 | 매년 반복 여부 — API yearly, 기념일 원본 한 행만 저장 |
 
-- CHECK `ck_events_anniversary_flags`: 두 값은 0/1이며, 반복이면 기념일이어야 합니다.
-
-- 외래키 `category_id` → `event_categories`.`id`: SET NULL
 - 기본키: `id`
-- 조회 색인: `user_id`, `event_date`
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- 외래키 `fk_events_category_id`: `category_id` → `event_categories` (`id`), ON DELETE SET NULL
+- 외래키 `fk_events_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- CHECK: CONSTRAINT `ck_events_anniversary_flags` CHECK (`is_anniversary` IN (0,1) AND `repeat_yearly` IN (0,1) AND (`repeat_yearly` = 0 OR `is_anniversary` = 1))
 
 ### `memos` — 메모와 체크리스트
 
@@ -460,9 +537,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 수정 일시 / 수정 시 자동 갱신 |
 
 - 기본키: `id`
-- 조회 색인: `user_id`, `is_pinned`, `updated_at`
-- 외래키 `user_id` → `users`.`id`: CASCADE
-- 검사: CONSTRAINT `ck_memos_items_array` CHECK (JSON_TYPE(`items`) = 'ARRAY')
+- 외래키 `fk_memos_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- CHECK: CONSTRAINT `ck_memos_items_array` CHECK (JSON_TYPE(`items`) = 'ARRAY')
 
 ### `bill_items` — 고정 지출 항목
 
@@ -476,10 +552,10 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `default_amount` | BIGINT UNSIGNED | 필수 | 0 | 평소 금액 — 원 단위 |
 | `is_active` | TINYINT(1) | 필수 | 1 | 사용 여부 — 해지한 항목은 0 |
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 등록 일시 |
-| `tag` | ENUM('공과금','통신','구독','관리비','기타') | 필수 | '공과금' | 고정 지출 태그 |
+| `tag` | VARCHAR(24) | 필수 | '공과금' | 회원별 고정 지출 카테고리 이름 |
 
 - 기본키: `id`
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- 외래키 `fk_bill_items_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `bill_payments` — 월별 고정 지출
 
@@ -494,8 +570,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `paid_at` | DATETIME | 허용 | — | 납부 일시 — 비어 있으면 미납 |
 
 - 기본키: `id`
-- 중복 불가: `bill_item_id`, `period_ym`
-- 외래키 `bill_item_id` → `bill_items`.`id`: CASCADE
+- UNIQUE `uk_bill_payments_bill_item_id_period_ym`: `bill_item_id`, `period_ym`
+- 외래키 `fk_bill_payments_bill_item_id`: `bill_item_id` → `bill_items` (`id`), ON DELETE CASCADE
 
 ### `rent_payments` — 월별 월세
 
@@ -510,8 +586,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `paid_at` | DATETIME | 허용 | — | 납부 일시 — 비어 있으면 미납 |
 
 - 기본키: `id`
-- 중복 불가: `user_id`, `period_ym`
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- UNIQUE `uk_rent_payments_user_id_period_ym`: `user_id`, `period_ym`
+- 외래키 `fk_rent_payments_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `notifications` — 알림
 
@@ -532,8 +608,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `deleted_at` | DATETIME | 허용 | — | 사용자가 삭제한 시각 — 목록과 미확인 수에서 제외 |
 
 - 기본키: `id`
-- 조회 색인: `user_id`, `read_at`
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- 외래키 `fk_notifications_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `ledger_categories` — 가계부 분류
 
@@ -543,12 +618,12 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 |---|---|---|---|---|
 | `id` | BIGINT UNSIGNED | 필수 | — | 분류 아이디 — 자동 증가 / 자동 번호 |
 | `kind` | ENUM('INCOME','EXPENSE') | 필수 | — | 분류 구분 — 수입 / 기타 지출 |
-| `name` | VARCHAR(20) | 필수 | — | 분류 이름 — 월급, 식비 등 |
-| `color` | VARCHAR(20) | 필수 | — | 표시 색 — 예: #1fb5a3 |
+| `name` | VARCHAR(24) | 필수 | — | 분류 이름 — 회원별 표시 목록은 설정 JSON에서 관리 |
+| `color` | VARCHAR(32) | 필수 | — | 기본 표시 색 — 회원별 색은 설정 JSON 우선 |
 | `sort_order` | TINYINT UNSIGNED | 필수 | 0 | 정렬 순서 |
 
 - 기본키: `id`
-- 중복 불가: `kind`, `name`
+- UNIQUE `uk_ledger_categories_kind_name`: `kind`, `name`
 
 ### `incomes` — 수입
 
@@ -567,9 +642,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `income_type` | ENUM('FIXED','OTHER') | 필수 | 'OTHER' | 고정 수입 또는 기타 수입 — API incomeType의 fixed/other와 변환 |
 
 - 기본키: `id`
-- 조회 색인: `user_id`, `income_date`
-- 외래키 `user_id` → `users`.`id`: CASCADE
-- 외래키 `category_id` → `ledger_categories`.`id`: RESTRICT
+- 외래키 `fk_incomes_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_incomes_category_id`: `category_id` → `ledger_categories` (`id`), ON DELETE RESTRICT
 
 ### `expenses` — 기타 지출
 
@@ -587,9 +661,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 수정 일시 / 수정 시 자동 갱신 |
 
 - 기본키: `id`
-- 조회 색인: `user_id`, `expense_date`
-- 외래키 `user_id` → `users`.`id`: CASCADE
-- 외래키 `category_id` → `ledger_categories`.`id`: RESTRICT
+- 외래키 `fk_expenses_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_expenses_category_id`: `category_id` → `ledger_categories` (`id`), ON DELETE RESTRICT
 
 ### `posts` — 게시글
 
@@ -612,9 +685,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `deleted_at` | DATETIME | 허용 | — | 삭제 일시 — 소프트 삭제 |
 
 - 기본키: `id`
-- 조회 색인: `region_id`, `category`, `created_at`
-- 외래키 `user_id` → `users`.`id`: CASCADE
-- 외래키 `region_id` → `regions`.`id`: RESTRICT
+- 외래키 `fk_posts_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_posts_region_id`: `region_id` → `regions` (`id`), ON DELETE RESTRICT
 
 ### `post_likes` — 좋아요
 
@@ -627,8 +699,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 좋아요 일시 |
 
 - 기본키: `post_id`, `user_id`
-- 외래키 `post_id` → `posts`.`id`: CASCADE
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- 외래키 `fk_post_likes_post_id`: `post_id` → `posts` (`id`), ON DELETE CASCADE
+- 외래키 `fk_post_likes_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `comments` — 댓글
 
@@ -647,10 +719,9 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `deleted_at` | DATETIME | 허용 | — | 삭제 일시 — 소프트 삭제 |
 
 - 기본키: `id`
-- 조회 색인: `post_id`, `created_at`
-- 외래키 `post_id` → `posts`.`id`: CASCADE
-- 외래키 `user_id` → `users`.`id`: CASCADE
-- 외래키 `parent_id` → `comments`.`id`: CASCADE
+- 외래키 `fk_comments_post_id`: `post_id` → `posts` (`id`), ON DELETE CASCADE
+- 외래키 `fk_comments_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_comments_parent_id`: `parent_id` → `comments` (`id`), ON DELETE CASCADE
 
 ### `reports` — 신고
 
@@ -668,13 +739,13 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 신고 일시 |
 | `handled_by` | BIGINT UNSIGNED | 허용 | — | 처리한 운영자 아이디 |
 | `handled_at` | DATETIME | 허용 | — | 처리 일시 |
-| `target_author_snapshot` | VARCHAR(12) | 허용 | — | 신고 당시 작성자 표시명 |
-| `target_text_snapshot` | VARCHAR(200) | 허용 | — | 신고 당시 제목/댓글 내용 |
+| `target_author_snapshot` | VARCHAR(12) | 허용 | — | 신고 당시 작성자 표시명 — 삭제 후 표시용, 권한 근거로 사용 금지 |
+| `target_text_snapshot` | VARCHAR(200) | 허용 | — | 신고 당시 글 제목 또는 댓글 내용 — 서버가 실제 대상에서 복사 |
 
 - 기본키: `id`
-- 조회 색인: `target_type`, `target_id`
-- 외래키 `reporter_id` → `users`.`id`: CASCADE
-- 외래키 `handled_by` → `users`.`id`: SET NULL
+- UNIQUE `uk_reports_reporter_target`: `reporter_id`, `target_type`, `target_id`
+- 외래키 `fk_reports_reporter_id`: `reporter_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_reports_handled_by`: `handled_by` → `users` (`id`), ON DELETE SET NULL
 
 ### `user_sanctions` — 경고 및 정지
 
@@ -696,11 +767,11 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `revoked_by` | BIGINT UNSIGNED | 허용 | — | 해제한 관리자 번호 |
 | `revoke_reason` | VARCHAR(200) | 허용 | — | 해제 사유 |
 
-- 외래키 `revoked_by` → `users`.`id`: SET NULL
 - 기본키: `id`
-- 외래키 `user_id` → `users`.`id`: CASCADE
-- 외래키 `report_id` → `reports`.`id`: SET NULL
-- 외래키 `created_by` → `users`.`id`: SET NULL
+- 외래키 `fk_user_sanctions_revoked_by`: `revoked_by` → `users` (`id`), ON DELETE SET NULL
+- 외래키 `fk_user_sanctions_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_user_sanctions_report_id`: `report_id` → `reports` (`id`), ON DELETE SET NULL
+- 외래키 `fk_user_sanctions_created_by`: `created_by` → `users` (`id`), ON DELETE SET NULL
 
 ### `banned_identities` — 재가입 차단 식별값
 
@@ -720,10 +791,9 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 등록 일시 |
 
 - 기본키: `id`
-- 조회 색인: `identity_type`, `identity_hash`, `hash_key_version`
-- 중복 불가: `sanction_id`, `identity_type`
-- 외래키 `user_id` → `users`.`id`: SET NULL
-- 외래키 `sanction_id` → `user_sanctions`.`id`: SET NULL
+- UNIQUE `uk_banned_sanction_identity`: `sanction_id`, `identity_type`
+- 외래키 `fk_banned_identities_user_id`: `user_id` → `users` (`id`), ON DELETE SET NULL
+- 외래키 `fk_banned_identities_sanction_id`: `sanction_id` → `user_sanctions` (`id`), ON DELETE SET NULL
 
 ### `support_inquiries` — 고객센터 문의 및 답변
 
@@ -742,10 +812,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 등록 일시 |
 
 - 기본키: `id`
-- 조회 색인: `user_id`, `created_at`
-- 조회 색인: `answered_at`, `created_at`
-- 외래키 `user_id` → `users`.`id`: CASCADE
-- 외래키 `answered_by` → `users`.`id`: SET NULL
+- 외래키 `fk_support_inquiries_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_support_answered_by`: `answered_by` → `users` (`id`), ON DELETE SET NULL
 
 ### `ai_topics` — AI 주제
 
@@ -762,7 +830,7 @@ AI 분야: AI 화면의 분야 카드와 홈 AI 대화 칩의 목록(자유 질�
 | `is_active` | TINYINT(1) | 필수 | 1 | 사용 여부 |
 
 - 기본키: `id`
-- 중복 불가: `code`
+- UNIQUE `uk_ai_topics_code`: `code`
 
 ### `uploaded_files` — 업로드 파일
 
@@ -780,7 +848,7 @@ AI 분야: AI 화면의 분야 카드와 홈 AI 대화 칩의 목록(자유 질�
 | `deleted_at` | DATETIME | 허용 | — | 삭제 일시 |
 
 - 기본키: `id`
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- 외래키 `fk_uploaded_files_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `user_profiles` — 프로필
 
@@ -796,8 +864,8 @@ AI 분야: AI 화면의 분야 카드와 홈 AI 대화 칩의 목록(자유 질�
 | `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 수정 일시 / 수정 시 자동 갱신 |
 
 - 기본키: `user_id`
-- 외래키 `user_id` → `users`.`id`: CASCADE
-- 외래키 `avatar_file_id` → `uploaded_files`.`id`: SET NULL
+- 외래키 `fk_user_profiles_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_user_profiles_avatar_file_id`: `avatar_file_id` → `uploaded_files` (`id`), ON DELETE SET NULL
 
 ### `post_attachments` — 게시글 첨부 연결
 
@@ -810,10 +878,10 @@ AI 분야: AI 화면의 분야 카드와 홈 AI 대화 칩의 목록(자유 질�
 | `sort_order` | TINYINT UNSIGNED | 필수 | 0 | 게시글 안의 표시 순서 — 0부터 |
 
 - 기본키: `post_id`, `file_id`
-- 중복 불가: `file_id`
-- 중복 불가: `post_id`, `sort_order`
-- 외래키 `post_id` → `posts`.`id`: CASCADE
-- 외래키 `file_id` → `uploaded_files`.`id`: CASCADE
+- UNIQUE `uk_post_attachments_file_id`: `file_id`
+- UNIQUE `uk_post_attachments_post_sort`: `post_id`, `sort_order`
+- 외래키 `fk_post_attachments_post_id`: `post_id` → `posts` (`id`), ON DELETE CASCADE
+- 외래키 `fk_post_attachments_file_id`: `file_id` → `uploaded_files` (`id`), ON DELETE CASCADE
 
 ### `ai_conversations` — AI 대화방
 
@@ -830,9 +898,8 @@ AI 대화: AI와의 대화 한 건(대화방).
 | `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 마지막 대화 일시 / 수정 시 자동 갱신 |
 
 - 기본키: `id`
-- 조회 색인: `user_id`, `updated_at`
-- 외래키 `user_id` → `users`.`id`: CASCADE
-- 외래키 `topic_id` → `ai_topics`.`id`: SET NULL
+- 외래키 `fk_ai_conversations_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_ai_conversations_topic_id`: `topic_id` → `ai_topics` (`id`), ON DELETE SET NULL
 
 ### `ai_messages` — AI 메시지
 
@@ -850,9 +917,8 @@ AI 메시지: 대화 안의 말풍선 한 개.
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 작성 일시 |
 
 - 기본키: `id`
-- 조회 색인: `conversation_id`, `created_at`
-- 외래키 `conversation_id` → `ai_conversations`.`id`: CASCADE
-- 외래키 `attachment_id` → `uploaded_files`.`id`: SET NULL
+- 외래키 `fk_ai_messages_conversation_id`: `conversation_id` → `ai_conversations` (`id`), ON DELETE CASCADE
+- 외래키 `fk_ai_messages_attachment_id`: `attachment_id` → `uploaded_files` (`id`), ON DELETE SET NULL
 
 ### `ai_usage_daily` — AI 하루 사용량
 
@@ -865,7 +931,7 @@ AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 
 | `question_count` | INT UNSIGNED | 필수 | 0 | 하루 질문 횟수 |
 
 - 기본키: `user_id`, `usage_date`
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- 외래키 `fk_ai_usage_daily_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `trash_schedules` — 쓰레기 배출 요일표
 
@@ -880,8 +946,9 @@ AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 
 | `description` | VARCHAR(100) | 필수 | — | 배출 안내 — 예: 저녁 6시 ~ 자정, 종량제 봉투 사용 |
 
 - 기본키: `id`
-- 중복 불가: `region_id`, `weekday`, `waste_type`
-- 외래키 `region_id` → `regions`.`id`: CASCADE
+- UNIQUE `uk_trash_schedules_region_weekday_type`: `region_id`, `weekday`, `waste_type`
+- 외래키 `fk_trash_schedules_region_id`: `region_id` → `regions` (`id`), ON DELETE CASCADE
+- CHECK: CONSTRAINT `ck_trash_weekday` CHECK (`weekday` BETWEEN 0 AND 6)
 
 ### `place_categories` — 장소 분류
 
@@ -895,7 +962,7 @@ AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 
 | `icon` | VARCHAR(20) | 필수 | '📍' | 장소 분류 그림 |
 
 - 기본키: `id`
-- 중복 불가: `name`
+- UNIQUE `uk_place_categories_name`: `name`
 
 ### `places` — 장소
 
@@ -920,9 +987,9 @@ AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 
 | `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 정보 갱신 일시 / 수정 시 자동 갱신 |
 
 - 기본키: `id`
-- 조회 색인: `region_id`, `category_id`
-- 외래키 `region_id` → `regions`.`id`: RESTRICT
-- 외래키 `category_id` → `place_categories`.`id`: RESTRICT
+- 외래키 `fk_places_region_id`: `region_id` → `regions` (`id`), ON DELETE RESTRICT
+- 외래키 `fk_places_category_id`: `category_id` → `place_categories` (`id`), ON DELETE RESTRICT
+- CHECK: CONSTRAINT `ck_places_point` CHECK (`lat` BETWEEN -90 AND 90 AND `lon` BETWEEN -180 AND 180)
 
 ### `place_favorites` — 장소 즐겨찾기
 
@@ -935,8 +1002,8 @@ AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 등록 일시 |
 
 - 기본키: `user_id`, `place_id`
-- 외래키 `user_id` → `users`.`id`: CASCADE
-- 외래키 `place_id` → `places`.`id`: CASCADE
+- 외래키 `fk_place_favorites_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_place_favorites_place_id`: `place_id` → `places` (`id`), ON DELETE CASCADE
 
 ### `place_reviews` — 장소 리뷰
 
@@ -952,16 +1019,17 @@ AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 작성 일시 |
 
 - 기본키: `id`
-- 중복 불가: `place_id`, `user_id`
-- 외래키 `place_id` → `places`.`id`: CASCADE
-- 외래키 `user_id` → `users`.`id`: CASCADE
+- UNIQUE `uk_place_reviews_place_id_user_id`: `place_id`, `user_id`
+- 외래키 `fk_place_reviews_place_id`: `place_id` → `places` (`id`), ON DELETE CASCADE
+- 외래키 `fk_place_reviews_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- CHECK: CONSTRAINT `ck_place_review_rating` CHECK (`rating` BETWEEN 1 AND 5)
 
 ## 6. VIEW와 기본 데이터
 
 | VIEW | 반환값 | 의미 |
 |---|---|---|
 | v_monthly_income | user_id, period_ym, total_amount | 회원·월별 전체 수입 합계 |
-| v_monthly_spend_breakdown | user_id, period_ym, label, amount | 월세 + 고정 지출 전체 + 기타 지출 분류별 합계 |
+| v_monthly_spend_breakdown | user_id, period_ym, label, amount | 월세 + 고정 지출 전체 + 기타 지출 + 기록된 전세 대출 이자; 미납 청구 포함 |
 
 두 VIEW는 기존 API 모양을 유지합니다. SUM의 실제 타입은 MySQL 식에서 결정됩니다. 월별 월세·고정 지출 행은 서버가 생성해야 하며 같은 월의 중복은 UNIQUE 키로 막습니다. expenses에 월세·고정 지출을 중복 저장하지 않습니다.
 
