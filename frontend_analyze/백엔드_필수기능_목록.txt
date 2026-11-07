@@ -1,5 +1,5 @@
 [2026-11-07 프로젝트 대조]
-현재 API 계약/제안은 ../frontend/API.md(사람용)와 ../frontend/openapi.yaml(Swagger용, 같은 내용), DB 저장 계약은 ../db/README.md가 기준입니다.
+현재 API 계약/제안은 ../frontend/API.md(사람용)와 ../backend/openapi.yaml(Swagger용, 같은 내용), DB 저장 계약은 ../db/README.md가 기준입니다.
 DB는 44테이블·358컬럼·15CHECK이며 MySQL 9.6.0 검증 결과가 있습니다. 백엔드는 아직 구현되지 않았습니다.
 인증 실제 요청 코드와 브라우저 전용 기능을 구분하며 서버 연결 완료로 해석하지 않습니다.
 
@@ -33,7 +33,7 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 [ ] A 비밀 키는 환경변수/비밀 저장소로 관리하고 (깃에 올리지 않음)
 [ ] B 목록 응답 규칙: ?page=0&size=20 -> { items: [...], hasNext: true }
 [ ] B 파일 업로드 저장소 (로컬 폴더 -> 나중에 R2/S3)
-[ ] B springdoc 이 만든 명세와 frontend/openapi.yaml 비교 (Contract Testing)
+[ ] B springdoc 이 만든 명세와 backend/openapi.yaml 비교 (Contract Testing)
 [ ] C 요청 제한(Rate limit), 로그, 오류 감시(Sentry)
 
 
@@ -249,7 +249,7 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 
 2026-11-07 (2차) 업데이트 반영
 --------------------------------------------------------------------
-- frontend/openapi.yaml 추가: API.md 를 Swagger(OpenAPI 3.0.3)로 옮긴 파일. 주소 81개 · API(메서드) 115개 · 태그 13개.
+- backend/openapi.yaml 추가: API.md 를 Swagger(OpenAPI 3.0.3)로 옮긴 파일. 주소 81개 · API(메서드) 115개 · 태그 13개.
   Swagger Editor/UI 에 Import 해서 검토하고, 서버가 생기면 springdoc 이 만든 명세와 비교(Contract Testing)한다.
 - DELETE 요청에는 본문(body)을 넣지 않는다: 알림 삭제는 DELETE /api/notifications?ids=1,2,
   관리자 글/댓글 삭제는 DELETE /api/admin/posts/{id}?reason= · /api/admin/comments/{id}?reason= (사유는 쿼리).
