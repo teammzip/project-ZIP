@@ -1,0 +1,1933 @@
+openapi: 3.0.3
+info:
+  title: ZIP 자취생 생활 도우미 API
+  version: 0.1.0
+  description: |
+    프론트(React)와 백엔드(Spring Boot)가 주고받을 API 약속이에요. 사람이 읽는 설명은 `frontend/API.md`, DB 기준은 `db/schema.sql`이에요.
+    Swagger(Studio · UI)에 이 파일을 Import 해서 검토하고, 서버가 생기면 springdoc 이 만든 명세와 비교(Contract Testing)해요.
+
+    **공통 규칙**
+    - 주소는 모두 `/api`로 시작. 로그인 후 요청에는 `Authorization: Bearer <accessToken>`
+    - JSON 키는 camelCase, id 는 **문자열**(`"12"`), 날짜 `2026-10-24` · 시각 `18:00` · 연월 `2026-10` · 일시 ISO 8601
+    - 금액은 **원 단위 정수**. 단 하나, 설정의 월세(`rent`)만 **만원 단위**
+    - 실패는 `{ "message": "…" }` (화면에 그대로 보여요). 401 = 토큰 없음/만료, 403 = 권한 없음(정지 · 관리자 전용 · 동네 미인증)
+    - 늘어나는 목록은 `?page=0&size=20` → `{ items: [...], hasNext }`
+    - 개인 데이터는 토큰 사용자 것만. 남의 id 로 요청하면 404
+servers:
+  - url: http://localhost:8080
+    description: 로컬 백엔드 (프론트 개발 서버는 /api 를 여기로 넘김)
+security:
+  - bearerAuth: []
+tags:
+  - name: 인증 · 내 정보
+  - name: 설정 · 동네
+  - name: 일정 · 쓰레기 배출
+  - name: 월세 · 고정 지출
+  - name: 가계부
+  - name: 알림
+  - name: 커뮤니티 · 첨부 · 신고
+  - name: AI
+  - name: 지도
+  - name: 약관
+  - name: 관리자 · 이용 정지
+  - name: 메모
+  - name: 고객센터
+
+paths:
+  # ───────────────────────── 1. 인증 · 내 정보 ─────────────────────────
+  /api/auth/signup:
+    post:
+      tags: [인증 · 내 정보]
+      summary: 회원가입
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignupRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Auth' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { description: 아이디 · 이메일 · 휴대전화 중복, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/auth/login:
+    post:
+      tags: [인증 · 내 정보]
+      summary: 로그인 (아이디 또는 이메일)
+      description: 성공하면 `users.last_login_at` 갱신. 처음 로그인이면 `user.firstLogin = true` → 프론트가 설문(/onboarding)으로 보냄
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [loginId, password]
+              properties:
+                loginId: { type: string, example: zipdemo }
+                password: { type: string, format: password, example: zip12345 }
+                remember: { type: boolean, description: 로그인 유지 }
+      responses:
+        '200': { $ref: '#/components/responses/Auth' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { description: 이용 정지된 계정, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/auth/logout:
+    post:
+      tags: [인증 · 내 정보]
+      summary: 로그아웃 (세션 만료 처리)
+      responses:
+        '204': { description: 완료 }
+  /api/auth/refresh:
+    post:
+      tags: [인증 · 내 정보]
+      summary: (선택) 토큰 재발급 — 재발급 토큰은 httpOnly 쿠키
+      security: []
+      responses:
+        '200':
+          description: 새 토큰
+          content: { application/json: { schema: { type: object, properties: { accessToken: { type: string } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/auth/me:
+    get:
+      tags: [인증 · 내 정보]
+      summary: 내 정보
+      responses:
+        '200': { description: 내 정보, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [인증 · 내 정보]
+      summary: 내 정보 수정 (닉네임 · 프로필 꾸미기 · 소셜 첫 가입 동의)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateMeRequest' }
+      responses:
+        '200': { description: 바뀐 내 정보, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+    delete:
+      tags: [인증 · 내 정보]
+      summary: 회원 탈퇴 (개인 데이터 CASCADE 삭제, withdrawal_logs 기록)
+      responses:
+        '204': { description: 탈퇴 완료 }
+  /api/auth/me/password:
+    patch:
+      tags: [인증 · 내 정보]
+      summary: 비밀번호 변경
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string, format: password }
+                newPassword: { type: string, format: password, minLength: 8, maxLength: 16 }
+      responses:
+        '204': { description: 변경 완료 }
+        '400': { description: 현재 비밀번호가 틀림, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/auth/phone/send:
+    post:
+      tags: [인증 · 내 정보]
+      summary: 휴대전화 인증번호 보내기 (3분 유효)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, purpose]
+              properties:
+                phone: { type: string, example: 010-1234-5678 }
+                purpose: { $ref: '#/components/schemas/PhonePurpose' }
+      responses:
+        '204': { description: 문자 발송 }
+  /api/auth/phone/verify:
+    post:
+      tags: [인증 · 내 정보]
+      summary: 인증번호 확인 → 한 번만 쓰는 verificationToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, code, purpose]
+              properties:
+                phone: { type: string }
+                code: { type: string, pattern: '^\d{6}$', example: '123456' }
+                purpose: { $ref: '#/components/schemas/PhonePurpose' }
+      responses:
+        '200':
+          description: 확인 완료
+          content: { application/json: { schema: { type: object, properties: { verificationToken: { type: string } } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /api/auth/find-id:
+    post:
+      tags: [인증 · 내 정보]
+      summary: 아이디 찾기
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nickname, phone, phoneVerificationToken]
+              properties:
+                nickname: { type: string }
+                phone: { type: string }
+                phoneVerificationToken: { type: string }
+      responses:
+        '200':
+          description: 찾은 아이디
+          content: { application/json: { schema: { type: object, properties: { username: { type: string } } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/auth/password-reset/verify:
+    post:
+      tags: [인증 · 내 정보]
+      summary: 비밀번호 찾기 — 본인 확인 → resetToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, phone, phoneVerificationToken]
+              properties:
+                username: { type: string }
+                phone: { type: string }
+                phoneVerificationToken: { type: string }
+      responses:
+        '200':
+          description: 확인 완료
+          content: { application/json: { schema: { type: object, properties: { resetToken: { type: string } } } } }
+  /api/auth/password-reset:
+    post:
+      tags: [인증 · 내 정보]
+      summary: 새 비밀번호 저장
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resetToken, newPassword]
+              properties:
+                resetToken: { type: string }
+                newPassword: { type: string, format: password }
+      responses:
+        '204': { description: 저장 완료 }
+  /api/oauth2/authorization/{provider}:
+    get:
+      tags: [인증 · 내 정보]
+      summary: 소셜 로그인 시작 (페이지 이동)
+      description: 끝나면 프론트 `/oauth/callback?token=<accessToken>` 으로 돌려보내기
+      security: []
+      parameters:
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [kakao, google, naver] } }
+      responses:
+        '302': { description: 소셜 로그인 화면으로 이동 }
+  /api/me/warnings/seen:
+    post:
+      tags: [인증 · 내 정보]
+      summary: 경고 창 "확인했어요" (user_sanctions.seen_at)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IdList' }
+      responses:
+        '204': { description: 기록 완료 }
+
+  # ───────────────────────── 2. 설정 · 동네 ─────────────────────────
+  /api/me/settings:
+    get:
+      tags: [설정 · 동네]
+      summary: 생활 설정 (동네 · 월세 · 계약 · 알림 · 집 주소)
+      responses:
+        '200': { description: 설정, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
+    put:
+      tags: [설정 · 동네]
+      summary: 생활 설정 저장 (동네를 바꾸면 동네 인증이 풀림)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Settings' }
+      responses:
+        '200': { description: 저장된 설정, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
+  /api/me/housing-survey:
+    get:
+      tags: [설정 · 동네]
+      summary: (제안) 처음 로그인 설문 불러오기 — 없으면 null
+      description: DB `housing_surveys`. firstLogin 은 첫 로그인 여부일 뿐이라, 설문을 마쳤는지는 이 응답으로 판단해요
+      responses:
+        '200': { description: 설문 또는 null, content: { application/json: { schema: { $ref: '#/components/schemas/HousingSurvey' } } } }
+    put:
+      tags: [설정 · 동네]
+      summary: (제안) 처음 로그인 설문 저장
+      description: 설문 저장 · 월세 설정 · 관리비 항목 · 동네 출처(SURVEY) · 동네 인증 초기화를 한 트랜잭션으로 처리. 설문 금액은 모두 원 단위 (설정 rent 는 ÷10000 해서 맞춤)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HousingSurveyInput' }
+      responses:
+        '200': { description: 저장된 설문, content: { application/json: { schema: { $ref: '#/components/schemas/HousingSurvey' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /api/regions:
+    get:
+      tags: [설정 · 동네]
+      summary: 동네(행정구역) 목록
+      security: []
+      responses:
+        '200':
+          description: 동네 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    name: { type: string, example: 마포구 }
+                    parentId: { type: string, nullable: true }
+                    level: { type: integer }
+  /api/regions/{id}/neighbors:
+    get:
+      tags: [설정 · 동네]
+      summary: 주변 동네 (커뮤니티 '주변 동네')
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: 주변 동네, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/RegionRef' } } } } }
+  /api/me/region-verify:
+    post:
+      tags: [설정 · 동네]
+      summary: 동네 인증 (지금 GPS 좌표의 동네로, 30일 유지)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lat, lon]
+              properties:
+                lat: { type: number, example: 37.5566 }
+                lon: { type: number, example: 126.9236 }
+      responses:
+        '200':
+          description: 인증 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  region: { $ref: '#/components/schemas/RegionRef' }
+                  verifiedAt: { type: string, format: date-time }
+                  expiresAt: { type: string, format: date-time }
+
+  # ───────────────────────── 3. 일정 · 쓰레기 배출 ─────────────────────────
+  /api/events:
+    get:
+      tags: [일정 · 쓰레기 배출]
+      summary: 기간 안의 일정 (달력 · 그날 일정 창)
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date }, example: '2026-10-01' }
+        - { name: to, in: query, required: true, schema: { type: string, format: date }, example: '2026-10-31' }
+      responses:
+        '200': { description: 일정 목록, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Event' } } } } }
+    post:
+      tags: [일정 · 쓰레기 배출]
+      summary: 일정 추가 (기념일은 anniv, 매년 반복은 yearly)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EventInput' }
+      responses:
+        '200': { description: 추가된 일정, content: { application/json: { schema: { $ref: '#/components/schemas/Event' } } } }
+  /api/events/search:
+    get:
+      tags: [일정 · 쓰레기 배출]
+      summary: 일정 검색
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string }, example: 월세 }
+      responses:
+        '200': { description: 찾은 일정, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Event' } } } } }
+  /api/events/{id}:
+    patch:
+      tags: [일정 · 쓰레기 배출]
+      summary: 일정 수정 (바꿀 칸만)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EventInput' }
+      responses:
+        '200': { description: 바뀐 일정, content: { application/json: { schema: { $ref: '#/components/schemas/Event' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [일정 · 쓰레기 배출]
+      summary: 일정 삭제
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: 삭제 완료 }
+  /api/events/{id}/done:
+    patch:
+      tags: [일정 · 쓰레기 배출]
+      summary: 할 일 완료 체크
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [done], properties: { done: { type: boolean } } }
+      responses:
+        '200': { description: 바뀐 일정, content: { application/json: { schema: { $ref: '#/components/schemas/Event' } } } }
+  /api/trash-schedules:
+    get:
+      tags: [일정 · 쓰레기 배출]
+      summary: 동네의 요일별 쓰레기 배출표 (일정으로 저장하지 않고 달력에 그림)
+      parameters:
+        - { name: regionId, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 배출표
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    weekday: { type: integer, minimum: 0, maximum: 6, description: 0=일 ~ 6=토 }
+                    wasteType: { type: string, enum: [GENERAL, RECYCLE, FOOD] }
+                    description: { type: string, example: '저녁 6시 ~ 자정, 종량제 봉투 사용' }
+  /api/event-categories:
+    get:
+      tags: [일정 · 쓰레기 배출]
+      summary: 일정 카테고리 (기본 5개 + 내가 만든 것 + 미분류)
+      responses:
+        '200': { description: 카테고리, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/EventCategory' } } } } }
+    post:
+      tags: [일정 · 쓰레기 배출]
+      summary: 카테고리 추가
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/NameInput' } } }
+      responses:
+        '200': { description: 추가된 카테고리, content: { application/json: { schema: { $ref: '#/components/schemas/EventCategory' } } } }
+  /api/event-categories/{id}:
+    patch:
+      tags: [일정 · 쓰레기 배출]
+      summary: 카테고리 이름 변경 (그 카테고리의 일정 · 항목도 같이)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/NameInput' } } }
+      responses:
+        '204': { description: 변경 완료 }
+    delete:
+      tags: [일정 · 쓰레기 배출]
+      summary: 카테고리 삭제 (그 카테고리의 일정 · 항목은 미분류로)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: 삭제 완료 }
+  /api/event-presets:
+    get:
+      tags: [일정 · 쓰레기 배출]
+      summary: 내가 만든 항목 버튼
+      responses:
+        '200': { description: 항목 버튼, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/EventPreset' } } } } }
+    post:
+      tags: [일정 · 쓰레기 배출]
+      summary: 항목 버튼 추가
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/EventPresetInput' } } }
+      responses:
+        '200': { description: 추가된 항목, content: { application/json: { schema: { $ref: '#/components/schemas/EventPreset' } } } }
+  /api/event-presets/{id}:
+    patch:
+      tags: [일정 · 쓰레기 배출]
+      summary: 항목 버튼 수정
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/EventPresetInput' } } }
+      responses:
+        '204': { description: 수정 완료 }
+    delete:
+      tags: [일정 · 쓰레기 배출]
+      summary: 항목 버튼 삭제
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: 삭제 완료 }
+
+  # ───────────────────────── 4. 월세 · 고정 지출 ─────────────────────────
+  /api/rent-payments:
+    get:
+      tags: [월세 · 고정 지출]
+      summary: 월세 납부 기록 (원 단위)
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' }, example: '2026-05' }
+        - { name: to, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' }, example: '2026-10' }
+      responses:
+        '200': { description: 달별 납부, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/RentPayment' } } } } }
+  /api/rent-payments/{month}:
+    put:
+      tags: [월세 · 고정 지출]
+      summary: 그 달 월세 납부 체크 · 해제
+      parameters:
+        - { name: month, in: path, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' }, example: '2026-10' }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [paid], properties: { paid: { type: boolean } } } } }
+      responses:
+        '200': { description: 바뀐 납부 기록, content: { application/json: { schema: { $ref: '#/components/schemas/RentPayment' } } } }
+  /api/bills:
+    get:
+      tags: [월세 · 고정 지출]
+      summary: 고정 지출 항목 + 그 달 납부 상태
+      parameters:
+        - { name: month, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' }, example: '2026-10' }
+      responses:
+        '200': { description: 고정 지출, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Bill' } } } } }
+    post:
+      tags: [월세 · 고정 지출]
+      summary: 고정 지출 항목 추가
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, amount, tag]
+              properties:
+                name: { type: string, maxLength: 30, example: 전기 }
+                amount: { type: integer, minimum: 0, example: 32000 }
+                tag: { type: string, maxLength: 24, example: 공과금, description: '기본 공과금 · 통신 · 구독 · 관리비 · 기타 + 회원이 만든 분류' }
+      responses:
+        '200': { description: 추가된 항목, content: { application/json: { schema: { $ref: '#/components/schemas/Bill' } } } }
+  /api/bills/{id}/payments/{month}:
+    put:
+      tags: [월세 · 고정 지출]
+      summary: 그 달 납부 체크 · 금액 수정 (줄이 없으면 서버가 만듦)
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - { name: month, in: path, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paid: { type: boolean }
+                amount: { type: integer, minimum: 0 }
+      responses:
+        '200': { description: 바뀐 항목, content: { application/json: { schema: { $ref: '#/components/schemas/Bill' } } } }
+  /api/bills/{id}:
+    patch:
+      tags: [월세 · 고정 지출]
+      summary: (제안) 고정 지출 항목 수정 — 바꿀 값만
+      description: default_amount 에 반영. 지난달 납부 기록의 금액(스냅샷)은 덮어쓰지 않아요
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 30 }
+                amount: { type: integer, minimum: 0 }
+                tag: { type: string, maxLength: 24 }
+      responses:
+        '200': { description: 바뀐 항목, content: { application/json: { schema: { $ref: '#/components/schemas/Bill' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [월세 · 고정 지출]
+      summary: 고정 지출 해지 (is_active = 0)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: 해지 완료 }
+
+  /api/me/housing-loan:
+    get:
+      tags: [월세 · 고정 지출]
+      summary: (제안) 전세 대출 설정 — 없으면 null (중지된 설정도 포함)
+      responses:
+        '200': { description: 대출 또는 null, content: { application/json: { schema: { $ref: '#/components/schemas/HousingLoan' } } } }
+    put:
+      tags: [월세 · 고정 지출]
+      summary: (제안) 전세 대출 설정 · 재개
+      description: 수정 전까지 지난 납부일은 이전 조건으로 확정. 수정 중엔 startDate 유지, 중지 후 재개는 기존 대출 ID + 새 시작일
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HousingLoanInput' }
+      responses:
+        '200': { description: 저장된 대출, content: { application/json: { schema: { $ref: '#/components/schemas/HousingLoan' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+    patch:
+      tags: [월세 · 고정 지출]
+      summary: (제안) 이자 자동 기록 중지
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [active]
+              properties:
+                active: { type: boolean, enum: [false] }
+      responses:
+        '200': { description: 중지된 대출, content: { application/json: { schema: { $ref: '#/components/schemas/HousingLoan' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/me/loan-interest-charges:
+    get:
+      tags: [월세 · 고정 지출]
+      summary: (제안) 월별 대출 이자 기록
+      description: 이자 = ROUND(principal × annualRate / 1200), 납부일(없는 달은 말일)에 한 번만 기록 (loan_id · period_ym UNIQUE)
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' }, example: '2026-01' }
+        - { name: to, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' }, example: '2026-11' }
+      responses:
+        '200': { description: 이자 기록, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/LoanInterestCharge' } } } } }
+
+  # ───────────────────────── 5. 가계부 ─────────────────────────
+  /api/ledger/categories:
+    get:
+      tags: [가계부]
+      summary: 수입 · 지출 분류 (기본 목록 + 내가 만든 것, 개인 순서 · 색 반영)
+      parameters:
+        - { name: kind, in: query, required: true, schema: { type: string, enum: [INCOME, EXPENSE] } }
+      responses:
+        '200': { description: 분류, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/LedgerCategory' } } } } }
+  /api/me/ledger-categories:
+    get:
+      tags: [가계부]
+      summary: (제안) 내 분류 목록 — 기본 + 내가 추가한 것, 내 순서대로
+      parameters:
+        - { name: scope, in: query, required: true, schema: { $ref: '#/components/schemas/LedgerScope' } }
+      responses:
+        '200': { description: 내 분류, content: { application/json: { schema: { $ref: '#/components/schemas/MyLedgerCategories' } } } }
+    post:
+      tags: [가계부]
+      summary: (제안) 분류 추가
+      description: 앞뒤 · 연속 공백 정리, 1~24자, 기본 · 내 목록과 중복 금지. user_settings.ledger_category_settings 의 해당 scope 만 바꿈
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scope, name]
+              properties:
+                scope: { $ref: '#/components/schemas/LedgerScope' }
+                name: { type: string, minLength: 1, maxLength: 24, example: 배당 }
+      responses:
+        '200': { description: 해당 scope 의 내 분류, content: { application/json: { schema: { $ref: '#/components/schemas/MyLedgerCategories' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /api/me/ledger-categories/order:
+    put:
+      tags: [가계부]
+      summary: (제안) 분류 순서 바꾸기
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scope, order]
+              properties:
+                scope: { $ref: '#/components/schemas/LedgerScope' }
+                order: { type: array, items: { type: string }, example: [배당, 월급] }
+      responses:
+        '200': { description: 해당 scope 의 내 분류, content: { application/json: { schema: { $ref: '#/components/schemas/MyLedgerCategories' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /api/incomes:
+    get:
+      tags: [가계부]
+      summary: 그 달 수입 (고정 · 기타)
+      parameters:
+        - { name: month, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' } }
+        - { name: incomeType, in: query, schema: { type: string, enum: [fixed, other] }, description: 생략하면 전체 }
+      responses:
+        '200': { description: 수입 기록, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/MoneyRecord' } } } } }
+    post:
+      tags: [가계부]
+      summary: 수입 기록
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/MoneyInput'
+                - type: object
+                  required: [incomeType]
+                  properties:
+                    incomeType: { type: string, enum: [fixed, other] }
+      responses:
+        '200': { description: 추가된 기록, content: { application/json: { schema: { $ref: '#/components/schemas/MoneyRecord' } } } }
+  /api/incomes/{id}:
+    delete:
+      tags: [가계부]
+      summary: 수입 기록 삭제
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: 삭제 완료 }
+  /api/expenses:
+    get:
+      tags: [가계부]
+      summary: 그 달 기타 지출
+      parameters:
+        - { name: month, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' } }
+      responses:
+        '200': { description: 지출 기록, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/MoneyRecord' } } } } }
+    post:
+      tags: [가계부]
+      summary: 기타 지출 기록 (빠른 기록)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MoneyInput' } } }
+      responses:
+        '200': { description: 추가된 기록, content: { application/json: { schema: { $ref: '#/components/schemas/MoneyRecord' } } } }
+  /api/expenses/{id}:
+    delete:
+      tags: [가계부]
+      summary: 지출 기록 삭제
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: 삭제 완료 }
+  /api/stats/monthly-income:
+    get:
+      tags: [가계부]
+      summary: 월별 수입 (VIEW v_monthly_income, 고정 + 기타)
+      parameters:
+        - { name: months, in: query, schema: { type: integer, default: 6 } }
+      responses:
+        '200':
+          description: 달별 합계
+          content: { application/json: { schema: { type: array, items: { type: object, properties: { month: { type: string, example: '2026-10' }, total: { type: integer } } } } } }
+  /api/stats/spend-breakdown:
+    get:
+      tags: [가계부]
+      summary: 지출 구성 (월세 + 고정 지출 + 기타 지출, VIEW v_monthly_spend_breakdown)
+      parameters:
+        - { name: month, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' } }
+      responses:
+        '200':
+          description: 항목별 금액
+          content: { application/json: { schema: { type: array, items: { type: object, properties: { label: { type: string, example: 월세 }, amount: { type: integer } } } } } }
+
+  # ───────────────────────── 6. 알림 ─────────────────────────
+  /api/notifications:
+    get:
+      tags: [알림]
+      summary: 알림 목록 + 안 읽은 수
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [all, unread, read], default: all } }
+      responses:
+        '200':
+          description: 알림
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+                  unreadCount: { type: integer }
+    delete:
+      tags: [알림]
+      summary: 읽은 알림 지우기
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          description: '지울 알림 id (쉼표로 구분, 예: ids=1,2)'
+          style: form
+          explode: false
+          schema: { type: array, items: { type: string } }
+      responses:
+        '204': { description: 삭제 완료 }
+  /api/notifications/read:
+    patch:
+      tags: [알림]
+      summary: 읽음 처리 (ids 가 빈 배열이면 전부)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/IdList' } } }
+      responses:
+        '204': { description: 읽음 완료 }
+
+  # ───────────────────────── 7. 커뮤니티 · 첨부 · 신고 ─────────────────────────
+  /api/posts:
+    get:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 동네생활 글 목록 (읽기는 동네 인증한 회원)
+      parameters:
+        - { name: scope, in: query, schema: { type: string, enum: [here, near, all], default: here } }
+        - { name: category, in: query, schema: { $ref: '#/components/schemas/PostCategory' } }
+        - { name: q, in: query, schema: { type: string } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200': { description: 글 목록, content: { application/json: { schema: { $ref: '#/components/schemas/PostPage' } } } }
+    post:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 글쓰기 (동네 인증 · 정지 아님 필요)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PostInput' } } }
+      responses:
+        '200': { description: 쓴 글, content: { application/json: { schema: { $ref: '#/components/schemas/Post' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/posts/home-tips:
+    get:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 홈 '자취 꿀팁' 카드 (is_home_tip)
+      responses:
+        '200': { description: 꿀팁 글, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Post' } } } } }
+  /api/posts/{id}:
+    get:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 글 상세 (댓글 포함)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: 글, content: { application/json: { schema: { $ref: '#/components/schemas/Post' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 글 수정 (내 글만)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PostInput' } } }
+      responses:
+        '200': { description: 바뀐 글, content: { application/json: { schema: { $ref: '#/components/schemas/Post' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 글 삭제 (내 글만, status = DELETED)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: 삭제 완료 }
+  /api/posts/{id}/like:
+    put:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 공감
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { $ref: '#/components/responses/Like' }
+    delete:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 공감 취소
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { $ref: '#/components/responses/Like' }
+  /api/posts/{id}/comments:
+    post:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 댓글 쓰기
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BodyInput' } } }
+      responses:
+        '200': { description: 쓴 댓글, content: { application/json: { schema: { $ref: '#/components/schemas/Comment' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/comments/{id}:
+    patch:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 댓글 수정 (내 댓글만)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BodyInput' } } }
+      responses:
+        '200': { description: 바뀐 댓글, content: { application/json: { schema: { $ref: '#/components/schemas/Comment' } } } }
+    delete:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 댓글 삭제 (내 댓글만)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: 삭제 완료 }
+  /api/files:
+    post:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 파일 올리기 (첨부 · 프로필 사진) — 최대 5개 · 합계 2MB · 이미지/문서만
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200': { description: 올린 파일, content: { application/json: { schema: { $ref: '#/components/schemas/Attachment' } } } }
+        '413': { description: 용량 초과, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/reports:
+    post:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 글 · 댓글 신고 (같은 대상 두 번이면 409)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetType, targetId, reason]
+              properties:
+                targetType: { type: string, enum: [POST, COMMENT] }
+                targetId: { type: string }
+                reason: { $ref: '#/components/schemas/ReportReason' }
+                detail: { type: string, maxLength: 200, description: '기타(OTHER)는 필수' }
+      responses:
+        '204': { description: 접수 완료 }
+        '409': { description: 이미 신고함, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ───────────────────────── 8. AI ─────────────────────────
+  /api/ai/topics:
+    get:
+      tags: [AI]
+      summary: AI 주제 (qna · guide · nearby · trash · cook · clean · contract · landlord · bill · summary)
+      responses:
+        '200':
+          description: 주제
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    code: { type: string, example: guide }
+                    name: { type: string, example: 사용 방법 }
+                    description: { type: string }
+                    photoSupported: { type: boolean }
+  /api/ai/conversations:
+    get:
+      tags: [AI]
+      summary: 대화 목록
+      parameters:
+        - { name: entryPoint, in: query, schema: { type: string, enum: [HOME_MODAL, AI_PAGE] } }
+      responses:
+        '200':
+          description: 대화
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    title: { type: string }
+                    topic: { type: string }
+                    updatedAt: { type: string, format: date-time }
+    post:
+      tags: [AI]
+      summary: 새 대화
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entryPoint: { type: string, enum: [HOME_MODAL, AI_PAGE] }
+                topic: { type: string }
+      responses:
+        '200': { description: 만든 대화, content: { application/json: { schema: { type: object, properties: { id: { type: string } } } } } }
+  /api/ai/conversations/{id}:
+    delete:
+      tags: [AI]
+      summary: 대화 삭제
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: 삭제 완료 }
+  /api/ai/conversations/{id}/messages:
+    get:
+      tags: [AI]
+      summary: 대화 내용
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: 메시지, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AiMessage' } } } } }
+    post:
+      tags: [AI]
+      summary: 질문 보내기 (사진은 답을 만든 뒤 저장하지 않음, 하루 한도 넘으면 429)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [text], properties: { text: { type: string } } }
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                text: { type: string }
+                photo: { type: string, format: binary }
+      responses:
+        '200':
+          description: 내 질문 + 답
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/AiMessage' }
+                  reply: { $ref: '#/components/schemas/AiMessage' }
+        '429': { description: 하루 질문 한도 초과, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  # ───────────────────────── 9. 지도 ─────────────────────────
+  /api/places/categories:
+    get:
+      tags: [지도]
+      summary: 장소 종류 15개
+      responses:
+        '200':
+          description: 종류
+          content: { application/json: { schema: { type: array, items: { type: object, properties: { id: { type: string }, name: { type: string, example: 세탁방 }, icon: { type: string, example: '🧺' } } } } } }
+  /api/places:
+    get:
+      tags: [지도]
+      summary: 동네 장소 (종류 또는 검색어, 가까운 순)
+      parameters:
+        - { name: regionId, in: query, required: true, schema: { type: string } }
+        - { name: category, in: query, schema: { type: string }, example: 세탁방 }
+        - { name: q, in: query, schema: { type: string }, description: 직접 추가한 검색어 칩 }
+        - { name: filter, in: query, schema: { type: string, enum: [24h, cheap, quiet] } }
+      responses:
+        '200': { description: 장소, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Place' } } } } }
+  /api/places/ai-search:
+    post:
+      tags: [지도]
+      summary: AI 장소 찾기 (최대 5곳 + 추천 이유)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [q, regionId]
+              properties:
+                q: { type: string, example: 밤에 갈 수 있는 약국 }
+                regionId: { type: string }
+      responses:
+        '200':
+          description: 추천 장소
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    place: { $ref: '#/components/schemas/Place' }
+                    reasons: { type: array, items: { type: string }, example: ['약국', '24시간·심야 운영'] }
+                    walkMin: { type: integer }
+  /api/places/{id}/reviews:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [지도]
+      summary: (확장 기능 · 화면 없음) 장소 리뷰 목록
+      responses:
+        '200':
+          description: 리뷰
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    rating: { type: integer, minimum: 1, maximum: 5 }
+                    body: { type: string }
+                    author: { $ref: '#/components/schemas/Author' }
+                    createdAt: { type: string, format: date-time }
+    post:
+      tags: [지도]
+      summary: (확장 기능 · 화면 없음) 장소 리뷰 쓰기 (한 사람당 한 장소 하나, 두 번이면 409)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                body: { type: string, maxLength: 500 }
+      responses:
+        '204': { description: 저장 완료 }
+        '409': { description: 이미 리뷰를 씀, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/me/place-favorites:
+    get:
+      tags: [지도]
+      summary: 저장(★)한 장소 id
+      responses:
+        '200': { description: 장소 id, content: { application/json: { schema: { type: array, items: { type: string } } } } }
+  /api/me/place-favorites/{placeId}:
+    parameters:
+      - { name: placeId, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [지도]
+      summary: 저장(★)
+      responses:
+        '204': { description: 저장 완료 }
+    delete:
+      tags: [지도]
+      summary: 저장 풀기
+      responses:
+        '204': { description: 해제 완료 }
+  /api/me/map-settings:
+    get:
+      tags: [지도]
+      summary: 칩에 보일 종류 · 직접 추가한 검색어
+      responses:
+        '200': { description: 지도 설정, content: { application/json: { schema: { $ref: '#/components/schemas/MapSettings' } } } }
+    put:
+      tags: [지도]
+      summary: 지도 설정 저장
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MapSettings' } } }
+      responses:
+        '200': { description: 저장된 설정, content: { application/json: { schema: { $ref: '#/components/schemas/MapSettings' } } } }
+
+  # ───────────────────────── 10. 약관 ─────────────────────────
+  /api/terms:
+    get:
+      tags: [약관]
+      summary: 지금 시행 중인 약관 (버전 2026-10-18)
+      security: []
+      responses:
+        '200':
+          description: 약관
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    docType: { type: string, enum: [SERVICE, PRIVACY, POLICY] }
+                    version: { type: string, example: '2026-10-18' }
+                    title: { type: string }
+                    content: { type: string }
+                    consentKind: { type: string }
+                    required: { type: boolean }
+
+  # ───────────────────────── 11. 관리자 · 이용 정지 ─────────────────────────
+  /api/admin/stats:
+    get:
+      tags: [관리자 · 이용 정지]
+      summary: 숫자 박스 (ADMIN 만, 아니면 403)
+      responses:
+        '200':
+          description: 통계
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members: { type: integer }
+                  suspended: { type: integer }
+                  totalBans: { type: integer }
+                  totalWarns: { type: integer }
+                  pendingReports: { type: integer, description: 처리 대기 신고 대상 수 }
+                  posts: { type: integer }
+                  comments: { type: integer }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/admin/members:
+    get:
+      tags: [관리자 · 이용 정지]
+      summary: 회원 관리 목록
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string, enum: [ACTIVE, SUSPENDED] } }
+        - { name: minBans, in: query, schema: { type: integer } }
+        - { name: minWarns, in: query, schema: { type: integer } }
+        - { name: sort, in: query, schema: { type: string, enum: [activity, bans, warns] } }
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: 회원
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Member' } }
+                  hasNext: { type: boolean }
+  /api/admin/members/{id}/sanctions:
+    get:
+      tags: [관리자 · 이용 정지]
+      summary: 조치 이력
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: 이력, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Sanction' } } } } }
+    post:
+      tags: [관리자 · 이용 정지]
+      summary: 경고 · 정지 (WARNING / SUSPEND 1·3·5·10일 / BAN 영구)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/SanctionInput' } } }
+      responses:
+        '200': { description: 바뀐 회원, content: { application/json: { schema: { $ref: '#/components/schemas/Member' } } } }
+  /api/admin/members/{id}/sanctions/active:
+    delete:
+      tags: [관리자 · 이용 정지]
+      summary: 정지 해제
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { description: 바뀐 회원, content: { application/json: { schema: { $ref: '#/components/schemas/Member' } } } }
+  /api/admin/sanctions/bulk:
+    post:
+      tags: [관리자 · 이용 정지]
+      summary: 여러 명 한꺼번에 조치
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SanctionInput'
+                - type: object
+                  required: [memberIds]
+                  properties:
+                    memberIds: { type: array, items: { type: string } }
+      responses:
+        '204': { description: 조치 완료 }
+  /api/admin/posts:
+    get:
+      tags: [관리자 · 이용 정지]
+      summary: 게시글 관리 목록 (댓글 · 신고 수 포함)
+      parameters:
+        - { name: category, in: query, schema: { $ref: '#/components/schemas/PostCategory' } }
+        - { name: regionId, in: query, schema: { type: string } }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: reportedOnly, in: query, schema: { type: boolean } }
+        - $ref: '#/components/parameters/Page'
+      responses:
+        '200': { description: 글 목록, content: { application/json: { schema: { $ref: '#/components/schemas/PostPage' } } } }
+  /api/admin/posts/{id}:
+    delete:
+      tags: [관리자 · 이용 정지]
+      summary: 글 삭제 (관련 신고는 HIDDEN, 작성자 경고는 sanctions API 를 이어서)
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - { name: reason, in: query, schema: { type: string, maxLength: 60 }, description: 삭제 사유 }
+      responses:
+        '204': { description: 삭제 완료 }
+  /api/admin/posts/{id}/comments:
+    post:
+      tags: [관리자 · 이용 정지]
+      summary: 운영자로 댓글 쓰기 (staff = true, 신고 · 수정 불가)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BodyInput' } } }
+      responses:
+        '200': { description: 쓴 댓글, content: { application/json: { schema: { $ref: '#/components/schemas/Comment' } } } }
+  /api/admin/comments/{id}:
+    delete:
+      tags: [관리자 · 이용 정지]
+      summary: 댓글 삭제 (관련 신고는 HIDDEN)
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - { name: reason, in: query, schema: { type: string, maxLength: 60 }, description: 삭제 사유 }
+      responses:
+        '204': { description: 삭제 완료 }
+  /api/admin/reports:
+    get:
+      tags: [관리자 · 이용 정지]
+      summary: 신고 관리 (프론트가 같은 대상끼리 묶어 보여 줌)
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [RECEIVED, HIDDEN, DISMISSED] } }
+      responses:
+        '200': { description: 신고, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Report' } } } } }
+    patch:
+      tags: [관리자 · 이용 정지]
+      summary: 같은 대상의 신고 한꺼번에 처리 ([문제없음] = DISMISSED, 내용 삭제 = HIDDEN)
+      parameters:
+        - { name: targetType, in: query, required: true, schema: { type: string, enum: [POST, COMMENT] } }
+        - { name: targetId, in: query, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ReportStatusInput' } } }
+      responses:
+        '204': { description: 처리 완료 }
+  /api/admin/reports/{id}:
+    patch:
+      tags: [관리자 · 이용 정지]
+      summary: 신고 하나 처리
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ReportStatusInput' } } }
+      responses:
+        '204': { description: 처리 완료 }
+
+  # ───────────────────────── 12. 메모 ─────────────────────────
+  /api/memos:
+    get:
+      tags: [메모]
+      summary: 메모 목록 (고정 먼저, 최근 수정 순)
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+      responses:
+        '200': { description: 메모, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Memo' } } } } }
+    post:
+      tags: [메모]
+      summary: 메모 쓰기 (빠른 메모는 body 만)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MemoInput' } } }
+      responses:
+        '200': { description: 쓴 메모, content: { application/json: { schema: { $ref: '#/components/schemas/Memo' } } } }
+  /api/memos/{id}:
+    patch:
+      tags: [메모]
+      summary: 메모 수정 (바꾼 칸만, items 는 통째로 — 0.5초 모아서 자동 저장)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MemoInput' } } }
+      responses:
+        '200': { description: 바뀐 메모, content: { application/json: { schema: { $ref: '#/components/schemas/Memo' } } } }
+    delete:
+      tags: [메모]
+      summary: 메모 삭제
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: 삭제 완료 }
+  /api/me/home-memos:
+    get:
+      tags: [메모]
+      summary: 홈 메모 위젯에 보일 메모 · 순서 (null = 자동)
+      responses:
+        '200': { description: 메모 id, content: { application/json: { schema: { $ref: '#/components/schemas/HomeMemos' } } } }
+    put:
+      tags: [메모]
+      summary: 홈 메모 위젯 설정 (최대 3개)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/HomeMemos' } } }
+      responses:
+        '200': { description: 저장된 설정, content: { application/json: { schema: { $ref: '#/components/schemas/HomeMemos' } } } }
+
+  # ───────────────────────── 13. 고객센터 ─────────────────────────
+  /api/support/inquiries:
+    get:
+      tags: [고객센터]
+      summary: 문의 목록 (내 문의, 관리자는 전체)
+      responses:
+        '200': { description: 문의, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Inquiry' } } } } }
+    post:
+      tags: [고객센터]
+      summary: 1대1 문의 쓰기
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [category, title, content]
+              properties:
+                category: { $ref: '#/components/schemas/InquiryCategory' }
+                title: { type: string, maxLength: 100 }
+                content: { type: string, maxLength: 3000 }
+      responses:
+        '200': { description: 쓴 문의, content: { application/json: { schema: { $ref: '#/components/schemas/Inquiry' } } } }
+  /api/admin/support/inquiries/{id}/answer:
+    post:
+      tags: [고객센터]
+      summary: 문의 답변 (관리자만, 문의당 하나)
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [content], properties: { content: { type: string, maxLength: 3000 } } } } }
+      responses:
+        '200': { description: 답변된 문의, content: { application/json: { schema: { $ref: '#/components/schemas/Inquiry' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+      example: '12'
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, default: 0, minimum: 0 }
+    Size:
+      name: size
+      in: query
+      schema: { type: integer, default: 20, maximum: 100 }
+
+  responses:
+    Auth:
+      description: 로그인 성공
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [accessToken, user]
+            properties:
+              accessToken: { type: string }
+              user: { $ref: '#/components/schemas/User' }
+    BadRequest:
+      description: 입력이 잘못됨
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Unauthorized:
+      description: 토큰 없음 · 만료 (프론트가 로그아웃)
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Forbidden:
+      description: 권한 없음 (정지 · 동네 미인증 · 관리자 전용 · 남의 글)
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    NotFound:
+      description: 없음 (남의 데이터 포함)
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Like:
+      description: 공감 상태
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              liked: { type: boolean }
+              likes: { type: integer }
+
+  schemas:
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, example: 이미 가입된 이메일이에요. }
+        code: { type: string, example: SUSPENDED, description: '정지 중이면 SUSPENDED → 프론트가 정지 화면으로' }
+    IdList:
+      type: object
+      required: [ids]
+      properties:
+        ids: { type: array, items: { type: string }, example: ['1', '2'] }
+    NameInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 24 }
+    BodyInput:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, maxLength: 100 }
+    RegionRef:
+      type: object
+      properties:
+        id: { type: string, example: '2' }
+        name: { type: string, example: 마포구 }
+    PhonePurpose:
+      type: string
+      enum: [SIGNUP, FIND_ID, RESET_PASSWORD]
+
+    # 인증 · 내 정보
+    User:
+      type: object
+      properties:
+        id: { type: string, example: '1' }
+        username: { type: string, nullable: true, example: zipdemo, description: 소셜 가입자는 null }
+        email: { type: string, format: email }
+        nickname: { type: string, example: 지기 }
+        address: { type: string, example: 서울시 마포구 합정동, description: 가입 주소 (날씨 · 동네의 마지막 기본값) }
+        region: { allOf: [{ $ref: '#/components/schemas/RegionRef' }], nullable: true }
+        regionVerifiedAt: { type: string, format: date-time, nullable: true, description: '30일 지났거나 동네가 바뀌면 null' }
+        provider: { type: string, enum: [email, kakao, google, naver] }
+        role: { type: string, enum: [USER, ADMIN] }
+        status: { type: string, enum: [ACTIVE, SUSPENDED] }
+        firstLogin: { type: boolean, description: 처음 로그인이면 true → 설문(/onboarding) }
+        agreedAt: { type: string, format: date-time, nullable: true, description: '소셜 첫 가입이면 null → 동의 화면(/welcome)' }
+        lastLoginAt: { type: string, format: date-time, nullable: true }
+        bio: { type: string, maxLength: 30, nullable: true }
+        avatarUrl: { type: string, nullable: true }
+        avatarEmoji: { type: string, nullable: true, example: '🐻' }
+        avatarColor: { type: string, nullable: true, example: '#ffd6a5' }
+        suspension:
+          type: object
+          nullable: true
+          properties:
+            until: { type: string, format: date-time, nullable: true }
+            permanent: { type: boolean }
+            reason: { type: string }
+            count: { type: integer }
+        warnCount: { type: integer }
+        unseenWarnings:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              reason: { type: string }
+              at: { type: string, format: date-time }
+    SignupRequest:
+      type: object
+      required: [username, password, nickname, phone, phoneVerificationToken, agreeTerms, agreePrivacy, agreePolicy, ageOver14, termsVersion]
+      properties:
+        username: { type: string, pattern: '^[a-z0-9]{6,16}$', example: tester01 }
+        password: { type: string, format: password, minLength: 8, maxLength: 16, description: 영문 · 숫자 · 특수문자 모두 }
+        nickname: { type: string, minLength: 2, maxLength: 12 }
+        phone: { type: string, example: 010-1234-5678 }
+        phoneVerificationToken: { type: string }
+        email: { type: string, format: email }
+        address: { type: string, example: 서울 마포구 합정동 }
+        agreeTerms: { type: boolean }
+        agreePrivacy: { type: boolean }
+        agreePolicy: { type: boolean }
+        ageOver14: { type: boolean }
+        termsVersion: { type: string, example: '2026-10-18' }
+    UpdateMeRequest:
+      type: object
+      description: 바꿀 칸만 보내요
+      properties:
+        nickname: { type: string, minLength: 2, maxLength: 12 }
+        bio: { type: string, maxLength: 30, nullable: true }
+        avatarFileId: { type: string, nullable: true }
+        avatarEmoji: { type: string, nullable: true }
+        avatarColor: { type: string, nullable: true }
+        address: { type: string, description: 소셜 첫 가입 }
+        agreeTerms: { type: boolean }
+        agreePrivacy: { type: boolean }
+        agreePolicy: { type: boolean }
+        ageOver14: { type: boolean }
+        termsVersion: { type: string }
+
+    # 설정
+    Settings:
+      type: object
+      properties:
+        regionId: { type: string, example: '2' }
+        regionName: { type: string, example: 서울 마포구 }
+        homeAddress: { type: string, maxLength: 200, nullable: true, description: '실제 사는 상세 주소 (user_settings.home_address) — 가입 주소 · 동네와 별개' }
+        rent: { type: integer, example: 55, description: 월세 (**만원 단위**) }
+        rentDay: { type: integer, minimum: 1, maximum: 31, example: 15 }
+        moveIn: { type: string, example: '2026-02' }
+        contractEnd: { type: string, example: '2027-02' }
+        notiOn: { type: boolean }
+    HousingSurveyInput:
+      type: object
+      required: [birth, address, kind, income, incomePeriod]
+      description: 금액은 모두 **원 단위**. userId · answeredAt 은 서버가 정해요
+      properties:
+        birth: { type: string, format: date, example: '2000-01-01' }
+        address: { type: string, example: 가상 동네 }
+        addressPoint:
+          type: object
+          nullable: true
+          description: 설문 주소 검색 당시 중심점 (현재 위치 인증 GPS 와 별개)
+          properties:
+            lat: { type: number, example: 37.5 }
+            lon: { type: number, example: 127.0 }
+        kind: { type: string, enum: [monthly, jeonse], description: 'DB contract_kind MONTHLY · JEONSE' }
+        deposit: { type: integer, minimum: 0, example: 10000000 }
+        rent: { type: integer, minimum: 0, example: 550000, description: 원 단위 (설정 rent 는 만원) }
+        mgmtIncluded: { type: boolean }
+        mgmtFee: { type: integer, minimum: 0, example: 50000 }
+        contractFee: { type: integer, minimum: 0, example: 0 }
+        hasLoan: { type: boolean }
+        loanAmount: { type: integer, minimum: 0, example: 0 }
+        loanAnnualRate: { type: number, nullable: true }
+        loanPaymentDay: { type: integer, minimum: 1, maximum: 31, nullable: true }
+        loanStartDate: { type: string, format: date, nullable: true }
+        income: { type: integer, minimum: 0, example: 2500000 }
+        incomePeriod: { type: string, enum: [monthly, annual], description: 'DB income_period MONTHLY · ANNUAL' }
+    HousingSurvey:
+      nullable: true
+      allOf:
+        - $ref: '#/components/schemas/HousingSurveyInput'
+        - type: object
+          properties:
+            userId: { type: string, example: '1' }
+            answeredAt: { type: string, format: date-time }
+    HousingLoanInput:
+      type: object
+      required: [principal, annualRate, paymentDay, startDate]
+      properties:
+        principal: { type: integer, minimum: 1, maximum: 9999990000, example: 100000000, description: 원 }
+        annualRate: { type: number, minimum: 0, maximum: 100, example: 3.5, description: '연 이율 % (소수 둘째 자리)' }
+        paymentDay: { type: integer, minimum: 1, maximum: 31, example: 25 }
+        startDate: { type: string, format: date, example: '2026-03-01', description: '2000-01-01 ~ 2100-12-31' }
+    HousingLoan:
+      nullable: true
+      allOf:
+        - $ref: '#/components/schemas/HousingLoanInput'
+        - type: object
+          properties:
+            id: { type: string, example: '3' }
+            userId: { type: string, example: '1' }
+            active: { type: boolean }
+    LoanInterestCharge:
+      type: object
+      properties:
+        id: { type: string, example: '41' }
+        loanId: { type: string, example: '3' }
+        userId: { type: string, example: '1' }
+        date: { type: string, format: date, example: '2026-10-25' }
+        amount: { type: integer, example: 291667, description: 그달 이자 (원) }
+        principal: { type: integer, description: 기록 당시 원금 스냅샷 }
+        annualRate: { type: number, description: 기록 당시 이율 스냅샷 }
+    LedgerScope:
+      type: string
+      enum: [fixed-income, other-income, spend, bill]
+    MyLedgerCategories:
+      type: object
+      properties:
+        scope: { $ref: '#/components/schemas/LedgerScope' }
+        categories:
+          type: array
+          description: 기본 목록 + 내 custom 을 order 대로 정렬한 결과
+          items: { $ref: '#/components/schemas/NameColor' }
+        custom: { type: array, items: { $ref: '#/components/schemas/NameColor' } }
+        order: { type: array, items: { type: string } }
+    NameColor:
+      type: object
+      required: [name, color]
+      properties:
+        name: { type: string, maxLength: 24, example: 배당 }
+        color: { type: string, example: '#6485df' }
+
+    # 일정
+    Event:
+      type: object
+      properties:
+        id: { type: string, example: '31' }
+        date: { type: string, format: date, example: '2026-10-24' }
+        time: { type: string, example: '18:00', description: '빈 문자열이면 종일' }
+        title: { type: string, maxLength: 60, example: 택배 반품 }
+        category: { type: string, nullable: true, example: 연락·행정, description: 'null = 미분류' }
+        done: { type: boolean }
+        source: { type: string, enum: [USER, RENT] }
+        anniv: { type: boolean, description: '기념일 (events.is_anniversary)' }
+        yearly: { type: boolean, description: '매년 반복 (events.repeat_yearly)' }
+    EventInput:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        time: { type: string }
+        title: { type: string, maxLength: 60 }
+        category: { type: string, nullable: true }
+        anniv: { type: boolean }
+        yearly: { type: boolean }
+    EventCategory:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string, example: 집 관리 }
+        ico: { type: string, example: '🏠' }
+        items: { type: array, items: { type: string }, example: ['에어컨 필터 청소'] }
+    EventPreset:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        category: { type: string }
+    EventPresetInput:
+      type: object
+      required: [title, category]
+      properties:
+        title: { type: string }
+        category: { type: string }
+
+    # 월세 · 고정 지출
+    RentPayment:
+      type: object
+      properties:
+        month: { type: string, example: '2026-10' }
+        amount: { type: integer, example: 550000, description: 원 단위 }
+        paid: { type: boolean }
+        paidAt: { type: string, format: date-time, nullable: true }
+    Bill:
+      type: object
+      properties:
+        id: { type: string, example: '5' }
+        name: { type: string, example: 전기 }
+        amount: { type: integer, example: 32000, description: 그 달 금액 (납부 기록의 스냅샷) }
+        tag: { type: string, maxLength: 24, example: 공과금 }
+        paid: { type: boolean }
+        paidAt: { type: string, format: date-time, nullable: true }
+
+    # 가계부
+    LedgerCategory:
+      type: object
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [INCOME, EXPENSE] }
+        name: { type: string, maxLength: 24, example: 식비 }
+        color: { type: string, example: '#1fb5a3' }
+    MoneyRecord:
+      type: object
+      properties:
+        id: { type: string, example: '77' }
+        date: { type: string, format: date }
+        categoryId: { type: string }
+        cat: { type: string, example: 식비, description: 분류 이름 (화면 표시) }
+        color: { type: string, example: '#1fb5a3' }
+        amount: { type: integer, example: 8500 }
+        memo: { type: string, maxLength: 30 }
+        incomeType: { type: string, enum: [fixed, other], description: 수입만 }
+    MoneyInput:
+      type: object
+      required: [date, categoryId, amount]
+      properties:
+        date: { type: string, format: date }
+        categoryId: { type: string }
+        amount: { type: integer, minimum: 1 }
+        memo: { type: string, maxLength: 30 }
+
+    # 알림
+    Notification:
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [EVENT, TRASH, RENT, BILL, COMMUNITY, SYSTEM] }
+        title: { type: string, example: 월세 납부일이 3일 남았어요 }
+        body: { type: string, example: 매월 15일 · 55만원 }
+        link: { type: string, example: budget }
+        refId: { type: string, nullable: true }
+        notifyAt: { type: string, format: date-time }
+        read: { type: boolean }
+
+    # 커뮤니티
+    PostCategory:
+      type: string
+      enum: [FREE, TIP, QUESTION, TOWN]
+      description: 자유 · 꿀팁 · 질문 · 동네
+    Author:
+      type: object
+      properties:
+        id: { type: string }
+        nickname: { type: string }
+    Attachment:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string, example: before.jpg }
+        type: { type: string, example: image/jpeg }
+        size: { type: integer, example: 183000 }
+        url: { type: string }
+    Comment:
+      type: object
+      properties:
+        id: { type: string }
+        author: { $ref: '#/components/schemas/Author' }
+        body: { type: string, maxLength: 100 }
+        mine: { type: boolean }
+        staff: { type: boolean, description: '운영자 댓글 → ''운영자'' 표시, 신고 · 수정 불가' }
+        createdAt: { type: string, format: date-time }
+    Post:
+      type: object
+      properties:
+        id: { type: string, example: '10' }
+        region: { $ref: '#/components/schemas/RegionRef' }
+        category: { $ref: '#/components/schemas/PostCategory' }
+        title: { type: string, maxLength: 60 }
+        body: { type: string, maxLength: 500 }
+        author: { $ref: '#/components/schemas/Author' }
+        mine: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        likes: { type: integer }
+        liked: { type: boolean }
+        commentCount: { type: integer }
+        reportCount: { type: integer, description: 관리자 화면에서만 }
+        attachments: { type: array, items: { $ref: '#/components/schemas/Attachment' } }
+        comments: { type: array, items: { $ref: '#/components/schemas/Comment' } }
+    PostInput:
+      type: object
+      required: [category, title, body]
+      properties:
+        category: { $ref: '#/components/schemas/PostCategory' }
+        title: { type: string, maxLength: 60 }
+        body: { type: string, maxLength: 500 }
+        attachmentIds: { type: array, maxItems: 5, items: { type: string } }
+    PostPage:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Post' } }
+        hasNext: { type: boolean }
+    ReportReason:
+      type: string
+      enum: [ABUSE, FALSE_INFO, PRIVACY, AD_ILLEGAL, COPYRIGHT, OTHER]
+      description: 욕설·비방 · 거짓 정보 · 개인정보 노출 · 광고·불법 · 저작권 · 기타
+    Report:
+      type: object
+      properties:
+        id: { type: string }
+        targetType: { type: string, enum: [POST, COMMENT] }
+        targetId: { type: string }
+        target:
+          type: object
+          properties:
+            title: { type: string, description: 글이면 }
+            text: { type: string, description: 댓글이면 }
+            author: { type: string }
+            deleted: { type: boolean }
+        reason: { $ref: '#/components/schemas/ReportReason' }
+        detail: { type: string }
+        reporter: { type: string }
+        status: { type: string, enum: [RECEIVED, HIDDEN, DISMISSED] }
+        createdAt: { type: string, format: date-time }
+    ReportStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [HIDDEN, DISMISSED] }
+
+    # AI
+    AiMessage:
+      type: object
+      properties:
+        id: { type: string }
+        role: { type: string, enum: [USER, ASSISTANT] }
+        text: { type: string }
+        createdAt: { type: string, format: date-time }
+        card:
+          type: object
+          nullable: true
+          description: 'SPEND_SUMMARY = 지출 요약 숫자, LINK = 화면 바로가기 버튼 { label, to }'
+          properties:
+            type: { type: string, enum: [SPEND_SUMMARY, LINK] }
+            data: { type: object, additionalProperties: true }
+
+    # 지도
+    Place:
+      type: object
+      properties:
+        id: { type: string }
+        category: { type: string, example: 세탁방 }
+        name: { type: string, example: 코인빨래방 합정점 }
+        description: { type: string, example: '도보 약 3분 · 24시간' }
+        lat: { type: number }
+        lon: { type: number }
+        walkMin: { type: integer, description: 우리 집 기준 도보 분 }
+        address: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        openHours: { type: string, nullable: true }
+        rating: { type: number, nullable: true }
+        reviewCount: { type: integer }
+    MapSettings:
+      type: object
+      properties:
+        categories: { type: array, items: { type: string }, example: [세탁방, 편의점, 약국, 마트] }
+        keywords: { type: array, items: { type: string }, example: [빵집] }
+
+    # 관리자
+    Member:
+      type: object
+      properties:
+        id: { type: string }
+        nickname: { type: string }
+        username: { type: string, nullable: true }
+        joinedAt: { type: string, format: date }
+        posts: { type: integer }
+        comments: { type: integer }
+        warns: { type: integer }
+        bans: { type: integer }
+        status: { type: string, enum: [ACTIVE, SUSPENDED] }
+        until: { type: string, format: date-time, nullable: true }
+        permanent: { type: boolean }
+    Sanction:
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [WARNING, SUSPEND, BAN] }
+        days: { type: integer, nullable: true }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time, nullable: true }
+    SanctionInput:
+      type: object
+      required: [type]
+      properties:
+        type: { type: string, enum: [WARNING, SUSPEND, BAN] }
+        days: { type: integer, enum: [1, 3, 5, 10], nullable: true, description: SUSPEND 일 때만 }
+        reason: { type: string, maxLength: 60 }
+
+    # 메모
+    MemoItem:
+      type: object
+      properties:
+        text: { type: string, maxLength: 100 }
+        done: { type: boolean }
+    Memo:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string, maxLength: 60 }
+        body: { type: string, maxLength: 5000 }
+        color: { type: string, enum: [노랑, 분홍, 하늘, 초록, 보라, 흰색] }
+        pinned: { type: boolean }
+        checklist: { type: boolean }
+        items: { type: array, items: { $ref: '#/components/schemas/MemoItem' } }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    MemoInput:
+      type: object
+      properties:
+        title: { type: string, maxLength: 60 }
+        body: { type: string, maxLength: 5000 }
+        color: { type: string, enum: [노랑, 분홍, 하늘, 초록, 보라, 흰색] }
+        pinned: { type: boolean }
+        checklist: { type: boolean }
+        items: { type: array, items: { $ref: '#/components/schemas/MemoItem' } }
+    HomeMemos:
+      type: object
+      properties:
+        ids: { type: array, maxItems: 3, items: { type: string }, nullable: true, description: 'null = 자동 (고정 → 최근 수정 3개)' }
+
+    # 고객센터
+    InquiryCategory:
+      type: string
+      enum: [이용 문의, 오류 신고, 개선 제안, 계정 문의, 기타]
+    Inquiry:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        nickname: { type: string }
+        category: { $ref: '#/components/schemas/InquiryCategory' }
+        title: { type: string }
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
+        answer:
+          type: object
+          nullable: true
+          properties:
+            content: { type: string }
+            createdAt: { type: string, format: date-time }
