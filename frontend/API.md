@@ -277,7 +277,7 @@
 |---|---|---|---|
 | GET | `/api/notifications?status=all\|unread\|read` | — | `{ items: [noti], unreadCount }` |
 | PATCH | `/api/notifications/read` | `{ ids: ["1","2"] }` (빈 배열이면 전부) | — |
-| DELETE | `/api/notifications` | `{ ids: ["1","2"] }` | — (읽은 알림 지우기) |
+| DELETE | `/api/notifications?ids=1,2` | — | — (읽은 알림 지우기. DELETE 에는 본문을 넣지 않아요) |
 
 ```json
 { "id": "1", "type": "RENT", "title": "월세 납부일이 3일 남았어요", "body": "매월 15일 · 55만원",
@@ -421,7 +421,7 @@
 | POST | `/api/admin/sanctions/bulk` | `{ memberIds, type, days, reason }` | — (여러 명 한꺼번에) |
 | DELETE | `/api/admin/members/{id}/sanctions/active` | — (정지 해제) | `member` |
 | GET | `/api/admin/posts?category=&regionId=&q=&page=0` | — | `{ items: [post], hasNext }` (댓글 포함) |
-| DELETE | `/api/admin/posts/{id}` · `/api/admin/comments/{id}` | `{ reason }` | — |
+| DELETE | `/api/admin/posts/{id}?reason=` · `/api/admin/comments/{id}?reason=` | — (사유는 쿼리로) | — |
 | GET | `/api/admin/reports?status=RECEIVED` | — | `[report]` |
 | PATCH | `/api/admin/reports/{id}` | `{ status: "HIDDEN" \| "DISMISSED" }` | — |
 
