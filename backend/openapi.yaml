@@ -1463,33 +1463,35 @@ components:
       type: object
       properties:
         id: { type: string, example: '1' }
-        username: { type: string, nullable: true, example: zipdemo, description: 소셜 가입자는 null }
-        email: { type: string, format: email }
+        username: { type: string, example: zipdemo, description: '소셜 가입자처럼 아이디가 없으면 키를 생략 (null 을 보내지 않음)' }
+        email: { type: string, example: demo@zip.com, description: '소셜 회원처럼 없으면 빈 문자열 "" (현재 프론트 타입이 필수 문자열)' }
         nickname: { type: string, example: 지기 }
-        address: { type: string, example: 서울시 마포구 합정동, description: 가입 주소 (날씨 · 동네의 마지막 기본값) }
+        address: { type: string, example: 서울시 마포구 합정동, description: '가입 주소 (날씨 · 동네의 마지막 기본값). 없으면 빈 문자열 ""' }
         region: { allOf: [{ $ref: '#/components/schemas/RegionRef' }], nullable: true }
-        regionVerifiedAt: { type: string, format: date-time, nullable: true, description: '30일 지났거나 동네가 바뀌면 null' }
+        regionVerifiedAt: { type: string, format: date-time, nullable: true, description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음) 30일 지났거나 동네가 바뀌면 null' }
         provider: { type: string, enum: [email, kakao, google, naver] }
         role: { type: string, enum: [USER, ADMIN] }
         status: { type: string, enum: [ACTIVE, SUSPENDED] }
         firstLogin: { type: boolean, description: 처음 로그인이면 true → 설문(/onboarding) }
         agreedAt: { type: string, format: date-time, nullable: true, description: '소셜 첫 가입이면 null → 동의 화면(/welcome)' }
-        lastLoginAt: { type: string, format: date-time, nullable: true }
-        bio: { type: string, maxLength: 30, nullable: true }
-        avatarUrl: { type: string, nullable: true }
-        avatarEmoji: { type: string, nullable: true, example: '🐻' }
-        avatarColor: { type: string, nullable: true, example: '#ffd6a5' }
+        lastLoginAt: { type: string, format: date-time, nullable: true, description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음)' }
+        bio: { type: string, maxLength: 30, nullable: true, description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음) user_profiles' }
+        avatarUrl: { type: string, nullable: true, description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음)' }
+        avatarEmoji: { type: string, nullable: true, example: '🐻', description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음)' }
+        avatarColor: { type: string, nullable: true, example: '#ffd6a5', description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음)' }
         suspension:
           type: object
           nullable: true
+          description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음) user_sanctions 의 진행 중 정지'
           properties:
             until: { type: string, format: date-time, nullable: true }
             permanent: { type: boolean }
             reason: { type: string }
             count: { type: integer }
-        warnCount: { type: integer }
+        warnCount: { type: integer, description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음)' }
         unseenWarnings:
           type: array
+          description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음) 확인 안 한 경고 → 경고 창'
           items:
             type: object
             properties:
@@ -1498,15 +1500,15 @@ components:
               at: { type: string, format: date-time }
     SignupRequest:
       type: object
-      required: [username, password, nickname, phone, phoneVerificationToken, agreeTerms, agreePrivacy, agreePolicy, ageOver14, termsVersion]
+      required: [username, password, nickname, phone, phoneVerificationToken, email, address, agreeTerms, agreePrivacy, agreePolicy, ageOver14, termsVersion]
       properties:
         username: { type: string, pattern: '^[a-z0-9]{6,16}$', example: tester01 }
         password: { type: string, format: password, minLength: 8, maxLength: 16, description: 영문 · 숫자 · 특수문자 모두 }
         nickname: { type: string, minLength: 2, maxLength: 12 }
         phone: { type: string, example: 010-1234-5678 }
         phoneVerificationToken: { type: string }
-        email: { type: string, format: email }
-        address: { type: string, example: 서울 마포구 합정동 }
+        email: { type: string, format: email, maxLength: 100, description: '필수 (frontend/src/features/auth/schema.ts 와 같은 규칙), 겹치면 안 됨' }
+        address: { type: string, minLength: 1, maxLength: 200, example: 서울 마포구 합정동, description: 필수 }
         agreeTerms: { type: boolean }
         agreePrivacy: { type: boolean }
         agreePolicy: { type: boolean }
@@ -1901,7 +1903,7 @@ components:
       properties:
         id: { type: string }
         nickname: { type: string }
-        username: { type: string, nullable: true }
+        username: { type: string, description: 아이디가 없으면 키 생략 }
         joinedAt: { type: string, format: date }
         posts: { type: integer }
         comments: { type: integer }
