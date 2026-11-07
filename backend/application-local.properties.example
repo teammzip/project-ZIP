@@ -1,0 +1,5 @@
+# Copy to application-local.properties and fill in your own credentials.
+# Never enter real credentials in this example file.
+DB_URL=jdbc:mysql://localhost:3306/zip_test?connectionTimeZone=Asia/Seoul&characterEncoding=UTF-8
+DB_USERNAME=
+DB_PASSWORD=
