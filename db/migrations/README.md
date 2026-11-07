@@ -1,8 +1,14 @@
 > 2026-11-07 최신 변경: [생활 카테고리·월별 납부·집 주소 가이드](../LIFE_CATEGORIES.md). 기존 DB는 `20261102` 다음 `20261107_life_categories.sql`을 적용합니다. 최신 감사 기준: 44테이블 / 358컬럼 / 71키 / 62FK / 15CHECK / 2VIEW. 아래 이전 날짜의 수치는 당시 이력입니다.
 
-# 2026-10-31 변경 적용
+# DB 마이그레이션 적용 안내 (2026-11-07)
 
 ## 적용 순서
+
+전체 경로: `20261031_current_project.sql` → `20261031_02_event_anniversaries.sql` → `20261101_housing_and_loan.sql` → `20261102_requirements_hardening.sql` → `20261107_life_categories.sql`. 이미 적용한 파일은 다시 실행하지 않습니다.
+
+### 2026-11-07 개인 카테고리·집 주소
+
+20261102까지 적용된 DB에 20261107 파일을 한 번 실행합니다. home_address/ledger_category_settings와 tag/name/color 타입을 먼저 확인하고 일부만 반영됐으면 전체를 재실행하지 않습니다. 상세 절차는 [생활 기능 적용 가이드](../LIFE_CATEGORIES.md)를 따릅니다. 적용 후 정상 24번 → 예외 25번 → 구조 감사 15번 순서로 검증합니다. 새 DB는 최신 schema.sql만 실행합니다.
 
 ### 2026-11-02 최신 요구사항·예외 보완
 
