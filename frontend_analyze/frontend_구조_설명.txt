@@ -188,4 +188,4 @@ features/life 안쪽 모습 (큰 기능의 예)
 - src 구조는 바뀌지 않았다. 바뀐 것은 src 밖의 backend/openapi.yaml 추가(Swagger 명세)와 API.md 의 DELETE 규칙이다.
 - DELETE 요청은 본문 없이 쿼리로 보낸다 (알림 ?ids=1,2, 관리자 글/댓글 ?reason=).
 - 그림(frontend_구조도.png/.svg)에 "src 밖: API.md · openapi.yaml" 칸과 백엔드 기술 스택(Spring Boot + Gradle)을 추가했다.
-- 백엔드는 아직 없다. 빌드 도구는 Gradle 로 확정.
+- backend/ 에는 뼈대(Spring Boot 4.1.2 · Java 17 · Gradle)만 있고 기능 코드는 아직 없다.

@@ -377,3 +377,14 @@ ProfileLook: avatarImg(사진), avatarEmoji, avatarColor, bio(한 줄 소개, �
   관리자 글/댓글 삭제는 DELETE /api/admin/posts/{id}?reason= · /api/admin/comments/{id}?reason= (사유는 쿼리).
 - 빌드 도구는 Gradle 로 확정(Maven 은 쓰지 않음). 자세한 내용은 백엔드_기술스택_추천.txt.
 - 명세와 백엔드 기본값 주의: 회원가입 성공 코드는 명세상 200, 약관 버전 예시는 DB 시드와 같은 '2026-10-18'.
+
+2026-11-07 (3차) backend 뼈대 반영
+--------------------------------------------------------------------
+- 문원이 backend/ 뼈대를 올렸다 (PR #78). 앞으로의 백엔드 작업은 이 뼈대 위에서 이어서 한다.
+- 실제 설정: Spring Boot 4.1.2 · Java 17(toolchain) · Gradle wrapper 9.8.2(gradlew 포함, 따로 설치 불필요).
+- 패키지는 com.zip.backend (BackendApplication), 설정 파일은 application.properties.
+- 지금 들어 있는 의존성: spring-boot-starter-webmvc, starter-data-jpa, mysql-connector-j (+ 테스트용).
+  Security · Validation · JWT 등은 필요할 때 build.gradle 에 추가한다.
+- DB: ddl-auto=none, open-in-view=false, sql.init.mode=never. 표는 db/schema.sql 과 db/migrations 로만 관리한다.
+- 접속 정보는 환경변수 또는 backend/application-local.properties(Git 제외)로 넣는다. 샘플(.example)에는 실제 비밀번호를 적지 않는다.
+- Spring Boot 4.x 는 3.x 와 스타터 이름 등이 다르다(예: starter-webmvc). 자료를 볼 때 버전을 확인한다.
