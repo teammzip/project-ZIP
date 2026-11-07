@@ -1,5 +1,5 @@
 [2026-11-07 프로젝트 대조]
-현재 API 계약/제안은 ../frontend/API.md(사람용)와 ../frontend/openapi.yaml(Swagger용, 같은 내용), DB 저장 계약은 ../db/README.md가 기준입니다.
+현재 API 계약/제안은 ../frontend/API.md(사람용)와 ../backend/openapi.yaml(Swagger용, 같은 내용), DB 저장 계약은 ../db/README.md가 기준입니다.
 DB는 44테이블·358컬럼·15CHECK이며 MySQL 9.6.0 검증 결과가 있습니다. 백엔드는 아직 구현되지 않았습니다.
 인증 실제 요청 코드와 브라우저 전용 기능을 구분하며 서버 연결 완료로 해석하지 않습니다.
 
@@ -144,7 +144,7 @@ features/life 안쪽 모습 (큰 기능의 예)
 - support(문의)는 zustand persist 가 아니라 직접 localStorage('zip-support')에 저장한다.
 - weather 는 store 없이, 찾은 동네 좌표만 localStorage 에 90일 캐시한다.
 - 로그인은 mock API 가 흉내 낸다. (VITE_USE_MOCK=false 면 realAuthApi 로 바뀜)
-(백엔드와 맞출 약속은 frontend/API.md, Swagger 형식은 frontend/openapi.yaml 참고)
+(백엔드와 맞출 약속은 frontend/API.md, Swagger 형식은 backend/openapi.yaml 참고)
 
 
 6-1. frontend 폴더 바깥쪽 파일 (src 밖)
@@ -152,7 +152,6 @@ features/life 안쪽 모습 (큰 기능의 예)
   tests/            node 로 돌리는 테스트 7개 (*.test.mjs). 파일마다 따로 실행한다.
   public/           favicon.png
   API.md            백엔드와 맞출 API 약속 (사람이 읽는 문서)
-  openapi.yaml      API.md 와 같은 내용을 Swagger(OpenAPI 3.0.3)로 쓴 파일 (주소 81 · API 115)
   README.md         frontend 사용 설명
   package.json      실행 명령: dev, build, lint, preview
   vite.config.ts    개발 서버 포트 3000, '@' = src 경로 별칭
@@ -186,7 +185,7 @@ features/life 안쪽 모습 (큰 기능의 예)
 
 2026-11-07 (2차) 업데이트 반영
 --------------------------------------------------------------------
-- src 구조는 바뀌지 않았다. 바뀐 것은 src 밖의 frontend/openapi.yaml 추가(Swagger 명세)와 API.md 의 DELETE 규칙이다.
+- src 구조는 바뀌지 않았다. 바뀐 것은 src 밖의 backend/openapi.yaml 추가(Swagger 명세)와 API.md 의 DELETE 규칙이다.
 - DELETE 요청은 본문 없이 쿼리로 보낸다 (알림 ?ids=1,2, 관리자 글/댓글 ?reason=).
 - 그림(frontend_구조도.png/.svg)에 "src 밖: API.md · openapi.yaml" 칸과 백엔드 기술 스택(Spring Boot + Gradle)을 추가했다.
 - 백엔드는 아직 없다. 빌드 도구는 Gradle 로 확정.

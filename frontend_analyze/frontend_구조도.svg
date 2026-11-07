@@ -115,7 +115,7 @@
 
   <!-- outside src -->
   <rect x="60" y="980" width="1080" height="90" rx="12" fill="#fff1f2" stroke="#e11d48" stroke-width="1.5"/>
-  <text x="84" y="1008" font-size="17" font-weight="700" fill="#881337">src 밖: 백엔드와 맞출 약속 (frontend/ 폴더 바로 아래)</text>
+  <text x="84" y="1008" font-size="17" font-weight="700" fill="#881337">src 밖: 백엔드와 맞출 약속 (frontend/API.md · backend/openapi.yaml)</text>
   <text x="84" y="1034" font-size="14" fill="#334155">API.md = 사람이 읽는 API 약속  ·  openapi.yaml = 같은 내용을 Swagger(OpenAPI 3.0.3)로 (주소 81 · API 115)</text>
   <text x="84" y="1056" font-size="14" fill="#334155">백엔드(예정): Spring Boot + Gradle + JPA + Security(JWT) + MySQL  ·  아직 서버 코드 없음, 화면은 브라우저(localStorage)에 저장</text>
 </svg>
