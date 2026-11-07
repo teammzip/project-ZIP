@@ -1,3 +1,8 @@
+[2026-11-07 프로젝트 대조]
+현재 API 계약/제안은 ../frontend/API.md, DB 저장 계약은 ../db/README.md가 기준입니다.
+DB는 44테이블·358컬럼·15CHECK이며 MySQL 9.6.0 검증 결과가 있습니다. 백엔드는 아직 구현되지 않았습니다.
+인증 실제 요청 코드와 브라우저 전용 기능을 구분하며 서버 연결 완료로 해석하지 않습니다.
+
 ZIP 백엔드 필수 기능 목록 (체크리스트)
 ====================================================================
 작성일: 2026-11-01
@@ -25,7 +30,7 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 [ ] A "내 데이터만" 접근: 일정/가계부 등은 토큰의 사용자 것만 조회/수정
 [ ] A JSON 규칙: 키는 camelCase, id 는 문자열, 날짜 'YYYY-MM-DD', 금액 원 단위 정수
 [ ] A CORS / 개발용 프록시 (프론트 localhost:3000 -> 백엔드 localhost:8080)
-[ ] A 비밀 키는 서버 .env 에만 (깃에 올리지 않음)
+[ ] A 비밀 키는 환경변수/비밀 저장소로 관리하고 (깃에 올리지 않음)
 [ ] B 목록 응답 규칙: ?page=0&size=20 -> { items: [...], hasNext: true }
 [ ] B 파일 업로드 저장소 (로컬 폴더 -> 나중에 R2/S3)
 [ ] C 요청 제한(Rate limit), 로그, 오류 감시(Sentry)
@@ -66,10 +71,10 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 [ ] A GET    /api/regions                    동네 목록
 [ ] A GET    /api/regions/{id}/neighbors     이웃 동네 (커뮤니티 "근처" 범위)
 [ ] A 가입 주소에서 구를 찾아 users.region_id 연결 (못 찾으면 null)
-[ ] B 첫 로그인 설문 저장 (API와 저장 칸 아직 없음 -> 먼저 설계 필요)
+[ ] B 첫 로그인 설문 저장 (housing_surveys 존재, API.md 2번에 GET/PUT 제안)
       생년월일, 주소(+좌표), 월세/전세, 보증금, 월세, 관리비 포함 여부, 관리비,
       계약금, 대출 여부/금액, 수입(월/연)
-[ ] B 설문 완료/건너뛰기 시 firstLogin 이 꺼지도록 처리
+[ ] B firstLogin(첫 로그인)과 설문 완료 상태를 구분해 재진입 처리
 [ ] B POST   /api/me/region-verify { lat, lon }   현재 위치로 동네 인증 (유효 기간 있음)
 [ ] C 우리 집 좌표 저장 (users.home_lat, home_lon)
 
@@ -100,7 +105,7 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 [ ] A PUT    /api/bills/{id}/payments/{month}   납부 체크 또는 금액 { paid } / { amount }
 [ ] A DELETE /api/bills/{id}                 해지 (is_active = 0)
 [ ] A 달마다 납부 기록 분리: 달이 바뀌면 자동으로 미납으로 보이게 (bill_payments)
-[ ] A 태그: 공과금, 통신, 구독, 관리비, 기타
+[ ] A 태그: 기본 5개 + 회원별 사용자 카테고리(24자)
 
 
 5. 가계부 (수입 / 지출)  (5번)
@@ -110,7 +115,7 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 [ ] A GET/POST/DELETE /api/expenses          기타 지출
 [ ] B GET    /api/stats/monthly-income?months=    월별 수입 합계
 [ ] B GET    /api/stats/spend-breakdown?month=    지출 내역별 합계 (월세+고정지출+기타+대출 이자)
-[ ] C 전세 대출 이자 자동 기록 (API 약속 없음: 저장 표와 납부일 계산 방식 먼저 결정)
+[ ] C 전세 대출 이자 자동 기록 (housing_loans/loan_interest_charges 및 API.md 4번 제안 참조)
 
 
 6. 알림  (6번)
@@ -175,7 +180,7 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 [ ] B GET    /api/admin/posts, /api/admin/reports      글 목록, 신고 목록
 [ ] B PATCH  /api/admin/reports/{id}         신고 처리 { status: HIDDEN | DISMISSED }
 [ ] B 정지 일수: 1/3/5/10일 또는 영구, 경고는 기록만
-[ ] B 정지된 아이디/닉네임/휴대폰으로 재가입 차단 (탈퇴해도 정지 기록 유지)
+[ ] B 정지된 아이디/닉네임/휴대폰으로 재가입 차단 (탈퇴해도 banned_identities 차단 HMAC 유지)
 [ ] B 사용자에게 정지 안내/경고 확인(seen_at) 정보 내려주기 (suspension, warnCount, unseenWarnings)
 [ ] B POST   /api/me/warnings/seen { ids }    경고 창에서 "확인했어요"를 누르면 확인 시각 기록 (user_sanctions.seen_at)
 
@@ -196,7 +201,7 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 ====================================================================
 [ ] B GET    /api/places/categories          장소 종류 (15개)
 [ ] B GET    /api/places?regionId=&category=  또는 &q=    동네 주변 장소 (가까운 순)
-[ ] B GET/PUT /api/me/place-favorites        즐겨찾기
+[ ] B GET /api/me/place-favorites 및 PUT/DELETE /api/me/place-favorites/{placeId}        즐겨찾기
 [ ] B GET/PUT /api/me/map-settings           칩에 보일 종류, 직접 추가한 검색어
 [ ] C POST   /api/places/ai-search           "밤에 갈 수 있는 약국" 같은 문장 검색 (최대 5곳)
 [ ] C 장소 후기 (확장 기능, 화면 없음)
@@ -213,7 +218,7 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
       -> 어느 쪽인지 팀에서 정해야 함. 정지/경고 기록은 어느 쪽이든 지우면 안 됨 (정지 우회 방지)
 [ ] B 회원 탈퇴 시 데이터 정리
       프론트는 탈퇴 성공 후 기기 저장분을 지운다. 서버는 users 삭제 시 개인 데이터를 같이 지우고
-      (CASCADE), withdrawal_logs 에는 번호와 시각만 남기며, 정지 기록은 유지한다.
+      (CASCADE), withdrawal_logs 에는 번호와 시각만 남기며, 차단 HMAC는 banned_identities에 유지한다.
 
 14. 만들 필요 없는 것 (제외)
 ====================================================================
@@ -231,3 +236,12 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 5단계  11번 관리자/이용 정지 + 10번 약관
 6단계  1번의 휴대폰 인증, 소셜 로그인  (외부 서비스 연동)
 7단계  12번 AI, 13번 지도/장소/날씨 서버화
+
+2026-11-07 추가 구현 범위
+--------------------------------------------------------------------
+- 실제 집 주소: user_settings.home_address, 가입 주소/현재 동네/설문 스냅샷과 구분.
+- 개인 분류: fixed-income/other-income/spend/bill의 custom/order를 ledger_category_settings에 저장.
+- PATCH /api/bills/{id} 제안으로 항목 수정. paidMonths의 선택 월만 변경하고 과거 금액 보존.
+- 개인 카테고리·설문·대출 API는 제안이며 호출 코드가 아직 없음.
+- 회원가입에는 휴대전화 인증/필수 약관이 필요하므로 인증 보조 구현을 마지막까지 미루지 않음.
+- 상세 API 경로와 DTO는 frontend/API.md 우선. 새 DB는 schema.sql, 기존 DB는 미적용 마이그레이션만 실행.

@@ -1,3 +1,8 @@
+[2026-11-07 프로젝트 대조]
+현재 API 계약/제안은 ../frontend/API.md, DB 저장 계약은 ../db/README.md가 기준입니다.
+DB는 44테이블·358컬럼·15CHECK이며 MySQL 9.6.0 검증 결과가 있습니다. 백엔드는 아직 구현되지 않았습니다.
+인증 실제 요청 코드와 브라우저 전용 기능을 구분하며 서버 연결 완료로 해석하지 않습니다.
+
 ZIP 백엔드 연동 가이드 (프론트 코드를 읽지 않고도 백엔드를 만들 수 있게)
 ====================================================================
 작성일: 2026-11-01
@@ -17,7 +22,7 @@ API.md 가 "어떤 주소로 무엇을 주고받나"라면,
 
 0. 지금 상태 한 줄
 ====================================================================
-서버와 DB가 없다. 모든 데이터는 브라우저 localStorage 에 저장된다.
+백엔드 연결이 아직 없다. 앱 입력값은 브라우저 저장소에 저장된다. DB 설계·마이그레이션·테스트 파일은 존재한다.
 로그인만 "실제 API(realAuthApi)"와 "가짜 API(mockAuthApi)"가 둘 다 만들어져 있고,
 VITE_USE_MOCK 이 'false' 가 아니면 가짜를 쓴다. 나머지 기능은 아직 서버 호출 코드가 없다.
 -> 백엔드가 생기면 각 기능의 store.ts 가 하던 일을 API 호출로 바꾸면 된다.
@@ -33,7 +38,7 @@ VITE_USE_MOCK 이 'false' 가 아니면 가짜를 쓴다. 나머지 기능은 �
   /oauth/callback
 약관 동의(소셜 첫 가입)     features/auth ConsentOnboarding  -                             1번
   /welcome
-첫 로그인 설문 /onboarding  features/onboarding              zip-housing-survey            API/칸 아직 없음 (5번)
+첫 로그인 설문 /onboarding  features/onboarding              zip-housing-survey            housing_surveys + API.md 2번 제안
 홈 /                        pages/home -> features/life      (아래 기능들의 합)            2~7번, 9번, 12번
                             (알림 회전창, 요약, 수입/지출
                             차트, 날씨 카드), memo(메모),
@@ -53,7 +58,7 @@ AI 상담 /ai                 features/ai                      zip-ai-chat      
 관리자 /admin               features/admin                   (zipban-records)              11번
 이용 정지 /suspended        features/moderation              zipban-records                11번
 약관 /terms /privacy        features/legal                   -                             10번
-대출 이자 자동 기록         features/loan                    zip-loan-interest             API 약속 없음 (5번)
+대출 이자 자동 기록         features/loan                    zip-loan-interest             API.md 4번 대출 제안
 
 
 2. "id"와 "이름"으로 연결되는 방식 (백엔드가 가장 헷갈릴 부분)
@@ -136,7 +141,7 @@ AI 상담 /ai                 features/ai                      zip-ai-chat      
   role           'ADMIN' 이면 /admin 화면만 보임
   status/suspension/warnCount/unseenWarnings  이용 정지/경고 (3-12 참고)
 
-[3-2] 첫 로그인 설문 (features/onboarding)  --  백엔드 API/칸이 아직 없음
+[3-2] 첫 로그인 설문 (features/onboarding)  --  housing_surveys 및 API.md 2번 제안 참조
 --------------------------------------------------------------------
 흐름: 로그인 응답 firstLogin=true -> /onboarding -> 설문 -> "ZIP 시작하기" -> firstLogin 해제
 질문(HousingSurvey 필드)
@@ -151,9 +156,9 @@ AI 상담 /ai                 features/ai                      zip-ai-chat      
   - 관리비 -> 고정지출 항목(태그 '관리비')
   - 주소 -> settings.region / 좌표
 백엔드가 정해야 할 것
-  1) 설문 답변을 저장할 표/칸 (user_settings 확장 등)
-  2) 저장 API (예: PUT /api/me/housing-survey)
-  3) firstLogin 해제 방식 (설문 완료 또는 건너뛰기 시 서버가 인식)
+  1) housing_surveys 최신 응답 한 행과 user_settings 월세/지역 동기화
+  2) API.md의 GET/PUT /api/me/housing-survey 제안 구현
+  3) firstLogin은 첫 로그인 여부, 설문 완료는 설문 GET 결과로 별도 판정
   (테스트용 가짜 계정 a1 / b1 은 mock 전용. 서버에는 필요 없음)
 
 [3-3] 생활 설정 / 동네 (features/life store.ts 의 settings)  --  API.md 2번
@@ -273,7 +278,7 @@ API: GET /api/ai/topics, 대화 GET/POST/DELETE /api/ai/conversations,
 지도: Leaflet + OpenStreetMap. 주변 장소는 예시 데이터(data/places.ts).
       zip-map = { on: 보일 종류, custom: 직접 추가한 검색어, favs: 즐겨찾기 장소 id }
 API: GET /api/places/categories, GET /api/places?regionId=&category=|q=,
-     POST /api/places/ai-search, GET/PUT /api/me/place-favorites, GET/PUT /api/me/map-settings
+     POST /api/places/ai-search, GET /api/me/place-favorites 및 PUT/DELETE /api/me/place-favorites/{placeId}, GET/PUT /api/me/map-settings
 
 [3-12] 이용 정지 / 경고 / 관리자 (features/moderation, features/admin)  --  API.md 11번
 --------------------------------------------------------------------
@@ -282,7 +287,7 @@ BanRecord: nick(닉네임이 키), uid, phone, count(정지 횟수), warns(경�
   - 정지 일수: 1, 3, 5, 10, 영구(0). 경고는 정지 없이 기록만.
   - 기간이 끝나 풀려도 횟수/이력은 남는다. 정지된 아이디/닉네임/휴대폰으로는 가입 불가.
   - 일부러 'zip-' 으로 시작하지 않는 저장 키(zipban-records)를 쓴다: 데이터 초기화로 정지를 못 풀게.
-  서버에서는 이 모든 판단을 서버가 한다 (user_sanctions 표, 탈퇴 후에도 정지 기록 유지).
+  서버에서는 이 모든 판단을 서버가 한다 (user_sanctions 표, 탈퇴 후 banned_identities의 차단 HMAC 유지, user_sanctions 원문은 CASCADE 삭제).
 관리자 화면(/admin)은 role='ADMIN' 만. 회원 목록/정지/해제, 글/댓글 삭제, 신고 처리.
 API: /api/admin/... (회원, 정지, 게시글, 신고, 통계)
 
@@ -301,7 +306,7 @@ ProfileLook: avatarImg(사진), avatarEmoji, avatarColor, bio(한 줄 소개, �
   서버: POST /api/files 로 올리고 PATCH /api/auth/me 에 { avatarFileId, bio } 또는
         { avatarEmoji, avatarColor, avatarFileId: null }. DB: users.bio, avatar_file_id 등(추가됨)
 
-[3-15] 대출 이자 자동 기록 (features/loan)  --  API 약속 없음
+[3-15] 대출 이자 자동 기록 (features/loan)  -- API.md 4번 대출 제안
 --------------------------------------------------------------------
 전세 대출이 있으면 이자를 계산해 가계부(지출)에 자동으로 넣는다 (interest.ts).
 저장: zip-loan-interest = { plans[], charges[] }. 실제 출금은 하지 않는다(기록만).
@@ -313,7 +318,7 @@ ProfileLook: avatarImg(사진), avatarEmoji, avatarColor, bio(한 줄 소개, �
   - 알림 만들기 (월세 D-day, 일정/기념일 D-3, 쓰레기 배출)    -> notifications
   - 쓰레기 배출 요일 -> 달력에 얹기                           -> trash_schedules (요일별 정보)
   - 달이 바뀌면 고정지출 미납으로 되돌리기                    -> bill_payments 를 달마다 기록
-  - 이용 정지 판정/가입 차단                                  -> user_sanctions, 탈퇴 후 정지 기록 유지
+  - 이용 정지 판정/가입 차단                                  -> user_sanctions, 탈퇴 후 banned_identities 차단 HMAC 유지
   - 첫 로그인 판단 (firstLogin)                               -> users.last_login_at
   - 동네 인증 (좌표 -> 어느 동네)                             -> /api/me/region-verify
   - 입력값 검사: 아이디 6~16자 영소문자+숫자, 비번 8~16자(영문+숫자+특수), 닉네임 2~12자,
@@ -321,11 +326,11 @@ ProfileLook: avatarImg(사진), avatarEmoji, avatarColor, bio(한 줄 소개, �
   - AI 답변 (LLM 호출, 사용량 제한)
 
 
-5. API 약속이 아직 없거나 DB와 맞춰야 하는 것
+5. 서버 구현 시 확인할 API 제안·변환 규칙
 ====================================================================
-  1) 처음 로그인 설문 답변 저장 (3-2)
-  2) 대출 이자 기록 (3-15)
-  3) 기념일 칸 이름: API.md(is_anniv/is_yearly) vs DB(is_anniversary/repeat_yearly)
+  1) 처음 로그인 설문: API.md 2번 제안, housing_surveys (3-2)
+  2) 대출 이자: API.md 4번 제안, housing_loans/loan_interest_charges (3-15)
+  3) 기념일 키: API anniv/yearly -> DB is_anniversary/repeat_yearly (차이 해결됨)
   4) 월세 단위: 설정은 만원, 설문은 원 (3-3, 2-3)
   5) 커뮤니티 카테고리 한글 <-> 영문 코드 매핑
   6) 프론트의 숫자 id -> 서버의 문자열 id (2-1)
@@ -351,3 +356,12 @@ ProfileLook: avatarImg(사진), avatarEmoji, avatarColor, bio(한 줄 소개, �
   5) 커뮤니티 + 파일 업로드 + 신고
   6) 관리자 / 이용 정지
   7) AI, 지도 장소, 날씨 서버화
+
+2026-11-07 추가 구현 범위
+--------------------------------------------------------------------
+- 실제 집 주소: user_settings.home_address, 가입 주소/현재 동네/설문 스냅샷과 구분.
+- 개인 분류: fixed-income/other-income/spend/bill의 custom/order를 ledger_category_settings에 저장.
+- PATCH /api/bills/{id} 제안으로 항목 수정. paidMonths의 선택 월만 변경하고 과거 금액 보존.
+- 개인 카테고리·설문·대출 API는 제안이며 호출 코드가 아직 없음.
+- 회원가입에는 휴대전화 인증/필수 약관이 필요하므로 인증 보조 구현을 마지막까지 미루지 않음.
+- 상세 API 경로와 DTO는 frontend/API.md 우선. 새 DB는 schema.sql, 기존 DB는 미적용 마이그레이션만 실행.
