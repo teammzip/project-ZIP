@@ -1,26 +1,27 @@
 # 백엔드 API 약속
 
-프론트(React)와 백엔드가 주고받을 API를 정리한 문서예요. **DB는 [`../db/schema.sql`](../db/schema.sql)(2026-10-21 설계)이 기준**이고, 표마다 어느 API가 쓰는지 같이 적었어요.
+프론트(React)와 백엔드가 주고받을 API를 정리한 문서예요. **DB는 [`../db/schema.sql`](../db/schema.sql)(2026-11-07 변경 반영)이 기준**이고, 표마다 어느 API가 쓰는지 같이 적었어요.
 
-- ✅ **프론트 코드 있음**: `src/features/auth/api/realAuthApi.ts`가 이미 이 주소로 요청해요. 백엔드만 만들면 바로 연결돼요.
+- ✅ **프론트 코드 있음**: `src/features/auth/api/realAuthApi.ts`가 이미 이 주소로 요청해요. 요청 경로·기본 DTO가 구현돼 있어요. 실제 연결에는 `VITE_USE_MOCK=false`, 서버 설정과 통합 검증이 필요해요.
 - 📝 **약속만 있음**: 화면은 다 만들어져 있고 지금은 브라우저(localStorage)에 저장해요. 백엔드가 만들면 프론트가 이 모양대로 붙일게요.
-- ⚠️ 표시는 **DB(`schema.sql`)에 아직 칸·표가 없는 것**이에요. 맨 아래 [DB와 아직 안 맞는 곳](#db와-아직-안-맞는-곳-백엔드-확인-필요)에 모아 뒀어요.
+- 📝 영역의 주소·DTO는 **서버 연동을 위한 제안 계약**이에요. 실제 호출 코드가 있다는 뜻은 아니에요. 현재 브라우저 모델과 API DTO가 다른 부분은 연동 어댑터가 필요해요.
+- 현재 코드와 서버 연동 시 확장할 필드를 구분해 적었어요. 최신 저장 규칙은 [DB 최근 요구사항](../db/LATEST_REQUIREMENTS.md), [생활 카테고리](../db/LIFE_CATEGORIES.md), [착수 전 점검](../db/PRE_BACKEND_REVIEW.md)을 함께 보세요.
 
-> 마지막 정리: 2026-10-25 (React 화면 기준 — 동네 인증, 고정 지출 태그 · 달마다 납부, 알림 삭제, AI "사용 방법" 주제, 네이버 지도 스타일 동네 화면 · 집 위치, 달력 날짜 창, 가계부 빠른 기록까지 반영)
+> 마지막 대조: 2026-11-07 — 인증 실제 요청 코드, 각 기능의 types/store, 최신 DB 스키마 기준. 백엔드 구현 완료를 뜻하지 않아요.
 
 | 영역 | 상태 | DB 표 |
 |---|---|---|
 | [인증 · 내 정보](#1-인증--내-정보-) | ✅ | `users` `social_accounts` `auth_sessions` `phone_verifications` `password_resets` `user_term_agreements` `withdrawal_logs` |
-| [설정 · 동네](#2-설정--동네-) | 📝 | `user_settings` `regions` `region_neighbors` · ⚠️ 동네 인증 시각 |
-| [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | 📝 | `events`(⚠️ 기념일 칸) `event_categories` `event_presets` `trash_schedules` |
-| [월세 · 고정 지출](#4-월세--고정-지출-) | 📝 | `rent_payments` `bill_items` `bill_payments` |
+| [설정 · 동네·설문](#2-설정--동네-) | 📝 | `user_settings` `housing_surveys` `regions` `region_neighbors` · `users.region_verified_at` |
+| [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | 📝 | `events`(기념일·매년 반복 포함) `event_categories` `event_presets` `trash_schedules` |
+| [월세 · 고정 지출·대출](#4-월세--고정-지출-) | 📝 | `rent_payments` `bill_items` `bill_payments` `housing_loans` `loan_interest_charges` |
 | [가계부](#5-가계부-수입--기타-지출-) | 📝 | `ledger_categories` `incomes` `expenses` + VIEW 2개 |
 | [알림](#6-알림-) | 📝 | `notifications` (읽음 · 삭제) |
 | [커뮤니티 · 첨부 · 신고](#7-커뮤니티--첨부--신고-) | 📝 | `posts` `post_likes` `comments` `uploaded_files` `post_attachments` `reports` |
-| [AI](#8-ai-) | 📝 | `ai_topics`(⚠️ `guide` 추가) `ai_conversations` `ai_messages` `ai_usage_daily` |
-| [지도](#9-지도-) | 📝 | `places` `place_categories` `place_reviews` · ⚠️ 즐겨찾기 표 · 집 좌표 |
+| [AI](#8-ai-) | 📝 | `ai_topics`(`guide` 포함) `ai_conversations` `ai_messages` `ai_usage_daily` |
+| [지도](#9-지도-) | 📝 | `places` `place_categories` `place_reviews` · `place_favorites` · `users.home_lat/home_lon` |
 | [약관](#10-약관-) | 📝 | `terms_documents` |
-| [관리자 · 이용 정지 · 경고](#11-관리자--이용-정지-) | 📝 | `user_sanctions`(⚠️ 확인 시각) `users.status` `reports` |
+| [관리자 · 이용 정지 · 경고](#11-관리자--이용-정지-) | 📝 | `user_sanctions`(`seen_at` 포함) `users.status` `reports` |
 | [메모](#12-메모-) | 📝 | `memos` |
 | [고객센터](#13-고객센터-) | 📝 | `support_inquiries` |
 
@@ -36,16 +37,18 @@
 | id | DB의 BIGINT id는 **문자열**로 주세요 (`"id": "12"`). JS 숫자 범위를 넘지 않게 |
 | 날짜 | 날짜 `"2026-10-24"`, 시각 `"18:00"`, 연월 `"2026-10"`, 일시는 ISO `"2026-10-24T09:00:00+09:00"` |
 | 금액 | **원 단위 정수**. 단 하나, 설정의 월세(`rent`)만 화면과 같은 **만원 단위** (`user_settings.rent_amount`) |
-| ENUM 값 | API에서는 DB 값을 그대로 써요 (`TIP`, `GENERAL` …). `provider`만 예외로 소문자 (`email`, `kakao` …) |
+| ENUM 값 | 필드별 DTO를 따르세요. provider, incomeType, 설문의 kind/incomePeriod, regionLocation.source는 소문자 → DB 대문자로 변환해요. 나머지 명시된 TIP/GENERAL 등은 그대로예요 |
 | 실패 | `{ "message": "이미 가입된 이메일이에요." }` — 이 문장이 화면에 그대로 보여요 |
 | 401 | 토큰이 없거나 만료되면 **401**. 프론트가 자동으로 로그아웃시켜요 |
 | 403 | 권한이 없으면 **403** (일반 회원이 관리자 API, 정지된 회원이 글쓰기 등) |
-| 목록 | 개수가 늘어나는 목록(글·알림·회원)은 `?page=0&size=20` → `{ items: [...], hasNext: true }` |
+| 목록 | 아래 개별 표의 응답을 우선해요. 글·회원은 페이지 응답, 그 외 배열 응답은 현재 제안이에요. 알림 등 배열 목록에도 페이지 처리가 필요하면 프론트 연동 전에 계약을 조정해요 |
 | 내 데이터만 | 일정·가계부 등 개인 데이터는 **토큰의 사용자 것만** 보이고 고칠 수 있어야 해요 (남의 id로 요청하면 404) |
 
 ---
 
 ## 1. 인증 · 내 정보 ✅
+
+✅는 아래 기본 인증 요청 경로가 realAuthApi에 있다는 뜻이에요. 프로필·제재·위치 확장 필드와 refresh 제안까지 구현되어 있다는 뜻은 아니에요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
@@ -63,7 +66,7 @@
 | POST | `/api/auth/password-reset` | `{ resetToken, newPassword }` | — |
 | GET | `/api/oauth2/authorization/{kakao\|google\|naver}` | (페이지 이동) | 끝나면 `/oauth/callback?token=...`으로 보내기 |
 
-- **처음 로그인 설문**: 로그인 응답의 `user.firstLogin`이 `true`면 앱이 "우리 집 설문" 별도 페이지(`/onboarding`)로 보내요. 질문: ① 생년월일 ② 간략한 주소 ③ 계약 유형(월세: 보증금 · 월세 · 관리비 포함 여부 · 포함 아니면 관리비 / 전세: 계약금 · 대출 여부와 금액 · 관리비) ④ 한 달 수입. 서버는 로그인 처리 직전 `users.last_login_at`이 `NULL`이었는지로 판단하고 값을 채워 주세요. 답변을 저장할 API · 칸은 아직 없어요(지금은 브라우저 `zip-housing-survey`, 월세는 `zip-life` 설정에, 관리비는 고정 지출 항목에 반영).
+- **처음 로그인 설문**: 로그인 응답의 `user.firstLogin`이 `true`면 앱이 "우리 집 설문" 별도 페이지(`/onboarding`)로 보내요. 질문: ① 생년월일 ② 간략한 주소 ③ 계약 유형(월세: 보증금 · 월세 · 관리비 포함 여부 · 포함 아니면 관리비 / 전세: 계약금 · 대출 여부와 금액 · 관리비) ④ 한 달 수입. 서버는 로그인 처리 직전 `users.last_login_at`이 `NULL`이었는지로 판단하고 값을 채워 주세요. 현재는 브라우저 `zip-housing-survey`에 저장하지만 DB에는 `housing_surveys`가 있어요. 아래 설문 API 제안으로 연결하고, 월세 설정·관리비 항목·동네 출처 변경을 함께 처리해요.
 - 테스트용 계정(가짜 API 모드): 아이디 `a1` / 비밀번호 `b1` — 처음 로그인 설문 확인용, 로그인할 때마다 처음 로그인으로 취급돼요.
 
 ### user 모양
@@ -72,28 +75,30 @@
   "id": "1", "username": "zipdemo", "email": "demo@zip.com", "nickname": "지기",
   "address": "서울시 마포구 합정동", "region": { "id": "2", "name": "마포구" },
   "provider": "email", "role": "USER", "status": "ACTIVE",
-  "agreedAt": "2026-10-18T00:00:00+09:00", "lastLoginAt": "2026-10-24T11:33:00+09:00",
+  "firstLogin": false, "agreedAt": "2026-10-18T00:00:00+09:00", "lastLoginAt": "2026-10-24T11:33:00+09:00",
   "bio": "요리 연습 중", "avatarUrl": null, "avatarEmoji": "🐻", "avatarColor": "#ffd6a5",
   "suspension": null, "warnCount": 0, "unseenWarnings": []
 }
 ```
 | 키 | DB | 설명 |
 |---|---|---|
-| `username` | `users.login_id` | 소셜 가입자는 `null` |
+| `username` | `users.login_id` | 현재 User 타입은 선택 문자열이므로 없으면 키 생략. DB NULL을 그대로 응답하려면 프론트 타입 확장이 필요해요 |
 | `region` | `users.region_id` → `regions` | 주소에서 구를 찾아 연결. 못 찾으면 `null` |
 | `provider` | `users.signup_provider` | `EMAIL` → `email` 처럼 **소문자**로 |
 | `role` | `users.role` | `ADMIN`은 로그인하면 관리자 화면(`/admin`)만 보여요 |
-| `status` | `users.status` | 정지된 계정은 로그인이 막히니 보통 `ACTIVE` |
+| `status` | `users.status` | 현재 인증 타입의 상태. 정지 계정 로그인은 403으로 거부하는 계약이며, 브라우저의 정지 화면 데모와 서버 인증 정책을 구분해요 |
 | `agreedAt` | `user_term_agreements.agreed_at` | 소셜로 처음 들어온 사람은 `null` → 프론트가 동의 화면(`/welcome`)을 띄워요 |
 | `lastLoginAt` | `users.last_login_at` | 내 정보에 "구글로 로그인했어요 · 10월 24일 11:33 로그인"처럼 보여요 (지금은 브라우저가 로그인한 시각을 기억) |
-| `bio` · `avatar*` | ⚠️ 없음 | [프로필 꾸미기](#프로필-꾸미기-사진--한-줄-소개) |
+| `bio` · `avatar*` | `user_profiles` + `uploaded_files` | [프로필 꾸미기](#프로필-꾸미기-사진--한-줄-소개) |
 | `suspension` · `warnCount` · `unseenWarnings` | `user_sanctions` | [11번 화면](#11-관리자--이용-정지-) — 정지 화면 · 경고 창 |
+
+위 예시의 lastLoginAt, bio, avatar*, suspension, warnCount, unseenWarnings와 regionVerifiedAt/home는 **연동 시 확장 제안**이에요. 현재 `auth/types.ts`의 User에는 없으며 `UpdateMeRequest`도 nickname/address/동의만 지원해요. 이메일·주소가 없는 소셜 회원의 응답은 현재 필수 문자열 타입에 맞춰 빈 문자열을 쓰거나, 연동 시 nullable 타입으로 함께 조정해야 해요. 정지 화면·프로필은 현재 별도 브라우저 저장소를 사용해요.
 
 ### 로그인
 - `loginId`는 **아이디 또는 이메일** (`users.login_id` 또는 `users.email`로 찾기).
 - `remember`(로그인 유지)가 `true`면 세션 만료를 길게 (`auth_sessions.remember`). 성공하면 `users.last_login_at` 갱신.
 - 정지된 계정이면 403 + `{ "message": "이용이 정지된 계정이에요. (10/24 18:00 해제) 사유: …" }`.
-- **재발급 토큰**(`auth_sessions.refresh_token_hash`)은 httpOnly 쿠키로 주는 걸 추천해요. 그때 `POST /api/auth/refresh` → `{ accessToken }`을 만들어 주시면 프론트가 401 대신 자동 재발급을 붙일게요. (지금 프론트는 401이면 로그아웃)
+- **재발급 토큰**(`auth_sessions.refresh_token_hash`)은 httpOnly 쿠키로 주는 걸 추천해요. `POST /api/auth/refresh` → `{ accessToken }`은 **추가 제안**이며 현재 realAuthApi/apiClient에 재발급 호출·자동 재시도는 없어요. 쿠키 방식·세션 연결·로그아웃/정지 시 access token 무효화 정책을 합의하고 구현해야 해요. (지금 프론트는 401이면 로그아웃)
 
 ### 회원가입
 ```json
@@ -132,12 +137,12 @@
 - 사진은 프론트가 가운데를 정사각형으로 잘라 **240px JPEG**로 줄여서 보내요 (약 15~30KB).
 - 서버가 생기면: 사진은 `POST /api/files`로 올리고 `PATCH /api/auth/me`에 `{ avatarFileId, bio }`를 보내요. 캐릭터를 고르면 `{ avatarEmoji, avatarColor, avatarFileId: null }`, "기본으로"는 셋 다 `null`.
 - 한 줄 소개 최대 30자, 닉네임 2~12자 (닉네임은 같은 `PATCH /api/auth/me`)
-- `user`에 `bio`, `avatarUrl`, `avatarEmoji`, `avatarColor`를 같이 주세요. ⚠️ DB `users`에 이 칸이 아직 없어요 (아래 표 7번).
+- 저장 위치는 **`user_profiles`**예요. avatar_file_id → uploaded_files로 URL을 조회해요. 현재 인증 DTO에는 프로필 필드가 없으므로 위 PATCH 확장은 제안이며 프론트 연동 시 타입·요청 코드를 함께 보완해야 해요.
 
 ### 회원 탈퇴
 - `users` 한 줄을 지우면 개인 데이터는 CASCADE로 같이 지워져요. `withdrawal_logs`에는 지워진 번호와 시각만 남겨요.
 - 업로드한 파일의 실제 저장소 파일은 서버가 따로 지워 주세요.
-- 이용 정지 기록은 탈퇴해도 남겨야 재가입을 막을 수 있어요 (아래 [11번](#11-관리자--이용-정지-) 참고).
+- user_sanctions는 탈퇴 시 삭제돼요. 재가입 차단은 `banned_identities`의 HMAC·만료/해제 기록으로 유지해요. 타인이 남긴 신고 스냅샷의 개인정보와 실제 저장소 파일도 정책에 따라 별도 정리해요.
 
 ---
 
@@ -157,12 +162,16 @@
 ```
 | 키 | DB | 프론트 (`LifeSettings`) |
 |---|---|---|
-| `regionId` · `regionName` | `users.region_id` | `region` ('서울 마포구') |
+| `regionId` · `regionName` | `users.region_id` + `user_settings.region_name` | `region` ('서울 마포구') |
+| `homeAddress` (제안) | `user_settings.home_address` | `homeAddresses[로그인 회원 ID]`에서 본인 값만 전송 |
+| `regionLocation` (제안) | `user_settings.region_source/region_lat/region_lon` 및 region_name | `{ region, source, point? }`, 소유자는 서버가 결정 |
 | `rent` | `user_settings.rent_amount` (**만원**) | `rent` |
 | `rentDay` | `rent_day` (1~31) | `rentDay` |
 | `moveIn` · `contractEnd` | `move_in_ym` · `contract_end_ym` | 같음 |
 | `notiOn` | `noti_on` | 같음 |
 
+- 위 settings 예시는 기본 필드만 담았어요. 최신 settings에는 homeAddress와 regionLocation을 포함하는 확장이 필요해요. DB NULL은 homeAddress 빈 문자열 또는 regionLocation 생략으로 변환해요.
+- 가입 주소 users.address, 실제 집 주소 home_address, 현재 동네 region_name, 설문 주소 스냅샷을 구분하세요. GPS 인증 좌표를 집 좌표로 덮어쓰지 않아요.
 - 닉네임은 설정이 아니라 `PATCH /api/auth/me`로 바꿔요.
 - 가입하면 `user_settings` 기본 줄을 같이 만들어 주세요.
 
@@ -170,9 +179,36 @@
 - 마이페이지 > 내 정보 > 계정 · 설정의 **📍 동네 인증**, 또는 커뮤니티에서 인증 안 한 사람이 글쓰기 · 댓글 · 공감을 누르면 인증 창이 떠요.
 - 프론트가 휴대폰 위치(GPS) 좌표를 보내면, 서버가 좌표 → 행정구역(카카오 로컬 `coord2regioncode` 등)으로 바꿔 그 동네를 `users.region_id`로 정하고 인증 시각을 저장해요.
   - 우리 동네와 다른 곳이면 프론트가 먼저 "지금 위치는 ○○구예요. 이 동네로 바꾸고 인증할까요?"를 물어보고, 확인하면 같은 요청을 보내요.
-- 인증은 **30일** 유지. 동네를 바꾸면(설정 저장으로 `regionId`가 바뀌면) 인증은 풀려요.
+- 인증은 **30일** 유지. 수동 동네 변경·재설문 시 인증을 초기화해요. 단순 실제 집 상세주소 수정과 동네 변경은 구분해요. regionLocation.source는 survey/verified/manual → DB SURVEY/VERIFIED/MANUAL, 좌표는 둘 다 없거나 유효한 한 쌍이어야 해요.
 - `GET /api/auth/me`의 `user`에 `regionVerifiedAt: "2026-10-25T10:58:00+09:00" | null`을 같이 주세요 (30일 지났거나 동네가 바뀌었으면 `null`).
 - 지금 프론트는 서버 없이 OpenStreetMap(Nominatim)으로 동네 이름을 찾고 브라우저(`zip-life`의 `regionVerify: { region, at }`)에 저장해요 → `features/life/locateRegion.ts`, `useRegionVerify()`.
+
+---
+
+### 우리 집 설문 — API 추가 제안
+
+현재 `features/onboarding/store.ts`의 HousingSurvey가 기준이며 실제 요청 코드는 없어요.
+
+| 메서드 | 주소 | 보내는 값 | 받는 값 |
+|---|---|---|---|
+| GET | `/api/me/housing-survey` | — | `survey` 또는 `null` |
+| PUT | `/api/me/housing-survey` | 아래 설문 입력값 | 저장된 `survey` |
+
+```json
+{
+  "birth": "2000-01-01", "address": "가상 동네", "addressPoint": { "lat": 37.5, "lon": 127.0 },
+  "kind": "monthly", "deposit": 10000000, "rent": 550000,
+  "mgmtIncluded": false, "mgmtFee": 50000, "contractFee": 0,
+  "hasLoan": false, "loanAmount": 0, "income": 2500000, "incomePeriod": "monthly"
+}
+```
+
+- 설문의 **모든 금액은 원**이에요. 설정 rent만 만원이므로 10000으로 나눠 동기화해요.
+- birth → birth_date, kind → contract_kind(MONTHLY/JEONSE), mgmtIncluded/mgmtFee → management_included/management_fee, incomePeriod → income_period(MONTHLY/ANNUAL). 나머지는 해당 snake_case 컬럼으로 저장해요.
+- addressPoint는 설문 주소 검색 당시 중심점 스냅샷이에요. 현재 위치 인증 GPS와 구분해요. 선택 값 loanAnnualRate/loanPaymentDay/loanStartDate도 해당 컬럼에 저장해요.
+- userId/answeredAt은 서버가 결정해 응답해요. 입력의 회원 번호·완료 시각을 신뢰하지 않아요. 수입 응답은 설문 스냅샷이며 incomes에 실제 수입 행으로 자동 복사하지 않아요.
+- 설문 저장·월세 설정·관리비 항목·SURVEY 위치 출처·인증 초기화를 트랜잭션으로 처리해요. 기존 대출 조건이 불완전하면 금리를 임의로 정하거나 자동 활성화하지 않아요.
+- firstLogin은 첫 로그인 여부이지 설문 저장 완료 여부가 아니에요. 이탈 후 재진입 처리는 설문 GET 결과로 판단하도록 연동 시 보완해야 해요.
 
 ---
 
@@ -205,7 +241,7 @@
 - **일정 카테고리** (백엔드 담당 시안 PR #24 · #26): 일정마다 `category`가 붙고, 목록에 작은 이름표로 보여요. 고칠 때 카테고리를 바꾸거나 지울 수 있어요(→ `미분류`).
   - 기본 카테고리 5개(집 관리 · 청소·빨래 · 돈·계약 · 건강·생활 · 연락·행정)와 항목 30개는 프론트 목록이에요(`features/life/data/presets.ts`). 사용자는 **추가 · 이름 변경 · 삭제**할 수 있어요. `미분류`는 바꾸거나 지울 수 없어요.
   - 일정을 **직접 입력**하면 고른 카테고리 아래에 **항목 버튼**으로도 저장돼요(같은 이름이 이미 있으면 안 만듦). 직접 만든 항목은 수정 · 삭제할 수 있어요.
-  - DB는 `event_categories` · `event_presets` 표와 `events.category_id`(NULL = 미분류)를 써요.
+  - DB는 `event_categories` · `event_presets` 표와 `events.category_id`(NULL = 미분류)를 써요. 삭제 시 프리셋을 미분류로 이동한 뒤 카테고리를 삭제해야 해요. 미분류의 같은 제목과 충돌하면 기존 버튼을 재사용하고 중복 원본을 정리하는 등 병합 정책을 트랜잭션으로 처리하세요. FK CASCADE만으로는 프리셋이 이동하지 않고 삭제돼요.
   - 지금은 브라우저(`zip-life`의 `categories` · `customPresets`)에 저장해요.
 - **달력에서 날짜를 누르면 그날 일정 창**이 떠요 (그날 일정 전부 + 쓰레기 배출, 완료 체크 · 수정 · 삭제 · 이 날에 바로 추가). 새 API는 필요 없고 위 `GET /api/events?from=…&to=…`(그날 하루) · `POST` · `PATCH` · `DELETE`를 그대로 써요.
 - 달력 막대 색은 프론트가 카테고리 순서로 정해요 (미분류 · 직접 입력은 파랑, 쓰레기 배출은 초록). 같은 제목이 며칠 이어지면 막대를 이어 그려요.
@@ -213,7 +249,7 @@
 - **기념일** (일정 기록하기 > 🎉 기념일): `anniv: true`인 일정이에요. 카테고리 · 시간 · 완료 체크가 없고, 제목 앞에 `🎉 `를 붙여 저장해요(프론트가 보여 줄 때 뗌).
   - `yearly: true`면 **매년 반복**이에요. 서버는 한 줄만 저장하고, 프론트가 달력 · 목록 · 알림에 해당 연도 날짜로 펼쳐 보여요(윤년 2/29는 평년에 2/28). 펼친 일정의 id는 `"<id>@<연도>"`지만 서버에는 원래 `id`로만 요청해요.
   - 기념일은 "남은 일" 수에 안 들어가고, 홈 요약 카드 **다가오는 기념일**(오늘 포함 가장 가까운 것, D-day)과 알림(3일 전부터)에 쓰여요.
-  - ✅ DB 칸은 `events.is_anniversary` · `repeat_yearly`예요 (`anniv` → `is_anniversary`, `yearly` → `repeat_yearly`로 매핑. 아래 표 17번, `db/migrations/20261031_02_event_anniversaries.sql`).
+  - ✅ DB 칸은 `events.is_anniversary` · `repeat_yearly`예요 (`anniv` → `is_anniversary`, `yearly` → `repeat_yearly`로 매핑. `db/migrations/20261031_02_event_anniversaries.sql` 참고).
 - 쓰레기 배출은 일정으로 저장하지 않고, 프론트가 `trash_schedules` 요일표로 달력에 그려요.
   - `weekday` 0=일 ~ 6=토, `wasteType`: `GENERAL`(일반) · `RECYCLE`(재활용) · `FOOD`(음식물)
 
@@ -229,6 +265,7 @@
 | PUT | `/api/rent-payments/{month}` | `{ paid: true }` | `{ month, amount, paid, paidAt }` |
 | GET | `/api/bills?month=2026-10` | — | `[bill]` (그 달 납부 상태 포함) |
 | POST | `/api/bills` | `{ name, amount, tag }` | `bill` |
+| PATCH | `/api/bills/{id}` | `{ name, amount, tag }` 중 변경값 | `bill` (추가 제안: 항목 수정) |
 | PUT | `/api/bills/{id}/payments/{month}` | `{ paid: true }` 또는 `{ amount: 41000 }` | `bill` |
 | DELETE | `/api/bills/{id}` | — (해지: `is_active = 0`) | — |
 
@@ -237,11 +274,32 @@
 ```
 - 월세 `amount`는 **원 단위** (설정의 `rent` × 10000, `rent_payments.amount`).
 - 고정 지출 `id`는 항목(`bill_items.id`), `amount`·`paid`는 그 달 납부 기록(`bill_payments`)의 값이에요.
-- **`tag`**: `공과금` · `통신` · `구독` · `관리비` · `기타` (`features/life/types.ts`의 `BILL_TAGS`). 홈 · 고정 지출의 "공과금" 합계는 `tag = 공과금`인 것만 더해요.
-  - ⚠️ `bill_items`에 태그 칸이 없어요 (아래 표 13번).
+- **tag**: 기본 5개 + 회원이 bill scope에 추가한 분류예요. DB `bill_items.tag VARCHAR(24)`. 현재 고정 지출 화면은 사용자 분류별 합계와 전체 납부/남은 금액을 보여요.
 - **납부는 달마다 따로**: 달이 바뀌면 저절로 미납으로 보여요 (그 달 `bill_payments` 줄이 없으면 미납). 예전의 "이번 달 모두 미납으로"(`POST /api/bills/reset`)는 화면에서 없어져서 필요 없어요.
-- 그 달 줄이 없으면 서버가 만들어 주세요 (월세: 설정 금액, 고정 지출: `default_amount`). 같은 달 줄이 두 번 생기지 않게 (`uk_*_period_ym`).
-- 프론트 대응: `rentPaid['2026-10']` · `Bill { id, name, amount, tag, paidMonth }` — `paidMonth`는 납부한 달(`'2026-10'`) 또는 `null`이라, 서버의 `paid`(이번 달 기준)를 받으면 `paidMonth = paid ? 이번 달 : null`로 바꿔 써요.
+- 월별 청구 생성 작업/명시적 납부 저장에서 같은 달 행을 한 번만 만들어요 (`uk_*_period_ym`). 단순 GET이 과거 청구를 현재 금액으로 임의 생성하지 않도록 해요. 과거 금액은 월별 amount 스냅샷이고 항목 수정으로 덮어쓰지 않아요.
+- 프론트는 `Bill.paidMonths: Record<YYYY-MM, boolean>`로 여러 달을 저장하고 paidMonth를 이전 형식으로도 읽어요. 선택한 달의 false가 이전 paidMonth보다 우선해요. API의 월별 paid를 해당 달 키에 매핑하고 다른 달을 덮어쓰지 마세요.
+- 고정 지출 수정은 default_amount에 반영하고 납부 기록은 보존해요. 관리비 포함 월세이면 별도 관리비를 중복 합산하지 않아요. 현재 프론트의 과거 월 합계는 현재 항목 금액을 사용하므로 연동 때 월별 스냅샷 표시로 조정해야 해요.
+
+---
+
+### 전세 대출·월별 이자 — API 추가 제안
+
+현재 `features/loan/interest.ts`, `store.ts`, [대출 기능 설명](src/features/loan/README.md)을 기준으로 정리한 제안이며 호출 코드는 없어요.
+
+| 메서드 | 주소 | 보내는 값 | 받는 값 |
+|---|---|---|---|
+| GET | `/api/me/housing-loan` | — | `loan` 또는 `null` (중지된 설정도 포함) |
+| PUT | `/api/me/housing-loan` | `{ principal, annualRate, paymentDay, startDate }` | `loan` (설정·재개) |
+| PATCH | `/api/me/housing-loan` | `{ active: false }` | `loan` (자동 기록 중지) |
+| GET | `/api/me/loan-interest-charges?from=2026-01&to=2026-11` | — | `[charge]` |
+
+loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, charge는 `{ id, loanId, userId, date, amount, principal, annualRate }`예요. id는 문자열, userId는 인증된 회원으로 결정해요. DB의 이자 기록 id와 브라우저의 `loanId:YYYY-MM` 합성 ID를 구분해요.
+
+- 원금 1~9,999,990,000원, 연 이율 0~100%(소수 둘째 자리), 납부일 1~31, 시작일 2000-01-01~2100-12-31을 검사해요.
+- 이자는 ROUND(principal × annualRate / 1200), 한국 날짜의 납부일에 기록해요. 29~31일이 없는 달은 말일, 시작일 이전은 생성하지 않아요. 실제 은행 출금·원금 상환·일할 계산은 아니에요.
+- 수정·중지 전까지 지난 납부일을 이전 조건으로 확정하고 기존 스냅샷을 보존해요. 수정 중 startDate는 유지하고, 중지 후 재개는 기존 대출 ID와 새 시작일을 사용해요.
+- 서버 작업과 동시 요청에서도 loan_id/period_ym UNIQUE로 월별 한 번만 기록해요. 이미 있는 행을 새 조건으로 덮어쓰지 않아요. DB period_ym은 생성된 YYYYMM 정수이며 API의 YYYY-MM과 변환해요.
+- 공과금/기타 지출에 복사하지 않아요. 기록된 이자는 홈·AI 지출에 한 번만 포함하고 고정 지출 화면의 예정 이자와 구분해요.
 
 ---
 
@@ -263,11 +321,29 @@
 { "id": "77", "date": "2026-10-20", "categoryId": "7", "cat": "식비", "color": "#1fb5a3", "amount": 8500, "memo": "점심 제육덮밥" }
 ```
 - 분류는 `ledger_categories` (`kind`: `INCOME` · `EXPENSE`). 프론트는 분류 **이름**(`cat`)으로 보여 주니 이름과 색도 같이 주세요.
-- 통계는 저장하지 않고 VIEW로 계산: 월별 수입 = `v_monthly_income`, 지출 구성(월세 + 공과금 + 기타 지출) = `v_monthly_spend_breakdown`.
+- 월별 수입 VIEW는 `v_monthly_income`. 지출 VIEW `v_monthly_spend_breakdown`은 월세·전체 고정 지출·기타 지출·기록된 대출 이자를 포함하지만 **미납 청구도 포함**해요. 실제 납부 통계와 구분하고 반드시 회원 조건을 적용하세요. 사용자 태그별 고정 지출 차트는 bill_items.tag와 월별 기록으로 별도 집계해요.
 - 화면: 월별 합계 · **분류별 원형 그래프**(비율 · 금액) · 목록, 기록은 **빠른 기록**(금액 → 분류 칩 → 날짜(기본 오늘) · 메모(선택) → 기록하기). 보내는 값은 위 `POST` 그대로예요.
 - 지출 구성 VIEW의 "공과금"은 이제 **고정 지출 전체**(태그 공과금 · 통신 · 구독 · 관리비 · 기타)예요 ([4번](#4-월세--고정-지출-)).
 - **수입은 고정 · 기타 두 종류**예요 (`/my/budget/income` 고정 수입, `/my/budget/income/other` 기타 수입). `incomeType`은 `fixed` · `other`, DB `incomes.income_type`은 `FIXED` · `OTHER`로 바꿔 저장해요. 월별 수입 VIEW는 두 종류를 합쳐요.
 - 프론트 대응: `MoneyRecord { id, date, cat, amount, memo, incomeType? }`
+
+---
+
+### 회원별 카테고리·표시 순서 — API 추가 제안
+
+현재 `features/life/ledgerCategories.ts`는 추가·순서 변경만 구현하며 이름 변경·삭제는 없어요. 기존 `/api/ledger/categories?kind=INCOME`은 공용 사전 전체 공개가 아니라 본인에게 허용된 분류의 ID 매핑용으로 제한해야 해요.
+
+| 메서드 | 주소 | 보내는 값 | 받는 값 |
+|---|---|---|---|
+| GET | `/api/me/ledger-categories?scope=bill` | — | `{ scope, categories: [{ name, color }], custom: [{ name, color }], order: [name] }` |
+| POST | `/api/me/ledger-categories` | `{ scope, name }` | 해당 scope의 위 응답 |
+| PUT | `/api/me/ledger-categories/order` | `{ scope, order: [name] }` | 해당 scope의 위 응답 |
+
+- scope: `fixed-income`, `other-income`, `spend`, `bill`. categories는 기본 목록 + 본인 custom을 order에 따라 정렬한 결과예요. 기본 목록은 `features/life/data/catalog.ts`, bill은 BILL_TAGS예요.
+- 서버는 이름의 앞뒤·연속 공백을 정리하고 1~24자·기본/사용자 목록 중복·허용 색·유효한 순서를 검사해요. 회원별 설정을 `user_settings.ledger_category_settings`의 scope별 `{ custom, order }`로 저장하고 다른 scope를 지우지 않아요.
+- 현재 byUser/ orders의 본인 부분만 서버에 매핑해요. 이름은 식별자가 아닌 표시값이며 공용 사전의 UNIQUE 비교와 프론트 중복 검사 규칙을 일치시켜야 해요.
+- 수입/지출 저장 시 본인 scope와 일치하는 이름을 공용 ledger_categories(kind,name)에 연결해 categoryId를 구해요. 사전 동시 생성 충돌은 기존 ID 재조회로 처리해요. bill scope는 bill_items.tag에 저장해요.
+- 프론트 MoneyRecord/Bill의 id는 현재 number예요. API BIGINT 문자열을 Number로 무조건 변환하지 말고 연동 시 타입·어댑터를 보완해요.
 
 ---
 
@@ -326,6 +402,8 @@
   - 수정할 때 `attachmentIds`에서 빠진 파일은 연결을 끊고 지워 주세요.
   - 지금 프론트는 첨부를 브라우저에 data URL로 저장해요 (`Attachment { name, type, size, data }`). 서버가 생기면 `data` 대신 `url`을 써요.
 - **신고**: `targetType` `POST` · `COMMENT`, `reason` `ABUSE` · `FALSE_INFO` · `PRIVACY` · `AD_ILLEGAL` · `COPYRIGHT` · `OTHER` (`reports`).
+  - COMMENT targetId는 **comments.id**예요. 현재 브라우저의 postId/commentIndex를 서버 ID로 그대로 사용할 수 없어요. 서버 연결 때 안정적인 댓글 ID로 전환해야 해요.
+  - DB UNIQUE(reporter_id,target_type,target_id)는 기각/숨김 처리 후에도 같은 회원의 재신고를 막아요. target_author_snapshot/target_text_snapshot은 서버가 실제 대상에서 복사하고 클라이언트 값을 신뢰하지 않아요.
   - 화면: 남의 글은 작성자 줄, 남의 댓글은 오른쪽의 **[신고]** → 사유 하나 + 자세한 내용(기타는 필수, 200자) → 접수 후 "신고됨". 같은 사람이 같은 대상을 두 번 신고하면 409로 막아 주세요.
   - 지금 프론트는 브라우저 `zip-reports`에 저장하고(`features/community/reports.ts`), 관리자 화면 게시글 관리에 "신고 N" 배지 · "신고된 글만" · 신고 내역이 보여요.
 - 정지된 회원은 글쓰기 · 댓글 · 좋아요가 403이어야 해요.
@@ -351,14 +429,14 @@
             "rows": [["월세", 550000], ["식비", 210000]], "top": ["식비", 210000] } } }
 ```
 - `topic` 코드는 `ai_topics.code`와 같아요: `qna` `guide` `nearby` `trash` `cook` `clean` `contract` `landlord` `bill` `summary` (`features/ai/topics.ts`).
-  - ⚠️ **`guide`(🧭 사용 방법)** 는 새로 생긴 주제라 `ai_topics` 기본 데이터에 넣어 주세요 (아래 표 14번). "월세 납부 기록은 어디서 해요?" 같은 질문에 **기능 위치를 알려 주고 그 화면으로 가는 버튼**을 줘요.
+  - **guide(🧭 사용 방법)** 는 ai_topics 기본 데이터에 반영돼 있어요. "월세 납부 기록은 어디서 해요?" 같은 질문에 **기능 위치를 알려 주고 그 화면으로 가는 버튼**을 줘요.
   - 답에 버튼이 붙으면 `card: { "type": "LINK", "data": { "label": "월세·공과금 (고정 지출) 바로가기", "to": "/my/budget/expense" } }`로 주세요. `to`는 앱 화면 주소예요 (`/my/calendar` · `/my/budget/expense` · `/my/budget/expense/spend` · `/my/budget/income` · `/my/memo` · `/my/noti` · `/my/settings` · `/map` · `/community` · `/ai`).
   - 지금은 프론트가 키워드로 찾아요 (`guideFor`). 실제 AI를 붙이면 질문을 보내 어느 화면인지 받아 오도록 바꿔요.
 - `entryPoint`: `HOME_MODAL`(홈 "AI와 대화") · `AI_PAGE`(AI 메뉴)
 - 지출 요약 카드는 **보낸 그때의 숫자**를 `card_data` JSON에 저장해서 다시 열어도 같게 보여요.
 - **사진은 답을 만든 뒤 저장하지 않아요** (개인정보 처리방침). `ai_messages.attachment_id`는 비워 두세요.
 - 질문할 때마다 `ai_usage_daily.question_count` +1, 하루 한도를 넘으면 429 + `{ message }`.
-- 지금 프론트는 답을 브라우저 안에서 만들고(`features/ai/topics.ts`), 대화는 `zip-ai-chat`에 최근 40개만 저장해요 (`ChatMsg { role: 'bot' | 'user', text, card }`).
+- 지금 프론트는 답을 브라우저 안에서 만들고(`features/ai/topics.ts`), 별도 ChatModal용 저장소 `zip-ai-chat`은 최근 40개를 저장해요. 현재 /ai의 AiChat은 컴포넌트 state를 사용해 새로 진입하면 대화가 유지되지 않아요. 서버 연동 시 대화 저장/복원을 따로 구현해야 해요.
 
 ---
 
@@ -384,15 +462,15 @@
   "lat": 37.5496, "lon": 126.9137, "walkMin": 3, "address": null, "phone": null, "openHours": "24시간", "rating": 4.5, "reviewCount": 12 }
 ```
 - **종류 15개**: 세탁방 · 편의점 · 약국 · 마트 · 카페 · 병원 · 헬스장 · 은행 · 미용실 · 다이소 · 공원 · 식당 · 반찬가게 · 세탁소 · 주민센터. 처음 칩에는 앞의 4개만 보여요.
-  - ⚠️ `schema.sql`의 `place_categories` 기본 데이터는 4개(세탁방 · 편의점 · 약국 · 마트)뿐이에요. 11개를 더 넣어 주세요.
+  - DB place_categories 기본 데이터에 15개 모두 반영돼 있어요.
 - **AI 장소 찾기**: 지금은 프론트가 예시 데이터 안에서 말을 읽어 골라요 (`features/map/aiFind.ts` — "빨래·이불 → 세탁방", "밤·24 → 24시간 운영 가산점" 같은 규칙). 서버가 생기면 AI + 지도 검색 API(예: 카카오 로컬)로 바꾸고, 화면에 보일 **추천 이유**(`reasons`)를 같이 주세요.
 - **도보 시간**: 프론트는 설명의 "도보 약 N분"을 읽어 써요. 서버는 `walkMin`(우리 집 기준)을 따로 주면 좋아요.
-- **우리 집 위치 (🏠, "우리 집으로" 버튼, 길찾기 출발점)**: 지금은 예시 좌표(`HOME`, `features/map/data/places.ts`)예요. 서버가 생기면 `GET /api/auth/me`의 주소를 좌표로 바꿔 `home: { lat, lon }`으로 같이 주세요 (⚠️ 아래 표 15번). 동네 인증 때 받은 좌표를 써도 돼요.
+- **우리 집 위치 (🏠, "우리 집으로" 버튼, 길찾기 출발점)**: 지금은 예시 좌표(`HOME`, `features/map/data/places.ts`)예요. 서버가 생기면 `GET /api/auth/me`의 주소를 좌표로 바꿔 `home: { lat, lon }`으로 같이 주세요 (users.home_lat/home_lon). home은 현재 User 타입에 없는 확장 제안이에요. 인증 GPS·설문 중심점은 집 위치와 구분하고 덮어쓰지 마세요.
 - **조건 칩**(24시간 · 저렴한 · 조용한)은 지금 설명 글자로 걸러요. 서버는 `openHours` · 태그로 걸러 주면 더 정확해요 (`GET /api/places?…&filter=24h|cheap|quiet`).
 - **길찾기 · 큰 지도**는 OpenStreetMap 링크를 새 창으로 열어요 (서버 필요 없음).
 - **홈 "내 주변 지도" 카드**: 브라우저 위치(Geolocation)로 현재 위치 주변을 보여 줘요(파란 점, ◎ 내 위치 버튼). 위치를 못 받으면 예시 좌표(`HOME`)로 보여 줘요. 서버 필요 없고, 카드를 누르면 `/map`으로 가며 `state.mapCenter`로 그 위치를 넘겨요. 장소 핀은 예시 데이터예요.
 - **홈 날씨 카드**: 프론트가 Open-Meteo(날씨) · Nominatim(주소 → 좌표)을 직접 불러요. 서버 API 없음.
-- **즐겨찾기 번호**: 지금은 `"종류:이름"`을 써요. 서버가 생기면 `places.id`로 바꿔요. ⚠️ 즐겨찾기 표가 없어요 (아래 표 8번).
+- **즐겨찾기 번호**: 지금은 `"종류:이름"`을 써요. 서버가 생기면 `places.id`로 바꿔요. DB는 place_favorites에 저장해요.
 - 프론트 대응: `Place { n: name, d: description, lat, lon }` (`features/map/data/places.ts`), 지도 설정 저장 `zip-map` (`features/map/store.ts`)
 
 ---
@@ -438,17 +516,17 @@
 | 경고 | `WARNING`, `null` | `WARNING` | `NULL` | 그대로 |
 | 1 · 3 · 5 · 10일 정지 | `SUSPEND`, `1`·`3`·`5`·`10` | `SUSPEND` | 지금 + N일 | `SUSPENDED` |
 | 영구 정지 | `BAN`, `null` | `BAN` | `NULL` | `SUSPENDED` |
-| 해제 | (DELETE) | 진행 중 조치의 `ends_at` = 지금 | — | `ACTIVE` |
+| 해제 | (DELETE) | 원래 ends_at 유지, revoked_at/revoked_by/revoke_reason 기록 | — | 다른 활성 제재가 없을 때 ACTIVE |
 
 - `warns` · `bans`는 지금까지 받은 경고 · 정지 횟수예요. 기간이 끝나거나 해제돼도 **횟수와 이력은 남아요**.
 - 정지 기간이 끝나면 `users.status`를 `ACTIVE`로 돌려 주세요 (로그인할 때 확인해도 돼요).
 - 정지 중이면: 로그인 · 글쓰기 · 댓글 · 좋아요 막기, 같은 **아이디 · 닉네임 · 휴대전화로 재가입** 막기.
-  - ⚠️ 탈퇴하면 `user_sanctions`도 CASCADE로 지워져서 재가입을 못 막아요. 정지된 사람의 아이디·휴대전화(해시)를 따로 남기는 표가 필요해요.
-- **화면**: 정지된 계정은 앱 대신 **이용 정지 안내(`/suspended`)**만 보고(정지 기간 · 사유 · 횟수 · 문의하기 · 로그아웃), 아직 확인 안 한 **경고**가 있으면 앱에 들어올 때 **경고 안내 창**(사유 · 누적 경고)이 한 번 떠요.
+  - 탈퇴 시 user_sanctions는 삭제되지만 banned_identities는 user_id/sanction_id 연결만 NULL로 바뀌어 유지돼요. 서버 HMAC 키·정규화·만료·해제 동기화를 구현해야 해요.
+- **현재 브라우저 가짜 API의 화면**: 정지된 계정은 앱 대신 **이용 정지 안내(`/suspended`)**만 보고(정지 기간 · 사유 · 횟수 · 문의하기 · 로그아웃), 아직 확인 안 한 **경고**가 있으면 앱에 들어올 때 **경고 안내 창**(사유 · 누적 경고)이 한 번 떠요.
   - 예시 보기: `/suspended?demo`, 아무 화면 주소 뒤 `?demo=warn`
   - 서버가 생기면 `GET /api/auth/me`의 `user`에 `suspension: { until, permanent, reason, count } | null`, `warnCount`, `unseenWarnings: [{ id, reason, at }]`를 같이 주세요.
-  - 정지 중인 사람의 다른 API 요청은 **403** + `{ "message": "이용이 정지된 계정이에요. …", "code": "SUSPENDED" }`로 주시면 프론트가 정지 화면으로 보낼게요.
-  - 경고 창에서 "확인했어요"를 누르면 `POST /api/me/warnings/seen { ids }`로 알려 줄게요 (DB: `user_sanctions`에 확인 시각 칸 `seen_at` 추가 필요).
+  - 정지 중인 사람의 다른 API 요청은 **403** + `{ "message": "이용이 정지된 계정이에요. …", "code": "SUSPENDED" }`로 주는 것을 제안해요. **현재 apiClient는 401만 공통 처리**하므로 403/code 기반 정지 화면 이동은 프론트 연동 때 추가해야 해요.
+  - 경고 창에서 "확인했어요"를 누르면 `POST /api/me/warnings/seen { ids }`로 알려 줄게요 (DB: `user_sanctions.seen_at`에 반영).
 - 글 · 댓글 삭제는 `status = DELETED` + 작성자에게 경고/정지를 같이 걸 수 있어요 (위 `sanctions` API를 이어서 호출).
 - 지금은 가짜 API와 `src/features/moderation`이 브라우저(`zipban-records`)에서 이 규칙을 흉내 내요.
 
@@ -461,7 +539,7 @@
 - 메모장: 왼쪽 목록(고정 먼저 → 최근 수정 순, 검색) | 오른쪽 쓰기. 제목 · 글, 또는 **체크리스트**(줄마다 체크, Enter로 다음 줄), **📌 고정**, **색 6가지**, 삭제(확인 창). 쓰는 대로 자동 저장.
 - 홈 위젯: **고른 메모 최대 3개를 쪽지로** 나란히 + **빠른 메모**(한 줄 적고 Enter → 새 메모). 체크리스트 쪽지는 **위젯에서 바로 체크** → `PATCH`로 `items` 전체를 보내요.
   - "메모 고르기"에서 체크한 순서대로 보여요. 안 고르면 자동(고정 → 최근 수정 순 3개). 쪽지를 꾹 눌러 끌면 자리가 바뀌어요.
-  - 홈에 보일 메모 · 순서: `GET · PUT /api/me/home-memos` → `{ ids: ["5", "9"] }` (`null` = 자동). ⚠️ 저장할 곳이 없어요 — `user_settings.home_memo_ids JSON` 추가를 제안해요.
+  - 홈에 보일 메모 · 순서: `GET · PUT /api/me/home-memos` → `{ ids: ["5", "9"] }`, `{ ids: null }` = 자동. DB user_settings.home_memo_ids에 반영돼 있어요. 최대 3개, 본인 메모인지 서버가 검사해요.
 - 홈에서 메모를 누르면 `/my/memo?id=5`로 그 메모를 열어요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
@@ -480,7 +558,7 @@
 - 빠른 메모는 `{ body: "택배 반품" }`만 보내요 (제목 없음 → 화면은 첫 줄을 제목처럼 보여 줘요).
 - 길이: 제목 60자, 글 5,000자, 항목 한 줄 100자.
 - `color`: `노랑` · `분홍` · `하늘` · `초록` · `보라` · `흰색` (영문 코드로 바꿔도 돼요: `YELLOW` 등)
-- 제안 표: `memos(id, user_id FK CASCADE, title VARCHAR(60), body TEXT, color, is_pinned, is_checklist, items JSON, created_at, updated_at)` + `(user_id, is_pinned, updated_at)` 인덱스
+- 현재 표: `memos(id, user_id FK CASCADE, title VARCHAR(60), body TEXT, color, is_pinned, is_checklist, items JSON, created_at, updated_at)` + `(user_id, is_pinned, updated_at)` 인덱스
 
 ---
 
@@ -504,27 +582,27 @@
 
 ---
 
-## DB와 아직 안 맞는 곳 (백엔드 확인 필요)
+## 현재 DB 반영 상태와 연동 주의사항
 
-| # | 내용 | 제안 |
-|---|---|---|
-| 1 | ✅ 할 일이 일정에 합쳐졌는데 DB에 `todos`가 따로 있고 `events`에 완료 칸이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `events.is_done`, `events.done_at` 추가, `todos` 제거 |
-| 2 | ✅ 탈퇴하면 정지 기록이 사라져 재가입을 못 막아요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): 정지된 아이디·휴대전화 해시를 보관하는 표 추가 (예: `banned_identities`) |
-| 3 | `password_resets.method`에 `EMAIL`이 남아 있어요 | 지금 화면은 `PHONE`만 써요. 남겨 둬도 되지만 문서에 "미사용" 표시 |
-| 4 | 첨부 형식 제한이 DB에 없어요 | 서버에서 MIME 검사 (이미지 · PDF 등) |
-| 5 | `user_settings`에 동네가 없고 `users.region_id`에 있어요 | 그대로 두고 설정 API에서 같이 주고받기 (위 2번 참고) |
-| 6 | ✅ 메모 기능이 생겼는데 DB에 표가 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): 위 [12번](#12-메모-)의 `memos` 표 추가 |
-| 7 | ✅ 프로필 사진 · 한 줄 소개 칸이 DB에 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `users.bio VARCHAR(30)`, `users.avatar_file_id`(→ `uploaded_files`), `avatar_emoji`, `avatar_color` 추가 |
-| 8 | ✅ 지도 즐겨찾기 · 칩 설정을 둘 곳이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `place_favorites(user_id, place_id, created_at)` 표 + `user_settings.map_categories JSON`(보일 종류 · 직접 검색어) |
-| 9 | ✅ `place_categories` 기본 데이터가 4개뿐이에요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): 카페 · 병원 · 헬스장 · 은행 · 미용실 · 다이소 · 공원 · 식당 · 반찬가게 · 세탁소 · 주민센터 추가 (+ `icon` 칸) |
-| 10 | ✅ 경고를 확인했는지 남길 칸이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `user_sanctions.seen_at DATETIME NULL` 추가 (경고 창 "확인했어요") |
-| 11 | ✅ 일정 카테고리를 둘 곳이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `event_categories(id, user_id, name, ico, sort_order)` · `event_presets(id, user_id, category_id, title)` 표 + `events.category_id` (NULL = 미분류) |
-| 12 | ✅ 동네 인증 시각을 둘 곳이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `users.region_verified_at DATETIME NULL` 추가 (위 [동네 인증](#동네-인증)) |
-| 13 | ✅ 고정 지출 태그 칸이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `bill_items.tag ENUM('공과금','통신','구독','관리비','기타') NOT NULL DEFAULT '공과금'` 추가 (위 [4번](#4-월세--고정-지출-)) |
-| 14 | ✅ AI "사용 방법" 주제가 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `ai_topics`에 `('guide', '사용 방법', '기능이 어디 있는지 알려드려요', photo 0)` 추가, `ai_messages.card_type`에 `LINK` 허용 (위 [8번](#8-ai-)) |
-| 15 | ✅ 우리 집 좌표를 둘 곳이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): `users.home_lat DECIMAL(9,6)` · `home_lon DECIMAL(9,6)` 추가 (주소를 좌표로 바꿔 저장, 지도 🏠 · 도보 시간 · 길찾기 출발점) |
-| 16 | ✅ 지운 알림을 표시할 칸이 없어요 | 반영됨 (`schema.sql` · 2026-10-31 마이그레이션): 줄을 지우면 칸은 필요 없어요. 기록을 남기려면 `notifications.deleted_at DATETIME NULL` 추가 |
-| 17 | ✅ 기념일(`anniv`) · 매년 반복(`yearly`) 칸이 없어요 | 반영됨 (`schema.sql` · `db/migrations/20261031_02_event_anniversaries.sql`): `events.is_anniversary`, `events.repeat_yearly` 추가 (`20261101_event_anniversary.sql`의 `is_anniv`/`is_yearly`는 DEPRECATED) |
+DB 저장 공간은 다음과 같이 반영되어 있어요. 실제 API 구현과 프론트 연동은 별도예요.
+
+| 기능 | 현재 DB |
+|---|---|
+| 일정·완료·카테고리·기념일 | events.is_done/done_at/category_id/is_anniversary/repeat_yearly, event_categories, event_presets |
+| 설문·대출·이자 | housing_surveys, housing_loans, loan_interest_charges |
+| 프로필 | user_profiles → uploaded_files (users에 중복 프로필 컬럼 없음) |
+| 지도·동네 | place_favorites, 지도 분류 15개, home_lat/home_lon, region_verified_at, user_settings의 위치 출처/좌표 |
+| 메모·홈 표시 | memos, user_settings.home_memo_ids |
+| 고정 지출·개인 분류 | bill_items.tag VARCHAR(24), user_settings.ledger_category_settings, ledger_categories.name VARCHAR(24) |
+| 실제 집 주소 | user_settings.home_address |
+| 신고 | reporter/target UNIQUE, target_author_snapshot/target_text_snapshot |
+| 정지·경고 | user_sanctions.seen_at/revoked_at, banned_identities |
+| 알림·지원·AI | notifications.deleted_at, support_inquiries, ai_topics.guide, ai_messages.LINK |
+
+- password_resets.method=EMAIL은 향후용이며 현재 화면은 PHONE만 사용해요.
+- 첨부 MIME·5개/2MB, 소유권, JSON 내부 원소, 관리자 역할, 동네 인증 유효기간은 서버가 검사해요.
+- DB 구조 감사는 44테이블·358컬럼·71키·62FK·15CHECK·2VIEW 기준이에요. API 구현이나 권한 테스트 통과를 뜻하지 않아요.
+- 소셜 provider_user_id 비교 규칙, refresh 세션 정책, 예상/실제 지출 집계 기준은 [백엔드 착수 전 점검](../db/PRE_BACKEND_REVIEW.md)에 따라 구현 전에 확정하세요.
 
 ## 프론트에서 서버를 붙이는 순서 (예: 일정)
 
@@ -543,7 +621,10 @@
 | `zip-ai-chat` | 홈 AI 대화 (최근 40개) | `features/ai/store.ts` | 8번 |
 | `zip-map` | 지도 칩에 보일 종류 · 직접 검색어 · 즐겨찾기 | `features/map/store.ts` | 9번 |
 | `zip-memos` | 메모 | `features/memo/store.ts` | 12번 |
-| `zip-housing-survey` | 처음 로그인 설문(생년월일 · 주소 · 월세/전세 · 보증금 · 계약금 · 대출 · 관리비 · 수입) 답변 | `features/onboarding/store.ts` | 2번 (설정, ⚠️ 저장할 칸 정해야 함) |
+| `zip-housing-survey` | 처음 로그인 설문 답변 | `features/onboarding/store.ts` | 2번 설문 API 제안, housing_surveys |
+| `zip-loan-interest` | 회원별 대출 설정·월별 이자 기록 | `features/loan/store.ts` | 4번 대출 API 제안 |
+| `zip-ledger-categories` | 회원별 사용자 카테고리·표시 순서 | `features/life/ledgerCategories.ts` | 5번 개인 분류 API 제안 |
+| `zip-reports` | 신고·처리 상태·신고 당시 내용 | `features/community/reports.ts` | 7번 신고 API |
 | `zip-support` | 고객센터 문의 · 답변 | `features/support/store.ts` | 13번 |
 | `zip-profile` | 프로필 사진 · 캐릭터 · 배경 색 · 한 줄 소개 | `features/profile/store.ts` | 1번 (프로필 꾸미기) |
 | `zip-home-noti-closed` | 홈 알림 회전창에서 오늘 닫은 알림 | `features/life/components/HomePhotoCard.tsx` | (서버 필요 없음) |

@@ -1,6 +1,6 @@
 # 이전 35개 테이블에서 최신 44개 테이블로 이전 검증
 
-이전 62995d3 커밋의 스키마를 별도 DB zip_migration_test에 재현하고 가상 데이터에 실제 마이그레이션을 적용합니다. 현재 zip 및 zip_test는 변경하지 않습니다. 실제 MySQL 실행 결과는 아직 확인하지 않았습니다.
+이전 62995d3 커밋의 스키마를 별도 DB zip_migration_test에 재현하고 가상 데이터에 실제 마이그레이션을 적용합니다. 현재 zip 및 zip_test는 변경하지 않습니다. 격리 MySQL 9.6.0에서 이전·보존·구조 감사가 통과했습니다(VALIDATION_20261107.json). 새 환경의 결과는 별도로 확인합니다.
 
 ## 1. 전용 DB가 비어 있는지 먼저 확인
 
@@ -38,9 +38,10 @@ SELECT COUNT(*) AS user_count FROM users;
 3. 20261031_02_event_anniversaries.sql
 4. 20261101_housing_and_loan.sql
 5. 20261102_requirements_hardening.sql
-6. U01~U13 보존 확인
+6. U01~U13 보존 확인·safe update 모드 복원
+7. 20261107_life_categories.sql (19번 파일에 포함)
 
-`20261101_event_anniversary.sql`은 이름이 다른 중복 경로라 포함하지 않습니다. 테스트 사본은 원본 네 마이그레이션에서 USE만 zip_migration_test로 변경한 것입니다. 원본을 수정하면 이 테스트 사본도 함께 갱신해야 합니다.
+`20261101_event_anniversary.sql`은 이름이 다른 중복 경로라 포함하지 않습니다. 테스트 사본은 원본 다섯 마이그레이션에서 USE만 zip_migration_test로 변경한 것입니다. 원본을 수정하면 이 테스트 사본도 함께 갱신해야 합니다.
 
 마이그레이션의 전체 수입 분류 UPDATE 때문에 이 연결에서만 sql_safe_updates를 잠시 0으로 설정하고 마지막에 원래 값으로 복원합니다. Workbench 환경설정은 변경하지 않습니다. 오류로 중단됐다면 같은 연결에서 다음을 실행해 설정을 복원하고 첫 오류와 실제 스키마 상태를 확인하세요.
 
