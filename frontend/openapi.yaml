@@ -261,23 +261,24 @@ paths:
             schema: { $ref: '#/components/schemas/Settings' }
       responses:
         '200': { description: 저장된 설정, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
-  /api/me/ledger-category-settings:
+  /api/me/housing-survey:
     get:
       tags: [설정 · 동네]
-      summary: (제안) 가계부 카테고리 개인 설정 — 추가한 분류 · 색 · 순서
-      description: DB `user_settings.ledger_category_settings` JSON. scope 는 fixed-income · other-income · spend · bill 네 개
+      summary: (제안) 처음 로그인 설문 불러오기 — 없으면 null
+      description: DB `housing_surveys`. firstLogin 은 첫 로그인 여부일 뿐이라, 설문을 마쳤는지는 이 응답으로 판단해요
       responses:
-        '200': { description: 개인 설정, content: { application/json: { schema: { $ref: '#/components/schemas/LedgerCategorySettings' } } } }
+        '200': { description: 설문 또는 null, content: { application/json: { schema: { $ref: '#/components/schemas/HousingSurvey' } } } }
     put:
       tags: [설정 · 동네]
-      summary: (제안) 가계부 카테고리 개인 설정 저장
+      summary: (제안) 처음 로그인 설문 저장
+      description: 설문 저장 · 월세 설정 · 관리비 항목 · 동네 출처(SURVEY) · 동네 인증 초기화를 한 트랜잭션으로 처리. 설문 금액은 모두 원 단위 (설정 rent 는 ÷10000 해서 맞춤)
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/LedgerCategorySettings' }
+            schema: { $ref: '#/components/schemas/HousingSurveyInput' }
       responses:
-        '200': { description: 저장된 설정, content: { application/json: { schema: { $ref: '#/components/schemas/LedgerCategorySettings' } } } }
+        '200': { description: 저장된 설문, content: { application/json: { schema: { $ref: '#/components/schemas/HousingSurvey' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
   /api/regions:
     get:
@@ -536,12 +537,74 @@ paths:
       responses:
         '200': { description: 바뀐 항목, content: { application/json: { schema: { $ref: '#/components/schemas/Bill' } } } }
   /api/bills/{id}:
+    patch:
+      tags: [월세 · 고정 지출]
+      summary: (제안) 고정 지출 항목 수정 — 바꿀 값만
+      description: default_amount 에 반영. 지난달 납부 기록의 금액(스냅샷)은 덮어쓰지 않아요
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 30 }
+                amount: { type: integer, minimum: 0 }
+                tag: { type: string, maxLength: 24 }
+      responses:
+        '200': { description: 바뀐 항목, content: { application/json: { schema: { $ref: '#/components/schemas/Bill' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
     delete:
       tags: [월세 · 고정 지출]
       summary: 고정 지출 해지 (is_active = 0)
       parameters: [{ $ref: '#/components/parameters/Id' }]
       responses:
         '204': { description: 해지 완료 }
+
+  /api/me/housing-loan:
+    get:
+      tags: [월세 · 고정 지출]
+      summary: (제안) 전세 대출 설정 — 없으면 null (중지된 설정도 포함)
+      responses:
+        '200': { description: 대출 또는 null, content: { application/json: { schema: { $ref: '#/components/schemas/HousingLoan' } } } }
+    put:
+      tags: [월세 · 고정 지출]
+      summary: (제안) 전세 대출 설정 · 재개
+      description: 수정 전까지 지난 납부일은 이전 조건으로 확정. 수정 중엔 startDate 유지, 중지 후 재개는 기존 대출 ID + 새 시작일
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HousingLoanInput' }
+      responses:
+        '200': { description: 저장된 대출, content: { application/json: { schema: { $ref: '#/components/schemas/HousingLoan' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+    patch:
+      tags: [월세 · 고정 지출]
+      summary: (제안) 이자 자동 기록 중지
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [active]
+              properties:
+                active: { type: boolean, enum: [false] }
+      responses:
+        '200': { description: 중지된 대출, content: { application/json: { schema: { $ref: '#/components/schemas/HousingLoan' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/me/loan-interest-charges:
+    get:
+      tags: [월세 · 고정 지출]
+      summary: (제안) 월별 대출 이자 기록
+      description: 이자 = ROUND(principal × annualRate / 1200), 납부일(없는 달은 말일)에 한 번만 기록 (loan_id · period_ym UNIQUE)
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' }, example: '2026-01' }
+        - { name: to, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' }, example: '2026-11' }
+      responses:
+        '200': { description: 이자 기록, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/LoanInterestCharge' } } } } }
 
   # ───────────────────────── 5. 가계부 ─────────────────────────
   /api/ledger/categories:
@@ -552,6 +615,48 @@ paths:
         - { name: kind, in: query, required: true, schema: { type: string, enum: [INCOME, EXPENSE] } }
       responses:
         '200': { description: 분류, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/LedgerCategory' } } } } }
+  /api/me/ledger-categories:
+    get:
+      tags: [가계부]
+      summary: (제안) 내 분류 목록 — 기본 + 내가 추가한 것, 내 순서대로
+      parameters:
+        - { name: scope, in: query, required: true, schema: { $ref: '#/components/schemas/LedgerScope' } }
+      responses:
+        '200': { description: 내 분류, content: { application/json: { schema: { $ref: '#/components/schemas/MyLedgerCategories' } } } }
+    post:
+      tags: [가계부]
+      summary: (제안) 분류 추가
+      description: 앞뒤 · 연속 공백 정리, 1~24자, 기본 · 내 목록과 중복 금지. user_settings.ledger_category_settings 의 해당 scope 만 바꿈
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scope, name]
+              properties:
+                scope: { $ref: '#/components/schemas/LedgerScope' }
+                name: { type: string, minLength: 1, maxLength: 24, example: 배당 }
+      responses:
+        '200': { description: 해당 scope 의 내 분류, content: { application/json: { schema: { $ref: '#/components/schemas/MyLedgerCategories' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /api/me/ledger-categories/order:
+    put:
+      tags: [가계부]
+      summary: (제안) 분류 순서 바꾸기
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scope, order]
+              properties:
+                scope: { $ref: '#/components/schemas/LedgerScope' }
+                order: { type: array, items: { type: string }, example: [배당, 월급] }
+      responses:
+        '200': { description: 해당 scope 의 내 분류, content: { application/json: { schema: { $ref: '#/components/schemas/MyLedgerCategories' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
   /api/incomes:
     get:
       tags: [가계부]
@@ -1435,29 +1540,87 @@ components:
         moveIn: { type: string, example: '2026-02' }
         contractEnd: { type: string, example: '2027-02' }
         notiOn: { type: boolean }
-    LedgerCategorySettings:
+    HousingSurveyInput:
       type: object
-      description: 'scope 별 { custom: [{ name, color }], order: [이름] } — 생략한 scope 는 기본 목록 · 순서'
+      required: [birth, address, kind, income, incomePeriod]
+      description: 금액은 모두 **원 단위**. userId · answeredAt 은 서버가 정해요
       properties:
-        fixed-income: { $ref: '#/components/schemas/LedgerScopeSetting' }
-        other-income: { $ref: '#/components/schemas/LedgerScopeSetting' }
-        spend: { $ref: '#/components/schemas/LedgerScopeSetting' }
-        bill: { $ref: '#/components/schemas/LedgerScopeSetting' }
-      example:
-        fixed-income: { custom: [{ name: 배당, color: '#6485df' }], order: [배당, 월급] }
-        bill: { custom: [], order: [구독, 공과금] }
-    LedgerScopeSetting:
+        birth: { type: string, format: date, example: '2000-01-01' }
+        address: { type: string, example: 가상 동네 }
+        addressPoint:
+          type: object
+          nullable: true
+          description: 설문 주소 검색 당시 중심점 (현재 위치 인증 GPS 와 별개)
+          properties:
+            lat: { type: number, example: 37.5 }
+            lon: { type: number, example: 127.0 }
+        kind: { type: string, enum: [monthly, jeonse], description: 'DB contract_kind MONTHLY · JEONSE' }
+        deposit: { type: integer, minimum: 0, example: 10000000 }
+        rent: { type: integer, minimum: 0, example: 550000, description: 원 단위 (설정 rent 는 만원) }
+        mgmtIncluded: { type: boolean }
+        mgmtFee: { type: integer, minimum: 0, example: 50000 }
+        contractFee: { type: integer, minimum: 0, example: 0 }
+        hasLoan: { type: boolean }
+        loanAmount: { type: integer, minimum: 0, example: 0 }
+        loanAnnualRate: { type: number, nullable: true }
+        loanPaymentDay: { type: integer, minimum: 1, maximum: 31, nullable: true }
+        loanStartDate: { type: string, format: date, nullable: true }
+        income: { type: integer, minimum: 0, example: 2500000 }
+        incomePeriod: { type: string, enum: [monthly, annual], description: 'DB income_period MONTHLY · ANNUAL' }
+    HousingSurvey:
+      nullable: true
+      allOf:
+        - $ref: '#/components/schemas/HousingSurveyInput'
+        - type: object
+          properties:
+            userId: { type: string, example: '1' }
+            answeredAt: { type: string, format: date-time }
+    HousingLoanInput:
+      type: object
+      required: [principal, annualRate, paymentDay, startDate]
+      properties:
+        principal: { type: integer, minimum: 1, maximum: 9999990000, example: 100000000, description: 원 }
+        annualRate: { type: number, minimum: 0, maximum: 100, example: 3.5, description: '연 이율 % (소수 둘째 자리)' }
+        paymentDay: { type: integer, minimum: 1, maximum: 31, example: 25 }
+        startDate: { type: string, format: date, example: '2026-03-01', description: '2000-01-01 ~ 2100-12-31' }
+    HousingLoan:
+      nullable: true
+      allOf:
+        - $ref: '#/components/schemas/HousingLoanInput'
+        - type: object
+          properties:
+            id: { type: string, example: '3' }
+            userId: { type: string, example: '1' }
+            active: { type: boolean }
+    LoanInterestCharge:
       type: object
       properties:
-        custom:
+        id: { type: string, example: '41' }
+        loanId: { type: string, example: '3' }
+        userId: { type: string, example: '1' }
+        date: { type: string, format: date, example: '2026-10-25' }
+        amount: { type: integer, example: 291667, description: 그달 이자 (원) }
+        principal: { type: integer, description: 기록 당시 원금 스냅샷 }
+        annualRate: { type: number, description: 기록 당시 이율 스냅샷 }
+    LedgerScope:
+      type: string
+      enum: [fixed-income, other-income, spend, bill]
+    MyLedgerCategories:
+      type: object
+      properties:
+        scope: { $ref: '#/components/schemas/LedgerScope' }
+        categories:
           type: array
-          items:
-            type: object
-            required: [name, color]
-            properties:
-              name: { type: string, maxLength: 24 }
-              color: { type: string, example: '#6485df' }
+          description: 기본 목록 + 내 custom 을 order 대로 정렬한 결과
+          items: { $ref: '#/components/schemas/NameColor' }
+        custom: { type: array, items: { $ref: '#/components/schemas/NameColor' } }
         order: { type: array, items: { type: string } }
+    NameColor:
+      type: object
+      required: [name, color]
+      properties:
+        name: { type: string, maxLength: 24, example: 배당 }
+        color: { type: string, example: '#6485df' }
 
     # 일정
     Event:
