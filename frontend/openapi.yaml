@@ -937,6 +937,43 @@ paths:
                     place: { $ref: '#/components/schemas/Place' }
                     reasons: { type: array, items: { type: string }, example: ['약국', '24시간·심야 운영'] }
                     walkMin: { type: integer }
+  /api/places/{id}/reviews:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [지도]
+      summary: (확장 기능 · 화면 없음) 장소 리뷰 목록
+      responses:
+        '200':
+          description: 리뷰
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    rating: { type: integer, minimum: 1, maximum: 5 }
+                    body: { type: string }
+                    author: { $ref: '#/components/schemas/Author' }
+                    createdAt: { type: string, format: date-time }
+    post:
+      tags: [지도]
+      summary: (확장 기능 · 화면 없음) 장소 리뷰 쓰기 (한 사람당 한 장소 하나, 두 번이면 409)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                body: { type: string, maxLength: 500 }
+      responses:
+        '204': { description: 저장 완료 }
+        '409': { description: 이미 리뷰를 씀, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /api/me/place-favorites:
     get:
       tags: [지도]
