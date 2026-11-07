@@ -109,6 +109,8 @@
   "termsVersion": "2026-10-18" }
 ```
 - **입력 규칙** (`src/features/auth/schema.ts`와 같게 서버에서도 검사)
+  - 이메일은 필수·최대 100자, 주소는 공백 제거 후 필수·최대 200자예요. 소셜 첫 동의의 주소에도 같은 제한을 적용해요.
+  - 동의 4개는 모두 true여야 하며 termsVersion은 서버가 유효한 동의 대상 버전인지 검사해요. 소셜 첫 동의도 주소·동의 4개·termsVersion을 함께 검사하고 일반 닉네임 수정에는 동의를 다시 요구하지 않아요.
   - 아이디 6~16자 영문 소문자·숫자 / 비밀번호 8~16자 영문·숫자·특수문자 모두 / 닉네임 2~12자
   - 아이디 · 이메일 · 휴대전화는 겹치면 안 돼요 (`uk_users_*`)
 - **저장할 곳**
@@ -172,6 +174,8 @@
 | `notiOn` | `noti_on` | 같음 |
 
 - DB NULL은 homeAddress 빈 문자열, regionLocation `null`로 줘요. `backend/openapi.yaml`의 `Settings` · `RegionLocation`과 같아요.
+- 프론트 저장 모델로 변환할 때 regionLocation과 point의 null은 생략으로 바꾸고, regionLocation에 로그인 회원의 userId를 붙여요. 서버 요청에는 userId와 다른 회원의 homeAddresses를 보내지 않아요.
+- verified 출처는 서버의 실제 인증 기록으로 검사하며 요청 값만으로 인증을 부여하지 않아요. 동네 식별자와 표시명이 다른 동네를 가리키면 400으로 거절해요.
 - 가입 주소 users.address, 실제 집 주소 home_address, 현재 동네 region_name, 설문 주소 스냅샷을 구분하세요. GPS 인증 좌표를 집 좌표로 덮어쓰지 않아요.
 - 닉네임은 설정이 아니라 `PATCH /api/auth/me`로 바꿔요.
 - 가입하면 `user_settings` 기본 줄을 같이 만들어 주세요.

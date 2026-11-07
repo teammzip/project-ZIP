@@ -1461,6 +1461,7 @@ components:
     # 인증 · 내 정보
     User:
       type: object
+      required: [id, email, nickname, address, provider]
       properties:
         id: { type: string, example: '1' }
         username: { type: string, example: zipdemo, description: '소셜 가입자처럼 아이디가 없으면 키를 생략 (null 을 보내지 않음)' }
@@ -1509,34 +1510,35 @@ components:
         phoneVerificationToken: { type: string }
         email: { type: string, format: email, maxLength: 100, description: '필수 (frontend/src/features/auth/schema.ts 와 같은 규칙), 겹치면 안 됨' }
         address: { type: string, minLength: 1, maxLength: 200, example: 서울 마포구 합정동, description: 필수 }
-        agreeTerms: { type: boolean }
-        agreePrivacy: { type: boolean }
-        agreePolicy: { type: boolean }
-        ageOver14: { type: boolean }
-        termsVersion: { type: string, example: '2026-10-18' }
+        agreeTerms: { type: boolean, enum: [true] }
+        agreePrivacy: { type: boolean, enum: [true] }
+        agreePolicy: { type: boolean, enum: [true] }
+        ageOver14: { type: boolean, enum: [true] }
+        termsVersion: { type: string, minLength: 1, example: '2026-10-18', description: 서버가 동의 대상 약관 버전인지 검증 }
     UpdateMeRequest:
       type: object
-      description: 바꿀 칸만 보내요
+      description: 바꿀 칸만 보내요. 소셜 첫 동의 완료 시 공백이 아닌 address와 동의 4개(true), 유효한 termsVersion을 함께 보내며 서버가 검증. 일반 닉네임 수정에는 동의 필드 불필요.
       properties:
         nickname: { type: string, minLength: 2, maxLength: 12 }
         bio: { type: string, maxLength: 30, nullable: true }
         avatarFileId: { type: string, nullable: true }
         avatarEmoji: { type: string, nullable: true }
         avatarColor: { type: string, nullable: true }
-        address: { type: string, description: 소셜 첫 가입 }
-        agreeTerms: { type: boolean }
-        agreePrivacy: { type: boolean }
-        agreePolicy: { type: boolean }
-        ageOver14: { type: boolean }
-        termsVersion: { type: string }
+        address: { type: string, minLength: 1, maxLength: 200, description: 소셜 첫 가입 }
+        agreeTerms: { type: boolean, enum: [true] }
+        agreePrivacy: { type: boolean, enum: [true] }
+        agreePolicy: { type: boolean, enum: [true] }
+        ageOver14: { type: boolean, enum: [true] }
+        termsVersion: { type: string, minLength: 1 }
 
     # 설정
     Settings:
       type: object
+      description: 사용자 ID는 토큰으로 결정. regionLocation의 verified 출처는 실제 서버 인증 기록으로 검증하고 요청만으로 인증을 부여하지 않음. 동네 식별자와 표시명은 같은 동네를 가리켜야 하며 불일치는 400.
       properties:
         regionId: { type: string, example: '2' }
         regionName: { type: string, example: 서울 마포구 }
-        homeAddress: { type: string, maxLength: 200, nullable: true, description: '실제 사는 상세 주소 (user_settings.home_address) — 가입 주소 · 동네와 별개' }
+        homeAddress: { type: string, maxLength: 200, description: '실제 사는 상세 주소 (user_settings.home_address) — 가입 주소 · 동네와 별개. DB NULL이면 빈 문자열' }
         rent: { type: integer, example: 55, description: 월세 (**만원 단위**) }
         rentDay: { type: integer, minimum: 1, maximum: 31, example: 15 }
         moveIn: { type: string, example: '2026-02' }

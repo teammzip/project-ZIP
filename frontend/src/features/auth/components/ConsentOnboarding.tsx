@@ -23,7 +23,7 @@ export function ConsentOnboarding() {
       privacy: consent.privacy ? undefined : '개인정보 처리방침 안내를 확인해 주세요.',
       policy: consent.policy ? undefined : '커뮤니티·AI 운영 정책에 동의해 주세요.',
       age: consent.age ? undefined : '만 14세 이상만 가입할 수 있어요.',
-      address: address.trim() ? undefined : '주소를 입력해 주세요.',
+      address: !address.trim() ? '주소를 입력해 주세요.' : address.trim().length > 200 ? '주소는 200자 이내로 입력해 주세요.' : undefined,
     }
     setErrors(next)
     if (Object.values(next).some(Boolean)) return
