@@ -1,0 +1,174 @@
+{
+  "date": "2026-11-07",
+  "mysql": "9.6.0",
+  "baseline": "1a41a75 plus DB workspace changes",
+  "scope": "isolated server only; existing user DB not modified",
+  "schema": {
+    "tables": 44,
+    "columns": 358,
+    "keys": 71,
+    "fks": 62,
+    "checks": 15,
+    "views": 2
+  },
+  "normalCases": 111,
+  "expectedRejections": 95,
+  "results": [
+    {
+      "name": "fresh schema",
+      "status": "PASS",
+      "checks": 0
+    },
+    {
+      "name": "01_housing_loan_positive.sql",
+      "status": "PASS",
+      "checks": 10
+    },
+    {
+      "name": "03_auth_terms_positive.sql",
+      "status": "PASS",
+      "checks": 13
+    },
+    {
+      "name": "05_life_positive.sql",
+      "status": "PASS",
+      "checks": 17
+    },
+    {
+      "name": "07_ledger_positive.sql",
+      "status": "PASS",
+      "checks": 14
+    },
+    {
+      "name": "09_community_positive.sql",
+      "status": "PASS",
+      "checks": 13
+    },
+    {
+      "name": "11_moderation_positive.sql",
+      "status": "PASS",
+      "checks": 14
+    },
+    {
+      "name": "13_map_ai_positive.sql",
+      "status": "PASS",
+      "checks": 16
+    },
+    {
+      "name": "22_latest_requirements_positive.sql",
+      "status": "PASS",
+      "checks": 9
+    },
+    {
+      "name": "02_housing_loan_negative.sql",
+      "status": "PASS",
+      "checks": 9
+    },
+    {
+      "name": "04_auth_terms_negative.sql",
+      "status": "PASS",
+      "checks": 11
+    },
+    {
+      "name": "06_life_negative.sql",
+      "status": "PASS",
+      "checks": 10
+    },
+    {
+      "name": "08_ledger_negative.sql",
+      "status": "PASS",
+      "checks": 10
+    },
+    {
+      "name": "10_community_negative.sql",
+      "status": "PASS",
+      "checks": 10
+    },
+    {
+      "name": "12_moderation_negative.sql",
+      "status": "PASS",
+      "checks": 8
+    },
+    {
+      "name": "14_map_ai_negative.sql",
+      "status": "PASS",
+      "checks": 14
+    },
+    {
+      "name": "17_supplemental_negative.sql",
+      "status": "PASS",
+      "checks": 13
+    },
+    {
+      "name": "latest rejection rules",
+      "status": "PASS",
+      "checks": 18
+    },
+    {
+      "name": "life categories",
+      "status": "PASS",
+      "checks": 5
+    },
+    {
+      "name": "life categories rejection",
+      "status": "PASS",
+      "checks": 2
+    },
+    {
+      "name": "fresh structure audit",
+      "status": "PASS",
+      "checks": 7
+    },
+    {
+      "name": "legacy schema",
+      "status": "PASS",
+      "checks": 0
+    },
+    {
+      "name": "full migration and data preservation",
+      "status": "PASS",
+      "checks": 14
+    },
+    {
+      "name": "migrated structure audit",
+      "status": "PASS",
+      "checks": 7
+    },
+    {
+      "name": "previous 44-table schema",
+      "status": "PASS",
+      "checks": 0
+    },
+    {
+      "name": "clean incremental preflight",
+      "status": "PASS",
+      "checks": 0
+    },
+    {
+      "name": "incremental hardening",
+      "status": "PASS",
+      "checks": 0
+    },
+    {
+      "name": "life category upgrade",
+      "status": "PASS",
+      "checks": 0
+    },
+    {
+      "name": "incremental structure audit",
+      "status": "PASS",
+      "checks": 7
+    },
+    {
+      "name": "duplicate upgrade legacy fixture",
+      "status": "PASS",
+      "checks": 0
+    },
+    {
+      "name": "duplicate migration blocked without data loss",
+      "status": "PASS",
+      "checks": 3
+    }
+  ],
+  "failed": null
+}
