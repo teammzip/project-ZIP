@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { useHousingSurveyStore } from '@/features/onboarding/store'
-import { resolveWeatherPlace } from '@/features/weather/api'
 import { selectNeighborhood } from './neighborhood'
 import { regionVerification } from './regionVerification'
 import { useLifeStore } from './store'
@@ -16,7 +15,8 @@ export function useNeighborhoodLocation() {
   const { region, source } = selection
   const location = useQuery({
     queryKey: ['weather-place', user?.id, region],
-    queryFn: ({ signal }) => resolveWeatherPlace(region, signal),
+    // 날씨 파일(zod 포함)은 좌표를 찾을 때만 받아 옴 → 홈 첫 로딩을 가볍게
+    queryFn: async ({ signal }) => (await import('@/features/weather/api')).resolveWeatherPlace(region, signal),
     enabled: !!region && !selection.point, staleTime: Infinity, retry: false,
   })
   const place = selection.point ? { name: region, latitude: selection.point.lat, longitude: selection.point.lon } : location.data
