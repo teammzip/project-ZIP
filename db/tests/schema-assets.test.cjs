@@ -19,7 +19,7 @@ const schema = read('db/schema.sql')
 const current = tables(schema)
 const migrations = [
   '20261031_current_project.sql', '20261031_02_event_anniversaries.sql',
-  '20261101_housing_and_loan.sql', '20261102_requirements_hardening.sql',
+  '20261101_housing_and_loan.sql', '20261102_requirements_hardening.sql', '20261107_life_categories.sql',
 ].map(name => [`db/migrations/${name}`, read(`db/migrations/${name}`)])
 
 test('foreign keys reference existing compatible columns and SET NULL allows NULL', () => {
@@ -86,7 +86,7 @@ test('isolated migration fixture contains current migrations in order and final 
 })
 
 test('latest normal and rejection fixtures use schema columns and explicit test DBs', () => {
-  for (const path of ['22_latest_requirements_positive.sql', '23_latest_requirements_negative.sql']) {
+  for (const path of ['22_latest_requirements_positive.sql', '23_latest_requirements_negative.sql', '24_life_categories_positive.sql', '25_life_categories_negative.sql']) {
     const sql = read(`db/tests/${path}`)
     assert(sql.includes('USE zip_test;') && sql.includes('ROLLBACK;'))
     assert(!/^\s*(COMMIT|CREATE|ALTER|DROP|TRUNCATE)\b/m.test(sql))

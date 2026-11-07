@@ -976,6 +976,26 @@
     },
     {
       "table": "user_settings",
+      "column": "home_address",
+      "type": "varchar(200)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "user_settings",
+      "column": "ledger_category_settings",
+      "type": "json",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "user_settings",
       "column": "region_name",
       "type": "varchar(200)",
       "nullable": "YES",
@@ -1817,7 +1837,7 @@
     {
       "table": "bill_items",
       "column": "tag",
-      "type": "enum('공과금','통신','구독','관리비','기타')",
+      "type": "varchar(24)",
       "nullable": "NO",
       "auto": 0,
       "generated": 0,
@@ -2057,7 +2077,7 @@
     {
       "table": "ledger_categories",
       "column": "name",
-      "type": "varchar(20)",
+      "type": "varchar(24)",
       "nullable": "NO",
       "auto": 0,
       "generated": 0,
@@ -2067,7 +2087,7 @@
     {
       "table": "ledger_categories",
       "column": "color",
-      "type": "varchar(20)",
+      "type": "varchar(32)",
       "nullable": "NO",
       "auto": 0,
       "generated": 0,
@@ -4554,6 +4574,10 @@
     {
       "table": "users",
       "name": "ck_users_home_point"
+    },
+    {
+      "table": "user_settings",
+      "name": "ck_settings_ledger_object"
     },
     {
       "table": "user_settings",
