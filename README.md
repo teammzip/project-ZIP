@@ -34,7 +34,7 @@ frontend/      ★ 실제 앱 (React + TypeScript)
 db/            DB 설계: 표 만드는 SQL(schema.sql) + 한글 설명서(README.md)
 ```
 
-**백엔드 기술 스택 (예정)**: Java · Spring Boot · **Gradle**(빌드 도구, Maven 은 쓰지 않음) · Spring Data JPA · Spring Security + JWT · MySQL.
+**백엔드 기술 스택**: Java 17 · Spring Boot 4.1.2 · **Gradle**(빌드 도구, Maven 은 쓰지 않음) · Spring Data JPA · MySQL (Spring Security + JWT 는 추가 예정). `backend/` 에 뼈대가 올라와 있어요.
 자세한 선택 이유는 `frontend_analyze/백엔드_기술스택_추천.txt` 를 보세요.
 
 ---
