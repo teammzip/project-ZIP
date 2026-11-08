@@ -6,8 +6,8 @@ export type Place = { n: string; d: string; lat: number; lon: number }
 
 /** 우리 집 위치 (예시 — 장소들의 가운데). 지도의 🏠, "내 위치" 버튼 */
 export const HOME = { lat: 37.5572, lon: 126.9244 }
-/** 종류 · 고정 번호("종류:이름")가 붙은 장소 (즐겨찾기 · AI 찾기에 씀) */
-export type PlaceItem = Place & { cat: string; id: string }
+/** 종류 · 고정 번호("종류:이름", 서버 모드면 장소 id)가 붙은 장소 (즐겨찾기 · AI 찾기에 씀). walk 는 서버가 계산한 도보 분 */
+export type PlaceItem = Place & { cat: string; id: string; walk?: number }
 
 export const PLACES: Record<string, Place[]> = {
   세탁방: [
@@ -100,8 +100,8 @@ export const PLACE_KINDS = Object.keys(PLACES)
 /** '세탁방 찾아줘' 같은 글에서 장소 종류를 찾음 (앞 두 글자로 비교) */
 export const placeKindOf = (text: string) => PLACE_KINDS.find((k) => text.includes(k.slice(0, 2))) ?? null
 
-/** 설명의 "도보 약 N분"에서 걸리는 분 (없으면 99) */
-export const walkMin = (p: Place) => Number(/(\d+)\s*분/.exec(p.d)?.[1] ?? 99)
+/** 걸리는 분: 서버가 준 값(walk), 없으면 설명의 "도보 약 N분" (둘 다 없으면 99) */
+export const walkMin = (p: Place & { walk?: number }) => p.walk ?? Number(/(\d+)\s*분/.exec(p.d)?.[1] ?? 99)
 
 /** 모든 종류의 장소를 한 줄로 */
 export const ALL_PLACES: PlaceItem[] = PLACE_KINDS.flatMap((cat) => PLACES[cat].map((p) => ({ ...p, cat, id: `${cat}:${p.n}` })))

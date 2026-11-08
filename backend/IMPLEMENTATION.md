@@ -9,6 +9,7 @@
 | POST `/api/auth/logout` | 현재 DB 세션 해제, 해당 토큰 즉시 차단 |
 | PATCH `/api/auth/me/password` | 현재 비밀번호 확인, 새 비밀번호 검증, 모든 DB 세션 해제 |
 | GET `/api/terms` | 비로그인 조회, 시행일이 지난 최신 문서 종류별 1개 |
+| 지도 9개 (`/api/places/**`, `/api/me/place-favorites/**`, `/api/me/map-settings`) | 아래 [지도](#지도) 참고 |
 
 문자 발송 업체 미정으로 회원가입·전화 인증·아이디 찾기·비밀번호 재설정은 미구현입니다. 소셜 로그인·토큰 재발급·내 정보 수정·탈퇴·생활 기능도 다음 단계입니다. `openapi.yaml` 전체가 구현됐다는 뜻은 아닙니다. 미구현 API는 호출하지 마세요.
 
@@ -61,3 +62,22 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 현재 본문에는 책임자·연락처·클라우드 업체/국가·AI 업체/국외 이전 항목 등의 `[ ]` 빈칸이 남아 있습니다. 문자 업체도 결정 후 실제 처리 내용을 반영해야 합니다. 외부 날씨·주소 검색은 이미 브라우저에서 호출하므로 제공 항목과 처리방침 설명을 점검해야 합니다. 재가입 차단용 banned_identities 및 신고 스냅샷의 탈퇴 후 보관 정책도 실제 구현과 맞춰야 합니다. 보관 기간·파기·휴면 계정·HTTPS에 대한 본문 약속은 구현 및 운영 절차로 확인해야 하며 이번에는 법적 적절성을 판정하거나 본문을 임의로 개정하지 않았습니다.
 
 본문 변경 시 프론트 버전과 DB 새 버전을 함께 추가하고 기존 약관/동의 이력은 보존합니다. API는 각 종류의 시행일이 지난 최신 문서를 조회하며 미래 문서를 노출하지 않습니다.
+
+## 지도
+
+`com.zip.backend.map` (MapController · MapService · MapRepository · PlaceFinder). 모두 로그인 후 요청이며 응답 모양은 `openapi.yaml`의 "지도" 태그와 같습니다.
+
+| API | 현재 동작 |
+|---|---|
+| GET `/api/places/categories` | `place_categories` 15개를 `sort_order` 순서로 |
+| GET `/api/places?regionId=&category=&q=&filter=` | 동네 장소. `category`는 종류 이름, `q`는 이름·설명·종류에 포함된 글자(최대 40자), `filter`는 `24h`·`cheap`·`quiet`. 가까운 순 |
+| POST `/api/places/ai-search` | 프론트 `features/map/aiFind.ts`와 같은 키워드 규칙으로 최대 5곳 + `reasons` (실제 AI 미연결) |
+| GET · PUT · DELETE `/api/me/place-favorites` | `place_favorites`. 없는 장소는 404, 두 번 저장해도 204 |
+| GET · PUT `/api/me/map-settings` | `user_settings.map_categories · map_keywords`. NULL이면 정렬 순서 앞 4종류 · 빈 검색어. 없는 종류, 종류와 같은 검색어(12자 이내)는 400 |
+| GET · POST `/api/places/{id}/reviews` | `place_reviews`. 한 사람당 한 장소 하나(두 번이면 409), 저장 후 `places.rating_avg · review_count` 갱신 |
+
+- **카카오 로컬 API**: `KAKAO_REST_KEY`(application-local.properties, Git 제외)가 있으면 `GET /api/places`의 `category` · `q` 검색을 카카오에서 지도 중심(`lat` · `lon`, 없으면 집) 반경 1km로 찾아 `places`에 upsert(`source=KAKAO`, `uk_places_source_source_id`)해요. 키가 없거나 카카오 오류면 DB 장소로 대신하고 경고 로그만 남겨요. 기존 DB는 `db/migrations/20261108_places_kakao.sql`을 한 번 적용해야 해요.
+- **walkMin**: `users.home_lat · home_lon`이 있으면 직선 거리 ÷ 분당 67m(올림, 최소 1분), 없으면 설명의 "도보 약 N분", 둘 다 없으면 99.
+- **조건 칩**(cheap · quiet)은 아직 표에 근거 칸이 없어 설명 글자로 걸러요. 프론트와 같은 방식이며 태그 칸을 만들면 바꿔야 합니다.
+- **테스트 데이터**: `db/seeds/map_places_demo.sql`이 프론트 예시와 같은 31곳(서울 마포구)을 넣어요. 다시 실행해도 중복되지 않습니다. 실제 장소 출처(공공데이터 · 카카오 로컬 등)는 미정입니다.
+- **검증**: `./gradlew test`의 `MapRulesTests`(도보 시간 · AI 규칙). `map-settings`가 MySQL `JSON_TABLE`을 써서 H2 통합 테스트는 만들지 않았고, 로컬 MySQL에서 9개 API를 정상 · 오류 응답까지 직접 호출해 확인했어요.

@@ -4,6 +4,10 @@
 
 ## 적용 순서
 
+### 2026-11-08 지도 카카오 출처
+
+20261107까지 적용된 DB에 `20261108_places_kakao.sql`을 한 번 실행합니다. `places.source`에 `KAKAO`를 추가하고 `(source, source_id)` UNIQUE를 만듭니다. 파일 안의 사전 확인 SQL이 0줄인지 먼저 봅니다. 새 DB는 최신 schema.sql만 실행합니다.
+
 전체 경로: `20261031_current_project.sql` → `20261031_02_event_anniversaries.sql` → `20261101_housing_and_loan.sql` → `20261102_requirements_hardening.sql` → `20261107_life_categories.sql`. 이미 적용한 파일은 다시 실행하지 않습니다.
 
 ### 2026-11-07 개인 카테고리·집 주소

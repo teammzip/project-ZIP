@@ -999,7 +999,7 @@ paths:
   /api/places/categories:
     get:
       tags: [지도]
-      summary: 장소 종류 15개
+      summary: 장소 종류 15개 + 검색 결과용 '기타' (칩에는 안 보임)
       responses:
         '200':
           description: 종류
@@ -1008,11 +1008,15 @@ paths:
     get:
       tags: [지도]
       summary: 동네 장소 (종류 또는 검색어, 가까운 순)
+      description: 'category 또는 q 가 있고 서버에 카카오 키(KAKAO_REST_KEY)가 있으면 지도 중심(lat · lon, 없으면 우리 집) 근처를 카카오 로컬 API 에서 찾아 places 에 저장(source=KAKAO) · 갱신한 뒤 돌려줘요. 키가 없거나 카카오가 실패하면 DB 에 있는 장소. category · q 가 둘 다 없으면 DB 의 동네 장소 전체'
       parameters:
         - { name: regionId, in: query, required: true, schema: { type: string } }
         - { name: category, in: query, schema: { type: string }, example: 세탁방 }
-        - { name: q, in: query, schema: { type: string }, description: 직접 추가한 검색어 칩 }
+        - { name: q, in: query, schema: { type: string, maxLength: 40 }, description: 직접 추가한 검색어 칩 }
         - { name: filter, in: query, schema: { type: string, enum: [24h, cheap, quiet] } }
+        - { name: lat, in: query, schema: { type: number, minimum: -90, maximum: 90 }, description: '지도 중심 위도 (lon 과 함께)', example: 37.5496 }
+        - { name: lon, in: query, schema: { type: number, minimum: -180, maximum: 180 }, description: '지도 중심 경도 (lat 과 함께)', example: 126.9137 }
+        - { name: wide, in: query, schema: { type: boolean, default: false }, description: '검색창 검색 (q 와 함께): 반경 5km + 거리 제한 없는 정확도 검색을 합쳐 이름이 같은 곳 → 이름에 든 곳 → 나머지 순. false(칩)면 반경 1km 가까운 순' }
       responses:
         '200': { description: 장소, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Place' } } } } }
   /api/places/ai-search:
@@ -1075,7 +1079,7 @@ paths:
               required: [rating]
               properties:
                 rating: { type: integer, minimum: 1, maximum: 5 }
-                body: { type: string, maxLength: 500 }
+                body: { type: string, maxLength: 300, description: DB place_reviews.body VARCHAR(300) }
       responses:
         '204': { description: 저장 완료 }
         '409': { description: 이미 리뷰를 씀, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
@@ -1887,7 +1891,7 @@ components:
         description: { type: string, example: '도보 약 3분 · 24시간' }
         lat: { type: number }
         lon: { type: number }
-        walkMin: { type: integer, description: 우리 집 기준 도보 분 }
+        walkMin: { type: integer, description: '우리 집(users.home_lat · home_lon) 기준 도보 분 — 직선 거리 ÷ 분당 67m. 집 좌표가 없으면 설명의 "도보 약 N분", 그것도 없으면 99' }
         address: { type: string, nullable: true }
         phone: { type: string, nullable: true }
         openHours: { type: string, nullable: true }

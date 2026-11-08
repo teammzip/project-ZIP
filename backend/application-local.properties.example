@@ -6,3 +6,6 @@ DB_PASSWORD=
 
 # Base64-encoded cryptographically random value of at least 32 bytes.
 JWT_SECRET=
+
+# Kakao Developers REST API key for map places (optional; empty = DB places only).
+KAKAO_REST_KEY=

@@ -2,8 +2,9 @@ import { lazy, Suspense, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Card } from '@/components/ui'
 import { RegionVerifyDialog } from '@/features/life'
-import { ALL_PLACES, DEFAULT_CATS } from '../data/places'
+import { DEFAULT_CATS } from '../data/places'
 import { useMapStore } from '../store'
+import { useMapData } from '../useMapData'
 import { useNeighborhoodPosition } from '../useNeighborhoodPosition'
 import styles from './HomeMapCard.module.css'
 import mapStyles from './MapView.module.css'
@@ -21,7 +22,7 @@ export function HomeMapCard() {
   const position = useNeighborhoodPosition()
   const on = useMapStore((s) => s.on)
   const kinds = on.length ? on : DEFAULT_CATS
-  const places = ALL_PLACES.filter((p) => kinds.includes(p.cat))
+  const places = useMapData(position.point).places.filter((p) => kinds.includes(p.cat))
   const center = position.point
 
   return (
