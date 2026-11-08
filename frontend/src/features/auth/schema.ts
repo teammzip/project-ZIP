@@ -7,6 +7,7 @@ const email = z
   .string()
   .trim()
   .min(1, '이메일을 입력해 주세요.')
+  .max(100, '이메일은 100자 이내로 입력해 주세요.')
   .pipe(z.email('이메일 형식을 확인해 주세요.'))
 
 /** 새 비밀번호 규칙: 가입 · 비밀번호 찾기 · 비밀번호 변경이 같이 씀 */
@@ -36,7 +37,7 @@ export const signupSchema = z
     phone: z.string().regex(/^\d{4}-\d{4}$/, '휴대전화 번호를 확인해 주세요. (010-0000-0000)'),
     phoneToken: z.string().min(1, '휴대전화 인증을 해 주세요.'),
     email,
-    address: z.string().trim().min(1, '주소를 입력해 주세요.'),
+    address: z.string().trim().min(1, '주소를 입력해 주세요.').max(200, '주소는 200자 이내로 입력해 주세요.'),
     agreeTerms: z.boolean().refine((v) => v, '서비스 이용약관에 동의해 주세요.'),
     agreePrivacy: z.boolean().refine((v) => v, '개인정보 처리방침 안내를 확인해 주세요.'),
     agreePolicy: z.boolean().refine((v) => v, '커뮤니티·AI 운영 정책에 동의해 주세요.'),

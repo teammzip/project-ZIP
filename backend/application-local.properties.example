@@ -3,3 +3,6 @@
 DB_URL=jdbc:mysql://localhost:3306/zip_test?connectionTimeZone=Asia/Seoul&characterEncoding=UTF-8
 DB_USERNAME=
 DB_PASSWORD=
+
+# Base64-encoded cryptographically random value of at least 32 bytes.
+JWT_SECRET=

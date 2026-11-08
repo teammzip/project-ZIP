@@ -2,6 +2,8 @@
 
 Spring Boot + Spring Web MVC + JPA + MySQL 프로젝트입니다. 상위 project-ZIP Git 저장소에서 함께 관리합니다.
 
+로그인·JWT/DB 세션·내 정보 조회·비밀번호 변경·로그아웃·약관 조회가 구현돼 있습니다. 문자 인증 및 회원가입은 아직 연결 대기 상태입니다. 실행 설정, 테스트 계정 준비, 지원 API와 약관 점검 결과는 [인증 기반 API 연결](IMPLEMENTATION.md)을 참고하세요. DB 설정 외에 `JWT_SECRET`도 필요합니다.
+
 ## 로컬 DB 연결
 
 1. MySQL을 실행하고 사용할 DB 이름을 확인합니다. 예시 주소는 `zip_test`입니다. 이미 준비된 테스트 DB를 사용할 수 있습니다. 새 DB 준비 및 기존 DB 변경은 [DB 안내](../db/README.md)를 따릅니다. `db/schema.sql`은 `zip` DB를 생성·선택하므로 테스트 DB에 그대로 실행하지 않습니다.

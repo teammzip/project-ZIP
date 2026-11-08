@@ -1,5 +1,5 @@
 [2026-11-07 프로젝트 대조]
-현재 API 계약/제안은 ../frontend/API.md, DB 저장 계약은 ../db/README.md가 기준입니다.
+현재 API 계약/제안은 ../frontend/API.md(사람용)와 ../backend/openapi.yaml(Swagger용, 같은 내용), DB 저장 계약은 ../db/README.md가 기준입니다.
 DB는 44테이블·358컬럼·15CHECK이며 MySQL 9.6.0 검증 결과가 있습니다. 백엔드는 아직 구현되지 않았습니다.
 인증 실제 요청 코드와 브라우저 전용 기능을 구분하며 서버 연결 완료로 해석하지 않습니다.
 
@@ -22,7 +22,7 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 
 0. 바탕 작업 (모든 기능의 전제)  [A]
 ====================================================================
-[ ] A 서버 프로젝트 만들기 (Spring Boot 등), 포트 8080, 주소는 모두 /api 로 시작
+[ ] A 서버 프로젝트 만들기 (Spring Boot 4.1.2 + Gradle, backend/ 뼈대는 이미 있음 - 여기서 이어서 작업), 포트 8080, 주소는 모두 /api 로 시작
 [ ] A DB 연결 (MySQL 8) + db/schema.sql 적용, 마이그레이션 관리 (Flyway 등)
 [ ] A JWT 로그인 처리: 요청 헤더 Authorization: Bearer <accessToken> 검사
 [ ] A 오류 응답 통일: { "message": "..." } (이 문장이 화면에 그대로 보임)
@@ -33,6 +33,7 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 [ ] A 비밀 키는 환경변수/비밀 저장소로 관리하고 (깃에 올리지 않음)
 [ ] B 목록 응답 규칙: ?page=0&size=20 -> { items: [...], hasNext: true }
 [ ] B 파일 업로드 저장소 (로컬 폴더 -> 나중에 R2/S3)
+[ ] B springdoc 이 만든 명세와 backend/openapi.yaml 비교 (Contract Testing)
 [ ] C 요청 제한(Rate limit), 로그, 오류 감시(Sentry)
 
 
@@ -122,7 +123,7 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 ====================================================================
 [ ] A GET    /api/notifications?status=all|unread|read   목록 + unreadCount
 [ ] A PATCH  /api/notifications/read         읽음 처리 (ids 비면 전부)
-[ ] A DELETE /api/notifications              읽은 알림 삭제
+[ ] A DELETE /api/notifications?ids=1,2      읽은 알림 삭제 (본문 없이 쿼리로)
 [ ] B 알림 만들기는 서버 몫: 일정/기념일 D-3, 쓰레기 배출 D-3, 월세 납부일 D-day
       (지금은 프론트가 계산. 예시로 하드코딩된 알림 7개는 지우거나 실제 기능과 연결)
 [ ] C 푸시 알림 (월세 납부일, 기념일)
@@ -176,7 +177,7 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 [ ] B POST   /api/admin/sanctions/bulk       여러 명 한꺼번에
 [ ] B DELETE /api/admin/members/{id}/sanctions/active  정지 해제
 [ ] B GET    /api/admin/members/{id}/sanctions         조치 이력
-[ ] B DELETE /api/admin/posts/{id}, /api/admin/comments/{id}   글/댓글 삭제 { reason }
+[ ] B DELETE /api/admin/posts/{id}?reason=, /api/admin/comments/{id}?reason=   글/댓글 삭제 (사유는 쿼리)
 [ ] B GET    /api/admin/posts, /api/admin/reports      글 목록, 신고 목록
 [ ] B PATCH  /api/admin/reports/{id}         신고 처리 { status: HIDDEN | DISMISSED }
 [ ] B 정지 일수: 1/3/5/10일 또는 영구, 경고는 기록만
@@ -245,3 +246,23 @@ ZIP 백엔드 필수 기능 목록 (체크리스트)
 - 개인 카테고리·설문·대출 API는 제안이며 호출 코드가 아직 없음.
 - 회원가입에는 휴대전화 인증/필수 약관이 필요하므로 인증 보조 구현을 마지막까지 미루지 않음.
 - 상세 API 경로와 DTO는 frontend/API.md 우선. 새 DB는 schema.sql, 기존 DB는 미적용 마이그레이션만 실행.
+
+2026-11-07 (2차) 업데이트 반영
+--------------------------------------------------------------------
+- backend/openapi.yaml 추가: API.md 를 Swagger(OpenAPI 3.0.3)로 옮긴 파일. 주소 81개 · API(메서드) 115개 · 태그 13개.
+  Swagger Editor/UI 에 Import 해서 검토하고, 서버가 생기면 springdoc 이 만든 명세와 비교(Contract Testing)한다.
+- DELETE 요청에는 본문(body)을 넣지 않는다: 알림 삭제는 DELETE /api/notifications?ids=1,2,
+  관리자 글/댓글 삭제는 DELETE /api/admin/posts/{id}?reason= · /api/admin/comments/{id}?reason= (사유는 쿼리).
+- 빌드 도구는 Gradle 로 확정(Maven 은 쓰지 않음). 자세한 내용은 백엔드_기술스택_추천.txt.
+- 명세와 백엔드 기본값 주의: 회원가입 성공 코드는 명세상 200, 약관 버전 예시는 DB 시드와 같은 '2026-10-18'.
+
+2026-11-07 (3차) backend 뼈대 반영
+--------------------------------------------------------------------
+- 문원이 backend/ 뼈대를 올렸다 (PR #78). 앞으로의 백엔드 작업은 이 뼈대 위에서 이어서 한다.
+- 실제 설정: Spring Boot 4.1.2 · Java 17(toolchain) · Gradle wrapper 9.8.2(gradlew 포함, 따로 설치 불필요).
+- 패키지는 com.zip.backend (BackendApplication), 설정 파일은 application.properties.
+- 지금 들어 있는 의존성: spring-boot-starter-webmvc, starter-data-jpa, mysql-connector-j (+ 테스트용).
+  Security · Validation · JWT 등은 필요할 때 build.gradle 에 추가한다.
+- DB: ddl-auto=none, open-in-view=false, sql.init.mode=never. 표는 db/schema.sql 과 db/migrations 로만 관리한다.
+- 접속 정보는 환경변수 또는 backend/application-local.properties(Git 제외)로 넣는다. 샘플(.example)에는 실제 비밀번호를 적지 않는다.
+- Spring Boot 4.x 는 3.x 와 스타터 이름 등이 다르다(예: starter-webmvc). 자료를 볼 때 버전을 확인한다.

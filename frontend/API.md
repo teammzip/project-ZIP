@@ -109,6 +109,8 @@
   "termsVersion": "2026-10-18" }
 ```
 - **입력 규칙** (`src/features/auth/schema.ts`와 같게 서버에서도 검사)
+  - 이메일은 필수·최대 100자, 주소는 공백 제거 후 필수·최대 200자예요. 소셜 첫 동의의 주소에도 같은 제한을 적용해요.
+  - 동의 4개는 모두 true여야 하며 termsVersion은 서버가 유효한 동의 대상 버전인지 검사해요. 소셜 첫 동의도 주소·동의 4개·termsVersion을 함께 검사하고 일반 닉네임 수정에는 동의를 다시 요구하지 않아요.
   - 아이디 6~16자 영문 소문자·숫자 / 비밀번호 8~16자 영문·숫자·특수문자 모두 / 닉네임 2~12자
   - 아이디 · 이메일 · 휴대전화는 겹치면 안 돼요 (`uk_users_*`)
 - **저장할 곳**
@@ -157,20 +159,23 @@
 | POST | `/api/me/region-verify` | `{ lat, lon }` | `{ region: { id, name }, verifiedAt, expiresAt }` (지금 위치의 동네로 인증) |
 
 ```json
-{ "regionId": "2", "regionName": "서울 마포구",
-  "rent": 55, "rentDay": 15, "moveIn": "2026-02", "contractEnd": "2027-02", "notiOn": true }
+{ "regionId": "2", "regionName": "서울 마포구", "homeAddress": "서울 마포구 합정동 123-4",
+  "rent": 55, "rentDay": 15, "moveIn": "2026-02", "contractEnd": "2027-02", "notiOn": true,
+  "regionLocation": { "region": "서울 마포구", "source": "verified", "point": { "lat": 37.5663, "lon": 126.9019 } } }
 ```
 | 키 | DB | 프론트 (`LifeSettings`) |
 |---|---|---|
 | `regionId` · `regionName` | `users.region_id` + `user_settings.region_name` | `region` ('서울 마포구') |
-| `homeAddress` (제안) | `user_settings.home_address` | `homeAddresses[로그인 회원 ID]`에서 본인 값만 전송 |
-| `regionLocation` (제안) | `user_settings.region_source/region_lat/region_lon` 및 region_name | `{ region, source, point? }`, 소유자는 서버가 결정 |
+| `homeAddress` | `user_settings.home_address` | `homeAddresses[로그인 회원 ID]`에서 본인 값만 전송 |
+| `regionLocation` | `user_settings.region_name/region_source/region_lat/region_lon` | `{ region, source, point? }` (`source`: survey · verified · manual, 없으면 `null`). 프론트 `RegionLocation`의 `userId`는 보내지 않고 서버가 토큰으로 정해요 |
 | `rent` | `user_settings.rent_amount` (**만원**) | `rent` |
 | `rentDay` | `rent_day` (1~31) | `rentDay` |
 | `moveIn` · `contractEnd` | `move_in_ym` · `contract_end_ym` | 같음 |
 | `notiOn` | `noti_on` | 같음 |
 
-- 위 settings 예시는 기본 필드만 담았어요. 최신 settings에는 homeAddress와 regionLocation을 포함하는 확장이 필요해요. DB NULL은 homeAddress 빈 문자열 또는 regionLocation 생략으로 변환해요.
+- DB NULL은 homeAddress 빈 문자열, regionLocation `null`로 줘요. `backend/openapi.yaml`의 `Settings` · `RegionLocation`과 같아요.
+- 프론트 저장 모델로 변환할 때 regionLocation과 point의 null은 생략으로 바꾸고, regionLocation에 로그인 회원의 userId를 붙여요. 서버 요청에는 userId와 다른 회원의 homeAddresses를 보내지 않아요.
+- verified 출처는 서버의 실제 인증 기록으로 검사하며 요청 값만으로 인증을 부여하지 않아요. 동네 식별자와 표시명이 다른 동네를 가리키면 400으로 거절해요.
 - 가입 주소 users.address, 실제 집 주소 home_address, 현재 동네 region_name, 설문 주소 스냅샷을 구분하세요. GPS 인증 좌표를 집 좌표로 덮어쓰지 않아요.
 - 닉네임은 설정이 아니라 `PATCH /api/auth/me`로 바꿔요.
 - 가입하면 `user_settings` 기본 줄을 같이 만들어 주세요.
@@ -353,7 +358,7 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 |---|---|---|---|
 | GET | `/api/notifications?status=all\|unread\|read` | — | `{ items: [noti], unreadCount }` |
 | PATCH | `/api/notifications/read` | `{ ids: ["1","2"] }` (빈 배열이면 전부) | — |
-| DELETE | `/api/notifications` | `{ ids: ["1","2"] }` | — (읽은 알림 지우기) |
+| DELETE | `/api/notifications?ids=1,2` | — | — (읽은 알림 지우기. DELETE 에는 본문을 넣지 않아요) |
 
 ```json
 { "id": "1", "type": "RENT", "title": "월세 납부일이 3일 남았어요", "body": "매월 15일 · 55만원",
@@ -428,6 +433,9 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
   "card": { "type": "SPEND_SUMMARY", "data": { "month": 10, "total": 1180000, "prevTotal": 1090000, "fixed": 620000,
             "rows": [["월세", 550000], ["식비", 210000]], "top": ["식비", 210000] } } }
 ```
+- `card.data` 모양 (`backend/openapi.yaml`의 `SpendSummaryCard` · `LinkCard`)
+  - `SPEND_SUMMARY`: `{ month, total, prevTotal, fixed, rows: [[분류, 금액]], top: [분류, 금액] | null }` — 금액은 원
+  - `LINK`: `{ label, to }` — 아래 사용 방법(guide) 참고
 - `topic` 코드는 `ai_topics.code`와 같아요: `qna` `guide` `nearby` `trash` `cook` `clean` `contract` `landlord` `bill` `summary` (`features/ai/topics.ts`).
   - **guide(🧭 사용 방법)** 는 ai_topics 기본 데이터에 반영돼 있어요. "월세 납부 기록은 어디서 해요?" 같은 질문에 **기능 위치를 알려 주고 그 화면으로 가는 버튼**을 줘요.
   - 답에 버튼이 붙으면 `card: { "type": "LINK", "data": { "label": "월세·공과금 (고정 지출) 바로가기", "to": "/my/budget/expense" } }`로 주세요. `to`는 앱 화면 주소예요 (`/my/calendar` · `/my/budget/expense` · `/my/budget/expense/spend` · `/my/budget/income` · `/my/memo` · `/my/noti` · `/my/settings` · `/map` · `/community` · `/ai`).
@@ -499,7 +507,7 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 | POST | `/api/admin/sanctions/bulk` | `{ memberIds, type, days, reason }` | — (여러 명 한꺼번에) |
 | DELETE | `/api/admin/members/{id}/sanctions/active` | — (정지 해제) | `member` |
 | GET | `/api/admin/posts?category=&regionId=&q=&page=0` | — | `{ items: [post], hasNext }` (댓글 포함) |
-| DELETE | `/api/admin/posts/{id}` · `/api/admin/comments/{id}` | `{ reason }` | — |
+| DELETE | `/api/admin/posts/{id}?reason=` · `/api/admin/comments/{id}?reason=` | — (사유는 쿼리로) | — |
 | GET | `/api/admin/reports?status=RECEIVED` | — | `[report]` |
 | PATCH | `/api/admin/reports/{id}` | `{ status: "HIDDEN" \| "DISMISSED" }` | — |
 

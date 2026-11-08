@@ -1,5 +1,5 @@
 [2026-11-07 프로젝트 대조]
-현재 API 계약/제안은 ../frontend/API.md, DB 저장 계약은 ../db/README.md가 기준입니다.
+현재 API 계약/제안은 ../frontend/API.md(사람용)와 ../backend/openapi.yaml(Swagger용, 같은 내용), DB 저장 계약은 ../db/README.md가 기준입니다.
 DB는 44테이블·358컬럼·15CHECK이며 MySQL 9.6.0 검증 결과가 있습니다. 백엔드는 아직 구현되지 않았습니다.
 인증 실제 요청 코드와 브라우저 전용 기능을 구분하며 서버 연결 완료로 해석하지 않습니다.
 
@@ -9,6 +9,7 @@ ZIP 백엔드 연동 가이드 (프론트 코드를 읽지 않고도 백엔드�
 대상: frontend/src  (코드를 직접 확인하고 정리함)
 함께 볼 문서:
   - frontend/API.md        API 주소와 요청/응답 모양을 정한 "계약서" (이 문서보다 자세함)
+  - backend/openapi.yaml  API.md 와 같은 내용을 Swagger(OpenAPI 3.0.3)로 쓴 파일 (주소 81 · API 115)
   - db/schema.sql          DB 표 정의
   - frontend_구조_설명.txt  폴더 구조 설명
 
@@ -117,6 +118,7 @@ AI 상담 /ai                 features/ai                      zip-ai-chat      
   POST   /api/auth/signup                    회원가입
   POST   /api/auth/login                     로그인 (아이디 또는 이메일)
   POST   /api/auth/logout
+  POST   /api/auth/refresh                   (선택) 토큰 재발급, 재발급 토큰은 httpOnly 쿠키
   GET    /api/auth/me                        토큰으로 내 정보
   PATCH  /api/auth/me                        닉네임 수정 또는 소셜 첫 가입 정보
   PATCH  /api/auth/me/password               비밀번호 변경
@@ -228,7 +230,7 @@ API: GET/POST/DELETE /api/incomes, /api/expenses, GET /api/ledger/categories?kin
   알림 id 모양: 일정 'ev-{일정id}', 쓰레기 배출은 자체 문자열 id, 월세 'n2'
 서버로 옮기면: 서버가 알림을 만들어 notifications 표에 넣고(월세일 D-day 등 계산은 서버 몫),
   프론트는 목록/읽음/삭제만 호출한다.
-API: GET /api/notifications?status=, PATCH /api/notifications/read, DELETE /api/notifications
+API: GET /api/notifications?status=, PATCH /api/notifications/read, DELETE /api/notifications?ids=1,2 (DELETE 는 본문 없이 쿼리)
 (홈의 "오늘 닫은 알림"은 브라우저에만 저장해도 되는 개인 설정이라 서버 불필요)
 
 [3-8] 커뮤니티 (features/community)  --  API.md 7번
@@ -290,6 +292,7 @@ BanRecord: nick(닉네임이 키), uid, phone, count(정지 횟수), warns(경�
   서버에서는 이 모든 판단을 서버가 한다 (user_sanctions 표, 탈퇴 후 banned_identities의 차단 HMAC 유지, user_sanctions 원문은 CASCADE 삭제).
 관리자 화면(/admin)은 role='ADMIN' 만. 회원 목록/정지/해제, 글/댓글 삭제, 신고 처리.
 API: /api/admin/... (회원, 정지, 게시글, 신고, 통계)
+     글/댓글 삭제는 본문 대신 쿼리: DELETE /api/admin/posts/{id}?reason= , /api/admin/comments/{id}?reason=
 
 [3-13] 고객센터 (features/support)  --  API.md 13번
 --------------------------------------------------------------------
@@ -365,3 +368,23 @@ ProfileLook: avatarImg(사진), avatarEmoji, avatarColor, bio(한 줄 소개, �
 - 개인 카테고리·설문·대출 API는 제안이며 호출 코드가 아직 없음.
 - 회원가입에는 휴대전화 인증/필수 약관이 필요하므로 인증 보조 구현을 마지막까지 미루지 않음.
 - 상세 API 경로와 DTO는 frontend/API.md 우선. 새 DB는 schema.sql, 기존 DB는 미적용 마이그레이션만 실행.
+
+2026-11-07 (2차) 업데이트 반영
+--------------------------------------------------------------------
+- backend/openapi.yaml 추가: API.md 를 Swagger(OpenAPI 3.0.3)로 옮긴 파일. 주소 81개 · API(메서드) 115개 · 태그 13개.
+  Swagger Editor/UI 에 Import 해서 검토하고, 서버가 생기면 springdoc 이 만든 명세와 비교(Contract Testing)한다.
+- DELETE 요청에는 본문(body)을 넣지 않는다: 알림 삭제는 DELETE /api/notifications?ids=1,2,
+  관리자 글/댓글 삭제는 DELETE /api/admin/posts/{id}?reason= · /api/admin/comments/{id}?reason= (사유는 쿼리).
+- 빌드 도구는 Gradle 로 확정(Maven 은 쓰지 않음). 자세한 내용은 백엔드_기술스택_추천.txt.
+- 명세와 백엔드 기본값 주의: 회원가입 성공 코드는 명세상 200, 약관 버전 예시는 DB 시드와 같은 '2026-10-18'.
+
+2026-11-07 (3차) backend 뼈대 반영
+--------------------------------------------------------------------
+- 문원이 backend/ 뼈대를 올렸다 (PR #78). 앞으로의 백엔드 작업은 이 뼈대 위에서 이어서 한다.
+- 실제 설정: Spring Boot 4.1.2 · Java 17(toolchain) · Gradle wrapper 9.8.2(gradlew 포함, 따로 설치 불필요).
+- 패키지는 com.zip.backend (BackendApplication), 설정 파일은 application.properties.
+- 지금 들어 있는 의존성: spring-boot-starter-webmvc, starter-data-jpa, mysql-connector-j (+ 테스트용).
+  Security · Validation · JWT 등은 필요할 때 build.gradle 에 추가한다.
+- DB: ddl-auto=none, open-in-view=false, sql.init.mode=never. 표는 db/schema.sql 과 db/migrations 로만 관리한다.
+- 접속 정보는 환경변수 또는 backend/application-local.properties(Git 제외)로 넣는다. 샘플(.example)에는 실제 비밀번호를 적지 않는다.
+- Spring Boot 4.x 는 3.x 와 스타터 이름 등이 다르다(예: starter-webmvc). 자료를 볼 때 버전을 확인한다.

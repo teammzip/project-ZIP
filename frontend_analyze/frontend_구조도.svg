@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1000" viewBox="0 0 1200 1000" font-family="'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1090" viewBox="0 0 1200 1090" font-family="'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif">
   <defs>
     <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
     </marker>
   </defs>
-  <rect width="1200" height="1000" fill="#f8fafc"/>
+  <rect width="1200" height="1090" fill="#f8fafc"/>
 
   <text x="600" y="42" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">ZIP frontend/src 구조도</text>
   <text x="600" y="68" text-anchor="middle" font-size="14" fill="#64748b">화면(pages)은 얇게, 실제 로직과 부품은 기능(features)별로 모아 둔 구조</text>
@@ -38,7 +38,7 @@
   <!-- features -->
   <rect x="420" y="268" width="400" height="300" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
   <text x="444" y="298" font-size="18" font-weight="700" fill="#14532d">features/  기능별 묶음 (로직 + 부품)</text>
-  <text x="444" y="328" font-size="14" fill="#334155">auth        로그인 · 가짜(mock) API</text>
+  <text x="444" y="328" font-size="14" fill="#334155">auth        로그인 · 가짜(mock)/진짜 API</text>
   <text x="444" y="350" font-size="14" fill="#334155">life        달력 · 고정지출 · 기념일 · 가계부</text>
   <text x="444" y="372" font-size="14" fill="#334155">weather     날씨 (Open-Meteo)</text>
   <text x="444" y="394" font-size="14" fill="#334155">map         지도 (Leaflet + OSM)</text>
@@ -112,4 +112,10 @@
   <text x="84" y="890" font-size="14" fill="#334155">1. features/ 에 기능 폴더를 만들고 store · types · components 를 넣어요.</text>
   <text x="84" y="914" font-size="14" fill="#334155">2. pages/ 에 화면을 만들어 그 기능의 부품을 배치해요.</text>
   <text x="84" y="938" font-size="14" fill="#334155">3. app/router.tsx 에 주소를 등록하고, 로그인이 필요하면 ProtectedRoute 안에 넣어요.</text>
+
+  <!-- outside src -->
+  <rect x="60" y="980" width="1080" height="90" rx="12" fill="#fff1f2" stroke="#e11d48" stroke-width="1.5"/>
+  <text x="84" y="1008" font-size="17" font-weight="700" fill="#881337">src 밖: 백엔드와 맞출 약속 (frontend/API.md · backend/openapi.yaml)</text>
+  <text x="84" y="1034" font-size="14" fill="#334155">API.md = 사람이 읽는 API 약속  ·  openapi.yaml = 같은 내용을 Swagger(OpenAPI 3.0.3)로 (주소 81 · API 115)</text>
+  <text x="84" y="1056" font-size="14" fill="#334155">백엔드(backend/ 뼈대만 있음): Spring Boot 4.1.2 + Java 17 + Gradle + JPA + MySQL  ·  기능 코드는 아직 없음, 화면은 브라우저에 저장</text>
 </svg>

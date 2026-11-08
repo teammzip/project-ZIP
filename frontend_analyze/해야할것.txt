@@ -1,5 +1,5 @@
 [2026-11-07 프로젝트 대조]
-현재 API 계약/제안은 ../frontend/API.md, DB 저장 계약은 ../db/README.md가 기준입니다.
+현재 API 계약/제안은 ../frontend/API.md(사람용)와 ../backend/openapi.yaml(Swagger용, 같은 내용), DB 저장 계약은 ../db/README.md가 기준입니다.
 DB는 44테이블·358컬럼·15CHECK이며 MySQL 9.6.0 검증 결과가 있습니다. 백엔드는 아직 구현되지 않았습니다.
 인증 실제 요청 코드와 브라우저 전용 기능을 구분하며 서버 연결 완료로 해석하지 않습니다.
 
@@ -12,14 +12,16 @@ ZIP 해야 할 것 (백엔드 만들기 전체 순서)
 
 규모 감각
 --------------------------------------------------------------------
-화면이 이미 있어서 API 가 약 80개다.
+화면이 이미 있어서 API 약속이 backend/openapi.yaml 에 주소 81개 · API 115개로 정리돼 있다.
 1단계만 만들어도 로그인 화면이 바로 실제 서버와 연결된다.
 그다음은 3단계(일정, 월세, 가계부)가 홈 화면의 핵심이라 효과가 가장 크다.
 
 
 0단계. 바탕 작업
 ====================================================================
-[ ] Spring 프로젝트 생성 (Java 21, Gradle), 포트 8080, 주소는 모두 /api 로 시작
+[ ] Spring 프로젝트 생성 (Spring Boot 4.1.2, Java 17, Gradle 확정 - Maven 은 쓰지 않음 / backend/ 뼈대가 이미 올라와 있음), 포트 8080, 주소는 모두 /api 로 시작
+      (IntelliJ: backend 폴더 자체를 프로젝트로 열고 Load Gradle Project)
+[ ] backend/openapi.yaml 을 Swagger 에 Import 해 검토, 서버가 생기면 springdoc 명세와 비교
 [ ] MySQL 연결, db/schema.sql 적용 (Docker Compose 추천)
 [ ] JWT 로그인 검사 (Authorization: Bearer <accessToken>)
 [ ] 오류 응답 형식 통일: { "message": "..." }
@@ -36,6 +38,7 @@ ZIP 해야 할 것 (백엔드 만들기 전체 순서)
 [ ] 로그인: 아이디 또는 이메일, 로그인 유지, 정지 계정 차단, 마지막 로그인 시각 기록
 [ ] 내 정보 조회/수정: 닉네임, 소셜 첫 가입 시 주소와 약관 동의
 [ ] 로그아웃
+[ ] (선택) 토큰 재발급 POST /api/auth/refresh - 재발급 토큰은 httpOnly 쿠키
 [ ] 비밀번호 변경
 [ ] 회원 탈퇴: 개인 데이터 정리, banned_identities 차단 HMAC 유지
 [ ] 첫 로그인 판단: 서버가 firstLogin 값을 내려줘서 설문 화면으로 보내기
@@ -118,3 +121,23 @@ ZIP 해야 할 것 (백엔드 만들기 전체 순서)
 - 개인 카테고리·설문·대출 API는 제안이며 호출 코드가 아직 없음.
 - 회원가입에는 휴대전화 인증/필수 약관이 필요하므로 인증 보조 구현을 마지막까지 미루지 않음.
 - 상세 API 경로와 DTO는 frontend/API.md 우선. 새 DB는 schema.sql, 기존 DB는 미적용 마이그레이션만 실행.
+
+2026-11-07 (2차) 업데이트 반영
+--------------------------------------------------------------------
+- backend/openapi.yaml 추가: API.md 를 Swagger(OpenAPI 3.0.3)로 옮긴 파일. 주소 81개 · API(메서드) 115개 · 태그 13개.
+  Swagger Editor/UI 에 Import 해서 검토하고, 서버가 생기면 springdoc 이 만든 명세와 비교(Contract Testing)한다.
+- DELETE 요청에는 본문(body)을 넣지 않는다: 알림 삭제는 DELETE /api/notifications?ids=1,2,
+  관리자 글/댓글 삭제는 DELETE /api/admin/posts/{id}?reason= · /api/admin/comments/{id}?reason= (사유는 쿼리).
+- 빌드 도구는 Gradle 로 확정(Maven 은 쓰지 않음). 자세한 내용은 백엔드_기술스택_추천.txt.
+- 명세와 백엔드 기본값 주의: 회원가입 성공 코드는 명세상 200, 약관 버전 예시는 DB 시드와 같은 '2026-10-18'.
+
+2026-11-07 (3차) backend 뼈대 반영
+--------------------------------------------------------------------
+- 문원이 backend/ 뼈대를 올렸다 (PR #78). 앞으로의 백엔드 작업은 이 뼈대 위에서 이어서 한다.
+- 실제 설정: Spring Boot 4.1.2 · Java 17(toolchain) · Gradle wrapper 9.8.2(gradlew 포함, 따로 설치 불필요).
+- 패키지는 com.zip.backend (BackendApplication), 설정 파일은 application.properties.
+- 지금 들어 있는 의존성: spring-boot-starter-webmvc, starter-data-jpa, mysql-connector-j (+ 테스트용).
+  Security · Validation · JWT 등은 필요할 때 build.gradle 에 추가한다.
+- DB: ddl-auto=none, open-in-view=false, sql.init.mode=never. 표는 db/schema.sql 과 db/migrations 로만 관리한다.
+- 접속 정보는 환경변수 또는 backend/application-local.properties(Git 제외)로 넣는다. 샘플(.example)에는 실제 비밀번호를 적지 않는다.
+- Spring Boot 4.x 는 3.x 와 스타터 이름 등이 다르다(예: starter-webmvc). 자료를 볼 때 버전을 확인한다.
