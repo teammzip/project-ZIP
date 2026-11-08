@@ -13,7 +13,9 @@ import { useLoanStore } from '@/features/loan'
 import { useHousingSurveyStore } from '@/features/onboarding'
 import { useHousingContract } from '@/features/onboarding/useHousingContract'
 import { useAge } from '@/lib/useAge'
-import { ProfileEditor, ProfileHero, useProfileStore } from '@/features/profile'
+import { createProfilePatch, ProfileEditor, ProfileHero, useProfileStore } from '@/features/profile'
+import { canStore } from '@/features/profile/store'
+import { isMockApi } from '@/features/auth/api'
 import { getErrorMessage } from '@/lib/apiClient'
 import { remove } from '@/lib/storage'
 import common from '@/styles/common.module.css'
@@ -174,7 +176,18 @@ export function SettingsPage() {
         </div>
       </div>
 
-      <ProfileEditor open={sheet === 'profile'} onClose={close} name={name} onSaveName={(nickname) => updateMe.mutate({ nickname })} onSaved={() => notify('프로필을 바꿨어요.')} />
+      <ProfileEditor open={sheet === 'profile'} onClose={close} name={name} onSaveProfile={async (nickname, look) => {
+        if (isMockApi) {
+          if (!canStore(look)) throw new Error('저장 공간이 부족해요. 더 작은 사진을 골라 주세요.')
+          if (nickname !== name) await updateMe.mutateAsync({ nickname })
+          useProfileStore.getState().save(look)
+        } else {
+          const token = useAuthStore.getState().token
+          const patch = await createProfilePatch(nickname, look, token)
+          if (!token || useAuthStore.getState().token !== token) throw new Error('로그인 상태가 바뀌었어요. 다시 시도해 주세요.')
+          await updateMe.mutateAsync(patch)
+        }
+      }} onSaved={() => notify('프로필을 바꿨어요.')} />
 
       <Modal open={sheet === 'life'} onClose={close} title="생활 정보">
         <h3 className={styles.sheetTitle}>생활 정보</h3>

@@ -26,7 +26,11 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (isAxiosError(error) && error.response?.status === 401) onUnauthorized()
+    if (isAxiosError(error) && error.response?.status === 401) {
+      const token = getToken()
+      // 이전 세션의 늦은 401로 새 로그인까지 해제하지 않는다.
+      if (token && error.config?.headers?.Authorization === `Bearer ${token}`) onUnauthorized()
+    }
     return Promise.reject(error)
   },
 )
