@@ -5,7 +5,12 @@ CREATE TABLE users (
     email VARCHAR(100), nickname VARCHAR(12) NOT NULL, address VARCHAR(200),
     signup_provider VARCHAR(10) DEFAULT 'EMAIL', role VARCHAR(10) DEFAULT 'USER',
     status VARCHAR(12) DEFAULT 'ACTIVE', last_login_at TIMESTAMP,
-    region_id BIGINT, password_changed_at TIMESTAMP
+    region_id BIGINT, password_changed_at TIMESTAMP, age_confirmed_at TIMESTAMP
+);
+CREATE TABLE social_accounts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL, provider VARCHAR(10) NOT NULL,
+    provider_user_id VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (provider, provider_user_id), UNIQUE (user_id, provider)
 );
 CREATE TABLE auth_sessions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL,

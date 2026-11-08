@@ -9,3 +9,8 @@ JWT_SECRET=
 
 # Kakao Developers REST API key for map places (optional; empty = DB places only).
 KAKAO_REST_KEY=
+
+# Google social login (optional). Create an OAuth client in Google Cloud Console with the
+# redirect URI http://localhost:8080/login/oauth2/code/google . Leave blank to disable.
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=

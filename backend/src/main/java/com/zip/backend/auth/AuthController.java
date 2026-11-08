@@ -18,6 +18,11 @@ public class AuthController {
     @GetMapping("/me")
     public Map<String, Object> me(@AuthenticationPrincipal Jwt jwt) { return auth.me(Long.parseLong(jwt.getSubject())); }
 
+    @PatchMapping("/me")
+    public Map<String, Object> updateMe(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody AuthRequests.UpdateMe request) {
+        return auth.updateMe(Long.parseLong(jwt.getSubject()), request);
+    }
+
     @PostMapping("/logout")
     @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
     public void logout(@AuthenticationPrincipal Jwt jwt) {
