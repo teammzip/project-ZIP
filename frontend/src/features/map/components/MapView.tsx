@@ -5,8 +5,10 @@ import { RegionVerifyDialog, useRegionVerify } from '@/features/life'
 import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
 import { aiFind } from '../aiFind'
-import { ALL_PLACES, CAT_ICON, DEFAULT_CATS, HOME, PLACE_KINDS, PLACES, walkMin, type PlaceItem } from '../data/places'
+import { mapApi } from '../api'
+import { CAT_ICON, DEFAULT_CATS, HOME, walkMin, type PlaceItem } from '../data/places'
 import { useMapStore } from '../store'
+import { useMapData, useMapServerSync } from '../useMapData'
 import { useNeighborhoodPosition } from '../useNeighborhoodPosition'
 import styles from './MapView.module.css'
 
@@ -44,7 +46,8 @@ const subscribeMobile = (cb: () => void) => {
 }
 const useMobile = () => useSyncExternalStore(subscribeMobile, () => window.matchMedia(MOBILE).matches)
 
-type Found = { q: string; items: Array<{ p: PlaceItem; why: string[] }> }
+/** named: 가게 이름 · 검색어로 찾은 결과가 있음 (카카오 키워드 검색) */
+type Found = { q: string; items: Array<{ p: PlaceItem; why: string[] }>; named?: boolean }
 
 /** 동네 지도 (네이버 지도처럼)
  * - 모바일: 화면 가득 지도 + 위에 검색창 · 종류 칩, 오른쪽 둥근 버튼(저장 · 내 위치), 아래 끌어올리는 시트(동네 · 저장 탭, 장소 목록)
@@ -53,9 +56,12 @@ type Found = { q: string; items: Array<{ p: PlaceItem; why: string[] }> }
  * - ★ 저장(즐겨찾기), 종류 편집(켜기 · 끄기 · 직접 검색어), ?cat=세탁방 으로 열면 그 종류부터 */
 export function MapView() {
   const { on, custom, favs, ensureCat } = useMapStore()
+  const position = useNeighborhoodPosition()
+  const data = useMapData(position.point)
+  const places = data.places
+  useMapServerSync()
   const mobile = useMobile()
   const [params] = useSearchParams()
-  const position = useNeighborhoodPosition()
   const region = position.region
   const { verified } = useRegionVerify()
   const [verifyOpen, setVerifyOpen] = useState(false)
@@ -63,7 +69,7 @@ export function MapView() {
   const mapPoint = position.point
   const locationKey = `${region}|${position.source}|${mapPoint?.lat}|${mapPoint?.lon}|${position.verifiedAt}`
   const asked = params.get('cat')
-  const [cat, setCat] = useState(() => (asked && PLACES[asked] ? asked : (on[0] ?? DEFAULT_CATS[0])))
+  const [cat, setCat] = useState(() => (asked && data.kinds.includes(asked) ? asked : (on[0] ?? DEFAULT_CATS[0])))
   const [tab, setTab] = useState<'near' | 'fav'>('near')
   const [filter, setFilter] = useState('near')
   const [selId, setSelId] = useState<string | null>(null)
@@ -83,17 +89,19 @@ export function MapView() {
 
   const base = (() => {
     if (found) return found.items.map((r) => r.p)
-    if (tab === 'fav') return ALL_PLACES.filter((p) => favs.includes(p.id))
+    if (tab === 'fav') return places.filter((p) => favs.includes(p.id))
     if (cat.startsWith(CUSTOM)) {
       const kw = cat.slice(CUSTOM.length)
-      return ALL_PLACES.filter((p) => (p.n + p.d + p.cat).includes(kw))
+      return places.filter((p) => (p.n + p.d + p.cat).includes(kw))
     }
-    return ALL_PLACES.filter((p) => p.cat === cat)
+    return places.filter((p) => p.cat === cat)
   })()
   const rule = FILTERS.find((f) => f.key === filter)?.re
   const list = (found ? base : [...base].sort((a, b) => walkMin(a) - walkMin(b))).filter((p) => !rule || rule.test(p.d))
   const activeSelectedId = selectedLocationKey === locationKey ? selId : null
-  const selected = activeSelectedId ? ALL_PLACES.find((p) => p.id === activeSelectedId) : undefined
+  // 검색 결과는 불러온 목록에 없을 수 있어서 함께 찾음
+  const pool = found ? [...found.items.map((r) => r.p), ...places] : places
+  const selected = activeSelectedId ? pool.find((p) => p.id === activeSelectedId) : undefined
   // 지도에는 목록 + (목록에 없으면) 고른 곳
   const pins = selected && !list.some((p) => p.id === selected.id) ? [...list, selected] : list
   const fitKey = `${found?.q ?? ''}|${tab}|${cat}|${filter}|${centerRequest}`
@@ -113,13 +121,25 @@ export function MapView() {
     setSelId(null)
     setFocus(null)
   }
-  const search = (q: string) => {
+  const search = async (q: string) => {
     const text = q.trim()
     if (!text) return setFound(null)
+    // 서버 모드: 카카오 키워드 검색(가게 이름 · 검색어, 지도 중심 근처) + 서버 AI 장소 찾기. 이름이 맞는 곳을 먼저
+    // 예시 모드: 예시 데이터 안에서 AI 찾기 (둘 다 없으면 아래 글자 검색으로)
     let items = aiFind(text).map((r) => ({ p: r.p, why: r.why }))
-    if (!items.length) items = ALL_PLACES.filter((p) => (p.n + p.d + p.cat).includes(text)).map((p) => ({ p, why: [`"${text}" 포함`] }))
+    let named = false
+    if (data.server) {
+      const regionId = data.regionId
+      const center = mapPoint ? { lat: Number(mapPoint.lat.toFixed(5)), lon: Number(mapPoint.lon.toFixed(5)) } : {}
+      const [byName, ai] = regionId
+        ? await Promise.all([mapApi.places(regionId, { q: text, ...center, wide: true }).catch(() => []), mapApi.aiSearch(text, regionId).catch(() => [])])
+        : [[], []]
+      items = [...byName.map((p) => ({ p, why: [] as string[] })), ...ai.filter((r) => !byName.some((p) => p.id === r.p.id))]
+      named = byName.length > 0
+    }
+    if (!items.length) items = places.filter((p) => (p.n + p.d + p.cat).includes(text)).map((p) => ({ p, why: [`"${text}" 포함`] }))
     setQuery(text)
-    setFound({ q: text, items })
+    setFound({ q: text, items, named })
     setFilter('near')
     setSelId(null)
     setFocus(null)
@@ -144,7 +164,7 @@ export function MapView() {
       role="search"
       onSubmit={(e: FormEvent) => {
         e.preventDefault()
-        search(query)
+        void search(query)
       }}
     >
       <span className={styles.searchPin} aria-hidden="true">
@@ -176,9 +196,9 @@ export function MapView() {
       <div className={styles.mapArea}>
         {mapPoint ? <Suspense fallback={<div className={styles.map} />}>
           <LeafletMap
-            className={styles.map} places={pins} selectedId={activeSelectedId} onSelect={(id) => select(ALL_PLACES.find((p) => p.id === id)!)}
+            className={styles.map} places={pins} selectedId={activeSelectedId} onSelect={(id) => select(pool.find((p) => p.id === id)!)}
             focus={selectedLocationKey === locationKey ? focus : null} fitKey={fitKey} bottomInset={bottomInset}
-            viewport={!selected && mapPoint ? { ...mapPoint, zoom: 16 } : undefined}
+            viewport={!selected && !found && mapPoint ? { ...mapPoint, zoom: 16 } : undefined}
             currentPosition={currentPoint}
           />
         </Suspense> : <div className={cx(styles.map, styles.mapLoading)} role="status">
@@ -242,6 +262,11 @@ export function MapView() {
           <p className={styles.note} role="status">
             {position.loading ? '저장한 동네를 찾고 있어요.' : position.error || `${region} · ${currentPoint ? '파란 점이 인증한 위치예요.' : '선택한 동네 중심을 표시해요. 위치 인증 시 인증한 위치로 변경돼요.'}`}
           </p>
+          {data.server && (data.loading || data.error) && (
+            <p className={styles.note} role="status">
+              {data.loading ? '서버에서 장소를 불러오고 있어요.' : data.error}
+            </p>
+          )}
           {selected ? (
             <PlaceDetail p={selected} onBack={() => {
               setSelId(null)
@@ -279,7 +304,7 @@ export function MapView() {
               <h2 className={styles.listTitle}>
                 {found ? (
                   <>
-                    <span className={styles.ai}>✨ AI 추천</span> &ldquo;{found.q}&rdquo;
+                    <span className={styles.ai}>{found.named ? '🔎 검색 결과' : '✨ AI 추천'}</span> &ldquo;{found.q}&rdquo;
                   </>
                 ) : tab === 'fav' ? (
                   '저장한 장소'
@@ -309,7 +334,7 @@ export function MapView() {
                       type="button"
                       onClick={() => {
                         setQuery(q)
-                        search(q)
+                        void search(q)
                       }}
                     >
                       ✨ {q}
@@ -323,8 +348,8 @@ export function MapView() {
                   <PlaceRow key={p.id} p={p} rank={i + 1} why={found?.items.find((r) => r.p.id === p.id)?.why} onClick={() => select(p)} />
                 ))}
               </ol>
-              {!found && !list.length && <p className={styles.empty}>{tab === 'fav' ? '아직 저장한 장소가 없어요. 장소 오른쪽의 ☆를 눌러 보세요.' : '이 조건의 장소가 예시 데이터에 없어요.'}</p>}
-              <p className={styles.note}>장소는 예시 데이터예요. 지도 © OpenStreetMap</p>
+              {!found && !list.length && <p className={styles.empty}>{tab === 'fav' ? '아직 저장한 장소가 없어요. 장소 오른쪽의 ☆를 눌러 보세요.' : data.server ? '이 조건의 장소가 아직 없어요.' : '이 조건의 장소가 예시 데이터에 없어요.'}</p>}
+              <p className={styles.note}>{data.server ? '장소는 서버(DB)에서 불러왔어요.' : '장소는 예시 데이터예요.'} 지도 © OpenStreetMap</p>
             </>
           )}
         </div>
@@ -338,7 +363,7 @@ export function MapView() {
       }} />
       <Modal open={editing} onClose={() => setEditing(false)} title="장소 종류 편집">
         <h3 className={styles.editTitle}>장소 종류 편집</h3>
-        <CategoryEditor current={cat} onCurrentGone={(next) => pickCat(next)} onAdded={(k) => pickCat(CUSTOM + k)} />
+        <CategoryEditor kinds={data.kinds} places={places} current={cat} onCurrentGone={(next) => pickCat(next)} onAdded={(k) => pickCat(CUSTOM + k)} />
       </Modal>
     </div>
   )
@@ -389,7 +414,7 @@ function PlaceRow({ p, rank, why, onClick }: { p: PlaceItem; rank: number; why?:
           <small>
             {p.cat} · {walkText(p)}
           </small>
-          <span className={styles.rowTag}>{why ? `추천 이유: ${why.join(' · ')}` : tagsOf(p).join(' · ') || '동네 장소'}</span>
+          <span className={styles.rowTag}>{why?.length ? `추천 이유: ${why.join(' · ')}` : tagsOf(p).join(' · ') || '동네 장소'}</span>
         </span>
         <FavStar p={p} />
       </div>
@@ -436,7 +461,7 @@ function PlaceDetail({ p, onBack }: { p: PlaceItem; onBack: () => void }) {
 }
 
 /** 종류 편집: 종류 켜기·끄기, 직접 검색어 추가·삭제, 기본값으로 되돌리기 */
-function CategoryEditor({ current, onCurrentGone, onAdded }: { current: string; onCurrentGone: (next: string) => void; onAdded: (kw: string) => void }) {
+function CategoryEditor({ kinds, places, current, onCurrentGone, onAdded }: { kinds: string[]; places: PlaceItem[]; current: string; onCurrentGone: (next: string) => void; onAdded: (kw: string) => void }) {
   const { on, custom, toggleCat, addCustom, removeCustom, resetCats } = useMapStore()
   const [kw, setKw] = useState('')
 
@@ -444,7 +469,7 @@ function CategoryEditor({ current, onCurrentGone, onAdded }: { current: string; 
     <div className={styles.editor}>
       <p className={common.note}>지도 위 칩에 보일 장소 종류를 눌러 켜고 끄세요. (✓ = 지금 보이는 종류)</p>
       <div className={common.chips}>
-        {PLACE_KINDS.map((c) => {
+        {kinds.map((c) => {
           const isOn = on.includes(c)
           return (
             <button
@@ -458,7 +483,7 @@ function CategoryEditor({ current, onCurrentGone, onAdded }: { current: string; 
               }}
             >
               {isOn && '✓ '}
-              {CAT_ICON[c] ?? '📍'} {c} {PLACES[c].length}
+              {CAT_ICON[c] ?? '📍'} {c} {places.filter((p) => p.cat === c).length}
             </button>
           )
         })}

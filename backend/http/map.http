@@ -1,0 +1,78 @@
+### 지도 API 눈으로 확인하기 (IntelliJ HTTP Client)
+# 1) 서버(BackendApplication)를 켠 뒤, 맨 위 "로그인"부터 ▶ 를 눌러요. 받은 토큰이 저장돼서 아래 요청에 자동으로 붙어요.
+# 2) 테스트 계정은 각자 로컬 DB 에 만든 계정이에요. 마포구 regionId=2.
+# 3) 서버에 KAKAO_REST_KEY 가 있으면 category · q 검색은 카카오에서 lat · lon(지도 중심) 근처를 찾아요. 없으면 DB 장소(db/seeds/map_places_demo.sql).
+
+### 로그인 — 토큰 저장
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "loginId": "zipdemo", "password": "demo1234!" }
+
+> {% client.global.set("token", response.body.accessToken); %}
+
+### 장소 종류 15개
+GET http://localhost:8080/api/places/categories
+Authorization: Bearer {{token}}
+
+### 합정역 근처 세탁방 (가까운 순) — 첫 장소 번호를 아래 즐겨찾기 · 리뷰에 씀
+GET http://localhost:8080/api/places?regionId=2&category=세탁방&lat=37.5496&lon=126.9137
+Authorization: Bearer {{token}}
+
+> {% client.global.set("placeId", response.body[0].id); %}
+
+### 검색어 "빵집"
+GET http://localhost:8080/api/places?regionId=2&q=빵집&lat=37.5496&lon=126.9137
+Authorization: Bearer {{token}}
+
+### 24시간 장소만
+GET http://localhost:8080/api/places?regionId=2&filter=24h
+Authorization: Bearer {{token}}
+
+### AI 장소 찾기
+POST http://localhost:8080/api/places/ai-search
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "q": "밤에 갈 수 있는 약국", "regionId": "2" }
+
+### 지도 설정 보기 (처음엔 기본 4종류)
+GET http://localhost:8080/api/me/map-settings
+Authorization: Bearer {{token}}
+
+### 지도 설정 저장
+PUT http://localhost:8080/api/me/map-settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "categories": ["세탁방", "편의점", "카페"], "keywords": ["빵집"] }
+
+### 즐겨찾기 저장 (위에서 받은 첫 장소)
+PUT http://localhost:8080/api/me/place-favorites/{{placeId}}
+Authorization: Bearer {{token}}
+
+### 즐겨찾기 목록
+GET http://localhost:8080/api/me/place-favorites
+Authorization: Bearer {{token}}
+
+### 즐겨찾기 풀기
+DELETE http://localhost:8080/api/me/place-favorites/{{placeId}}
+Authorization: Bearer {{token}}
+
+### 리뷰 쓰기 (한 번 더 누르면 409)
+POST http://localhost:8080/api/places/{{placeId}}/reviews
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "rating": 5, "body": "깨끗하고 넓어요" }
+
+### 리뷰 목록
+GET http://localhost:8080/api/places/{{placeId}}/reviews
+Authorization: Bearer {{token}}
+
+### 오류 확인 — 없는 장소 종류 (400)
+PUT http://localhost:8080/api/me/map-settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "categories": ["없는종류"], "keywords": [] }

@@ -690,10 +690,11 @@ CREATE TABLE IF NOT EXISTS `places` (
   `open_hours` VARCHAR(100) NULL COMMENT '영업시간',
   `rating_avg` DECIMAL(2,1) NULL COMMENT '평균 별점 — 리뷰로 계산',
   `review_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '리뷰 수',
-  `source` ENUM('MANUAL','PUBLIC_DATA') NOT NULL DEFAULT 'MANUAL' COMMENT '정보 출처 — 직접 입력 / 공공데이터',
+  `source` ENUM('MANUAL','PUBLIC_DATA','KAKAO') NOT NULL DEFAULT 'MANUAL' COMMENT '정보 출처 — 직접 입력 / 공공데이터 / 카카오 로컬 API',
   `source_id` VARCHAR(50) NULL COMMENT '원본 데이터 번호 — 공공데이터 원본 ID',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '정보 갱신 일시',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_places_source_source_id` (`source`, `source_id`),
   KEY `idx_places_region_id_category_id` (`region_id`, `category_id`),
   CONSTRAINT `fk_places_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_places_category_id` FOREIGN KEY (`category_id`) REFERENCES `place_categories` (`id`) ON DELETE RESTRICT,
@@ -803,7 +804,8 @@ INSERT IGNORE INTO `place_categories` (`name`, `icon`, `sort_order`) VALUES
   ('식당', '🍚', 12),
   ('반찬가게', '🥘', 13),
   ('세탁소', '👔', 14),
-  ('주민센터', '🏛️', 15);
+  ('주민센터', '🏛️', 15),
+  ('기타', '📍', 99); -- 검색으로 찾은 장소 중 위 종류에 안 맞는 곳 (칩에는 안 보임)
 UPDATE `place_categories` SET `icon` = '🧺' WHERE `name` = '세탁방';
 UPDATE `place_categories` SET `icon` = '🏪' WHERE `name` = '편의점';
 UPDATE `place_categories` SET `icon` = '💊' WHERE `name` = '약국';
