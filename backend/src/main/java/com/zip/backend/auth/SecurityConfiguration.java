@@ -9,7 +9,9 @@ import java.util.Base64;
 import java.util.List;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -57,12 +59,15 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, AuthRepository repository, Clock clock) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, AuthRepository repository, Clock clock,
+        ObjectProvider<ClientRegistrationRepository> socialClients, OAuthLoginHandler oauthHandler) throws Exception {
         http.csrf(csrf -> csrf.disable()) // Only Authorization bearer tokens; no cookie authentication.
             .formLogin(form -> form.disable()).httpBasic(basic -> basic.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // IF_REQUIRED: a short-lived session holds only the OAuth "state" during social login (dropped afterwards).
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                .requestMatchers("/api/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/terms").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/files/content/*").permitAll()
                 .requestMatchers("/error").permitAll()
@@ -85,6 +90,11 @@ public class SecurityConfiguration {
                     if (repository.suspended(user, clock.instant())) throw new SuspendedAuthenticationException();
                     return new JwtAuthenticationToken(token, List.of(new SimpleGrantedAuthority("ROLE_" + user.role())));
                 })));
+        if (socialClients.getIfAvailable() != null) { // only when GOOGLE_CLIENT_ID is configured
+            http.oauth2Login(login -> login
+                .authorizationEndpoint(endpoint -> endpoint.baseUri("/api/oauth2/authorization"))
+                .successHandler(oauthHandler).failureHandler(oauthHandler));
+        }
         return http.build();
     }
 

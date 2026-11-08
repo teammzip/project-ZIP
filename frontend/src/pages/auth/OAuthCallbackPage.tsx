@@ -12,7 +12,8 @@ export function OAuthCallbackPage() {
   const setAuth = useAuthStore((s) => s.setAuth)
   const token = params.get('token')
   const [requestError, setRequestError] = useState<string | null>(null)
-  const error = token ? requestError : '로그인 정보가 없어요. 다시 시도해 주세요.'
+  // 백엔드가 실패 이유를 ?error= 로 보내 주면 그대로 보여줌
+  const error = token ? requestError : (params.get('error') ?? '로그인 정보가 없어요. 다시 시도해 주세요.')
   const started = useRef(false) // StrictMode 에서 두 번 실행되는 것 방지
 
   useEffect(() => {

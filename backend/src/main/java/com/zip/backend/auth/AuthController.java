@@ -22,6 +22,8 @@ public class AuthController {
     public Map<String, Object> updateMe(@AuthenticationPrincipal Jwt jwt,
         @RequestBody Map<String, Object> request) {
         return auth.updateProfile(Long.parseLong(jwt.getSubject()), Long.parseLong(jwt.getClaimAsString("sid")), ProfilePatch.parse(request));
+    public Map<String, Object> updateMe(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody AuthRequests.UpdateMe request) {
+        return auth.updateMe(Long.parseLong(jwt.getSubject()), request);
     }
 
     @PostMapping("/logout")

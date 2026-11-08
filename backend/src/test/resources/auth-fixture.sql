@@ -20,6 +20,12 @@ CREATE TABLE user_settings (
         OR (region_source IS NOT NULL AND region_name IS NOT NULL AND CHAR_LENGTH(TRIM(region_name)) > 0
             AND ((region_lat IS NULL AND region_lon IS NULL) OR (region_lat IS NOT NULL AND region_lon IS NOT NULL
                 AND region_lat BETWEEN -90 AND 90 AND region_lon BETWEEN -180 AND 180))))
+    region_id BIGINT, password_changed_at TIMESTAMP, age_confirmed_at TIMESTAMP
+);
+CREATE TABLE social_accounts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL, provider VARCHAR(10) NOT NULL,
+    provider_user_id VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (provider, provider_user_id), UNIQUE (user_id, provider)
 );
 CREATE TABLE auth_sessions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL,
