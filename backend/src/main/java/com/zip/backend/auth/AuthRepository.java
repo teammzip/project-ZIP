@@ -89,6 +89,43 @@ public class AuthRepository {
         jdbc.update("UPDATE users SET last_login_at = ? WHERE id = ?", Timestamp.from(now), userId);
     }
 
+    public void updateNickname(long userId, String nickname) {
+        jdbc.update("UPDATE users SET nickname = ? WHERE id = ?", nickname, userId);
+    }
+
+    public record Profile(String bio, String avatarFileId, String avatarUrl, String avatarEmoji, String avatarColor) {}
+
+    public Profile profile(long userId) {
+        return jdbc.query("""
+            SELECT p.bio, f.id AS avatar_file_id, f.storage_url, p.avatar_emoji, p.avatar_color
+            FROM user_profiles p LEFT JOIN uploaded_files f ON f.id = p.avatar_file_id
+            AND f.user_id = p.user_id AND f.deleted_at IS NULL WHERE p.user_id = ?
+            """, (rs, row) -> new Profile(rs.getString("bio"), rs.getString("avatar_file_id"),
+                rs.getString("storage_url"), rs.getString("avatar_emoji"), rs.getString("avatar_color")), userId)
+            .stream().findFirst().orElse(new Profile("", null, null, null, null));
+    }
+
+    public void updateProfile(long userId, ProfilePatch patch) {
+        var previous = profile(userId);
+        String fileId = patch.has("avatarFileId") ? patch.value("avatarFileId") : previous.avatarFileId();
+        if (fileId != null && jdbc.queryForList("""
+            SELECT id FROM uploaded_files WHERE id = ? AND user_id = ? AND deleted_at IS NULL
+            AND mime_type IN ('image/jpeg', 'image/png') FOR UPDATE
+            """, Long.class, Long.parseLong(fileId), userId).isEmpty()) {
+            throw new com.zip.backend.common.ApiException(404, "사용할 수 있는 본인 사진 파일이 없어요.");
+        }
+        String bio = patch.has("bio") ? patch.value("bio") : previous.bio();
+        String emoji = patch.has("avatarEmoji") ? patch.value("avatarEmoji") : previous.avatarEmoji();
+        String color = patch.has("avatarColor") ? patch.value("avatarColor") : previous.avatarColor();
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM user_profiles WHERE user_id = ?", Long.class, userId) == 0) {
+            jdbc.update("INSERT INTO user_profiles (user_id, bio, avatar_file_id, avatar_emoji, avatar_color) VALUES (?, ?, ?, ?, ?)",
+                userId, bio, fileId, emoji, color);
+        } else {
+            jdbc.update("UPDATE user_profiles SET bio = ?, avatar_file_id = ?, avatar_emoji = ?, avatar_color = ? WHERE user_id = ?",
+                bio, fileId, emoji, color, userId);
+        }
+    }
+
     public Instant agreedAt(long userId) {
         List<Instant> dates = jdbc.query("""
             SELECT MAX(a.agreed_at) AS agreed_at FROM user_term_agreements a

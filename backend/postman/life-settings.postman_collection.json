@@ -1,0 +1,64 @@
+{
+  "info": {
+    "name": "ZIP 생활 설정 API 검증",
+    "description": "baseUrl/loginId/password를 본인 로컬 환경으로 설정한 뒤 순서대로 실행하세요. 비밀번호·발급 토큰을 저장한 컬렉션은 공유하지 마세요. 기존 로그인 회원의 설정을 샘플 값으로 실제 변경합니다.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "loginId", "value": "tester01" },
+    { "key": "password", "value": "" },
+    { "key": "accessToken", "value": "" }
+  ],
+  "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+  "item": [
+    {
+      "name": "1. 로그인 — 토큰 자동 저장",
+      "event": [
+        { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+          "pm.collectionVariables.unset('accessToken');",
+          "pm.variables.set('loginBody', JSON.stringify({loginId: pm.collectionVariables.get('loginId'), password: pm.collectionVariables.get('password'), remember: false}));"
+        ] } },
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('로그인 200', () => pm.response.to.have.status(200));",
+          "if (pm.response.code === 200) { pm.collectionVariables.set('accessToken', pm.response.json().accessToken); }"
+        ] } }
+      ],
+      "request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/auth/login", "body": { "mode": "raw", "raw": "{{loginBody}}", "options": { "raw": { "language": "json" } } } }
+    },
+    {
+      "name": "2. 생활 설정 조회",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('조회 200', () => pm.response.to.have.status(200));"] } }],
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/me/settings" }
+    },
+    {
+      "name": "3. 생활 설정 저장 — 실제 DB 변경",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('저장 200', () => pm.response.to.have.status(200));",
+        "pm.test('월세 저장', () => pm.expect(pm.response.json().rent).to.eql(55.0001));"
+      ] } }],
+      "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/me/settings", "body": { "mode": "raw", "raw": "{\n  \"rent\": 55.0001,\n  \"rentDay\": 15,\n  \"moveIn\": \"2026-01\",\n  \"contractEnd\": \"2027-01\",\n  \"notiOn\": true,\n  \"homeAddress\": \"생활 설정 테스트 주소\"\n}", "options": { "raw": { "language": "json" } } } }
+    },
+    {
+      "name": "4. 저장 후 다시 조회",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('재조회 200', () => pm.response.to.have.status(200));",
+        "pm.test('저장값 유지', () => { const s = pm.response.json(); pm.expect(s.rent).to.eql(55.0001); pm.expect(s.rentDay).to.eql(15); pm.expect(s.homeAddress).to.eql('생활 설정 테스트 주소'); });"
+      ] } }],
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/me/settings" }
+    },
+    {
+      "name": "5. 잘못된 납부일 — 400이어야 정상",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('잘못된 입력 400', () => pm.response.to.have.status(400));"] } }],
+      "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/me/settings", "body": { "mode": "raw", "raw": "{\"rent\":0,\"rentDay\":32,\"moveIn\":\"\",\"contractEnd\":\"\",\"notiOn\":false}", "options": { "raw": { "language": "json" } } } }
+    },
+    {
+      "name": "6. 오류 요청 후 기존 값 유지 확인",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('조회 200', () => pm.response.to.have.status(200));",
+        "pm.test('오류 요청은 저장되지 않음', () => { pm.expect(pm.response.json().rent).to.eql(55.0001); pm.expect(pm.response.json().rentDay).to.eql(15); });"
+      ] } }],
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/me/settings" }
+    }
+  ]
+}

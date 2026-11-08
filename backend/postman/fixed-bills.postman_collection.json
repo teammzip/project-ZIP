@@ -1,0 +1,113 @@
+{
+  "info": {
+    "name": "ZIP 고정 지출 API 검증",
+    "description": "Variables의 baseUrl/loginId/password를 설정하고 순서대로 실행하세요. 실행마다 이름이 다른 테스트 항목을 만들고 마지막에 해지합니다. 월별 테스트 기록은 DB에 남으며 실제 계좌 출금은 없습니다. 자격 증명과 토큰이 저장된 컬렉션은 공유하지 마세요.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "loginId", "value": "tester01" },
+    { "key": "password", "value": "" },
+    { "key": "accessToken", "value": "" },
+    { "key": "billId", "value": "" },
+    { "key": "month", "value": "" },
+    { "key": "nextMonth", "value": "" },
+    { "key": "billName", "value": "" }
+  ],
+  "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+  "item": [
+    {
+      "name": "1. 로그인 — 토큰·한국 기준 연월 설정",
+      "event": [
+        { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+          "pm.collectionVariables.unset('accessToken'); pm.collectionVariables.unset('billId');",
+          "const korean = new Date(Date.now() + 9 * 3600000);",
+          "pm.collectionVariables.set('month', korean.toISOString().slice(0, 7));",
+          "pm.collectionVariables.set('nextMonth', new Date(Date.UTC(korean.getUTCFullYear(), korean.getUTCMonth() + 1, 1)).toISOString().slice(0, 7));",
+          "pm.collectionVariables.set('billName', 'API검증-' + Date.now());",
+          "pm.variables.set('loginBody', JSON.stringify({loginId: pm.collectionVariables.get('loginId'), password: pm.collectionVariables.get('password'), remember: false}));"
+        ] } },
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('로그인 200', () => pm.response.to.have.status(200));",
+          "if (pm.response.code === 200) pm.collectionVariables.set('accessToken', pm.response.json().accessToken);"
+        ] } }
+      ],
+      "request": { "auth": { "type": "noauth" }, "method": "POST", "url": "{{baseUrl}}/api/auth/login", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{{loginBody}}", "options": { "raw": { "language": "json" } } } }
+    },
+    {
+      "name": "2. 테스트 관리비 항목 추가 — 실제 DB 생성",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('추가 200', () => pm.response.to.have.status(200));",
+        "if (pm.response.code === 200) pm.collectionVariables.set('billId', pm.response.json().id);",
+        "pm.test('당월 미납 스냅샷', () => { const b = pm.response.json(); pm.expect(b.amount).to.eql(50000); pm.expect(b.snapshot).to.eql(true); pm.expect(b.paid).to.eql(false); });"
+      ] } }],
+      "request": { "method": "POST", "url": "{{baseUrl}}/api/bills", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\":\"{{billName}}\",\"amount\":50000,\"tag\":\"관리비\"}", "options": { "raw": { "language": "json" } } } }
+    },
+    {
+      "name": "3. 당월 목록 조회",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('목록 200', () => pm.response.to.have.status(200));",
+        "pm.test('생성한 항목 확인', () => pm.expect(pm.response.json().find(b => b.id === pm.collectionVariables.get('billId')).amount).to.eql(50000));"
+      ] } }],
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/bills?month={{month}}" }
+    },
+    {
+      "name": "4. 당월 납부 체크",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('납부 200', () => pm.response.to.have.status(200));",
+        "pm.test('납부 상태', () => { pm.expect(pm.response.json().paid).to.eql(true); pm.expect(pm.response.json().paidAt).to.be.a('string'); });"
+      ] } }],
+      "request": { "method": "PUT", "url": "{{baseUrl}}/api/bills/{{billId}}/payments/{{month}}", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"paid\":true}", "options": { "raw": { "language": "json" } } } }
+    },
+    {
+      "name": "5. 기본 금액 변경 — 기존 당월 금액 보존",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('수정 200', () => pm.response.to.have.status(200));",
+        "pm.test('당월 금액과 새 기본 금액 분리', () => { const b = pm.response.json(); pm.expect(b.amount).to.eql(50000); pm.expect(b.defaultAmount).to.eql(70000); pm.expect(b.paid).to.eql(true); });"
+      ] } }],
+      "request": { "method": "PATCH", "url": "{{baseUrl}}/api/bills/{{billId}}", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"amount\":70000}", "options": { "raw": { "language": "json" } } } }
+    },
+    {
+      "name": "6. 당월 실제 금액 정정",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('월별 금액 수정 200', () => pm.response.to.have.status(200));",
+        "pm.test('납부와 기본 금액은 유지', () => { const b = pm.response.json(); pm.expect(b.amount).to.eql(45000); pm.expect(b.defaultAmount).to.eql(70000); pm.expect(b.paid).to.eql(true); });"
+      ] } }],
+      "request": { "method": "PUT", "url": "{{baseUrl}}/api/bills/{{billId}}/payments/{{month}}", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"amount\":45000}", "options": { "raw": { "language": "json" } } } }
+    },
+    {
+      "name": "7. 다음 달 예정액 조회 — DB 기록 생성 안 함",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('조회 200', () => pm.response.to.have.status(200));",
+        "pm.test('다음 달 예정액', () => { const b = pm.response.json().find(b => b.id === pm.collectionVariables.get('billId')); pm.expect(b.amount).to.eql(70000); pm.expect(b.snapshot).to.eql(false); pm.expect(b.paid).to.eql(false); });"
+      ] } }],
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/bills?month={{nextMonth}}" }
+    },
+    {
+      "name": "8. 음수 금액 거절 — 400이어야 정상",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('잘못된 금액 400', () => pm.response.to.have.status(400));"] } }],
+      "request": { "method": "PUT", "url": "{{baseUrl}}/api/bills/{{billId}}/payments/{{month}}", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"amount\":-1}", "options": { "raw": { "language": "json" } } } }
+    },
+    {
+      "name": "9. 해지 — 물리 삭제 아님",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('해지 204', () => pm.response.to.have.status(204));"] } }],
+      "request": { "method": "DELETE", "url": "{{baseUrl}}/api/bills/{{billId}}" }
+    },
+    {
+      "name": "10. 해지 후 당월 기록 보존 확인",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('조회 200', () => pm.response.to.have.status(200));",
+        "pm.test('해지 후 기존 납부 보존', () => { const b = pm.response.json().find(b => b.id === pm.collectionVariables.get('billId')); pm.expect(b.active).to.eql(false); pm.expect(b.amount).to.eql(45000); pm.expect(b.paid).to.eql(true); });"
+      ] } }],
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/bills?month={{month}}" }
+    },
+    {
+      "name": "11. 해지 후 다음 달 청구 제외 확인",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test('조회 200', () => pm.response.to.have.status(200));",
+        "pm.test('다음 달 항목 제외', () => pm.expect(pm.response.json().find(b => b.id === pm.collectionVariables.get('billId'))).to.eql(undefined));"
+      ] } }],
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/bills?month={{nextMonth}}" }
+    }
+  ]
+}

@@ -9,6 +9,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    ResponseEntity<Map<String, String>> handleUploadSize(org.springframework.web.multipart.MaxUploadSizeExceededException error) {
+        return ResponseEntity.status(413).body(Map.of("message", "사진은 2MB 이하여야 해요."));
+    }
+
     @ExceptionHandler(ApiException.class)
     ResponseEntity<Map<String, String>> handleApi(ApiException error) {
         return ResponseEntity.status(error.status()).body(error.code() == null

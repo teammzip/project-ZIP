@@ -1,5 +1,6 @@
 HELP.md
 /application-local.properties
+/var/uploads/
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar

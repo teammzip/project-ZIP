@@ -254,6 +254,7 @@ paths:
     put:
       tags: [설정 · 동네]
       summary: 생활 설정 저장 (동네를 바꾸면 동네 인증이 풀림)
+      description: rent/rentDay/moveIn/contractEnd/notiOn은 필수. 선택 주소·동네 필드는 생략하면 유지. regionLocation의 null만 보내면 동네 선택 해제. ID나 이름도 명시하면 해당 동네를 manual 출처로 선택. 설정 저장으로 새 동네 인증을 부여하지 않음.
       requestBody:
         required: true
         content:
@@ -498,6 +499,7 @@ paths:
     get:
       tags: [월세 · 고정 지출]
       summary: 고정 지출 항목 + 그 달 납부 상태
+      description: 조회는 DB를 변경하지 않음. 과거 월은 기존 스냅샷만 반환. 당월·미래 월의 활성 항목에 기록이 없으면 기본 금액의 예정액(snapshot=false) 반환. 해지 항목도 해당 월 기록이 있으면 active=false로 반환.
       parameters:
         - { name: month, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' }, example: '2026-10' }
       responses:
@@ -505,6 +507,7 @@ paths:
     post:
       tags: [월세 · 고정 지출]
       summary: 고정 지출 항목 추가
+      description: 한국 기준 당월 미납 스냅샷을 함께 생성. 같은 이름·분류의 활성 항목이 있으면 409. 모든 금액은 0~9007199254740991원 정수.
       requestBody:
         required: true
         content:
@@ -522,6 +525,7 @@ paths:
     put:
       tags: [월세 · 고정 지출]
       summary: 그 달 납부 체크 · 금액 수정 (줄이 없으면 서버가 만듦)
+      description: paid/amount 중 하나 이상 필요. 미래 월 저장은 400. 기록이 없는 과거 월은 amount 필수. 반복 paid=true는 최초 paidAt 유지. amount만 수정하면 납부 상태 유지. 해지 항목은 기존 월 기록만 수정 가능.
       parameters:
         - $ref: '#/components/parameters/Id'
         - { name: month, in: path, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' } }
@@ -539,8 +543,8 @@ paths:
   /api/bills/{id}:
     patch:
       tags: [월세 · 고정 지출]
-      summary: (제안) 고정 지출 항목 수정 — 바꿀 값만
-      description: default_amount 에 반영. 지난달 납부 기록의 금액(스냅샷)은 덮어쓰지 않아요
+      summary: 고정 지출 항목 수정 — 바꿀 값만
+      description: default_amount에 반영하며 당월 기존 금액은 먼저 확정해 보존. 기존 월별 스냅샷은 덮어쓰지 않음. 당월 금액 정정은 payments API 사용. 같은 이름·분류 중복은 409. 해지 항목은 404.
       parameters: [{ $ref: '#/components/parameters/Id' }]
       requestBody:
         required: true
@@ -868,7 +872,8 @@ paths:
   /api/files:
     post:
       tags: [커뮤니티 · 첨부 · 신고]
-      summary: 파일 올리기 (첨부 · 프로필 사진) — 최대 5개 · 합계 2MB · 이미지/문서만
+      summary: 파일 올리기 — 현재 프로필 JPEG/PNG 1개·2MB 이하 지원
+      description: 현재 구현은 프로필 사진 업로드만 지원. 실제 이미지 형식·픽셀 크기를 검사하고 메타데이터를 제거해 저장. 커뮤니티 문서 및 여러 첨부 합계 검증은 후속 구현.
       requestBody:
         required: true
         content:
@@ -881,6 +886,21 @@ paths:
       responses:
         '200': { description: 올린 파일, content: { application/json: { schema: { $ref: '#/components/schemas/Attachment' } } } }
         '413': { description: 용량 초과, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/files/content/{key}:
+    get:
+      tags: [인증 · 내 정보]
+      summary: 프로필 사진 조회
+      description: 프로필에 연결된 사진은 공개 조회. 연결 전 업로드는 유효한 업로더 토큰으로만 조회. 삭제되거나 연결 해제된 사진은 익명 요청에 404.
+      security: []
+      parameters:
+        - { name: key, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 사진 픽셀
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        '404': { $ref: '#/components/responses/NotFound' }
   /api/reports:
     post:
       tags: [커뮤니티 · 첨부 · 신고]
@@ -1480,10 +1500,11 @@ components:
         firstLogin: { type: boolean, description: 처음 로그인이면 true → 설문(/onboarding) }
         agreedAt: { type: string, format: date-time, nullable: true, description: '소셜 첫 가입이면 null → 동의 화면(/welcome)' }
         lastLoginAt: { type: string, format: date-time, nullable: true, description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음)' }
-        bio: { type: string, maxLength: 30, nullable: true, description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음) user_profiles' }
-        avatarUrl: { type: string, nullable: true, description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음)' }
-        avatarEmoji: { type: string, nullable: true, example: '🐻', description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음)' }
-        avatarColor: { type: string, nullable: true, example: '#ffd6a5', description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음)' }
+        bio: { type: string, maxLength: 30, description: 'user_profiles의 한 줄 소개, 없으면 빈 문자열' }
+        avatarFileId: { type: string, nullable: true }
+        avatarUrl: { type: string, nullable: true, description: 프로필 사진 조회 URL }
+        avatarEmoji: { type: string, maxLength: 20, nullable: true, example: '🐻' }
+        avatarColor: { type: string, nullable: true, pattern: '^#[0-9a-fA-F]{6}$', example: '#ffd6a5' }
         suspension:
           type: object
           nullable: true
@@ -1521,13 +1542,13 @@ components:
         termsVersion: { type: string, minLength: 1, example: '2026-10-18', description: 서버가 동의 대상 약관 버전인지 검증 }
     UpdateMeRequest:
       type: object
-      description: 바꿀 칸만 보내요. 소셜 첫 동의 완료 시 공백이 아닌 address와 동의 4개(true), 유효한 termsVersion을 함께 보내며 서버가 검증. 일반 닉네임 수정에는 동의 필드 불필요.
+      description: 현재 nickname/bio/avatarFileId/avatarEmoji/avatarColor만 지원하며 하나 이상 필요. 생략한 필드는 유지, bio의 null은 빈 문자열, 다른 선택 프로필 필드의 null은 제거. 사진은 본인 소유의 삭제되지 않은 JPEG/PNG만 연결. address와 소셜 첫 동의 필드는 후속 계약이며 현재 전송하면 400.
       properties:
         nickname: { type: string, minLength: 2, maxLength: 12 }
         bio: { type: string, maxLength: 30, nullable: true }
         avatarFileId: { type: string, nullable: true }
-        avatarEmoji: { type: string, nullable: true }
-        avatarColor: { type: string, nullable: true }
+        avatarEmoji: { type: string, maxLength: 20, nullable: true }
+        avatarColor: { type: string, pattern: '^#[0-9a-fA-F]{6}$', nullable: true }
         address: { type: string, minLength: 1, maxLength: 200, description: 소셜 첫 가입 }
         agreeTerms: { type: boolean, enum: [true] }
         agreePrivacy: { type: boolean, enum: [true] }
@@ -1538,15 +1559,16 @@ components:
     # 설정
     Settings:
       type: object
+      required: [rent, rentDay, moveIn, contractEnd, notiOn]
       description: 사용자 ID는 토큰으로 결정. regionLocation의 verified 출처는 실제 서버 인증 기록으로 검증하고 요청만으로 인증을 부여하지 않음. 동네 식별자와 표시명은 같은 동네를 가리켜야 하며 불일치는 400.
       properties:
-        regionId: { type: string, example: '2' }
+        regionId: { type: string, nullable: true, example: '2' }
         regionName: { type: string, example: 서울 마포구 }
         homeAddress: { type: string, maxLength: 200, description: '실제 사는 상세 주소 (user_settings.home_address) — 가입 주소 · 동네와 별개. DB NULL이면 빈 문자열' }
-        rent: { type: integer, example: 55, description: 월세 (**만원 단위**) }
+        rent: { type: number, minimum: 0, maximum: 9999999999.9999, multipleOf: 0.0001, example: 55, description: 월세 (**만원 단위**), 55.0001은 550001원 }
         rentDay: { type: integer, minimum: 1, maximum: 31, example: 15 }
-        moveIn: { type: string, example: '2026-02' }
-        contractEnd: { type: string, example: '2027-02' }
+        moveIn: { type: string, example: '2026-02', description: 'YYYY-MM 또는 미설정 빈 문자열' }
+        contractEnd: { type: string, example: '2027-02', description: 'YYYY-MM 또는 미설정 빈 문자열. 둘 다 설정하면 입주월 이상' }
         notiOn: { type: boolean }
         regionLocation: { $ref: '#/components/schemas/RegionLocation' }
     RegionLocation:
@@ -1706,6 +1728,10 @@ components:
         tag: { type: string, maxLength: 24, example: 공과금 }
         paid: { type: boolean }
         paidAt: { type: string, format: date-time, nullable: true }
+        month: { type: string, example: '2026-11' }
+        defaultAmount: { type: integer, minimum: 0, maximum: 9007199254740991, description: 미생성 월의 예정 기본 금액 }
+        active: { type: boolean, description: false이면 해지된 항목의 기존 월 기록 }
+        snapshot: { type: boolean, description: true이면 저장된 월별 금액, false이면 기본 금액 기반 예정액 }
 
     # 가계부
     LedgerCategory:

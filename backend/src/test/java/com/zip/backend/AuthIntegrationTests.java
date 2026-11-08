@@ -119,6 +119,39 @@ class AuthIntegrationTests {
         mvc.perform(get("/api/admin/stats").header("Authorization", "Bearer " + login())).andExpect(status().isForbidden());
     }
 
+    @Test void nicknameChangeIsTrimmedPersistedAndLimitedToCurrentUser() throws Exception {
+        jdbc.update("INSERT INTO users (id, login_id, nickname) VALUES (2, 'other01', '다른회원')");
+        String token = login();
+        mvc.perform(patch("/api/auth/me").header("Authorization", "Bearer " + token)
+            .contentType("application/json").content("{\"nickname\":\"  새닉네임  \"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.id").value("1"))
+            .andExpect(jsonPath("$.nickname").value("새닉네임"));
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.nickname").value("새닉네임"));
+        assertEquals("새닉네임", jdbc.queryForObject("SELECT nickname FROM users WHERE id = 1", String.class));
+        assertEquals("다른회원", jdbc.queryForObject("SELECT nickname FROM users WHERE id = 2", String.class));
+        mvc.perform(post("/api/auth/logout").header("Authorization", "Bearer " + token)).andExpect(status().isNoContent());
+        String newToken = login();
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + newToken))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.nickname").value("새닉네임"));
+    }
+
+    @Test void invalidNicknameDoesNotChangeDatabase() throws Exception {
+        String token = login();
+        for (String body : java.util.List.of("{}", "{\"nickname\":null}", "{\"nickname\":\"   \"}",
+            "{\"nickname\":\"가\"}", "{\"nickname\":\"abcdefghijklmn\"}")) {
+            mvc.perform(patch("/api/auth/me").header("Authorization", "Bearer " + token)
+                .contentType("application/json").content(body)).andExpect(status().isBadRequest());
+        }
+        assertEquals("테스터", jdbc.queryForObject("SELECT nickname FROM users WHERE id = 1", String.class));
+        mvc.perform(patch("/api/auth/me").contentType("application/json").content("{\"nickname\":\"새닉네임\"}"))
+            .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/logout").header("Authorization", "Bearer " + token)).andExpect(status().isNoContent());
+        mvc.perform(patch("/api/auth/me").header("Authorization", "Bearer " + token)
+            .contentType("application/json").content("{\"nickname\":\"새닉네임\"}"))
+            .andExpect(status().isUnauthorized());
+    }
+
     @Test void termsArePublicAndExcludeFutureVersions() throws Exception {
         mvc.perform(get("/api/terms")).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(3))
             .andExpect(jsonPath("$[0].version").value("2026-10-18"))
@@ -126,5 +159,86 @@ class AuthIntegrationTests {
         jdbc.update("INSERT INTO terms_documents (doc_type, version, title, content, consent_kind, is_required, effective_at) VALUES ('SERVICE', 'new', '새 약관', '본문', 'AGREE', TRUE, ?)", java.sql.Timestamp.from(Instant.now().minusSeconds(60)));
         mvc.perform(get("/api/terms")).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(3))
             .andExpect(jsonPath("$[0].version").value("new"));
+    }
+
+    @Test void profileFieldsPersistAndExplicitNullClearsOptionalFields() throws Exception {
+        String token = login();
+        mvc.perform(patch("/api/auth/me").header("Authorization", "Bearer " + token)
+            .contentType("application/json").content("{\"bio\":\"  요리 연습 중  \",\"avatarEmoji\":\"🐻\",\"avatarColor\":\"#ffd6a5\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.nickname").value("테스터"))
+            .andExpect(jsonPath("$.bio").value("요리 연습 중")).andExpect(jsonPath("$.avatarEmoji").value("🐻"));
+        mvc.perform(patch("/api/auth/me").header("Authorization", "Bearer " + token)
+            .contentType("application/json").content("{\"nickname\":\"새닉네임\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.bio").value("요리 연습 중"));
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.avatarColor").value("#ffd6a5"));
+        mvc.perform(patch("/api/auth/me").header("Authorization", "Bearer " + token)
+            .contentType("application/json").content("{\"bio\":null,\"avatarEmoji\":null,\"avatarColor\":null,\"avatarFileId\":null}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.bio").value(""))
+            .andExpect(jsonPath("$.avatarEmoji").isEmpty()).andExpect(jsonPath("$.avatarUrl").isEmpty());
+    }
+
+    @Test void invalidProfileOrForeignFileLeavesWholeUpdateUnchanged() throws Exception {
+        String token = login();
+        jdbc.update("INSERT INTO users (id, login_id, nickname) VALUES (2, 'other01', '다른회원')");
+        jdbc.update("INSERT INTO uploaded_files (id, user_id, original_name, storage_url, mime_type, size_bytes) VALUES (50, 2, 'other.png', '/other', 'image/png', 10)");
+        jdbc.update("INSERT INTO uploaded_files (id, user_id, original_name, storage_url, mime_type, size_bytes, deleted_at) VALUES (51, 1, 'deleted.png', '/deleted', 'image/png', 10, CURRENT_TIMESTAMP)");
+        jdbc.update("INSERT INTO uploaded_files (id, user_id, original_name, storage_url, mime_type, size_bytes) VALUES (52, 1, 'document.pdf', '/document', 'application/pdf', 10)");
+        for (String id : java.util.List.of("50", "51", "52", "999")) {
+            mvc.perform(patch("/api/auth/me").header("Authorization", "Bearer " + token)
+                .contentType("application/json").content("{\"nickname\":\"변경금지\",\"avatarFileId\":\"" + id + "\"}"))
+                .andExpect(status().isNotFound());
+        }
+        for (String body : java.util.List.of("{\"bio\":\"" + "가".repeat(31) + "\"}",
+            "{\"avatarColor\":\"url(bad)\"}", "{\"avatarEmoji\":\"" + "a".repeat(21) + "\"}",
+            "{\"bio\":123}", "{\"avatarFileId\":123}", "{\"role\":\"ADMIN\"}", "{\"avatarFileId\":\"-1\"}")) {
+            mvc.perform(patch("/api/auth/me").header("Authorization", "Bearer " + token)
+                .contentType("application/json").content(body)).andExpect(status().isBadRequest());
+        }
+        assertEquals("테스터", jdbc.queryForObject("SELECT nickname FROM users WHERE id = 1", String.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM user_profiles", Integer.class));
+    }
+
+    private byte[] png() throws Exception {
+        var image = new java.awt.image.BufferedImage(2, 2, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        var output = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(image, "png", output);
+        return output.toByteArray();
+    }
+
+    @Test void uploadAttachReadAndRemoveProfilePhoto() throws Exception {
+        String token = login();
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "profile.png", "image/png", png());
+        String body = mvc.perform(multipart("/api/files").file(file).header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.type").value("image/png"))
+            .andReturn().getResponse().getContentAsString();
+        String id = com.jayway.jsonpath.JsonPath.read(body, "$.id");
+        String url = com.jayway.jsonpath.JsonPath.read(body, "$.url");
+        // Unlinked files are not publicly readable.
+        mvc.perform(get(url)).andExpect(status().isNotFound());
+        mvc.perform(get(url).header("Authorization", "Bearer " + token)).andExpect(status().isOk());
+        mvc.perform(patch("/api/auth/me").header("Authorization", "Bearer " + token)
+            .contentType("application/json").content("{\"avatarFileId\":\"" + id + "\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.avatarUrl").value(url));
+        mvc.perform(get(url)).andExpect(status().isOk()).andExpect(content().contentType("image/png"));
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.avatarFileId").value(id));
+        mvc.perform(patch("/api/auth/me").header("Authorization", "Bearer " + token)
+            .contentType("application/json").content("{\"avatarFileId\":null}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.avatarUrl").isEmpty());
+        mvc.perform(get(url)).andExpect(status().isNotFound());
+    }
+
+    @Test void uploadRejectsWrongContentOversizeAndMissingAuthentication() throws Exception {
+        String token = login();
+        var image = new org.springframework.mock.web.MockMultipartFile("file", "p.png", "image/png", png());
+        mvc.perform(multipart("/api/files").file(image)).andExpect(status().isUnauthorized());
+        var fake = new org.springframework.mock.web.MockMultipartFile("file", "p.png", "image/png", "not an image".getBytes());
+        mvc.perform(multipart("/api/files").file(fake).header("Authorization", "Bearer " + token)).andExpect(status().isBadRequest());
+        var mismatch = new org.springframework.mock.web.MockMultipartFile("file", "p.jpg", "image/jpeg", png());
+        mvc.perform(multipart("/api/files").file(mismatch).header("Authorization", "Bearer " + token)).andExpect(status().isBadRequest());
+        var big = new org.springframework.mock.web.MockMultipartFile("file", "p.png", "image/png", new byte[2 * 1024 * 1024 + 1]);
+        mvc.perform(multipart("/api/files").file(big).header("Authorization", "Bearer " + token)).andExpect(status().is(413));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM uploaded_files", Integer.class));
     }
 }
