@@ -116,6 +116,7 @@ public class AuthService {
             if (repository.agreedAt(userId) != null) throw new ApiException(400, "이미 약관에 동의했어요.");
             String address = request.address() == null ? "" : request.address().strip();
             if (address.isEmpty()) throw new ApiException(400, "주소를 입력해 주세요.");
+            if (address.length() > 200) throw new ApiException(400, "주소는 200자 이내로 입력해 주세요.");
             if (!Boolean.TRUE.equals(request.agreeTerms()) || !Boolean.TRUE.equals(request.agreePrivacy())
                 || !Boolean.TRUE.equals(request.agreePolicy()) || !Boolean.TRUE.equals(request.ageOver14())) {
                 throw new ApiException(400, "필수 약관에 모두 동의해 주세요.");

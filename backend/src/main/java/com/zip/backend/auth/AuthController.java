@@ -18,12 +18,20 @@ public class AuthController {
     @GetMapping("/me")
     public Map<String, Object> me(@AuthenticationPrincipal Jwt jwt) { return auth.me(Long.parseLong(jwt.getSubject())); }
 
+    private static final java.util.Set<String> CONSENT_KEYS =
+        java.util.Set.of("address", "agreeTerms", "agreePrivacy", "agreePolicy", "ageOver14", "termsVersion");
+
+    /**
+     * One endpoint, two jobs (frontend/API.md): a social user's first consent (address, agreements, termsVersion),
+     * otherwise a profile edit (nickname, bio, avatar...).
+     */
     @PatchMapping("/me")
-    public Map<String, Object> updateMe(@AuthenticationPrincipal Jwt jwt,
-        @RequestBody Map<String, Object> request) {
-        return auth.updateProfile(Long.parseLong(jwt.getSubject()), Long.parseLong(jwt.getClaimAsString("sid")), ProfilePatch.parse(request));
-    public Map<String, Object> updateMe(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody AuthRequests.UpdateMe request) {
-        return auth.updateMe(Long.parseLong(jwt.getSubject()), request);
+    public Map<String, Object> updateMe(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, Object> request) {
+        long userId = Long.parseLong(jwt.getSubject());
+        if (request.keySet().stream().anyMatch(CONSENT_KEYS::contains)) {
+            return auth.updateMe(userId, AuthRequests.UpdateMe.from(request));
+        }
+        return auth.updateProfile(userId, Long.parseLong(jwt.getClaimAsString("sid")), ProfilePatch.parse(request));
     }
 
     @PostMapping("/logout")

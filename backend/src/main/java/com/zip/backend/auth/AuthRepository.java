@@ -187,10 +187,6 @@ public class AuthRepository {
         jdbc.update("UPDATE users SET address = ?, age_confirmed_at = ? WHERE id = ?", address, Timestamp.from(now), userId);
     }
 
-    public void updateNickname(long userId, String nickname) {
-        jdbc.update("UPDATE users SET nickname = ? WHERE id = ?", nickname, userId);
-    }
-
     public void revokeSession(long sessionId, long userId, Instant now) {
         jdbc.update("UPDATE auth_sessions SET revoked_at = ? WHERE id = ? AND user_id = ? AND revoked_at IS NULL",
             Timestamp.from(now), sessionId, userId);
