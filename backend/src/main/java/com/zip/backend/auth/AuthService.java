@@ -145,12 +145,27 @@ public class AuthService {
         var agreedAt = repository.agreedAt(user.id());
         result.put("agreedAt", agreedAt == null ? null : agreedAt.toString());
         result.put("region", user.regionId() == null ? null : Map.of("id", user.regionId(), "name", user.regionName()));
+        var profile = repository.profile(user.id());
+        result.put("bio", profile.bio());
+        result.put("avatarFileId", profile.avatarFileId());
+        result.put("avatarUrl", profile.avatarUrl());
+        result.put("avatarEmoji", profile.avatarEmoji());
+        result.put("avatarColor", profile.avatarColor());
         return result;
     }
 
     @Transactional
     public void logout(long userId, long sessionId) {
         repository.revokeSession(sessionId, userId, clock.instant());
+    }
+
+    @Transactional
+    public Map<String, Object> updateProfile(long userId, long sessionId, ProfilePatch patch) {
+        repository.lockUser(userId);
+        if (!repository.sessionActive(sessionId, userId, clock.instant())) throw new ApiException(401, "로그인이 만료됐어요.");
+        if (patch.has("nickname")) repository.updateNickname(userId, patch.value("nickname"));
+        repository.updateProfile(userId, patch);
+        return me(userId);
     }
 
     @Transactional

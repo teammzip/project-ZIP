@@ -23,4 +23,5 @@ public final class AuthRequests {
         @NotBlank @Size(max = 16) String currentPassword,
         @NotBlank @Size(min = 8, max = 16)
         @Pattern(regexp = "(?s)(?=.*[A-Za-z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).*") String newPassword) {}
+
 }

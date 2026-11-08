@@ -6,12 +6,22 @@
 |---|---|
 | POST `/api/auth/login` | 아이디/이메일 + BCrypt 비밀번호, JWT 발급, DB 세션 생성 |
 | GET `/api/auth/me` | 로그인 회원 조회, 문자열 ID, 약관 동의 시각 |
+| PATCH `/api/auth/me` | 닉네임·소개·캐릭터·배경색·프로필 사진 연결, 변경된 User 반환 |
+| POST `/api/files` | 프로필용 JPEG/PNG 단일 파일·2MB 이하 업로드, 파일 메타데이터 반환 |
+| GET `/api/files/content/{key}` | 연결된 프로필 사진 공개 조회, 연결 전 업로드는 소유자만 조회 |
 | POST `/api/auth/logout` | 현재 DB 세션 해제, 해당 토큰 즉시 차단 |
 | PATCH `/api/auth/me/password` | 현재 비밀번호 확인, 새 비밀번호 검증, 모든 DB 세션 해제 |
 | GET `/api/terms` | 비로그인 조회, 시행일이 지난 최신 문서 종류별 1개 |
 | 지도 9개 (`/api/places/**`, `/api/me/place-favorites/**`, `/api/me/map-settings`) | 아래 [지도](#지도) 참고 |
+| GET `/api/me/settings` | 로그인 회원의 생활 설정 조회, 행이 없으면 기본값 |
+| PUT `/api/me/settings` | 월세·납부일·연월·알림·집 주소·동네 저장 |
+| GET/POST `/api/bills` | 월별 고정 지출 조회·항목 추가 |
+| PATCH/DELETE `/api/bills/{id}` | 기본 항목 수정·해지 |
+| PUT `/api/bills/{id}/payments/{month}` | 월별 납부 체크·금액 정정 |
 
-문자 발송 업체 미정으로 회원가입·전화 인증·아이디 찾기·비밀번호 재설정은 미구현입니다. 소셜 로그인·토큰 재발급·내 정보 수정·탈퇴·생활 기능도 다음 단계입니다. `openapi.yaml` 전체가 구현됐다는 뜻은 아닙니다. 미구현 API는 호출하지 마세요.
+문자 발송 업체 미정으로 회원가입·전화 인증·아이디 찾기·비밀번호 재설정은 미구현입니다. 소셜 로그인·토큰 재발급·가입 주소 수정·소셜 첫 동의·탈퇴·설문·대출 등 나머지 생활 기능도 다음 단계입니다. `openapi.yaml` 전체가 구현됐다는 뜻은 아닙니다. 미구현 API는 호출하지 마세요.
+
+닉네임 수정 코드를 추가한 뒤에는 실행 중인 백엔드를 재시작해야 합니다. Postman에서 PATCH `/api/auth/me`에 Bearer Token과 JSON `{ "nickname": "새닉네임" }`을 보내면 200과 변경된 User를 반환합니다. GET 내 정보와 재로그인에서도 같은 닉네임이어야 합니다. 비로그인/만료 토큰은 401, 빈 값·누락·길이 오류는 400입니다. 사용자 ID는 요청 본문이 아닌 토큰에서 결정합니다.
 
 ## 로컬 실행
 
@@ -34,6 +44,90 @@ VITE_PROXY_TARGET=http://localhost:8080
 ```
 
 현재 연결 가능한 화면 흐름은 **기존 DB 계정 로그인 → 내 정보 조회 → 비밀번호 변경/로그아웃**입니다. 비밀번호 변경 성공 시 프론트도 인증 상태를 비우고 다시 로그인하게 합니다. 약관 화면은 여전히 정적 본문을 사용하며 API 조회 연결은 후속 작업입니다.
+
+### Windows에서 해시 생성 입력이 실패하는 경우
+
+기존 도구의 한글 안내가 깨지거나 입력 없이 실패하면 아래처럼 PowerShell에서 비밀번호를 먼저 받아 전달하세요. 입력은 화면에 표시되지 않고 명령 기록에도 실제 비밀번호를 적지 않습니다. Windows PowerShell의 파이프 인코딩 차이를 피하려면 테스트 비밀번호는 ASCII 영문·숫자·특수문자를 모두 포함해 8~16자로 입력하세요.
+
+```powershell
+$testPassword = Read-Host "Test password" -AsSecureString
+[System.Net.NetworkCredential]::new('', $testPassword).Password | .\gradlew.bat -q --console=plain hashPassword
+```
+
+안내와 오류는 Windows 코드 페이지와 무관하게 읽을 수 있도록 영어로 출력합니다. `No password received`는 입력 전달 실패, `Invalid password`는 길이/조합 규칙 실패입니다. 정상 종료 때 출력된 `$2a$12$...` 한 줄만 테스트 계정에 저장합니다. 실제 DB를 자동 변경하지 않습니다.
+
+## 고정 지출 API 확인
+
+기존 `bill_items`와 `bill_payments`를 사용하며 새 DDL은 없습니다. 백엔드 재시작 후 [Postman 컬렉션](postman/fixed-bills.postman_collection.json)을 Import하고 Variables의 baseUrl/loginId/password를 설정하세요. 1~11번 요청을 순서대로 실행하면 현재 한국 연월과 토큰을 자동 설정하고 테스트 항목 추가 → 납부 → 기본 금액 수정 → 당월 금액 정정 → 다음 달 예정액 → 오류 거절 → 해지·기록 보존을 검증합니다. 실행마다 별도 테스트 항목을 만들며 해지 후에도 DB 기록은 남습니다. 실제 출금 기능은 아닙니다.
+
+직접 추가하려면 Bearer Token으로 POST `/api/bills`에 다음 JSON을 보냅니다.
+
+```json
+{ "name": "관리비", "amount": 50000, "tag": "관리비" }
+```
+
+200 응답의 문자열 id를 사용하세요. GET `/api/bills?month=YYYY-MM`은 목록, PUT `/api/bills/{id}/payments/YYYY-MM`의 `{ "paid": true }`는 납부 체크, `{ "paid": false }`는 해제입니다. `{ "amount": 45000 }`만 보내면 해당 월 금액만 정정하고 납부 상태를 유지합니다. 반복 체크는 월별 행을 추가하지 않고 기존 paidAt을 유지합니다.
+
+PATCH `/api/bills/{id}`는 name/amount/tag 중 하나 이상을 수정합니다. 이름 1~30자, 분류 1~24자이며 앞뒤 공백을 제거합니다. 금액은 원 단위 정수 0~9007199254740991입니다. 같은 이름·분류의 활성 항목은 409입니다. 사용자 ID 등 다른 필드는 400, 남의 ID는 404입니다. 사용자 소유 행을 잠그고 세션을 재검증한 트랜잭션에서 저장합니다.
+
+**월별 금액 정책**: 항목 추가 때 당월 미납 스냅샷을 만듭니다. PATCH/해지 전에 당월 스냅샷이 없으면 기존 기본 금액으로 확정합니다. 기본 금액 수정은 기존 당월·과거 기록을 바꾸지 않으며 미생성 월의 예정액에 적용됩니다. 예: 기본 5만원 → PATCH 7만원이면 응답 amount=50000, defaultAmount=70000입니다. 당월도 바꾸려면 payments API의 amount를 명시하세요. 이름과 분류는 현재 항목의 값이며 과거 이름 스냅샷은 저장하지 않습니다.
+
+GET은 DB를 변경하지 않습니다. 과거 월은 저장된 스냅샷만 반환하고, 현재/미래 활성 항목은 스냅샷이 없으면 기본 금액의 예정액(snapshot=false)을 표시합니다. 누락된 과거를 현재 금액으로 임의 복원하지 않으며, 사용자가 과거 월에 새 기록을 만들 때는 당시 amount를 명시해야 합니다. 미래 월 납부 저장은 400입니다. 현재 미생성 청구를 매월 자동 생성하는 스케줄러는 아직 없으므로 장기간 미사용 월은 명시 금액으로 등록해야 합니다.
+
+DELETE는 is_active=0으로 해지하며 실제 항목/납부 행은 삭제하지 않습니다. 기존 월 기록은 GET에 active=false로 남고 이미 있는 기록의 정정도 가능합니다. 해지 후 새 월 청구 생성·항목 수정은 404이고, 미래 월 예정액에서 제외됩니다. 같은 항목 DELETE 반복은 204입니다. **프론트 고정 지출 화면의 API 연결과 설문 관리비 자동 반영은 아직 별도 작업입니다.**
+
+## 생활 설정 API 확인
+
+GET·PUT `/api/me/settings`는 Bearer Token이 필요하며 토큰 회원의 user_settings만 조회/저장합니다. 기본 조회는 행이 없어도 rent=0, rentDay=15, notiOn=true, 미설정 주소·연월은 빈 문자열을 반환하며 DB 행은 만들지 않습니다. 최초 PUT 때 행을 생성합니다. 기존 스키마를 사용하므로 새 DDL은 필요하지 않습니다.
+
+백엔드를 재시작한 뒤 [Postman 컬렉션](postman/life-settings.postman_collection.json)을 Import하세요. 컬렉션 Variables에서 baseUrl/loginId/password를 설정하고 1~6번을 순서대로 실행하면 로그인 토큰 자동 저장 → 조회 → 저장 → 재조회 → 잘못된 입력 거절 → 기존 값 보존을 확인할 수 있습니다. 3번은 실제 계정의 설정을 샘플 값으로 변경합니다. 비밀번호/토큰을 포함해 저장한 컬렉션은 공유하지 마세요.
+
+직접 요청하려면 PUT의 Body → raw → JSON에 다음을 넣습니다.
+
+```json
+{
+  "rent": 55,
+  "rentDay": 15,
+  "moveIn": "2026-01",
+  "contractEnd": "2027-01",
+  "notiOn": true,
+  "homeAddress": "서울 마포구 테스트주소"
+}
+```
+
+200 응답과 GET 재조회 값이 같아야 합니다. rent/rentDay/moveIn/contractEnd/notiOn은 필수이며 선택 주소/동네 필드는 생략하면 유지합니다. null homeAddress는 빈 주소로 정리합니다. 연월은 YYYY-MM 또는 미설정 빈 문자열, 종료월은 입주월 이상입니다. 월세는 **만원 단위**, 0~9999999999.9999 및 소수점 4자리까지 허용하므로 55.0001은 550001원입니다. 잘못된 타입·범위·미지원 필드(userId 등)는 400입니다. 오류 요청은 전체를 저장하지 않습니다.
+
+동네는 regionId(문자열 또는 null), regionName, regionLocation으로 설정합니다. 등록된 ID를 보내면 실제 regions에 있는지 확인하고 이름도 같은 동네인지 검사합니다. 예: regionId="2", regionName="서울 마포구", regionLocation={region:"서울 마포구",source:"manual",point:{lat:37.5,lon:126.9}}. ID에 해당하는 동네의 이름·상위 이름 포함 전체 명칭·서울특별시/광역시 등을 줄인 명칭을 허용합니다. ID 없이 자유 입력 동네 이름도 저장할 수 있지만 기존과 다른 이름이면 기존 registry ID를 해제합니다.
+
+point는 null 또는 lat/lon 한 쌍이며 위도 ±90, 경도 ±180, 소수점 6자리까지입니다. regionLocation을 null로만 보내면 동네 선택을 해제합니다. ID나 이름을 함께 지정하면 해당 동네를 manual 출처로 설정하므로 예전 registry ID만 있던 회원의 GET 응답도 그대로 PUT할 수 있습니다. source는 manual/survey/verified이며 verified는 기존 DB 위치·좌표·ID를 그대로 유지할 때만 허용합니다. 설정 저장으로 신규 동네 인증을 부여하지 않습니다. 동네·출처·좌표가 바뀌면 users.region_verified_at을 초기화하며 집 상세주소만 수정할 때는 유지합니다. users.home_lat/home_lon과 가입 주소도 덮어쓰지 않습니다.
+
+홈 메모·지도 설정·개인 카테고리 JSON 등 다른 user_settings 컬럼은 수정하지 않습니다. **프론트 생활 설정 화면은 아직 브라우저 저장을 사용합니다. 이번 구현은 백엔드와 Postman 검증 범위이며, 화면 연결은 다음 단계입니다.** 보증금·관리비·설문·대출도 별도 API 연결이 필요합니다.
+
+## 프로필 꾸미기 확인
+
+기존 `db/schema.sql`의 `user_profiles`와 `uploaded_files`를 사용하며 새 테이블이나 컬럼은 필요하지 않습니다. 기존 테스트 회원에 프로필 행이 없으면 최초 PATCH 시 자동 생성합니다. 사진 파일 자체는 DB가 아닌 로컬 저장 폴더에 두고 DB에는 소유자·URL·형식·크기를 저장합니다.
+
+백엔드를 재시작한 뒤 Postman에서 로그인 토큰으로 PATCH `/api/auth/me`에 다음 JSON을 보내세요.
+
+```json
+{
+  "nickname": "테스트회원",
+  "bio": "요리 연습 중",
+  "avatarEmoji": "🐻",
+  "avatarColor": "#ffd6a5",
+  "avatarFileId": null
+}
+```
+
+200 응답과 GET `/api/auth/me`, 재로그인의 user 응답에 같은 값이 있어야 합니다. 필드는 하나 이상 보내야 하며 생략한 값은 유지합니다. bio는 최대 30자, 캐릭터는 최대 20자, 색은 #RRGGBB입니다. null은 해당 선택 필드를 초기화하며 bio는 빈 문자열로 바뀝니다. 닉네임과 프로필은 한 트랜잭션으로 저장됩니다.
+
+사진은 POST `/api/files`의 Body → form-data에서 `file` 키를 File로 선택해 JPEG/PNG를 올립니다. 반환된 문자열 id를 PATCH의 avatarFileId에 넣으세요. 파일 크기 2MB, 가로·세로 4096px 및 총 1600만 화소를 제한하고 실제 이미지 형식과 MIME이 일치하는지 확인합니다. 서버는 픽셀을 재인코딩해 EXIF 등 원본 메타데이터를 저장하지 않습니다. 현재 일반 문서와 커뮤니티 다중 첨부는 지원하지 않습니다.
+
+연결된 프로필 사진은 응답의 avatarUrl로 공개 표시됩니다. 연결 전/해제 후에는 유효한 소유자 토큰으로만 읽을 수 있습니다. 다른 회원·삭제 파일·문서 파일·존재하지 않는 파일 연결은 404이며 요청의 닉네임 변경도 롤백됩니다. 프론트에서 캐릭터를 고르거나 기본으로 돌아가면 avatarFileId를 null로 해제합니다.
+
+기본 저장 위치는 **백엔드 실행 작업 디렉터리의 `var/uploads`**입니다. 작업 디렉터리를 바꿔도 같은 파일을 보려면 로컬 설정의 `ZIP_UPLOAD_DIR=C:/원하는/절대경로`로 고정하세요. 이 폴더는 Git에서 제외하며 DB와 함께 별도 백업해야 합니다. 실패한 업로드 트랜잭션의 파일은 정리하지만, 업로드 성공 후 PATCH를 취소한 미연결 파일과 교체된 사진의 물리 파일 정리·계정 탈퇴 시 파일 삭제·외부 저장소 이관은 후속 작업입니다.
+
+프론트 프로필 편집에서 소개·캐릭터·색·사진을 저장하고 새로고침/재로그인 시 유지되는지 확인하세요. 실제 API 모드는 서버 응답을 표시용 zip-profile 캐시에 동기화하며 저장 실패 시 완료 안내를 띄우지 않습니다. mock 모드는 기존 브라우저 저장 동작을 유지합니다.
 
 ## 세션·시간 정책
 

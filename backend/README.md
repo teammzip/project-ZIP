@@ -2,7 +2,11 @@
 
 Spring Boot + Spring Web MVC + JPA + MySQL 프로젝트입니다. 상위 project-ZIP Git 저장소에서 함께 관리합니다.
 
-로그인·JWT/DB 세션·내 정보 조회·비밀번호 변경·로그아웃·약관 조회가 구현돼 있습니다. 문자 인증 및 회원가입은 아직 연결 대기 상태입니다. 실행 설정, 테스트 계정 준비, 지원 API와 약관 점검 결과는 [인증 기반 API 연결](IMPLEMENTATION.md)을 참고하세요. DB 설정 외에 `JWT_SECRET`도 필요합니다.
+로그인·JWT/DB 세션·내 정보 조회·닉네임/프로필 꾸미기·프로필 사진 업로드·비밀번호 변경·로그아웃·약관 조회가 구현돼 있습니다. 문자 인증 및 회원가입은 아직 연결 대기 상태입니다. 실행 설정, 테스트 계정 준비, 사진 저장 폴더와 지원 API는 [인증 기반 API 연결](IMPLEMENTATION.md)을 참고하세요. DB 설정 외에 `JWT_SECRET`도 필요합니다.
+
+생활 설정 GET/PUT `/api/me/settings`도 구현돼 있습니다. [Postman 컬렉션](postman/life-settings.postman_collection.json)을 Import해 검증할 수 있습니다. 프론트 생활 설정의 서버 연결은 다음 단계입니다.
+
+고정 지출 조회·추가·수정·월별 납부·해지도 구현돼 있습니다. [고정 지출 Postman 컬렉션](postman/fixed-bills.postman_collection.json)과 [월별 금액 정책](IMPLEMENTATION.md#고정-지출-api-확인)을 참고하세요. 프론트 고정 지출 화면과 설문·대출은 별도 연결 대상입니다.
 
 ## 로컬 DB 연결
 
