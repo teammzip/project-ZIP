@@ -7,7 +7,7 @@ CREATE TABLE users (
     signup_provider VARCHAR(10) DEFAULT 'EMAIL', role VARCHAR(10) DEFAULT 'USER',
     status VARCHAR(12) DEFAULT 'ACTIVE', last_login_at TIMESTAMP,
     region_id BIGINT, password_changed_at TIMESTAMP, region_verified_at TIMESTAMP,
-    home_lat DECIMAL(9,6), home_lon DECIMAL(9,6)
+    home_lat DECIMAL(9,6), home_lon DECIMAL(9,6), age_confirmed_at TIMESTAMP
 );
 CREATE TABLE user_settings (
     user_id BIGINT PRIMARY KEY, rent_amount DECIMAL(14,4) DEFAULT 0 NOT NULL,
@@ -20,7 +20,6 @@ CREATE TABLE user_settings (
         OR (region_source IS NOT NULL AND region_name IS NOT NULL AND CHAR_LENGTH(TRIM(region_name)) > 0
             AND ((region_lat IS NULL AND region_lon IS NULL) OR (region_lat IS NOT NULL AND region_lon IS NOT NULL
                 AND region_lat BETWEEN -90 AND 90 AND region_lon BETWEEN -180 AND 180))))
-    region_id BIGINT, password_changed_at TIMESTAMP, age_confirmed_at TIMESTAMP
 );
 CREATE TABLE social_accounts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL, provider VARCHAR(10) NOT NULL,
