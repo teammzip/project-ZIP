@@ -22,7 +22,8 @@ export function ProtectedRoute() {
   if (needsConsent && location.pathname !== '/welcome') return <Navigate to="/welcome" replace />
   if (!needsConsent && location.pathname === '/welcome') return <Navigate to="/" replace />
   // 처음 로그인(가입 직후): 우리 집 설문 페이지를 한 번 거침. 끝내거나 건너뛰면 firstLogin 이 꺼져서 앱으로
-  if (user?.firstLogin && !isAdmin && location.pathname !== '/onboarding') return <Navigate to="/onboarding" replace />
+  // (약관 동의가 먼저: 동의 전에는 설문으로 보내지 않아야 /welcome ↔ /onboarding 이 무한 반복되지 않음)
+  if (user?.firstLogin && !needsConsent && !isAdmin && location.pathname !== '/onboarding') return <Navigate to="/onboarding" replace />
   if (!user?.firstLogin && location.pathname === '/onboarding') return <Navigate to="/" replace />
   return <Outlet />
 }
