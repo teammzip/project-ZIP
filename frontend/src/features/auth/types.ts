@@ -22,6 +22,11 @@ export type User = {
   agreedAt?: string | null
   /** 가입 후 처음 로그인이면 true → 앱이 "우리 집 설문" 창을 한 번 띄움. 서버는 users.last_login_at 이 NULL 이었는지로 판단 */
   firstLogin?: boolean
+  bio?: string | null
+  avatarFileId?: string | null
+  avatarUrl?: string | null
+  avatarEmoji?: string | null
+  avatarColor?: string | null
 }
 
 /** POST /auth/login — loginId 는 아이디 또는 이메일 */
@@ -59,6 +64,10 @@ export type SignupRequest = ConsentRequest & {
 export type UpdateMeRequest = Partial<ConsentRequest> & {
   nickname?: string
   address?: string
+  bio?: string | null
+  avatarFileId?: string | null
+  avatarEmoji?: string | null
+  avatarColor?: string | null
 }
 
 /** 휴대전화 인증 목적 (DB phone_verifications.purpose 와 같음) */

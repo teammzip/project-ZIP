@@ -1,5 +1,6 @@
 # 맥이 폴더마다 만드는 파일 (올리지 않음)
 .DS_Store
+/var/uploads/
 
 # Local credentials (examples must contain placeholders only)
 .env

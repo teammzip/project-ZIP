@@ -4,7 +4,8 @@ import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
 import { AVATAR_CHARS, AVATAR_COLORS } from '../constants'
 import { resizeToSquare } from '../resizeImage'
-import { canStore, useProfileStore } from '../store'
+import { useProfileStore } from '../store'
+import { getErrorMessage } from '@/lib/apiClient'
 import type { ProfileLook } from '../types'
 import { Avatar } from './Avatar'
 import styles from './Profile.module.css'
@@ -12,9 +13,8 @@ import styles from './Profile.module.css'
 type Props = {
   open: boolean
   onClose: () => void
-  /** 닉네임은 로그인 정보(auth)에 있어서 쓰는 쪽이 넘겨 주고 저장도 맡음 */
   name: string
-  onSaveName: (name: string) => void
+  onSaveProfile: (name: string, look: ProfileLook) => Promise<void>
   onSaved?: () => void
 }
 
@@ -28,11 +28,12 @@ export function ProfileEditor({ open, onClose, ...rest }: Props) {
   )
 }
 
-function EditorBody({ onClose, name, onSaveName, onSaved }: Omit<Props, 'open'>) {
+function EditorBody({ onClose, name, onSaveProfile, onSaved }: Omit<Props, 'open'>) {
   const saved = useProfileStore()
   const [draft, setDraft] = useState<ProfileLook>({ avatarImg: saved.avatarImg, avatarEmoji: saved.avatarEmoji, avatarColor: saved.avatarColor, bio: saved.bio })
   const [nick, setNick] = useState(name)
   const [error, setError] = useState('')
+  const [pending, setPending] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const pickFile = async (file?: File) => {
@@ -48,16 +49,23 @@ function EditorBody({ onClose, name, onSaveName, onSaved }: Omit<Props, 'open'>)
     }
   }
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
+    if (pending) return
     const nextName = nick.trim()
-    if (nextName.length < 2) return setError('닉네임은 2~12자로 입력해 주세요.')
+    if (nextName.length < 2 || nextName.length > 12) return setError('닉네임은 2~12자로 입력해 주세요.')
     const look = { ...draft, bio: draft.bio.trim() }
-    if (!canStore(look)) return setError('저장 공간이 부족해서 사진을 저장하지 못했어요. 더 작은 사진을 골라 주세요.')
-    saved.save(look)
-    if (nextName !== name) onSaveName(nextName)
-    onSaved?.()
-    onClose()
+    setError('')
+    setPending(true)
+    try {
+      await onSaveProfile(nextName, look)
+      onSaved?.()
+      onClose()
+    } catch (error) {
+      setError(getErrorMessage(error))
+    } finally {
+      setPending(false)
+    }
   }
 
   return (
@@ -121,7 +129,7 @@ function EditorBody({ onClose, name, onSaveName, onSaved }: Omit<Props, 'open'>)
           {error}
         </p>
       )}
-      <Button type="submit" block>
+      <Button type="submit" block loading={pending}>
         저장
       </Button>
     </form>

@@ -48,7 +48,9 @@
 
 ## 1. 인증 · 내 정보 ✅
 
-✅는 아래 기본 인증 요청 경로가 realAuthApi에 있다는 뜻이에요. 프로필·제재·위치 확장 필드와 refresh 제안까지 구현되어 있다는 뜻은 아니에요.
+현재 백엔드의 PATCH `/api/auth/me`는 닉네임·한 줄 소개·캐릭터·배경색·프로필 사진 연결을 지원해요. 주소·소셜 동의 필드는 후속 구현 계약이에요. 사용자 ID·권한 등 지원하지 않는 키를 보내면 400이에요.
+
+✅는 아래 기본 인증 요청 경로가 realAuthApi에 있다는 뜻이에요. 프로필은 연동되어 있지만 제재·위치 확장 필드와 refresh 제안까지 구현되어 있다는 뜻은 아니에요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
@@ -92,7 +94,7 @@
 | `bio` · `avatar*` | `user_profiles` + `uploaded_files` | [프로필 꾸미기](#프로필-꾸미기-사진--한-줄-소개) |
 | `suspension` · `warnCount` · `unseenWarnings` | `user_sanctions` | [11번 화면](#11-관리자--이용-정지-) — 정지 화면 · 경고 창 |
 
-위 예시의 lastLoginAt, bio, avatar*, suspension, warnCount, unseenWarnings와 regionVerifiedAt/home는 **연동 시 확장 제안**이에요. 현재 `auth/types.ts`의 User에는 없으며 `UpdateMeRequest`도 nickname/address/동의만 지원해요. 이메일·주소가 없는 소셜 회원의 응답은 현재 필수 문자열 타입에 맞춰 빈 문자열을 쓰거나, 연동 시 nullable 타입으로 함께 조정해야 해요. 정지 화면·프로필은 현재 별도 브라우저 저장소를 사용해요.
+위 예시의 lastLoginAt, suspension, warnCount, unseenWarnings와 regionVerifiedAt/home는 **연동 시 확장 제안**이에요. bio·avatarFileId·avatarUrl·avatarEmoji·avatarColor는 현재 User 타입과 실제 인증 응답에 포함돼요. 이메일·주소가 없는 소셜 회원의 응답은 현재 필수 문자열 타입에 맞춰 빈 문자열을 써요. 정지 화면은 현재 별도 브라우저 저장소를 사용해요.
 
 ### 로그인
 - `loginId`는 **아이디 또는 이메일** (`users.login_id` 또는 `users.email`로 찾기).
@@ -135,11 +137,13 @@
 ```
 
 ### 프로필 꾸미기 (사진 · 한 줄 소개)
-- 내 정보의 "프로필 편집"에서 **프로필 사진**(또는 캐릭터 · 배경 색)과 **한 줄 소개**를 바꿔요. 지금은 브라우저(`zip-profile`)에 저장해요.
+- 내 정보의 "프로필 편집"에서 **프로필 사진**(또는 캐릭터 · 배경 색)과 **한 줄 소개**를 바꿔요. 실제 API 모드는 DB에 저장하고 `zip-profile`은 표시용 캐시예요. mock 모드는 기존 브라우저 저장을 사용해요.
 - 사진은 프론트가 가운데를 정사각형으로 잘라 **240px JPEG**로 줄여서 보내요 (약 15~30KB).
-- 서버가 생기면: 사진은 `POST /api/files`로 올리고 `PATCH /api/auth/me`에 `{ avatarFileId, bio }`를 보내요. 캐릭터를 고르면 `{ avatarEmoji, avatarColor, avatarFileId: null }`, "기본으로"는 셋 다 `null`.
+- 사진은 `POST /api/files`로 올리고 `PATCH /api/auth/me`에 `{ avatarFileId, bio }`를 보내요. 캐릭터를 고르면 `{ avatarEmoji, avatarColor, avatarFileId: null }`, "기본으로"는 셋 다 `null`.
 - 한 줄 소개 최대 30자, 닉네임 2~12자 (닉네임은 같은 `PATCH /api/auth/me`)
-- 저장 위치는 **`user_profiles`**예요. avatar_file_id → uploaded_files로 URL을 조회해요. 현재 인증 DTO에는 프로필 필드가 없으므로 위 PATCH 확장은 제안이며 프론트 연동 시 타입·요청 코드를 함께 보완해야 해요.
+- 저장 위치는 **`user_profiles`**예요. avatar_file_id → uploaded_files로 URL을 조회해요. 기존 프로필 행이 없어도 최초 수정 시 생성해요. 생략한 필드는 유지하고, bio의 null은 빈 문자열로 저장해요. 캐릭터는 최대 20자, 배경은 #RRGGBB 형식, 사진 ID는 문자열이며 본인 소유의 삭제되지 않은 JPEG/PNG 파일만 허용해요. 잘못된 파일 ID이면 닉네임을 포함한 요청 전체를 롤백해요.
+- 업로드는 현재 프로필용 JPEG/PNG 단일 파일·2MB 이하를 지원해요. 내용 형식과 픽셀 범위를 검사하고 메타데이터를 제거해 저장해요. 연결된 프로필 사진은 `/api/files/content/{key}`에서 공개 조회되며 연결 전 파일은 본인 토큰으로만 조회해요. 커뮤니티 문서 업로드와 여러 첨부 합계 검증은 후속 구현이에요.
+- 프론트는 서버 저장 성공 후에만 완료 안내를 보여요. 로그인·수정 응답·새로고침 조회에서 표시 캐시를 갱신하고 로그아웃 시 이전 회원 프로필을 비워요.
 
 ### 회원 탈퇴
 - `users` 한 줄을 지우면 개인 데이터는 CASCADE로 같이 지워져요. `withdrawal_logs`에는 지워진 번호와 시각만 남겨요.
@@ -149,6 +153,8 @@
 ---
 
 ## 2. 설정 · 동네 📝
+
+백엔드 GET/PUT `/api/me/settings`는 구현돼 있어요. 프론트 화면은 아직 브라우저 저장이므로 별도 연결해야 해요. PUT은 rent/rentDay/moveIn/contractEnd/notiOn이 필수이고 선택 주소·동네 필드는 생략하면 유지해요. 월세는 만원 단위 소수점 4자리까지 지원해요. Postman 검증은 [설정 API 안내](../backend/IMPLEMENTATION.md#생활-설정-api-확인)를 보세요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
@@ -273,6 +279,8 @@
 | PATCH | `/api/bills/{id}` | `{ name, amount, tag }` 중 변경값 | `bill` (추가 제안: 항목 수정) |
 | PUT | `/api/bills/{id}/payments/{month}` | `{ paid: true }` 또는 `{ amount: 41000 }` | `bill` |
 | DELETE | `/api/bills/{id}` | — (해지: `is_active = 0`) | — |
+
+고정 지출 API는 현재 백엔드에 구현돼 있어요. 프론트는 아직 브라우저 저장 방식이며 API 연결은 별도예요. POST는 당월 미납 스냅샷을 생성하고, PATCH는 당월 금액을 보존한 채 기본 금액을 수정해요. 응답의 defaultAmount는 미생성 월 예정액, amount는 선택 월 금액이에요. 당월 금액 정정은 payments API로 보내세요. GET은 DB를 변경하지 않고 과거 월은 기존 기록만, 현재/미래 월은 스냅샷 또는 예정액(snapshot=false)을 반환해요. 해지 항목도 기존 월 기록은 active=false로 남아요. [Postman 검증·상세 정책](../backend/IMPLEMENTATION.md#고정-지출-api-확인)을 참고하세요.
 
 ```json
 { "id": "5", "name": "전기", "amount": 32000, "tag": "공과금", "paid": false, "paidAt": null }

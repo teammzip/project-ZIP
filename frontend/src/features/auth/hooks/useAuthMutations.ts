@@ -79,8 +79,13 @@ export function useSocialLogin() {
 export function useUpdateMe() {
   const updateUser = useAuthStore((s) => s.updateUser)
   return useMutation({
-    mutationFn: (req: UpdateMeRequest) => authApi.updateMe(req),
-    onSuccess: (user) => updateUser(user),
+    mutationFn: async (req: UpdateMeRequest) => {
+      const token = useAuthStore.getState().token
+      const user = await authApi.updateMe(req)
+      if (useAuthStore.getState().token !== token) throw new Error('로그인 상태가 바뀌었어요. 다시 시도해 주세요.')
+      updateUser({ ...user, firstLogin: useAuthStore.getState().user?.firstLogin ?? user.firstLogin })
+      return user
+    },
   })
 }
 
