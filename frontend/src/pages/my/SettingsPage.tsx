@@ -253,6 +253,7 @@ function WithdrawDialog({ open, onClose }: { open: boolean; onClose: () => void 
     withdraw.mutate(undefined, {
       onSuccess: () => {
         resetAppData()
+        useLifeStore.persist.clearStorage()
         for (const key of ['zip-life', 'zip-posts', 'zip-reports', 'zip-ai-chat', 'zip-memos', 'zip-profile', 'zip-map']) remove(key)
       },
     })
