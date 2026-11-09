@@ -9,6 +9,8 @@ function syncAddress() {
   const user = useAuthStore.getState().user
   if (!user) return
   const { settings, saveSettings } = useLifeStore.getState()
+  // 계정별로 복원한 동네 선택은 가입 주소로 덮어쓰지 않는다.
+  if (settings.regionLocation?.userId === user.id) return
   const region = user.address.trim()
   if (settings.region !== region) saveSettings({ ...settings, region })
 }

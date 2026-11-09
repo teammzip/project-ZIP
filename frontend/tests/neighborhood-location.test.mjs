@@ -27,9 +27,11 @@ const survey = { userId: member.id, address: '서울특별시 마포구 합정�
 
 function setup(initialSaved) {
   let auth = { user: member, token: 'test-token' }
-  let saved = initialSaved ?? null
+  const saved = new Map(Object.entries(initialSaved ?? {}))
+  const listeners = []
   const authStore = (selector) => selector(auth)
   authStore.getState = () => auth
+  authStore.subscribe = (listener) => { listeners.push(listener); return () => {} }
   const storeExports = evaluate('../src/features/life/store.ts', {
     '@/lib/date': dateApi,
     './payments': paymentApi,
@@ -37,17 +39,21 @@ function setup(initialSaved) {
     '@/features/auth/store/authStore': { useAuthStore: authStore },
     './data/seed': { seedBills: () => [], seedEvents: () => [], seedIncomes: () => [], seedSpends: () => [] },
     './data/presets': { UNCATEGORIZED: '미분류', defaultCategories: () => [] },
-    'zustand/middleware': {
-      ...require('zustand/middleware'),
-      persist: (initializer, options) => require('zustand/middleware').persist(initializer, {
-        ...options, storage: { getItem: () => saved, setItem: (_key, value) => { saved = JSON.parse(JSON.stringify(value)) }, removeItem: () => { saved = null } },
-      }),
+  }, {
+    localStorage: {
+      getItem: (key) => saved.get(key) ?? null,
+      setItem: (key, value) => saved.set(key, value),
+      removeItem: (key) => saved.delete(key),
     },
   })
   return {
     store: storeExports.useLifeStore,
-    saved: () => saved,
-    login: (user) => { auth = { user, token: user ? 'test-token' : null } },
+    saved: () => Object.fromEntries(saved),
+    login: (user) => {
+      const previous = auth
+      auth = { user, token: user ? 'test-token' : null }
+      listeners.forEach((listener) => listener(auth, previous))
+    },
   }
 }
 function saveSurvey(ctx) {
@@ -155,4 +161,62 @@ test('좌표가 없는 기존 설문은 그 주소의 지역 검색으로 복원
   assert.equal(result.region, survey.address)
   assert.equal(result.point, null)
   assert.equal(result.source, 'survey')
+})
+
+test('생활 기록 전체를 계정별로 저장하고 전환·새로고침 후 복원한다', () => {
+  const ctx = setup()
+  const a = ctx.store.getState()
+  a.addBill('A 공과금', 1000, '공과금')
+  a.addEvent({ date: '2026-11-09', time: '', title: 'A 일정' })
+  a.addIncome({ date: '2026-11-09', cat: '급여', amount: 3000, memo: 'A 수입' })
+  a.addSpend({ date: '2026-11-09', cat: '식비', amount: 500, memo: 'A 지출' })
+  a.setRentPaid('2026-11', true)
+  a.markRead(['a'])
+  a.deleteNotis(['a'])
+  a.saveSettings({ ...a.settings, rent: 77 })
+  a.verifyRegion('부산 해운대구', verifiedPoint)
+  ctx.store.setState({ categories: [{ name: 'A 분류', ico: '🏷️', items: [] }], customPresets: [{ id: 'a', title: 'A 항목', category: 'A 분류' }] })
+  const snapshot = JSON.stringify(ctx.store.getState())
+
+  const b = { id: 'member-b', address: '대전 유성구' }
+  ctx.login(b)
+  for (const key of ['bills', 'events', 'incomes', 'spends', 'customPresets']) assert.equal(ctx.store.getState()[key].length, 0)
+  assert.equal(ctx.store.getState().regionVerify, null)
+  assert.equal(Object.keys(ctx.store.getState().notiRead).length, 0)
+  ctx.store.getState().addBill('B 공과금', 2000, '공과금')
+  ctx.login(member)
+  assert.equal(JSON.stringify(ctx.store.getState()), snapshot)
+  const reloaded = setup(ctx.saved())
+  assert.equal(JSON.stringify(reloaded.store.getState()), snapshot)
+  ctx.login(b)
+  assert.equal(ctx.store.getState().bills[0].name, 'B 공과금')
+})
+
+test('로그아웃 중 기록은 회원 데이터에 저장되지 않고 초기화·삭제도 현재 회원에만 적용한다', () => {
+  const ctx = setup()
+  ctx.store.getState().addBill('A', 100, '공과금')
+  ctx.login({ id: 'member-b' })
+  ctx.store.getState().addBill('B', 200, '공과금')
+  const saved = JSON.stringify(ctx.saved())
+  ctx.login(null)
+  assert.equal(ctx.store.getState().bills.length, 0)
+  ctx.store.getState().addBill('비로그인', 1, '공과금')
+  assert.equal(JSON.stringify(ctx.saved()), saved)
+  ctx.login(member)
+  assert.equal(ctx.store.getState().bills[0].name, 'A')
+  ctx.store.getState().reset()
+  ctx.store.persist.clearStorage()
+  assert.equal(ctx.saved()['zip-life:user:member-a'], undefined)
+  ctx.login({ id: 'member-b' })
+  assert.equal(ctx.store.getState().bills[0].name, 'B')
+})
+
+test('소유자가 없는 기존 공용 데이터는 보존하되 어느 계정에도 노출하지 않는다', () => {
+  const legacy = JSON.stringify({ version: 5, state: { bills: [{ id: 1, name: '이전 공용 기록' }] } })
+  const ctx = setup({ 'zip-life': legacy })
+  assert.equal(ctx.store.getState().bills.length, 0)
+  ctx.store.getState().addBill('A', 100, '공과금')
+  assert.equal(ctx.saved()['zip-life'], legacy)
+  ctx.login({ id: 'member-b' })
+  assert.equal(ctx.store.getState().bills.length, 0)
 })

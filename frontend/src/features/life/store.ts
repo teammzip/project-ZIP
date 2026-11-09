@@ -9,7 +9,7 @@ import type { Bill, CalEvent, CustomPreset, EventCategory, LifeSettings, MoneyRe
 import { updateBillPayment } from './payments'
 
 /* 생활 관리 데이터(일정·공과금·월세·수입·지출·알림 읽음·설정)를 한곳에서 들고 있음.
- * 아직 서버가 없어서 이 브라우저(localStorage 'zip-life')에만 저장됩니다.
+ * 아직 서버가 없어서 이 브라우저의 회원별 localStorage에만 저장됩니다.
  * 백엔드가 생기면 이 파일의 동작들을 API 호출(features/life/api)로 바꾸면 화면 코드는 그대로 둘 수 있어요. */
 
 type LifeData = {
@@ -112,6 +112,17 @@ function moveCategory(s: LifeData, from: string, to: string, extra: Partial<Life
 /** 반복 기념일 표시용 id("12@2027")에서 원본 id 만 */
 const baseId = (id: CalEvent['id']) => String(id).split('@')[0]
 
+const accountId = (auth: ReturnType<typeof useAuthStore.getState>) => auth.token ? auth.user?.id ?? null : null
+let activeAccount = accountId(useAuthStore.getState())
+const accountKey = () => activeAccount === null ? null : `zip-life:user:${encodeURIComponent(activeAccount)}`
+
+// 소유자를 알 수 없는 기존 zip-life는 보존하고 어떤 계정에도 자동 배정하지 않는다.
+const accountStorage = createJSONStorage<LifeData>(() => ({
+  getItem: () => { const key = accountKey(); return key ? localStorage.getItem(key) : null },
+  setItem: (_name, value) => { const key = accountKey(); if (key) localStorage.setItem(key, value) },
+  removeItem: () => { const key = accountKey(); if (key) localStorage.removeItem(key) },
+}))
+
 export const useLifeStore = create<LifeData & LifeActions>()(
   persist(
     (set, get) => ({
@@ -186,7 +197,7 @@ export const useLifeStore = create<LifeData & LifeActions>()(
     }),
     {
       name: 'zip-life',
-      storage: createJSONStorage(() => localStorage),
+      storage: accountStorage,
       version: 5,
       // v1 → v2: 따로 저장하던 할 일(todos)을 오늘 날짜 일정으로 옮김
       migrate: (saved, version) => {
@@ -220,3 +231,13 @@ export const useLifeStore = create<LifeData & LifeActions>()(
     },
   ),
 )
+
+// 다음 회원의 키에 이전 회원의 상태를 쓰지 않도록 저장을 잠시 끈 뒤 교체한다.
+useAuthStore.subscribe((auth) => {
+  const next = accountId(auth)
+  if (next === activeAccount) return
+  activeAccount = null
+  useLifeStore.setState(initial())
+  activeAccount = next
+  if (next !== null) void useLifeStore.persist.rehydrate()
+})
