@@ -16,6 +16,7 @@ function evaluate(file, mocks = {}, globals = {}) {
 }
 const pointApi = evaluate('../src/features/map/location.ts')
 const dateApi = evaluate('../src/lib/date.ts')
+const paymentApi = evaluate('../src/features/life/payments.ts')
 const policy = evaluate('../src/features/life/neighborhood.ts', { '@/features/map/location': pointApi })
 const addressApi = evaluate('../src/features/onboarding/addressResult.ts', { '@/features/map/location': pointApi })
 const regionApi = evaluate('../src/features/life/regionVerification.ts')
@@ -31,6 +32,7 @@ function setup(initialSaved) {
   authStore.getState = () => auth
   const storeExports = evaluate('../src/features/life/store.ts', {
     '@/lib/date': dateApi,
+    './payments': paymentApi,
     '@/features/map/location': pointApi,
     '@/features/auth/store/authStore': { useAuthStore: authStore },
     './data/seed': { seedBills: () => [], seedEvents: () => [], seedIncomes: () => [], seedSpends: () => [] },

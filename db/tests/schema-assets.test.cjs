@@ -20,6 +20,7 @@ const current = tables(schema)
 const migrations = [
   '20261031_current_project.sql', '20261031_02_event_anniversaries.sql',
   '20261101_housing_and_loan.sql', '20261102_requirements_hardening.sql', '20261107_life_categories.sql',
+  '20261108_places_kakao.sql',
 ].map(name => [`db/migrations/${name}`, read(`db/migrations/${name}`)])
 
 test('foreign keys reference existing compatible columns and SET NULL allows NULL', () => {
@@ -49,7 +50,7 @@ test('all migrations produce the same columns, named keys and constraints as fre
     for (const alter of migration.matchAll(/ALTER TABLE `([^`]+)`\s+([\s\S]*?);/g)) {
       const table = state.get(alter[1])
       assert(table, `unknown table ${alter[1]}`)
-      for (const column of alter[2].matchAll(/(?:ADD|MODIFY) COLUMN `([^`]+)` (.+)$/gm)) {
+      for (const column of alter[2].matchAll(/(?:ADD|MODIFY)(?: COLUMN)? `([^`]+)` (.+)$/gm)) {
         table.columns.set(column[1], normalize(column[2]))
       }
       const added = alter[2].replace(/^\s*ADD (CONSTRAINT|UNIQUE KEY|KEY) /gm, '$1 ')
