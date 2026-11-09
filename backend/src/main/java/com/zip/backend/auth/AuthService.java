@@ -98,9 +98,10 @@ public class AuthService {
      * nickname change never asks for consent again.
      */
     @Transactional
-    public Map<String, Object> updateMe(long userId, AuthRequests.UpdateMe request) {
+    public Map<String, Object> updateMe(long userId, long sessionId, AuthRequests.UpdateMe request) {
         repository.lockUser(userId);
         var now = clock.instant();
+        if (!repository.sessionActive(sessionId, userId, now)) throw new ApiException(401, "로그인이 만료됐어요.");
         var user = repository.findById(userId).orElseThrow(() -> new ApiException(401, "로그인 정보가 없어요."));
         boolean consent = request.address() != null || request.agreeTerms() != null || request.agreePrivacy() != null
             || request.agreePolicy() != null || request.ageOver14() != null || request.termsVersion() != null;

@@ -79,4 +79,30 @@ class ConsentAndProfileTests {
         mvc.perform(patch("/api/auth/me").contentType("application/json").content("{\"nickname\":\"새닉네임\"}"))
             .andExpect(status().isUnauthorized());
     }
+
+    @Test void malformedConsentCannotPartiallySave() throws Exception {
+        String token = socialToken();
+        String valid = CONSENT.formatted("2026-10-18");
+        for (String body : java.util.List.of(
+            valid.replace("\"agreeTerms\":true", "\"agreeTerms\":\"true\""),
+            valid.replace("서울 마포구 합정동", "가".repeat(201)),
+            valid.replace("\"address\":", "\"role\":\"ADMIN\",\"address\":"),
+            valid.replace("\"address\":", "\"bio\":\"소개\",\"address\":"))) {
+            updateMe(token, body).andExpect(status().isBadRequest());
+        }
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM user_term_agreements", Integer.class));
+        assertNull(jdbc.queryForObject("SELECT address FROM users", String.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM user_profiles", Integer.class));
+    }
+
+    @Test void consentAndProfileUpdatesWorkSequentiallyAndRevokedSessionIsRejected() throws Exception {
+        String token = socialToken();
+        updateMe(token, CONSENT.formatted("2026-10-18")).andExpect(status().isOk());
+        updateMe(token, "{\"bio\":\"소개\",\"avatarEmoji\":\"🐻\"}")
+            .andExpect(status().isOk()).andExpect(jsonPath("$.bio").value("소개"))
+            .andExpect(jsonPath("$.agreedAt").isString());
+        mvc.perform(post("/api/auth/logout").header("Authorization", "Bearer " + token))
+            .andExpect(status().isNoContent());
+        updateMe(token, CONSENT.formatted("2026-10-18")).andExpect(status().isUnauthorized());
+    }
 }
