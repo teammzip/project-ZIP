@@ -53,7 +53,7 @@ export function SettingsPage() {
   const birth = survey?.userId === user?.id ? survey?.birth ?? '' : ''
   const { age } = useAge(birth)
   const { region, verified, left } = useRegionVerify()
-  const postCount = useCommunityStore((s) => s.posts.filter((p) => p.mine).length)
+  const postCount = useCommunityStore((s) => s.posts.filter((p) => !!user?.id && p.ownerId === user.id).length)
   const lifeSummary = useLifeSummary()
   const updateMe = useUpdateMe()
   const logout = useLogout()
@@ -254,6 +254,8 @@ function WithdrawDialog({ open, onClose }: { open: boolean; onClose: () => void 
       onSuccess: () => {
         resetAppData()
         useLifeStore.persist.clearStorage()
+        useMemoStore.persist.clearStorage()
+        useChatStore.persist.clearStorage()
         for (const key of ['zip-life', 'zip-posts', 'zip-reports', 'zip-ai-chat', 'zip-memos', 'zip-profile', 'zip-map']) remove(key)
       },
     })

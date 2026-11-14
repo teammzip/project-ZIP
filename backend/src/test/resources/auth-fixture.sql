@@ -15,7 +15,7 @@ CREATE TABLE user_settings (
     noti_on BOOLEAN DEFAULT TRUE NOT NULL, home_address VARCHAR(200),
     region_name VARCHAR(200), region_source VARCHAR(10), region_lat DECIMAL(9,6), region_lon DECIMAL(9,6),
     home_memo_ids VARCHAR(500), map_categories VARCHAR(500), map_keywords VARCHAR(500), ledger_category_settings VARCHAR(500),
-    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CHECK ((region_source IS NULL AND region_name IS NULL AND region_lat IS NULL AND region_lon IS NULL)
         OR (region_source IS NOT NULL AND region_name IS NOT NULL AND CHAR_LENGTH(TRIM(region_name)) > 0
             AND ((region_lat IS NULL AND region_lon IS NULL) OR (region_lat IS NOT NULL AND region_lon IS NOT NULL
@@ -24,18 +24,20 @@ CREATE TABLE user_settings (
 CREATE TABLE social_accounts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL, provider VARCHAR(10) NOT NULL,
     provider_user_id VARCHAR(100) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (provider, provider_user_id), UNIQUE (user_id, provider)
+    UNIQUE (provider, provider_user_id), UNIQUE (user_id, provider),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE TABLE auth_sessions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL,
     refresh_token_hash CHAR(64) NOT NULL UNIQUE, remember BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP NOT NULL, expires_at TIMESTAMP NOT NULL, revoked_at TIMESTAMP
+    created_at TIMESTAMP NOT NULL, expires_at TIMESTAMP NOT NULL, revoked_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE TABLE bill_items (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL, name VARCHAR(30) NOT NULL,
     default_amount BIGINT DEFAULT 0 NOT NULL, is_active BOOLEAN DEFAULT TRUE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, tag VARCHAR(24) DEFAULT '공과금' NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE TABLE bill_payments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, bill_item_id BIGINT NOT NULL,
@@ -52,18 +54,23 @@ CREATE TABLE terms_documents (
     is_required BOOLEAN, effective_at TIMESTAMP
 );
 CREATE TABLE user_term_agreements (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, terms_id BIGINT, agreed_at TIMESTAMP
+    id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, terms_id BIGINT, agreed_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE TABLE uploaded_files (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL, original_name VARCHAR(255) NOT NULL,
     storage_url VARCHAR(500) NOT NULL, mime_type VARCHAR(50) NOT NULL, size_bytes INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, deleted_at TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE TABLE user_profiles (
     user_id BIGINT PRIMARY KEY, bio VARCHAR(30) NOT NULL DEFAULT '', avatar_file_id BIGINT,
     avatar_emoji VARCHAR(20), avatar_color VARCHAR(20), updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id), FOREIGN KEY (avatar_file_id) REFERENCES uploaded_files(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (avatar_file_id) REFERENCES uploaded_files(id) ON DELETE SET NULL
+);
+CREATE TABLE withdrawal_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY, former_user_id BIGINT NOT NULL,
+    withdrawn_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 INSERT INTO terms_documents (doc_type, version, title, content, consent_kind, is_required, effective_at) VALUES
 ('SERVICE', '2026-10-18', '약관', '본문', 'AGREE', TRUE, '2026-10-18 00:00:00'),

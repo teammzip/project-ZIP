@@ -46,7 +46,6 @@ mysqldump*.sql
 비밀메모.txt
 secrets/
 # test.txt
-# frontend_analyze/
 
 # IDE 설정 (IntelliJ/PyCharm 등, 개인 PC 설정이라 올리지 않음)
 .idea/

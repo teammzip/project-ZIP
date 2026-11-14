@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Locale;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -37,12 +38,35 @@ public class OAuthLoginHandler implements AuthenticationSuccessHandler, Authenti
             var login = (OAuth2AuthenticationToken) authentication;
             OAuth2User principal = login.getPrincipal();
             String provider = login.getAuthorizedClientRegistrationId().toUpperCase(Locale.ROOT);
-            String subject = principal.getAttribute("sub");
-            String email = principal.getAttribute("email");
+            String subject;
+            String email;
+            String name;
+            if ("NAVER".equals(provider)) {
+                // Naver nests the profile: {resultcode, message, response: {id, email, nickname, name}}.
+                Object nested = principal.getAttribute("response");
+                if (!(nested instanceof Map<?, ?> profile)) throw new ApiException(400, "소셜 계정 정보를 받지 못했어요.");
+                subject = text(profile.get("id"));
+                email = text(profile.get("email"));
+                name = text(profile.get("nickname")) != null ? text(profile.get("nickname")) : text(profile.get("name"));
+            } else if ("KAKAO".equals(provider)) {
+                // Kakao: {id: 123, kakao_account: {email, is_email_valid, is_email_verified, profile: {nickname}},
+                //         properties: {nickname}}. Without the email consent item there is simply no email.
+                subject = text(principal.getAttribute("id"));
+                Object account = principal.getAttribute("kakao_account");
+                Map<?, ?> kakao = account instanceof Map<?, ?> found ? found : Map.of();
+                email = Boolean.TRUE.equals(kakao.get("is_email_valid")) && Boolean.TRUE.equals(kakao.get("is_email_verified"))
+                    ? text(kakao.get("email")) : null;
+                name = kakao.get("profile") instanceof Map<?, ?> profile ? text(profile.get("nickname")) : null;
+                if (name == null && principal.getAttribute("properties") instanceof Map<?, ?> props) name = text(props.get("nickname"));
+            } else {
+                subject = principal.getAttribute("sub");
+                email = principal.getAttribute("email");
+                name = principal.getAttribute("name");
+                // Only trust an email Google says it has verified.
+                if (!Boolean.TRUE.equals(principal.getAttribute("email_verified"))) email = null;
+            }
             if (subject == null || subject.isBlank()) throw new ApiException(400, "소셜 계정 정보를 받지 못했어요.");
-            // Only trust an email Google says it has verified.
-            if (!Boolean.TRUE.equals(principal.getAttribute("email_verified"))) email = null;
-            redirect(request, response, "token", auth.socialLogin(provider, subject, email, principal.getAttribute("name")));
+            redirect(request, response, "token", auth.socialLogin(provider, subject, email, name));
         } catch (ApiException error) {
             redirect(request, response, "error", error.getMessage());
         } catch (RuntimeException error) {
@@ -54,6 +78,10 @@ public class OAuthLoginHandler implements AuthenticationSuccessHandler, Authenti
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
         AuthenticationException exception) throws IOException {
         redirect(request, response, "error", "소셜 로그인이 취소됐거나 실패했어요.");
+    }
+
+    private static String text(Object value) {
+        return value == null || value.toString().isBlank() ? null : value.toString();
     }
 
     private void redirect(HttpServletRequest request, HttpServletResponse response, String key, String value)

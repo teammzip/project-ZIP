@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
+import { createAccountStorage } from '@/lib/accountStorage'
 
 /* ---------- 첨부한 사진 (사진 화면 → AI 화면으로 넘김, 저장하지 않음) ---------- */
 
@@ -23,7 +24,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
   },
 }))
 
-/* ---------- 홈 "AI와 대화" 대화 기록 (localStorage 'zip-ai-chat', 최근 40개) ---------- */
+/* ---------- 홈 "AI와 대화" 대화 기록 (회원별 localStorage 'zip-ai-chat:user:<id>', 최근 40개) ---------- */
 
 /** 지출 요약 카드: 보낸 그때의 숫자를 담아 둠 */
 export type SpendCard = {
@@ -46,6 +47,8 @@ type ChatState = {
   reset: () => void
 }
 
+const account = createAccountStorage<ChatState>('zip-ai-chat')
+
 export const useChatStore = create<ChatState>()(
   persist(
     (set) => ({
@@ -53,6 +56,8 @@ export const useChatStore = create<ChatState>()(
       push: (m) => set((s) => ({ msgs: [...s.msgs, m].slice(-MAX) })),
       reset: () => set({ msgs: [{ role: 'bot', text: GREETING }] }),
     }),
-    { name: 'zip-ai-chat', storage: createJSONStorage(() => localStorage), version: 1 },
+    { name: 'zip-ai-chat', storage: account.storage, version: 1 },
   ),
 )
+
+account.bind(() => useChatStore.setState({ msgs: [{ role: 'bot', text: GREETING }] }), () => useChatStore.persist.rehydrate())

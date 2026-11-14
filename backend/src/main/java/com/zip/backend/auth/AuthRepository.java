@@ -187,9 +187,28 @@ public class AuthRepository {
         jdbc.update("UPDATE users SET address = ?, age_confirmed_at = ? WHERE id = ?", address, Timestamp.from(now), userId);
     }
 
+    public void updateAddress(long userId, String address) {
+        jdbc.update("UPDATE users SET address = ? WHERE id = ?", address, userId);
+    }
+
     public void revokeSession(long sessionId, long userId, Instant now) {
         jdbc.update("UPDATE auth_sessions SET revoked_at = ? WHERE id = ? AND user_id = ? AND revoked_at IS NULL",
             Timestamp.from(now), sessionId, userId);
+    }
+
+    /** storage_url of every file the user uploaded (the physical files are removed after the account is deleted). */
+    public List<String> uploadedFileUrls(long userId) {
+        return jdbc.queryForList("SELECT storage_url FROM uploaded_files WHERE user_id = ?", String.class, userId);
+    }
+
+    /** Only the fact that an account was withdrawn is kept: the old id and the time, nothing personal. */
+    public void recordWithdrawal(long userId, Instant now) {
+        jdbc.update("INSERT INTO withdrawal_logs (former_user_id, withdrawn_at) VALUES (?, ?)", userId, Timestamp.from(now));
+    }
+
+    /** Foreign keys cascade, so this also removes sessions, social links, agreements, settings and the user's own data. */
+    public void deleteUser(long userId) {
+        jdbc.update("DELETE FROM users WHERE id = ?", userId);
     }
 
     public void changePassword(long userId, String hash, Instant now) {

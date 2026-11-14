@@ -97,7 +97,7 @@ export const monthKeyRentPaid = (rentPaid: Record<string, boolean>, d: Date) => 
 
 export type Noti = { id: string; ico: string; t: string; s: string; time: string }
 
-/** 알림 목록: 3일 안의 일정(끝낸 건 빼고) · 쓰레기 배출 + 월세 + 예시 알림 */
+/** 알림 목록: 3일 안의 일정(끝낸 건 빼고) · 쓰레기 배출(배출표가 있을 때) + 월세(월세 금액을 입력했을 때만). 예시 알림은 넣지 않아요 */
 export function buildNotis(events: CalEvent[], settings: LifeSettings, contractKind: ContractKind = 'monthly'): Noti[] {
   const list: Noti[] = []
   const year = new Date().getFullYear()
@@ -114,17 +114,7 @@ export function buildNotis(events: CalEvent[], settings: LifeSettings, contractK
     })
   }
   const rdiff = dayDiff(fmt(nextRentDate(settings.rentDay)))
-  if (contractKind === 'monthly') list.push({ id: 'n2', ico: '💸', t: `월세 납부일이 ${rdiff === 0 ? '오늘이에요' : `${rdiff}일 남았어요`}`, s: `매월 ${settings.rentDay}일 · ${settings.rent}만원`, time: '1시간 전' })
-  list.push(
-    // TODO: 아래 일곱 개는 예시 알림. 냉장고·커뮤니티 기능이 서버와 연결되면 실제 알림으로 바꾸기
-    { id: 'n3', ico: '🧊', t: '냉장고 재료 3개가 곧 만료돼요', s: '두부 · 방울토마토 · 우유', time: '오늘' },
-    { id: 'n4', ico: '💬', t: '커뮤니티에 새 댓글이 달렸어요', s: '쓰레기 배출 시간 바뀐 건가요?', time: '어제' },
-    { id: 'n5', ico: '💡', t: '이번 달 전기요금이 지난달보다 올랐어요', s: '지난달보다 약 4,200원 많아요', time: '오늘' },
-    { id: 'n6', ico: '👍', t: '내 글에 좋아요가 5개 달렸어요', s: '자취 3개월차 꿀팁 모음', time: '어제' },
-    { id: 'n7', ico: '📢', t: '우리 동네 공지가 올라왔어요', s: '재활용 수거 요일이 바뀌어요', time: '어제' },
-    { id: 'n8', ico: '🛒', t: '이번 주 식비가 평소보다 많아요', s: '이번 주 식비 6만 8천원', time: '2일 전' },
-    { id: 'n9', ico: '🧺', t: '빨래 건조대 정리할 시간이에요', s: '이번 주 빨래 알림', time: '2일 전' },
-  )
+  if (contractKind === 'monthly' && settings.rent > 0) list.push({ id: 'n2', ico: '💸', t: `월세 납부일이 ${rdiff === 0 ? '오늘이에요' : `${rdiff}일 남았어요`}`, s: `매월 ${settings.rentDay}일 · ${settings.rent}만원`, time: '1시간 전' })
   return list
 }
 

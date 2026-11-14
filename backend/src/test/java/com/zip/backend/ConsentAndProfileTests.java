@@ -105,4 +105,31 @@ class ConsentAndProfileTests {
             .andExpect(status().isNoContent());
         updateMe(token, CONSENT.formatted("2026-10-18")).andExpect(status().isUnauthorized());
     }
+
+    @Test void consentedUserCanChangeAddressAlone() throws Exception {
+        String token = socialToken();
+        updateMe(token, CONSENT.formatted("2026-10-18")).andExpect(status().isOk());
+        // e.g. after neighborhood verification: only the address is sent
+        updateMe(token, "{\"address\":\"서울시 용산구 이태원동\"}").andExpect(status().isOk())
+            .andExpect(jsonPath("$.address").value("서울시 용산구 이태원동")).andExpect(jsonPath("$.agreedAt").isString());
+        assertEquals("서울시 용산구 이태원동", jdbc.queryForObject("SELECT address FROM users", String.class));
+        assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM user_term_agreements", Integer.class));
+    }
+
+    @Test void addressAloneIsRejectedBeforeConsentOrWhenInvalid() throws Exception {
+        String token = socialToken();
+        updateMe(token, "{\"address\":\"서울 마포구\"}").andExpect(status().isBadRequest());
+        assertNull(jdbc.queryForObject("SELECT address FROM users", String.class));
+        updateMe(token, CONSENT.formatted("2026-10-18")).andExpect(status().isOk());
+        updateMe(token, "{\"address\":\"  \"}").andExpect(status().isBadRequest());
+        updateMe(token, "{\"address\":\"" + "가".repeat(201) + "\"}").andExpect(status().isBadRequest());
+        assertEquals("서울 마포구 합정동", jdbc.queryForObject("SELECT address FROM users", String.class));
+    }
+
+    @Test void addressAndNicknameCanChangeTogether() throws Exception {
+        String token = socialToken();
+        updateMe(token, CONSENT.formatted("2026-10-18")).andExpect(status().isOk());
+        updateMe(token, "{\"address\":\"서울 서대문구\",\"nickname\":\"새닉네임\"}").andExpect(status().isOk())
+            .andExpect(jsonPath("$.address").value("서울 서대문구")).andExpect(jsonPath("$.nickname").value("새닉네임"));
+    }
 }

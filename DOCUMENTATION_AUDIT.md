@@ -8,6 +8,8 @@
 
 현재 DB는 44테이블·358컬럼·71키·62FK·15CHECK·2VIEW입니다. 사용자 zip_test의 적용/감사/M·X·Y 결과는 사용자 보고이며 독립 MySQL 검증과 구분합니다. 백엔드 구현 완료를 뜻하지 않습니다.
 
+> 2026-11-10: `frontend_analyze/` 폴더(분석 문서 6개)는 삭제됐어요. 아래 표에서 해당 항목을 뺐고, 과거 점검 이력의 개수(32개/33개)는 당시 기준이에요.
+
 ## 문서별 점검 — 기존 텍스트 문서 32개
 
 | 문서 | 처리 | 범위/정정 내용 |
@@ -36,12 +38,6 @@
 | [db/tests/SUPPLEMENTAL_GUIDE.md](db/tests/SUPPLEMENTAL_GUIDE.md) | 수정 | 실행 미확인 표현을 검증 기록 참조로 변경 |
 | [db/tests/LIFE_GUIDE.md](db/tests/LIFE_GUIDE.md) | 유지 | C/D 실행 순서·예상 제약 및 API 책임 구분 |
 | [db/tests/RESULTS.md](db/tests/RESULTS.md) | 이력 추가 | 사용자 20261107 적용·M/X/Y 통과 보고 추가; 기존 수치 보존 |
-| [frontend_analyze/frontend_구조_설명.txt](frontend_analyze/frontend_구조_설명.txt) | 수정 | 백엔드 미연결과 DB 존재를 구분, 현재 우선 문서 명시 |
-| [frontend_analyze/백엔드_연동_가이드.txt](frontend_analyze/백엔드_연동_가이드.txt) | 수정 | 설문·대출·기념일·삭제/차단·납부·개인 분류 설명 보완 |
-| [frontend_analyze/백엔드_필수기능_목록.txt](frontend_analyze/백엔드_필수기능_목록.txt) | 수정 | 기능 목록·설문/대출 제안·즐겨찾기 경로·차단 보존 정정 |
-| [frontend_analyze/해야할것.txt](frontend_analyze/해야할것.txt) | 수정 | 현재 저장 설계와 최신 추가 구현 범위 명시 |
-| [frontend_analyze/백엔드_기술스택_추천.txt](frontend_analyze/백엔드_기술스택_추천.txt) | 과거 조사 | 실제 채택/버전 확정 아님; 현재 버전·가격은 재검증 제외 |
-| [frontend_analyze/AI_업체_무료여부_정리.txt](frontend_analyze/AI_업체_무료여부_정리.txt) | 과거 조사 | 요금·무료 한도·모델 성능 주장은 현재 근거로 사용 금지 |
 | [외부API_정리.txt](외부API_정리.txt) | 과거 조사 | 서비스 후보 기록; 이메일 인증 등은 현재 PHONE 계약을 대체하지 않음 |
 | [test.txt](test.txt) | 과거 분석 | 신고 미구현·UNIQUE 미반영·설문/대출 API 없음 설명에 정정 안내 |
 

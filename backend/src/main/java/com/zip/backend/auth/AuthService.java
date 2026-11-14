@@ -20,8 +20,10 @@ public class AuthService {
     private final long accessSeconds;
     private final long rememberSeconds;
     private final String dummyHash;
+    private final com.zip.backend.files.ProfileFileService files;
 
     public AuthService(AuthRepository repository, PasswordEncoder passwords, TokenService tokens, Clock clock,
+        com.zip.backend.files.ProfileFileService files,
         @Value("${zip.auth.access-seconds}") long accessSeconds,
         @Value("${zip.auth.remember-access-seconds}") long rememberSeconds) {
         if (accessSeconds <= 0 || rememberSeconds < accessSeconds) throw new IllegalArgumentException("Invalid token lifetime");
@@ -29,6 +31,7 @@ public class AuthService {
         this.passwords = passwords;
         this.tokens = tokens;
         this.clock = clock;
+        this.files = files;
         this.accessSeconds = accessSeconds;
         this.rememberSeconds = rememberSeconds;
         this.dummyHash = passwords.encode("unused-account-timing-pad");
@@ -93,9 +96,9 @@ public class AuthService {
     }
 
     /**
-     * PATCH /api/auth/me. Two shapes (frontend/API.md): a nickname change, or a social user's first consent
-     * (address + all four agreements + the current termsVersion). Consent can only be given once; a plain
-     * nickname change never asks for consent again.
+     * PATCH /api/auth/me. Three shapes (frontend/API.md): a nickname change, an address change (after consent), or a
+     * social user's first consent (address + all four agreements + the current termsVersion). Consent can only be
+     * given once; a plain nickname or address change never asks for consent again.
      */
     @Transactional
     public Map<String, Object> updateMe(long userId, long sessionId, AuthRequests.UpdateMe request) {
@@ -103,15 +106,25 @@ public class AuthService {
         var now = clock.instant();
         if (!repository.sessionActive(sessionId, userId, now)) throw new ApiException(401, "로그인이 만료됐어요.");
         var user = repository.findById(userId).orElseThrow(() -> new ApiException(401, "로그인 정보가 없어요."));
-        boolean consent = request.address() != null || request.agreeTerms() != null || request.agreePrivacy() != null
+        // Agreement fields = the one-time first consent. An address alone (e.g. after neighborhood verification)
+        // is a plain address change that a user who already consented may make at any time.
+        boolean consent = request.agreeTerms() != null || request.agreePrivacy() != null
             || request.agreePolicy() != null || request.ageOver14() != null || request.termsVersion() != null;
-        if (request.nickname() == null && !consent) throw new ApiException(400, "바꿀 내용이 없어요.");
+        boolean addressOnly = !consent && request.address() != null;
+        if (request.nickname() == null && !consent && !addressOnly) throw new ApiException(400, "바꿀 내용이 없어요.");
 
         String nickname = null;
         if (request.nickname() != null) {
             nickname = request.nickname().strip();
             int length = nickname.codePointCount(0, nickname.length());
             if (length < 2 || length > 12) throw new ApiException(400, "닉네임은 2~12자로 입력해 주세요.");
+        }
+        if (addressOnly) {
+            if (repository.agreedAt(userId) == null) throw new ApiException(400, "먼저 약관에 동의해 주세요.");
+            String address = request.address().strip();
+            if (address.isEmpty()) throw new ApiException(400, "주소를 입력해 주세요.");
+            if (address.length() > 200) throw new ApiException(400, "주소는 200자 이내로 입력해 주세요.");
+            repository.updateAddress(userId, address);
         }
         if (consent) {
             if (repository.agreedAt(userId) != null) throw new ApiException(400, "이미 약관에 동의했어요.");
@@ -159,6 +172,25 @@ public class AuthService {
     @Transactional
     public void logout(long userId, long sessionId) {
         repository.revokeSession(sessionId, userId, clock.instant());
+    }
+
+    /**
+     * DELETE /api/auth/me. Removes the account and, through cascading foreign keys, everything that belongs to it
+     * (the same for email and social accounts: the social link goes too, so a later social login is a fresh sign-up).
+     * Only a withdrawal_logs row (old id + time) remains; uploaded picture files are deleted after the commit.
+     * Admin accounts cannot withdraw themselves so the service is never left without an operator.
+     */
+    @Transactional
+    public void withdraw(long userId, long sessionId) {
+        repository.lockUser(userId);
+        var now = clock.instant();
+        if (!repository.sessionActive(sessionId, userId, now)) throw new ApiException(401, "로그인이 만료됐어요.");
+        var user = repository.findById(userId).orElseThrow(() -> new ApiException(401, "로그인 정보가 없어요."));
+        if ("ADMIN".equals(user.role())) throw new ApiException(403, "관리자 계정은 탈퇴할 수 없어요.");
+        var urls = repository.uploadedFileUrls(userId);
+        repository.recordWithdrawal(userId, now);
+        repository.deleteUser(userId);
+        files.deleteAfterCommit(urls);
     }
 
     @Transactional
