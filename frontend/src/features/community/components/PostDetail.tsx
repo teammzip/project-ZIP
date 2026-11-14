@@ -4,7 +4,8 @@ import { relTime } from '@/lib/date'
 import { CAT_ICON, shortRegion } from '../data/display'
 import { useReportStore, useReported, type ReportReason } from '../reports'
 import { useCommunityStore } from '../store'
-import type { Post } from '../types'
+import { useAuthStore } from '@/features/auth/store/authStore'
+import { isMine, type Post } from '../types'
 import styles from './Community.module.css'
 import { Attachments, PostComposer } from './PostEditor'
 import { ReportDialog } from './ReportDialog'
@@ -33,6 +34,8 @@ type Props = {
 /** 글 상세 (에브리타임처럼): 작성자 줄 → 제목 · 본문 → 사진 → 공감 · 댓글 수 → 댓글 → 아래 댓글 입력줄. 내 글이면 수정 · 삭제 */
 export function PostDetail({ post, author, locked, verified, onVerify, onBack, onDeleted }: Props) {
   const { toggleLike, removePost, updatePost, addComment, updateComment, removeComment } = useCommunityStore()
+  const userId = useAuthStore((s) => s.user?.id)
+  const postMine = isMine(post, userId)
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
   const [editCmt, setEditCmt] = useState<{ index: number; text: string } | null>(null)
@@ -88,14 +91,14 @@ export function PostDetail({ post, author, locked, verified, onVerify, onBack, o
             {relTime(post.ts)}
           </small>
         </div>
-        {!post.mine && (
+        {!postMine && (
           <div className={styles.ownerBtns}>
             <button type="button" className={styles.danger} onClick={() => setReportTarget({})} disabled={postReported} aria-label="이 글 신고">
               {postReported ? '신고됨' : '🚨 신고'}
             </button>
           </div>
         )}
-        {post.mine && (
+        {postMine && (
           <div className={styles.ownerBtns}>
             <button type="button" onClick={() => setEditing(true)} disabled={locked}>
               수정
@@ -129,7 +132,7 @@ export function PostDetail({ post, author, locked, verified, onVerify, onBack, o
       {/* 댓글 */}
       <ul className={styles.comments}>
         {post.comments.map((c, i) => {
-          const mine = !c.staff && (c.mine || c.author === author)
+          const mine = !c.staff && isMine(c, userId)
           return (
             <li key={i} className={styles.comment}>
               <NameAvatar name={c.author} size={30} />

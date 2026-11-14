@@ -46,6 +46,12 @@ public class AuthController {
         auth.logout(Long.parseLong(jwt.getSubject()), Long.parseLong(jwt.getClaimAsString("sid")));
     }
 
+    @DeleteMapping("/me")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    public void withdraw(@AuthenticationPrincipal Jwt jwt) {
+        auth.withdraw(Long.parseLong(jwt.getSubject()), Long.parseLong(jwt.getClaimAsString("sid")));
+    }
+
     @PatchMapping("/me/password")
     @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
     public void changePassword(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody AuthRequests.ChangePassword request) {

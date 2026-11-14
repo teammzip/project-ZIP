@@ -346,7 +346,7 @@ function EventList({ events, selected, mode, setMode, query, setQuery, onMoved, 
         ]}
       />
       <input type="search" className={cx(common.input, styles.search)} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="일정 제목 검색" aria-label="일정 검색" />
-      <p className={common.note}>요일별 쓰레기 배출은 날짜에 맞춰 정기 일정으로 보여요. 실제 배출 일정은 사는 동네 안내를 확인하세요.</p>
+      {items.some(isTrash) && <p className={common.note}>요일별 쓰레기 배출은 날짜에 맞춰 정기 일정으로 보여요. 실제 배출 일정은 사는 동네 안내를 확인하세요.</p>}
       <ul className={styles.evList}>
         {items.map((ev) => {
           if (isTrash(ev))

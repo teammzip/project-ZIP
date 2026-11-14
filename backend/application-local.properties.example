@@ -14,3 +14,13 @@ KAKAO_REST_KEY=
 # redirect URI http://localhost:8080/login/oauth2/code/google . Leave blank to disable.
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+
+# Naver social login (optional). Register the callback URL
+# http://localhost:8080/login/oauth2/code/naver in NAVER Developers. Leave blank to disable.
+NAVER_CLIENT_ID=
+NAVER_CLIENT_SECRET=
+
+# Kakao social login (optional). Register the Redirect URI
+# http://localhost:8080/login/oauth2/code/kakao in Kakao Developers. Leave blank to disable.
+KAKAO_LOGIN_CLIENT_ID=
+KAKAO_LOGIN_CLIENT_SECRET=

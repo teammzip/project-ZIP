@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 import { monthKeyOf } from '@/lib/date'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { readMapPoint, type MapPoint } from '@/features/map/location'
-import { seedBills, seedEvents, seedIncomes, seedSpends, todosToEvents } from './data/seed'
+import { stripLegacySamples, todosToEvents } from './data/seed'
 import { UNCATEGORIZED, defaultCategories } from './data/presets'
 import type { Bill, CalEvent, CustomPreset, EventCategory, LifeSettings, MoneyRecord, RegionVerify } from './types'
 import { updateBillPayment } from './payments'
@@ -67,15 +67,15 @@ type LifeActions = {
   saveSettings: (s: LifeSettings) => void
   /** 위치로 확인한 동네를 우리 동네로 정하고 인증 완료 */
   verifyRegion: (region: string, point?: MapPoint) => void
-  /** 모든 기록을 처음 상태(예시 데이터)로 되돌림 */
+  /** 모든 기록을 처음 상태(빈 상태)로 되돌림 */
   reset: () => void
 }
 
 const initial = (): LifeData => ({
-  bills: seedBills(),
-  events: seedEvents(),
-  incomes: seedIncomes(),
-  spends: seedSpends(),
+  bills: [],
+  events: [],
+  incomes: [],
+  spends: [],
   rentPaid: {},
   notiRead: {},
   notiDeleted: {},
@@ -85,16 +85,15 @@ const initial = (): LifeData => ({
   regionVerify: null,
 })
 
-/** 기본 설정 (입주 8개월 전, 계약 14개월 뒤는 기존 시안의 예시 값) */
+/** 기본 설정: 월세 · 입주 · 계약 정보는 비워 두고, 처음 로그인 설문이나 내 정보에서 직접 입력해요 */
 function defaultSettings(): LifeSettings {
-  const now = new Date()
   return {
     region: '서울 마포구',
     rentDay: 15,
-    rent: 55,
+    rent: 0,
     notiOn: true,
-    moveIn: monthKeyOf(new Date(now.getFullYear(), now.getMonth() - 8, 1)),
-    contractEnd: monthKeyOf(new Date(now.getFullYear(), now.getMonth() + 14, 1)),
+    moveIn: '',
+    contractEnd: '',
   }
 }
 
@@ -198,7 +197,7 @@ export const useLifeStore = create<LifeData & LifeActions>()(
     {
       name: 'zip-life',
       storage: accountStorage,
-      version: 5,
+      version: 6,
       // v1 → v2: 따로 저장하던 할 일(todos)을 오늘 날짜 일정으로 옮김
       migrate: (saved, version) => {
         const s = (saved ?? {}) as Partial<LifeData> & { todos?: Array<{ id: number; text: string; done: boolean }> }
@@ -221,6 +220,8 @@ export const useLifeStore = create<LifeData & LifeActions>()(
         if (version < 5 && Array.isArray(s.bills)) {
           s.bills = (s.bills as Array<Record<string, unknown>>).map((b) => ({ ...b, tag: '공과금' })) as unknown as Bill[]
         }
+        // v5 → v6: 예전에 처음부터 들어 있던 예시 일정 · 고정 지출 · 수입 · 지출 · 월세 값을 지움 (직접 만든 기록은 그대로)
+        if (version < 6) stripLegacySamples(s as Parameters<typeof stripLegacySamples>[0])
         return s as LifeData
       },
       // 예전에 저장된 설정에 새 항목(입주·계약 달)이 없으면 기본값으로 채움

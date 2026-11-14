@@ -48,7 +48,9 @@
 
 ## 1. 인증 · 내 정보 ✅
 
-현재 백엔드의 PATCH `/api/auth/me`는 닉네임·한 줄 소개·캐릭터·배경색·프로필 사진 연결을 지원해요. 주소·소셜 동의 필드는 후속 구현 계약이에요. 사용자 ID·권한 등 지원하지 않는 키를 보내면 400이에요.
+현재 백엔드의 PATCH `/api/auth/me`는 닉네임·한 줄 소개·캐릭터·배경색·프로필 사진 연결, 그리고 소셜 첫 가입의 주소·약관 동의(`address`, `agreeTerms`, `agreePrivacy`, `agreePolicy`, `ageOver14`, `termsVersion`; 한 번만 가능)를 지원해요. 사용자 ID·권한 등 지원하지 않는 키를 보내면 400이에요.
+
+> **서버 구현 현황(2026-11):** 로그인·로그아웃·내 정보·비밀번호 변경·프로필·회원 탈퇴·구글/네이버/카카오 소셜 로그인은 구현됨. **회원가입(`POST /auth/signup`), 휴대전화 인증, 아이디 찾기, 비밀번호 재설정, 토큰 재발급(`/auth/refresh`)은 아직 서버에 없어요.**
 
 ✅는 아래 기본 인증 요청 경로가 realAuthApi에 있다는 뜻이에요. 프로필은 연동되어 있지만 제재·위치 확장 필드와 refresh 제안까지 구현되어 있다는 뜻은 아니에요.
 
@@ -128,8 +130,9 @@
 - 비밀번호 찾기: `password-reset/verify`로 `resetToken`을 받고(`password_resets.method = PHONE`), 같은 화면에서 `password-reset`으로 새 비밀번호 저장. 메일은 보내지 않아요.
 
 ### 소셜 로그인
-1. 프론트가 `/api/oauth2/authorization/kakao`로 이동 → 백엔드가 소셜 로그인 처리 (`social_accounts`)
-2. 끝나면 `/oauth/callback?token=<accessToken>`으로 돌려보내기 → 프론트가 `GET /api/auth/me` 호출
+1. 프론트가 `/api/oauth2/authorization/{kakao|google|naver}`로 이동 → 백엔드가 소셜 로그인 처리 (`social_accounts`). 공급자별 키는 `secrets/*.properties`에 있고, 키가 없는 공급자는 꺼져 있어요.
+2. 끝나면 `/oauth/callback?token=<accessToken>`으로 돌려보내기 → 프론트가 `GET /api/auth/me` 호출. 실패하면 `/oauth/callback?error=<문구>`.
+   - 같은 이메일로 가입한 다른 계정이 있으면 합치지 않고 오류(`EMAIL_EXISTS`)로 알려요. 카카오는 비즈 앱이 아니면 이메일이 없을 수 있고, 그래도 가입돼요.
 3. 처음 온 사람(`agreedAt: null`)은 동의 화면에서 `PATCH /api/auth/me`로 아래를 보내요
 ```json
 { "address": "서울 마포구 합정동",
@@ -147,6 +150,8 @@
 
 ### 회원 탈퇴
 - `users` 한 줄을 지우면 개인 데이터는 CASCADE로 같이 지워져요. `withdrawal_logs`에는 지워진 번호와 시각만 남겨요.
+- ✅ 서버 구현됨: `DELETE /api/auth/me`(본문 없음, 성공 시 204). 로그인한 본인만 가능하고, 관리자 계정은 403("관리자 계정은 탈퇴할 수 없어요.")이에요. 일반·소셜 계정 모두 같고, 소셜 연결도 같이 지워져서 같은 소셜 계정으로 다시 로그인하면 새 가입이 돼요. 탈퇴 후 기존 토큰은 401이에요.
+- ⏳ 아직 없는 것: 정지 이력이 있는 회원의 재가입 차단(`banned_identities` HMAC 기록)은 제재 기능과 함께 구현해야 해요.
 - 업로드한 파일의 실제 저장소 파일은 서버가 따로 지워 주세요.
 - user_sanctions는 탈퇴 시 삭제돼요. 재가입 차단은 `banned_identities`의 HMAC·만료/해제 기록으로 유지해요. 타인이 남긴 신고 스냅샷의 개인정보와 실제 저장소 파일도 정책에 따라 별도 정리해요.
 

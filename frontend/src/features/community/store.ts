@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
-import { seedPosts, seedRegionPosts } from './data/seed'
-import type { Post, PostDraft } from './types'
+import { useAuthStore } from '@/features/auth/store/authStore'
+import { seedPosts } from './data/seed'
+import type { Comment, Post, PostDraft } from './types'
 
 /* 커뮤니티 글 목록. 서버가 없어서 이 브라우저(localStorage 'zip-posts')에만 저장됩니다.
  * 백엔드를 붙이면 features/community/api + useQuery 로 바꾸세요.
@@ -23,8 +24,6 @@ const safeStorage: StateStorage = {
 
 type State = {
   posts: Post[]
-  /** 예시 글을 채워 준 동네 (한 번만 채우고, 지운 뒤 다시 생기지 않게) */
-  seededRegions: string[]
   /** 저장에 실패하면 false (저장 공간 부족) */
   addPost: (p: PostDraft & Pick<Post, 'region' | 'author'>) => boolean
   updatePost: (id: number, draft: PostDraft) => boolean
@@ -34,8 +33,6 @@ type State = {
   addComment: (id: number, author: string, text: string, staff?: boolean) => void
   updateComment: (id: number, index: number, text: string) => void
   removeComment: (id: number, index: number) => void
-  /** 내 동네(key = 비교용 동네 이름)에 이웃 글이 없으면 예시 글을 한 번 채움 */
-  seedRegion: (region: string, key: string, hasNeighbors: boolean) => void
   reset: () => void
 }
 
@@ -56,23 +53,34 @@ export const useCommunityStore = create<State>()(
       }
       return {
         posts: seedPosts(),
-        seededRegions: [],
-        addPost: (p) => tryChange([{ ...p, id: Date.now(), mine: true, ts: Date.now(), likes: 0, liked: false, comments: [] }, ...get().posts]),
+        addPost: (p) => tryChange([{ ...p, id: Date.now(), ownerId: useAuthStore.getState().user?.id, ts: Date.now(), likes: 0, liked: false, comments: [] }, ...get().posts]),
         updatePost: (id, draft) => tryChange(patch(get().posts, id, (p) => ({ ...p, ...draft }))),
         removePost: (id) => set((s) => ({ posts: s.posts.filter((p) => p.id !== id) })),
         toggleLike: (id) => set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) })) })),
         addComment: (id, author, text, staff) =>
-          set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, comments: [...p.comments, staff ? { author, text, staff: true } : { author, text, mine: true }] })) })),
+          set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, comments: [...p.comments, staff ? { author, text, staff: true } : { author, text, ownerId: useAuthStore.getState().user?.id }] })) })),
         updateComment: (id, index, text) =>
           set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, comments: p.comments.map((c, i) => (i === index ? { ...c, text } : c)) })) })),
         removeComment: (id, index) => set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, comments: p.comments.filter((_, i) => i !== index) })) })),
-        seedRegion: (region, key, hasNeighbors) => {
-          if (hasNeighbors || get().seededRegions.includes(key)) return
-          set((s) => ({ posts: [...seedRegionPosts(region), ...s.posts], seededRegions: [...s.seededRegions, key] }))
-        },
-        reset: () => set({ posts: seedPosts(), seededRegions: [] }),
+        reset: () => set({ posts: seedPosts() }),
       }
     },
-    { name: 'zip-posts', storage: createJSONStorage(() => safeStorage), version: 1 },
+    {
+      name: 'zip-posts',
+      storage: createJSONStorage(() => safeStorage),
+      version: 3,
+      // v1 → v2: 예전에 들어 있던 다른 회원의 예시 글을 지움. 내가 쓴 글과 홈 꿀팁 글 3개(1001~1003)는 그대로
+      migrate: (saved, version) => {
+        const s = (saved ?? {}) as { posts?: Array<Post & { mine?: boolean }> }
+        if (version < 2 && Array.isArray(s.posts)) s.posts = s.posts.filter((p) => p.mine === true || (p.id >= 1001 && p.id <= 1003))
+        // v2 → v3: 글쓴이를 "내 글" 표시(mine) 대신 회원 id(ownerId)로 구분함. 누가 썼는지 알 수 없는 예전 "내 글"은 지움
+        if (version < 3 && Array.isArray(s.posts)) {
+          s.posts = s.posts
+            .filter((p) => !(p.mine === true && !p.ownerId))
+            .map(({ mine: _mine, ...p }) => ({ ...p, comments: p.comments.map(({ mine: _m, ...c }: Comment & { mine?: boolean }) => c) }))
+        }
+        return s as State
+      },
+    },
   ),
 )

@@ -104,6 +104,27 @@ public class ProfileFileService {
         }
     }
 
+    /**
+     * Removes stored picture files (given as /api/files/content/<key> urls) once the surrounding transaction has
+     * committed, so a rolled-back withdrawal never loses files. A failure is logged and does not undo the withdrawal.
+     */
+    public void deleteAfterCommit(java.util.List<String> urls) {
+        if (urls.isEmpty()) return;
+        Runnable cleanup = () -> {
+            for (String url : urls) {
+                String key = url.substring(url.lastIndexOf('/') + 1);
+                Path target = root.resolve(key).normalize();
+                if (!target.startsWith(root)) continue; // never touch anything outside the upload folder
+                try { Files.deleteIfExists(target); }
+                catch (IOException error) { org.slf4j.LoggerFactory.getLogger(ProfileFileService.class).error("Failed to delete file of a withdrawn user {}", target, error); }
+            }
+        };
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) { cleanup.run(); return; }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { cleanup.run(); }
+        });
+    }
+
     public Content content(String key, Long viewerId) {
         if (!key.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.(jpg|png)")) {
             throw new ApiException(404, "사진이 없어요.");
