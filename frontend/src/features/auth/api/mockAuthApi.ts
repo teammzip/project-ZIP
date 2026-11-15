@@ -4,17 +4,17 @@ import type { AuthApi, AuthResponse, SocialProvider, User } from '../types'
 
 /* 백엔드가 준비되기 전까지 쓰는 가짜 API. 가입한 계정은 이 브라우저(localStorage)에만 저장됩니다.
  * 실제 서버처럼 약간 기다렸다가 응답하고, 실패하면 에러를 던집니다.
- * 휴대전화 인증은 아무 6자리 숫자나 통과합니다 (문자는 실제로 보내지 않음).
+ * 이메일 인증은 아무 6자리 숫자나 통과합니다 (메일은 실제로 보내지 않음).
  * ⚠️ 가짜라서 비밀번호를 그대로 저장합니다. 실제 서버는 반드시 해시(bcrypt 등)로 저장해야 해요. */
 
-type MockAccount = User & { password: string; phone?: string }
+type MockAccount = User & { password: string }
 
 const USERS_KEY = 'zip-mock-users'
 const SOCIAL_NAMES: Record<SocialProvider, string> = { kakao: '카카오', google: '구글', naver: '네이버' }
 
 /** 가입 없이 바로 둘러보는 데모 계정 (가짜 API 모드에서만 있음, 팀 시안 shared/zip-password.js 와 같은 값).
- * 아이디·이메일 둘 다로 로그인 가능, 아이디·비밀번호 찾기는 닉네임 "지기" + 휴대전화 010-1234-5678 */
-export const DEMO_ACCOUNT = { username: 'zipdemo', email: 'demo@zip.com', password: 'zip12345', nickname: '지기', phone: '010-1234-5678' }
+ * 아이디·이메일 둘 다로 로그인 가능, 아이디·비밀번호 찾기는 닉네임 "지기" + 이메일 demo@zip.com */
+export const DEMO_ACCOUNT = { username: 'zipdemo', email: 'demo@zip.com', password: 'zip12345', nickname: '지기' }
 const DEMO: MockAccount = {
   id: 'demo',
   ...DEMO_ACCOUNT,
@@ -31,7 +31,6 @@ const ADMIN: MockAccount = {
   ...ADMIN_ACCOUNT,
   email: 'admin@zip.com',
   nickname: '관리자',
-  phone: '010-0000-0000',
   address: '',
   provider: 'email',
   role: 'ADMIN',
@@ -46,7 +45,6 @@ const FIRST: MockAccount = {
   ...FIRST_LOGIN_ACCOUNT,
   email: 'a1@zip.com',
   nickname: '새내기',
-  phone: '010-1111-2222',
   address: '서울시 마포구 합정동',
   provider: 'email',
   role: 'USER',
@@ -72,14 +70,14 @@ function respondLogin(account: MockAccount): AuthResponse {
   return res
 }
 
-function toResponse({ password: _password, phone: _phone, ...user }: MockAccount): AuthResponse {
+function toResponse({ password: _password, ...user }: MockAccount): AuthResponse {
   return { accessToken: `mock-token-${user.id}`, user }
 }
 
 const same = (a: string, b: string) => a.replace(/\s/g, '') === b.replace(/\s/g, '')
-const digits = (p = '') => p.replace(/\D/g, '')
-/** 인증을 마친 휴대전화 번호 → 인증 토큰 (가짜 서버의 기억) */
-const verifiedPhones = new Map<string, string>()
+const norm = (e?: string | null) => (e ?? '').trim().toLowerCase()
+/** 인증을 마친 이메일 → 인증 토큰 (가짜 서버의 기억) */
+const verifiedEmails = new Map<string, string>()
 const resetTokens = new Map<string, string>() // 재설정 토큰 → 계정 id
 
 let currentId: string | null = null
@@ -104,15 +102,17 @@ export const mockAuthApi: AuthApi = {
     return respondLogin(account)
   },
 
-  async sendPhoneCode() {
+  async sendEmailCode(email, purpose) {
     await wait(300)
+    // 가입 인증은 이미 가입된 이메일이면 미리 알려 줌
+    if (purpose === 'SIGNUP' && loadAccounts().some((a) => norm(a.email) === norm(email))) throw new Error('이미 가입된 이메일이에요.')
   },
 
-  async verifyPhoneCode(phone, code, purpose) {
+  async verifyEmailCode(email, code, purpose) {
     await wait(300)
     if (!/^\d{6}$/.test(code)) throw new Error('인증번호 6자리를 입력해 주세요.')
-    const token = `mock-${purpose}-${digits(phone)}-${Date.now()}`
-    verifiedPhones.set(token, digits(phone))
+    const token = `mock-${purpose}-${norm(email)}-${Date.now()}`
+    verifiedEmails.set(token, norm(email))
     return { verificationToken: token }
   },
 
@@ -122,9 +122,9 @@ export const mockAuthApi: AuthApi = {
     const email = req.email.toLowerCase()
     if (accounts.some((a) => a.username === req.username)) throw new Error('이미 쓰고 있는 아이디예요.')
     if (accounts.some((a) => a.email === email)) throw new Error('이미 가입된 이메일이에요.')
-    if (!req.phoneVerificationToken) throw new Error('휴대전화 인증을 해 주세요.')
-    // 정지 중인 계정과 같은 닉네임 · 아이디 · 휴대전화로는 재가입 못 함
-    const ban = findActiveBan({ nicks: [req.nickname], uid: req.username, phone: req.phone })
+    if (verifiedEmails.get(req.emailVerificationToken) !== email) throw new Error('이메일 인증을 다시 해 주세요.')
+    // 정지 중인 계정과 같은 닉네임 · 아이디로는 재가입 못 함
+    const ban = findActiveBan({ nicks: [req.nickname], uid: req.username })
     if (ban) throw new Error(`가입할 수 없어요. ${banMessage(ban)}`)
     const account: MockAccount = {
       id: crypto.randomUUID(),
@@ -132,7 +132,6 @@ export const mockAuthApi: AuthApi = {
       email,
       password: req.password,
       nickname: req.nickname,
-      phone: req.phone,
       address: req.address,
       provider: 'email',
       role: 'USER',
@@ -144,19 +143,19 @@ export const mockAuthApi: AuthApi = {
     return respondLogin(account)
   },
 
-  async findId({ nickname, phone, phoneVerificationToken }) {
+  async findId({ nickname, email, emailVerificationToken }) {
     await wait()
-    if (verifiedPhones.get(phoneVerificationToken) !== digits(phone)) throw new Error('휴대전화 인증을 다시 해 주세요.')
-    const account = loadAccounts().find((a) => a.username && same(a.nickname, nickname) && digits(a.phone) === digits(phone))
-    if (!account?.username) throw new Error('입력한 정보와 일치하는 계정을 찾을 수 없어요. 닉네임과 휴대전화를 다시 확인해 주세요.')
+    if (verifiedEmails.get(emailVerificationToken) !== norm(email)) throw new Error('이메일 인증을 다시 해 주세요.')
+    const account = loadAccounts().find((a) => a.username && same(a.nickname, nickname) && norm(a.email) === norm(email))
+    if (!account?.username) throw new Error('입력한 정보와 일치하는 계정을 찾을 수 없어요. 닉네임과 이메일을 다시 확인해 주세요.')
     return { username: account.username }
   },
 
-  async verifyPasswordReset({ username, phone, phoneVerificationToken }) {
+  async verifyPasswordReset({ username, email, emailVerificationToken }) {
     await wait()
-    if (verifiedPhones.get(phoneVerificationToken) !== digits(phone)) throw new Error('휴대전화 인증을 다시 해 주세요.')
-    const account = loadAccounts().find((a) => a.username === username.trim().toLowerCase() && digits(a.phone) === digits(phone))
-    if (!account) throw new Error('입력한 정보와 일치하는 계정을 찾을 수 없어요. 아이디와 휴대전화를 다시 확인해 주세요.')
+    if (verifiedEmails.get(emailVerificationToken) !== norm(email)) throw new Error('이메일 인증을 다시 해 주세요.')
+    const account = loadAccounts().find((a) => a.username === username.trim().toLowerCase() && norm(a.email) === norm(email))
+    if (!account) throw new Error('입력한 정보와 일치하는 계정을 찾을 수 없어요. 아이디와 이메일을 다시 확인해 주세요.')
     const resetToken = crypto.randomUUID()
     resetTokens.set(resetToken, account.id)
     return { resetToken }

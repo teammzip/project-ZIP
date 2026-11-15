@@ -7,14 +7,14 @@ import { cx } from '@/lib/cx'
 import { demoAccount } from '../api'
 import { useFindId, usePasswordReset } from '../hooks/useAuthMutations'
 import { newPasswordSchema } from '../schema'
-import { EyeButton, PhoneVerify, Row } from './AccountFields'
+import { EmailVerify, EyeButton, Row } from './AccountFields'
 import styles from './Account.module.css'
 
 type Tab = 'id' | 'pw'
 
 /** 아이디 찾기 · 비밀번호 찾기. 주소 끝 #id / #pw 로 탭이 정해짐
- * - 아이디 찾기: 닉네임 + 휴대전화 인증 → 아이디를 그대로 보여 줌
- * - 비밀번호 찾기: 아이디 + 휴대전화 인증 → 같은 화면에서 바로 새 비밀번호로 재설정 (메일 없음) */
+ * - 아이디 찾기: 닉네임 + 이메일 인증 → 아이디를 그대로 보여 줌
+ * - 비밀번호 찾기: 아이디 + 이메일 인증 → 같은 화면에서 바로 새 비밀번호로 재설정 */
 export function FindAccount() {
   const { hash } = useLocation()
   const navigate = useNavigate()
@@ -44,7 +44,7 @@ function DemoGuide({ kind }: { kind: Tab }) {
   if (!demoAccount) return null
   return (
     <p className={styles.demoGuide}>
-      체험용: {kind === 'id' ? `닉네임 "${demoAccount.nickname}"` : `아이디 "${demoAccount.username}"`}, 휴대전화 {demoAccount.phone}
+      체험용: {kind === 'id' ? `닉네임 "${demoAccount.nickname}"` : `아이디 "${demoAccount.username}"`}, 이메일 {demoAccount.email}
       {kind === 'id' ? ' 로 찾아볼 수 있어요.' : ' 로 재설정해 볼 수 있어요.'}
     </p>
   )
@@ -53,7 +53,7 @@ function DemoGuide({ kind }: { kind: Tab }) {
 function FindId({ onSwitch }: { onSwitch: () => void }) {
   const find = useFindId()
   const [nickname, setNickname] = useState('')
-  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [token, setToken] = useState('')
   const [error, setError] = useState('')
 
@@ -61,17 +61,17 @@ function FindId({ onSwitch }: { onSwitch: () => void }) {
     e.preventDefault()
     setError('')
     if (!nickname.trim()) return setError('가입할 때 쓴 닉네임을 입력해 주세요.')
-    if (!token) return setError('휴대전화 인증을 해 주세요.')
+    if (!token) return setError('이메일 인증을 해 주세요.')
     find.mutate(
-      { nickname: nickname.trim(), phone: `010-${phone}`, phoneVerificationToken: token },
-      { onError: () => setToken('') }, // 계정이 안 맞으면 번호를 고쳐 다시 인증할 수 있게
+      { nickname: nickname.trim(), email: email.trim(), emailVerificationToken: token },
+      { onError: () => setToken('') }, // 계정이 안 맞으면 이메일을 고쳐 다시 인증할 수 있게
     )
   }
 
   return (
     <section role="tabpanel" aria-label="아이디 찾기">
       <h1 className={styles.h1}>아이디 찾기</h1>
-      <p className={styles.lead}>가입할 때 쓴 닉네임과 휴대전화로 본인 확인을 하면 아이디를 알려드려요.</p>
+      <p className={styles.lead}>가입할 때 쓴 닉네임과 이메일로 본인 확인을 하면 아이디를 알려드려요.</p>
       {find.isSuccess ? (
         <>
           <div className={styles.result} role="status">
@@ -86,7 +86,7 @@ function FindId({ onSwitch }: { onSwitch: () => void }) {
           <Row id="f-nick" label="닉네임">
             <input id="f-nick" placeholder="가입할 때 쓴 닉네임" value={nickname} onChange={(e) => setNickname(e.target.value)} />
           </Row>
-          <PhoneVerify id="f-phone" purpose="FIND_ID" phone={phone} onPhoneChange={setPhone} token={token} onToken={setToken} />
+          <EmailVerify id="f-email" purpose="FIND_ID" email={email} onEmailChange={setEmail} token={token} onToken={setToken} />
           <DemoGuide kind="id" />
           <p className={styles.error} role="alert">
             {error || (find.isError ? getErrorMessage(find.error) : '')}
@@ -109,18 +109,18 @@ function FindId({ onSwitch }: { onSwitch: () => void }) {
 function ResetPassword({ onSwitch }: { onSwitch: () => void }) {
   const { verify, reset } = usePasswordReset()
   const [username, setUsername] = useState('')
-  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [token, setToken] = useState('')
   const [error, setError] = useState('')
   const resetToken = verify.data?.resetToken
 
-  // 1단계: 아이디 + 휴대전화 인증
+  // 1단계: 아이디 + 이메일 인증
   const submitVerify = (e: FormEvent) => {
     e.preventDefault()
     setError('')
     if (!username.trim()) return setError('아이디를 입력해 주세요.')
-    if (!token) return setError('휴대전화 인증을 해 주세요.')
-    verify.mutate({ username: username.trim(), phone: `010-${phone}`, phoneVerificationToken: token }, { onError: () => setToken('') })
+    if (!token) return setError('이메일 인증을 해 주세요.')
+    verify.mutate({ username: username.trim(), email: email.trim(), emailVerificationToken: token }, { onError: () => setToken('') })
   }
 
   return (
@@ -139,12 +139,12 @@ function ResetPassword({ onSwitch }: { onSwitch: () => void }) {
         <NewPasswordForm resetToken={resetToken} reset={reset} />
       ) : (
         <>
-          <p className={styles.lead}>아이디와 휴대전화로 본인 확인을 하면 바로 새 비밀번호를 정할 수 있어요.</p>
+          <p className={styles.lead}>아이디와 이메일로 본인 확인을 하면 바로 새 비밀번호를 정할 수 있어요.</p>
           <form className={styles.form} onSubmit={submitVerify} noValidate>
             <Row id="p-id" label="아이디">
               <input id="p-id" placeholder="가입한 아이디" autoCapitalize="none" value={username} onChange={(e) => setUsername(e.target.value)} />
             </Row>
-            <PhoneVerify id="p-phone" purpose="RESET_PASSWORD" phone={phone} onPhoneChange={setPhone} token={token} onToken={setToken} />
+            <EmailVerify id="p-email" purpose="RESET_PASSWORD" email={email} onEmailChange={setEmail} token={token} onToken={setToken} />
             <DemoGuide kind="pw" />
             <p className={styles.error} role="alert">
               {error || (verify.isError ? getErrorMessage(verify.error) : '')}

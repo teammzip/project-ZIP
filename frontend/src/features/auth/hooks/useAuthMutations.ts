@@ -3,7 +3,7 @@ import { LEGAL_VERSION } from '@/features/legal'
 import { authApi } from '../api'
 import type { LoginValues, SignupValues } from '../schema'
 import { useAuthStore } from '../store/authStore'
-import type { ChangePasswordRequest, FindIdRequest, PasswordResetRequest, PasswordResetVerifyRequest, PhonePurpose, SocialProvider, UpdateMeRequest } from '../types'
+import type { ChangePasswordRequest, FindIdRequest, PasswordResetRequest, PasswordResetVerifyRequest, EmailPurpose, SocialProvider, UpdateMeRequest } from '../types'
 
 /* 화면(컴포넌트)은 이 훅만 부르고, API·저장 방식은 몰라도 되게 합니다.
  * 반환값의 isPending(요청 중), error(실패 이유)로 버튼 비활성화·에러 문구를 처리하세요. */
@@ -27,9 +27,8 @@ export function useSignup() {
         username: v.username,
         password: v.password,
         nickname: v.nickname,
-        phone: `010-${v.phone}`,
-        phoneVerificationToken: v.phoneToken,
         email: v.email,
+        emailVerificationToken: v.emailToken,
         address: v.address,
         agreeTerms: v.agreeTerms,
         agreePrivacy: v.agreePrivacy,
@@ -43,10 +42,10 @@ export function useSignup() {
   })
 }
 
-/** 휴대전화 인증: send(번호) → verify(번호, 6자리) 가 성공하면 verificationToken 을 돌려줌 */
-export function usePhoneVerification(purpose: PhonePurpose) {
-  const send = useMutation({ mutationFn: (phone: string) => authApi.sendPhoneCode(phone, purpose) })
-  const verify = useMutation({ mutationFn: ({ phone, code }: { phone: string; code: string }) => authApi.verifyPhoneCode(phone, code, purpose) })
+/** 이메일 인증: send(이메일) → verify(이메일, 6자리) 가 성공하면 verificationToken 을 돌려줌 */
+export function useEmailVerification(purpose: EmailPurpose) {
+  const send = useMutation({ mutationFn: (email: string) => authApi.sendEmailCode(email, purpose) })
+  const verify = useMutation({ mutationFn: ({ email, code }: { email: string; code: string }) => authApi.verifyEmailCode(email, code, purpose) })
   return { send, verify }
 }
 
@@ -54,7 +53,7 @@ export function useFindId() {
   return useMutation({ mutationFn: (req: FindIdRequest) => authApi.findId(req) })
 }
 
-/** 비밀번호 찾기: verify(아이디 + 휴대전화 인증) → reset(재설정 토큰 + 새 비밀번호) */
+/** 비밀번호 찾기: verify(아이디 + 이메일 인증) → reset(재설정 토큰 + 새 비밀번호) */
 export function usePasswordReset() {
   const verify = useMutation({ mutationFn: (req: PasswordResetVerifyRequest) => authApi.verifyPasswordReset(req) })
   const reset = useMutation({ mutationFn: (req: PasswordResetRequest) => authApi.resetPassword(req) })

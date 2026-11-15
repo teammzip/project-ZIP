@@ -33,10 +33,9 @@ export const signupSchema = z
     password: newPassword,
     passwordConfirm: z.string().min(1, '비밀번호를 한 번 더 입력해 주세요.'),
     nickname: z.string().trim().min(2, '닉네임은 2~12자로 입력해 주세요.').max(12, '닉네임은 2~12자로 입력해 주세요.'),
-    /** 010- 뒤 8자리 (0000-0000) */
-    phone: z.string().regex(/^\d{4}-\d{4}$/, '휴대전화 번호를 확인해 주세요. (010-0000-0000)'),
-    phoneToken: z.string().min(1, '휴대전화 인증을 해 주세요.'),
     email,
+    /** 이메일 인증을 마치고 받은 값. 비어 있으면 가입 불가 */
+    emailToken: z.string().min(1, '이메일 인증을 해 주세요.'),
     address: z.string().trim().min(1, '주소를 입력해 주세요.').max(200, '주소는 200자 이내로 입력해 주세요.'),
     agreeTerms: z.boolean().refine((v) => v, '서비스 이용약관에 동의해 주세요.'),
     agreePrivacy: z.boolean().refine((v) => v, '개인정보 처리방침 안내를 확인해 주세요.'),

@@ -2,7 +2,7 @@
 
 ## 범위와 준비
 
-대상 10개: users, social_accounts, auth_sessions, phone_verifications, password_resets, terms_documents, user_term_agreements, withdrawal_logs, user_settings, user_profiles. 실제 로그인·문자 인증·비밀번호 해싱·권한·법적 유효성 검증은 포함하지 않습니다. uploaded_files 및 사진 연결은 후속 파일 테스트 범위입니다.
+대상 10개: users, social_accounts, auth_sessions, email_verifications, password_resets, terms_documents, user_term_agreements, withdrawal_logs, user_settings, user_profiles. 실제 로그인·메일 발송·비밀번호 해싱·권한·법적 유효성 검증은 포함하지 않습니다. uploaded_files 및 사진 연결은 후속 파일 테스트 범위입니다.
 
 최신 스키마가 적용된 **zip_test의 새 연결**에서 실행합니다. 진행 중인 다른 트랜잭션이 없어야 합니다. 기존 대출 테스트가 끝났다면 그 파일은 다시 실행할 필요 없습니다. 이번 파일은 스스로 가상 회원과 테스트 약관을 생성합니다. 실제 회원/기존 약관을 수정하지 않습니다. 동일 연결을 유지하고 실행 중 CREATE/ALTER/COMMIT/다른 START TRANSACTION은 실행하지 않습니다.
 

@@ -5,12 +5,12 @@ START TRANSACTION;
 SET @supp_tag=UUID();
 INSERT INTO users (nickname) VALUES ('보완검증회원');
 SET @supp_user=LAST_INSERT_ID();
--- 000 접두사는 실제 휴대전화 대신 쓰는 가상 DB fixture. API 형식 검증 대상과 구분.
-SET @supp_phone=CONCAT('000',LPAD(MOD(@supp_user,100000000),8,'0'));
-UPDATE users SET phone=@supp_phone WHERE id=@supp_user;
+-- example.invalid 는 실제로 쓸 수 없는 예약 도메인. API 형식 검증 대상과 구분.
+SET @supp_email=CONCAT('supp',@supp_user,'@example.invalid');
+UPDATE users SET email=@supp_email WHERE id=@supp_user;
 INSERT INTO user_settings (user_id) VALUES (@supp_user);
-INSERT INTO phone_verifications (purpose,phone,code_hash,expires_at,verified_token_hash)
-VALUES ('SIGNUP',@supp_phone,SHA2(CONCAT('fixture-code-',@supp_tag),256),
+INSERT INTO email_verifications (purpose,email,code_hash,expires_at,verified_token_hash)
+VALUES ('SIGNUP',@supp_email,SHA2(CONCAT('fixture-code-',@supp_tag),256),
  DATE_ADD(CURRENT_TIMESTAMP,INTERVAL 3 MINUTE),SHA2(CONCAT('fixture-token-',@supp_tag),256));
 SET @supp_verification=LAST_INSERT_ID();
 -- SHA2는 가상 fixture 값 생성 전용이며 운영 비밀번호/인증코드 저장 지침이 아닙니다.
@@ -22,11 +22,11 @@ VALUES (@supp_loan,@supp_user,120000000,4.00,25,'2026-01-01');
 SAVEPOINT supplemental_fixture;
 SELECT DATABASE() AS db,@supp_user AS member_id,@supp_loan AS loan_id,@supp_verification AS verification_id;
 
--- S01: 1062 / uk_users_phone
-INSERT INTO users (nickname,phone) VALUES ('중복전화검증',@supp_phone);
--- S02: 1062 / uk_phone_verifications_verified_token_hash
-INSERT INTO phone_verifications (purpose,phone,code_hash,expires_at,verified_token_hash)
-VALUES ('SIGNUP',@supp_phone,SHA2(CONCAT('other-code-',@supp_tag),256),
+-- S01: 1062 / uk_users_email
+INSERT INTO users (nickname,email) VALUES ('중복이메일검증',@supp_email);
+-- S02: 1062 / uk_email_verifications_verified_token_hash
+INSERT INTO email_verifications (purpose,email,code_hash,expires_at,verified_token_hash)
+VALUES ('SIGNUP',@supp_email,SHA2(CONCAT('other-code-',@supp_tag),256),
  DATE_ADD(CURRENT_TIMESTAMP,INTERVAL 3 MINUTE),SHA2(CONCAT('fixture-token-',@supp_tag),256));
 -- S03: 1062 / user_settings.PRIMARY
 INSERT INTO user_settings (user_id) VALUES (@supp_user);
@@ -58,9 +58,9 @@ VALUES (@supp_loan,'2026-01-25',202601,120000000,4.00,400000);
 -- S99 정리 블록
 ROLLBACK;
 SELECT 'S99 테스트 데이터 제거' AS test,
- IF((SELECT COUNT(*) FROM users WHERE id=@supp_user OR phone=@supp_phone)=0
+ IF((SELECT COUNT(*) FROM users WHERE id=@supp_user OR email=@supp_email)=0
  AND (SELECT COUNT(*) FROM user_settings WHERE user_id=@supp_user)=0
- AND (SELECT COUNT(*) FROM phone_verifications WHERE id=@supp_verification OR verified_token_hash=SHA2(CONCAT('fixture-token-',@supp_tag),256))=0
+ AND (SELECT COUNT(*) FROM email_verifications WHERE id=@supp_verification OR verified_token_hash=SHA2(CONCAT('fixture-token-',@supp_tag),256))=0
  AND (SELECT COUNT(*) FROM housing_surveys WHERE user_id=@supp_user)=0
  AND (SELECT COUNT(*) FROM housing_loans WHERE id=CONVERT(@supp_loan USING ascii) COLLATE ascii_bin)=0
  AND (SELECT COUNT(*) FROM loan_interest_charges WHERE loan_id=CONVERT(@supp_loan USING ascii) COLLATE ascii_bin)=0,'PASS','FAIL') AS result;

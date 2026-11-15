@@ -127,8 +127,8 @@ async function main() {
       [1451,'fk_posts_region_id'],[1048,'storage_url'],[1452,'fk_comments_post_id'],
     ]],
     ['12_moderation_negative.sql','J',[
-      [1062,'uk_banned_sanction_identity'],[1452,'fk_user_sanctions_user_id'],[1452,'fk_user_sanctions_report_id'],
-      [1452,'fk_reports_reporter_id'],[1452,'fk_banned_identities_user_id'],[1452,'fk_support_inquiries_user_id'],[1048,'content'],
+      [1452,'fk_user_sanctions_user_id'],[1452,'fk_user_sanctions_report_id'],
+      [1452,'fk_reports_reporter_id'],[1452,'fk_support_inquiries_user_id'],[1048,'content'],
     ]],
     ['14_map_ai_negative.sql','L',[
       [1062,'uk_regions_parent_id_name'],[1062,'PRIMARY'],[1062,'uk_trash_schedules_region_weekday_type'],
@@ -137,7 +137,7 @@ async function main() {
       [1452,'fk_ai_messages_conversation_id'],[3140,'card_data'],[1451,'fk_places_region_id'],
     ]],
     ['17_supplemental_negative.sql','S',[
-      [1062,'uk_users_phone'],[1062,'uk_phone_verifications_verified_token_hash'],[1062,'PRIMARY'],[1062,'PRIMARY'],
+      [1062,'uk_users_email'],[1062,'uk_email_verifications_verified_token_hash'],[1062,'PRIMARY'],[1062,'PRIMARY'],
       [3819,'ck_survey_flags'],[3819,'ck_survey_loan_rate'],[3819,'ck_survey_loan_day'],
       [3819,'ck_housing_loan_terms'],[3819,'ck_housing_loan_terms'],
       [3819,'ck_loan_interest_snapshot'],[3819,'ck_loan_interest_snapshot'],[3105,'period_ym'],
@@ -156,7 +156,7 @@ async function main() {
   rejected('life categories rejection', '25_life_categories_negative.sql', 'Y', [[3819,'ck_settings_ledger_object']])
   successful('fresh structure audit', read('db/tests/15_schema_audit.sql'), 7)
   successful('legacy schema', read('db/tests/18_legacy_schema.sql'), 0)
-  successful('full migration and data preservation', read('db/tests/19_migration_upgrade.sql'), 14)
+  successful('full migration and data preservation', read('db/tests/19_migration_upgrade.sql'), 15)
   successful('migrated structure audit', read('db/tests/20_migration_schema_audit.sql'), 7)
   // Exercise the incremental upgrade independently of the fresh/full-path runs.
   const oldSchema = cp.execFileSync('git', ['show','7bb1c90:db/schema.sql'], {encoding:'utf8'})

@@ -4,6 +4,10 @@
 
 ## 적용 순서
 
+### 2026-11-15 휴대전화 인증 → 이메일 인증
+
+20261115_kakao_place_favorites까지 적용된 DB에 `20261115_02_email_verification.sql`을 한 번 실행합니다. users에서 phone·phone_verified_at을 지우고 email은 비어도 되는 채로 두고 email_verified_at을 추가합니다. phone_verifications를 지우고 email_verifications를 만들고, password_resets.method에서 PHONE을 빼고, banned_identities(재가입 차단)를 삭제합니다. 파일 앞의 사전 확인 SQL 두 개가 모두 0이어야 합니다. ALTER·DROP이라 다시 실행하면 실패합니다. 새 DB는 최신 schema.sql만 실행합니다.
+
 ### 2026-11-15 카카오 장소 즐겨찾기
 
 20261108까지 적용된 DB에 `20261115_kakao_place_favorites.sql`을 한 번 실행합니다. `kakao_place_favorites` 표 하나를 추가합니다(카카오 장소 id · 이름만, 주소 · 좌표 없음). 다시 실행해도 안전합니다. 새 DB는 최신 schema.sql만 실행합니다. 위 표 수 · 컬럼 수 감사 기준에는 아직 반영하지 않았습니다(+1표 · 5컬럼).

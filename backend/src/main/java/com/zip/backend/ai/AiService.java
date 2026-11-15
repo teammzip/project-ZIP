@@ -38,6 +38,7 @@ public class AiService {
         - 존댓말로, 친근하고 짧게 답해. 길어도 핵심만 단계별로 정리해.
         - 법률·세금·의료처럼 전문 판단이 필요한 내용은 일반적인 안내만 하고, 중요한 결정은 전문가나 관할 기관에 확인하라고 덧붙여.
         - 모르는 건 아는 척하지 말고 모른다고 말해.
+        - 마크다운 기호(별표 *, **, 샵 #, 백틱 `)는 절대 쓰지 말고 일반 글자로만 답해. 목록은 줄마다 "- "나 "1. "로 시작해.
         - 서비스 이용과 무관한 요청이나 위험한 요청은 정중히 거절해.
         """;
 
@@ -109,11 +110,15 @@ public class AiService {
         try {
             String code = topic != null && !topic.isBlank() ? topic.strip() : conversation.topic();
             String system = code == null ? SYSTEM : SYSTEM + "\n지금 대화 주제 코드: " + code;
-            answer = gemini.chat(system, merge(turns));
+            answer = plain(gemini.chat(system, merge(turns)));
             if (answer.isEmpty()) throw new IllegalStateException("empty answer");
         } catch (RuntimeException error) {
             giveBack(userId, date);
             log.warn("Gemini call failed: {}", error.toString());
+            if (error instanceof org.springframework.web.client.RestClientResponseException http && http.getStatusCode().value() == 429) {
+                // Gemini's own quota/rate limit is used up (not the per-user daily limit)
+                throw new ApiException(503, "AI 사용량을 모두 써서 지금은 더 이상 답할 수 없어요. 잠시 뒤나 내일 다시 시도해 주세요.", "AI_QUOTA");
+            }
             throw new ApiException(502, "AI가 지금 답하지 못했어요. 잠시 뒤에 다시 시도해 주세요.", "AI_FAILED");
         }
         try {
@@ -192,6 +197,18 @@ public class AiService {
             out.put("card", Map.of("type", m.cardType(), "data", json.readTree(m.cardData())));
         }
         return out;
+    }
+
+    /** The chat shows plain text, so markdown marks the model still adds are removed (**bold**, # headings, `code`, "* " bullets). */
+    public static String plain(String text) {
+        if (text == null) return "";
+        return text
+            .replaceAll("(?m)^\\s{0,3}#{1,6}\\s+", "")
+            .replaceAll("(?m)^(\\s*)[*+]\\s+", "$1- ")
+            .replaceAll("\\*{1,3}([^*\\n]+?)\\*{1,3}", "$1")
+            .replace("**", "")
+            .replace("`", "")
+            .strip();
     }
 
     /** Back-to-back turns with the same role are joined so the alternation rule always holds. */

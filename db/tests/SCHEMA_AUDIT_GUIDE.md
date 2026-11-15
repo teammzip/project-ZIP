@@ -11,10 +11,10 @@
 | ID | 검증 내용 | checked_count |
 |---|---|---:|
 | M01 | 전체 기본 테이블 존재 | 44 |
-| M02 | 컬럼 타입·NULL·AUTO_INCREMENT·생성컬럼 여부·명시된 문자셋/정렬 규칙 | 358 |
-| M03 | PRIMARY/UNIQUE의 이름과 컬럼 순서 | 71 |
-| M04 | FK의 이름·출발 컬럼·대상 DB/테이블/컬럼·삭제 규칙 | 62 |
-| M05 | CHECK 존재 및 ENFORCED=YES | 15 |
+| M02 | 컬럼 타입·NULL·AUTO_INCREMENT·생성컬럼 여부·명시된 문자셋/정렬 규칙 | 352 |
+| M03 | PRIMARY/UNIQUE의 이름과 컬럼 순서 | 70 |
+| M04 | FK의 이름·출발 컬럼·대상 DB/테이블/컬럼·삭제 규칙 | 61 |
+| M05 | CHECK 존재 및 ENFORCED=YES | 17 |
 | M06 | VIEW 존재 및 출력 컬럼 순서 | 2 |
 | M07 | 테이블 저장 엔진 InnoDB | 44 |
 
@@ -54,7 +54,7 @@ failed_items: 없거나 나온 항목
 다음 보완 항목이 남아 있습니다.
 
 - 과거 P/N·A/B 중 정확한 개별 결과가 아직 없는 항목: RESULTS.md의 미확인 상태 확인.
-- users.phone, phone_verifications.verified_token_hash 및 일부 회원별 PK는 17번 보완 테스트에서 검사합니다.
+- users.email, email_verifications.verified_token_hash 및 일부 회원별 PK는 17번 보완 테스트에서 검사합니다.
 - 주거 설문·대출 스냅샷의 대표 추가 경계값은 17번에서 검사합니다. 모든 입력 조합을 검증한 것은 아닙니다.
 - 62개 FK 전체에 대한 부재 참조·삭제 동작 조합은 현재 일부만 실행했으므로 미실행 조합 보완.
 - 기존 35개부터의 가상 이전 보존 검증은 18~20번으로 수행했습니다. 운영 백업 복원은 별도 검증입니다. 현재 최신 zip_test에 초기 마이그레이션을 실행하지 않습니다.
