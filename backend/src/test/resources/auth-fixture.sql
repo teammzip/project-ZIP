@@ -9,6 +9,10 @@ CREATE TABLE users (
     region_id BIGINT, password_changed_at TIMESTAMP, region_verified_at TIMESTAMP,
     home_lat DECIMAL(9,6), home_lon DECIMAL(9,6), age_confirmed_at TIMESTAMP
 );
+CREATE TABLE user_personal_info (
+    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    birth_date DATE
+);
 CREATE TABLE user_settings (
     user_id BIGINT PRIMARY KEY, rent_amount DECIMAL(14,4) DEFAULT 0 NOT NULL,
     rent_day INT DEFAULT 15 NOT NULL, move_in_ym CHAR(7), contract_end_ym CHAR(7),

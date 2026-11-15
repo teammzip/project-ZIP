@@ -9,6 +9,7 @@ export type User = {
   username?: string
   email: string
   nickname: string
+  birth?: string | null
   address: string
   /** 사는 동네 (DB users.region_id → regions). 주소에서 동네를 못 찾으면 없음 */
   region?: { id: string; name: string } | null

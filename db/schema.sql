@@ -982,3 +982,9 @@ INSERT IGNORE INTO `ledger_categories` (`kind`, `name`, `color`, `sort_order`) V
   ('INCOME','임대 수입','#f5a623',9), ('INCOME','기타 고정 수입','#8a90a2',10);
 INSERT IGNORE INTO `ai_topics` (`code`,`name`,`description`,`photo_supported`,`sort_order`) VALUES
   ('guide','사용 방법','기능이 어디 있는지 알려드려요',0,10);
+
+CREATE TABLE IF NOT EXISTS user_personal_info (
+  user_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+  birth_date DATE NULL,
+  CONSTRAINT fk_user_personal_info_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='회원 개인 정보: 주거 계약과 분리';
