@@ -16,6 +16,13 @@ public class AuthRepository {
 
     public AuthRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
+    public List<String> personalBirth(long userId) {
+        return jdbc.query("SELECT birth_date FROM user_personal_info WHERE user_id = ?", (rs, row) -> {
+            var birth = rs.getDate("birth_date");
+            return birth == null ? "" : birth.toLocalDate().toString();
+        }, userId);
+    }
+
     public record Account(long id, String username, String passwordHash, String email,
         String nickname, String address, String provider, String role, String status,
         Instant lastLoginAt, String regionId, String regionName) {}

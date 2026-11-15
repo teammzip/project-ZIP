@@ -157,6 +157,8 @@ public class AuthService {
         if (user.username() != null) result.put("username", user.username());
         result.put("email", user.email() == null ? "" : user.email());
         result.put("nickname", user.nickname());
+        var personalBirth = repository.personalBirth(user.id());
+        if (!personalBirth.isEmpty()) result.put("birth", personalBirth.get(0).isEmpty() ? null : personalBirth.get(0));
         result.put("address", user.address() == null ? "" : user.address());
         result.put("provider", user.provider().toLowerCase(Locale.ROOT));
         result.put("role", user.role());

@@ -70,9 +70,10 @@ function EditorBody({ onClose, name, onSaveProfile, onSaved }: Omit<Props, 'open
   }
 
   return (
-    <form className={cx(common.form, styles.editor)} onSubmit={submit}>
+    <>
       <h3 className={styles.sheetTitle}>프로필 편집</h3>
-      <ProfilePersonalInfo />
+      <ProfilePersonalInfo onNicknameSaved={setNick} />
+    <form className={cx(common.form, styles.editor)} onSubmit={submit}>
       <div className={styles.pick}>
         <Avatar name={nick || name} size={96} look={draft} />
         <div className={styles.pickBtns}>
@@ -119,10 +120,6 @@ function EditorBody({ onClose, name, onSaveProfile, onSaved }: Omit<Props, 'open
       </div>
 
       <label>
-        이름(닉네임)
-        <input value={nick} onChange={(e) => setNick(e.target.value)} minLength={2} maxLength={12} required />
-      </label>
-      <label>
         한 줄 소개
         <input value={draft.bio} onChange={(e) => setDraft((d) => ({ ...d, bio: e.target.value }))} maxLength={30} placeholder="예) 자취 2년 차, 요리 연습 중" />
       </label>
@@ -132,8 +129,9 @@ function EditorBody({ onClose, name, onSaveProfile, onSaved }: Omit<Props, 'open
         </p>
       )}
       <Button type="submit" block loading={pending}>
-        저장
+        프로필 꾸미기 저장
       </Button>
     </form>
+    </>
   )
 }

@@ -206,7 +206,20 @@
   background: var(--color-bg);
 }
 
-.personalInfo h4 { margin: 0 0 8px; }
+.personalInfoHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.personalInfo h4 { margin: 0; }
+.personalInfoEdit { padding: 6px 12px; border: 1px solid var(--color-line); border-radius: 8px; background: var(--color-bg); color: var(--color-primary); font-size: 13px; font-weight: 600; cursor: pointer; }
 .personalInfo dl { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 10px; margin: 14px 0 0; font-size: 14px; }
 .personalInfo dt { color: var(--color-muted); }
 .personalInfo dd { margin: 0; overflow-wrap: anywhere; }
+.personalInfo dd input { width: 100%; min-width: 0; box-sizing: border-box; }
+
+.personalInfo { font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; line-height: 1.6; }
+.personalInfo h4 { font-size: 16px; font-weight: 700; }
+.personalInfo button, .personalInfo input { font-family: inherit; }
+.personalInfoActions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.personalInfoSave, .personalInfoCancel { min-width: 80px; padding: 9px 18px; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.personalInfoSave { border: 1px solid var(--color-primary); background: var(--color-primary); color: #fff; }
+.personalInfoCancel { border: 1px solid var(--color-line); background: var(--color-bg); color: inherit; }
+.personalInfoActions button:disabled { opacity: .55; cursor: default; }
+.personalInfoActions button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }

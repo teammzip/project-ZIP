@@ -51,7 +51,7 @@ export function SettingsPage() {
   const { isMonthly } = useHousingContract()
   const user = useAuthStore((s) => s.user)
   const survey = useHousingSurveyStore((s) => s.survey)
-  const birth = survey?.userId === user?.id ? survey?.birth ?? '' : ''
+  const birth = user?.birth !== undefined ? user.birth ?? '' : survey?.userId === user?.id ? survey?.birth ?? '' : ''
   const { age } = useAge(birth)
   const { region, verified, left } = useRegionVerify()
   const postCount = useCommunityStore((s) => s.posts.filter((p) => !!user?.id && p.ownerId === user.id).length)
