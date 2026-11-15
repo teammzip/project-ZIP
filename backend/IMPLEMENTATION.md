@@ -168,6 +168,8 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 | POST `/api/places/ai-search` | 프론트 `features/map/aiFind.ts`와 같은 키워드 규칙으로 최대 5곳 + `reasons` (실제 AI 미연결) |
 | GET · PUT · DELETE `/api/me/place-favorites` | `place_favorites`. 없는 장소는 404, 두 번 저장해도 204. 카카오 장소(`kakao:id`)는 PUT 본문 `{ name, category }`로 `kakao_place_favorites`에 id · 이름 · 종류만 저장(주소 · 좌표 없음, 한 사람당 200곳, 이름 60자 · 없는 종류는 400) |
 | GET `/api/me/place-favorites/kakao` | 저장한 카카오 장소 `[{ id, name, category }]` (저장 목록용) |
+| GET · POST · PATCH · DELETE `/api/me/place-lists` | 저장 리스트 `place_lists` · `place_list_items` (`db/migrations/20261115_03_place_lists.sql`). 처음 GET 에서 "내 장소"를 만들고 리스트에 안 든 저장 장소를 넣음. 이름 20자 · 회원 안 중복 409 · 20개까지 · 색 `#RRGGBB`. 삭제 시 이 리스트에만 있던 장소는 저장 해제 |
+| PUT `/api/me/place-favorites/{placeId}/lists` | `{ listIds, name?, category? }` 로 리스트 소속을 통째로 바꿈. 비우면 저장 해제, 다른 회원 리스트는 404 |
 | GET · PUT `/api/me/map-settings` | `user_settings.map_categories · map_keywords`. NULL이면 정렬 순서 앞 4종류 · 빈 검색어. 없는 종류, 종류와 같은 검색어(12자 이내)는 400 |
 | GET · POST `/api/places/{id}/reviews` | `place_reviews`. 한 사람당 한 장소 하나(두 번이면 409), 저장 후 `places.rating_avg · review_count` 갱신 |
 

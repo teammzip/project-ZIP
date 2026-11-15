@@ -23,6 +23,12 @@ public final class MapRequests {
     /** 카카오 장소 즐겨찾기 때만 보냄: 저장 목록에 보일 이름과 우리 종류 이름 (주소 · 좌표는 받지 않음) */
     public record KakaoFavorite(String name, String category) {}
 
+    /** 저장 리스트 만들기 · 고치기: 이름(20자) · 색(#RRGGBB, 없으면 초록) */
+    public record PlaceListInput(String name, String color) {}
+
+    /** ★ 저장 창의 [저장]: 고른 리스트 id (비우면 저장 풂). 카카오 장소면 name · category 도 */
+    public record PlaceListsInput(List<String> listIds, String name, String category) {}
+
     public record Review(
         @NotNull @Min(1) @Max(5) Integer rating,
         @Size(max = 300) String body) {}
