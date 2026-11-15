@@ -53,7 +53,7 @@ test('주소 길이를 검증한다', () => {
 })
 
 // 실제 폼의 submit을 호출해 검증 실패가 다른 저장소까지 변경하지 않는지 확인한다.
-function submitForm(patch = {}, kind = 'monthly', savedRent = 50) {
+function submitForm(patch = {}, kind = 'monthly', savedRent = 50, serverSave = null) {
   const writes = []
   let error = ''
   let savedSettings
@@ -74,13 +74,16 @@ function submitForm(patch = {}, kind = 'monthly', savedRent = 50) {
     exports: component,
     Error,
     require: (name) => {
-      if (name === 'react') return { ...react, useState: (initial) => {
+      if (name === 'react') return { ...react, useRef: () => ({ current: false }), useState: (initial) => {
         const index = hook++
         const value = index === 5 ? { ...initial, ...patch } : initial
         return [value, (next) => { if (index === 3) error = next }]
       } }
       if (name.endsWith('.css')) return { default: {} }
       if (name === '../validateLifeInfo') return exports
+      if (name === '@/features/auth/api') return { isMockApi: !serverSave }
+      if (name === '../homeApi') return { saveHomeInfo: async (input) => { writes.push('server'); return serverSave(input) } }
+      if (name === '@/lib/apiClient') return { getErrorMessage: (cause) => cause.message }
       if (name === '../store') return { useLifeStore: store }
       if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: { id: 'member-a' } }) }
       if (name === '@/features/onboarding/useHousingContract') return { useHousingContract: () => ({ kind, survey: null }) }
@@ -94,9 +97,9 @@ function submitForm(patch = {}, kind = 'monthly', savedRent = 50) {
       return require(name)
     },
   })
-  const form = component.LifeInfoForm({ onSaved: () => writes.push('close') })
-  form.props.onSubmit({ preventDefault() {} })
-  return { writes, error, savedSettings }
+  const form = component.LifeInfoFields({ onSaved: () => writes.push('close') })
+  const completion = form.props.onSubmit({ preventDefault() {} })
+  return { writes, get error() { return error }, savedSettings, completion }
 }
 
 test('폼에서 날짜 오류가 나면 설문·대출·설정·관리비를 변경하지 않는다', () => {
@@ -117,4 +120,22 @@ test('만원으로 저장된 월세를 다시 열어도 원 단위 오차 없이
     assert.equal(result.error, '')
     assert.equal(result.savedSettings.rent, won / 10000)
   }
+})
+
+test('실제 모드 폼은 서버 저장 성공 후에만 닫고 로컬 저장을 먼저 실행하지 않는다', async () => {
+  let sent
+  const result = submitForm({}, 'monthly', 55.0003, async (input) => { sent = input })
+  assert.deepEqual(result.writes, ['server'])
+  await result.completion
+  assert.deepEqual(result.writes, ['server', 'close'])
+  assert.equal(sent.rent, 550003)
+  assert.equal(sent.loan, null)
+  assert.equal(sent.kind, 'monthly')
+})
+
+test('실제 모드 폼은 저장 실패 시 창을 닫거나 로컬 계약을 변경하지 않는다', async () => {
+  const result = submitForm({}, 'monthly', 50, async () => { throw new Error('서버 저장 실패') })
+  await result.completion
+  assert.deepEqual(result.writes, ['server'])
+  assert.equal(result.error, '서버 저장 실패')
 })

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { AmountInput, Button } from '@/components/ui'
@@ -15,6 +15,9 @@ import { useLifeStore } from '../store'
 import styles from './myinfo.module.css'
 import { billPaidInMonth } from '../payments'
 import { validateLifeInfo } from '../validateLifeInfo'
+import { isMockApi } from '@/features/auth/api'
+import { getErrorMessage } from '@/lib/apiClient'
+import { loadHomeInfo, saveHomeInfo } from '../homeApi'
 
 /* 내 정보 화면에 쓰는 생활 조각들: 수입·지출 카드, 이번 달 요약, 생활 정보 폼, 알림 스위치 */
 
@@ -65,7 +68,26 @@ export function LifeStats({ postCount }: { postCount: number }) {
 }
 
 /** 생활 정보: 선택한 계약 유형의 항목만 편집하고 설문·가계부 설정에 함께 반영한다. */
-export function LifeInfoForm({ onSaved, showHomeAddress = true }: { onSaved?: () => void; showHomeAddress?: boolean }) {
+type LifeInfoProps = { onSaved?: () => void; showHomeAddress?: boolean }
+export function LifeInfoForm(props: LifeInfoProps) {
+  const token = useAuthStore((s) => s.token)
+  const id = useAuthStore((s) => s.user?.id)
+  return isMockApi ? <LifeInfoFields {...props} /> : <ServerLifeInfoForm key={`${id}:${token}`} {...props} />
+}
+function ServerLifeInfoForm(props: LifeInfoProps) {
+  const [ready, setReady] = useState(false)
+  const [error, setError] = useState('')
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    let active = true
+    void loadHomeInfo().then(() => { if (active) setReady(true) }).catch((cause) => { if (active) setError(getErrorMessage(cause, '내 집 정보를 불러오지 못했어요.')) })
+    return () => { active = false }
+  }, [attempt])
+  if (error) return <div role="alert"><p>{error}</p><Button onClick={() => { setError(''); setAttempt((n) => n + 1) }}>다시 불러오기</Button></div>
+  if (!ready) return <p role="status">내 집 정보를 불러오는 중이에요.</p>
+  return <LifeInfoFields {...props} />
+}
+export function LifeInfoFields({ onSaved, showHomeAddress = true }: LifeInfoProps) {
   const { kind: savedKind, survey } = useHousingContract()
   const user = useAuthStore((s) => s.user)
   const saveSurvey = useHousingSurveyStore((s) => s.save)
@@ -96,10 +118,12 @@ export function LifeInfoForm({ onSaved, showHomeAddress = true }: { onSaved?: ()
     contractFee: String(survey?.contractFee ?? 0),
   })
   const change = (key: keyof typeof form, value: string) => setForm((previous) => ({ ...previous, [key]: value }))
+  const [pending, setPending] = useState(false)
+  const saving = useRef(false)
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || saving.current) return
     setError('')
     try {
       const months = validateLifeInfo(form, monthly, mgmtIncluded, showHomeAddress)
@@ -108,6 +132,15 @@ export function LifeInfoForm({ onSaved, showHomeAddress = true }: { onSaved?: ()
         paymentDay: Number(loan.paymentDay), startDate: loan.startDate,
       }) : undefined
       const mgmtFee = monthly && mgmtIncluded ? 0 : Number(form.mgmtFee)
+      if (!isMockApi) {
+        saving.current = true; setPending(true)
+        await saveHomeInfo({ kind, deposit: monthly ? Number(form.deposit) : 0, rent: monthly ? Number(form.rent) : 0,
+          rentDay: monthly ? Number(form.rentDay) : settings.rentDay, mgmtIncluded: monthly && mgmtIncluded, mgmtFee,
+          contractFee: monthly ? 0 : Number(form.contractFee), ...months,
+          ...(showHomeAddress ? { homeAddress: form.homeAddress.trim() } : {}), loan: terms ?? null })
+        onSaved?.()
+        return
+      }
       const answers: HousingSurvey = {
         birth: '', income: 0, incomePeriod: 'monthly', answeredAt: new Date().toISOString(),
         ...survey,
@@ -139,12 +172,15 @@ export function LifeInfoForm({ onSaved, showHomeAddress = true }: { onSaved?: ()
       })
       onSaved?.()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '계약 정보를 확인해 주세요.')
+      setError(getErrorMessage(cause, '계약 정보를 확인해 주세요.'))
+    } finally {
+      saving.current = false; setPending(false)
     }
   }
 
   return (
     <form className={common.form} onSubmit={submit}>
+      <fieldset disabled={pending} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, display: 'contents' }}>
       <label>계약 유형
         <select value={kind} onChange={(e) => { setKind(e.target.value as ContractKind); setError('') }}>
           <option value="monthly">월세</option>
@@ -179,7 +215,8 @@ export function LifeInfoForm({ onSaved, showHomeAddress = true }: { onSaved?: ()
         <label>계약 끝나는 달<input type="month" value={form.contractEnd} onChange={(e) => change('contractEnd', e.target.value)} /></label>
       </div>
       {error && <p className={common.formError} role="alert">{error}</p>}
-      <Button type="submit" block>저장</Button>
+      <Button type="submit" block loading={pending}>저장</Button>
+      </fieldset>
     </form>
   )
 }

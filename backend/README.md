@@ -1,5 +1,7 @@
 # ZIP backend
 
+내 집 정보 GET/PUT `/api/me/home-info`가 구현되어 있습니다. 계약·설정·관리비·대출을 함께 저장하고 프론트 내 집 정보 폼에 연결했습니다. 기존 DB는 `db/migrations/20261115_home_contracts.sql`을 적용한 뒤 재시작하세요. 검증과 후속 범위는 프로젝트 루트 `HOME_INFO_VERIFICATION.md`를 참고하세요.
+
 Spring Boot + Spring Web MVC + JPA + MySQL 프로젝트입니다. 상위 project-ZIP Git 저장소에서 함께 관리합니다.
 
 로그인·JWT/DB 세션·내 정보 조회·닉네임/프로필 꾸미기·프로필 사진 업로드·비밀번호 변경·로그아웃·약관 조회가 구현돼 있습니다. 문자 인증 및 회원가입은 아직 연결 대기 상태입니다. 실행 설정, 테스트 계정 준비, 사진 저장 폴더와 지원 API는 [인증 기반 API 연결](IMPLEMENTATION.md)을 참고하세요. DB 설정 외에 `JWT_SECRET`도 필요합니다.

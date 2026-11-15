@@ -3,6 +3,7 @@ import { authApi, isMockApi } from '@/features/auth/api'
 import { bindAuth } from '@/lib/apiClient'
 import { useLifeStore } from '@/features/life/store'
 import { useProfileStore } from '@/features/profile/store'
+import { loadHomeInfo } from '@/features/life/homeApi'
 
 // 로그인한 회원의 저장 주소로 시작한다. 다른 회원의 동네 설정을 이어 쓰지 않는다.
 function syncAddress() {
@@ -36,6 +37,12 @@ bindAuth({
   getToken: () => useAuthStore.getState().token,
   // 로그인 상태를 비우면 ProtectedRoute 가 알아서 시작 화면으로 보냄
   onUnauthorized: () => useAuthStore.getState().clearAuth(),
+})
+
+// 계약은 서버에서 복원한다. 기존 로컬 기록을 서버로 자동 업로드하지 않는다.
+if (!isMockApi && useAuthStore.getState().token && useAuthStore.getState().user?.role !== 'ADMIN') void loadHomeInfo().catch(() => {})
+useAuthStore.subscribe((state, previous) => {
+  if (!isMockApi && state.token && state.user?.role !== 'ADMIN' && (state.token !== previous.token || state.user?.id !== previous.user?.id)) void loadHomeInfo().catch(() => {})
 })
 
 // 새로고침 시 Postman·다른 기기에서 변경된 내 정보도 서버에서 다시 받는다.

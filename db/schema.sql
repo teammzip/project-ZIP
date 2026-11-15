@@ -988,3 +988,16 @@ CREATE TABLE IF NOT EXISTS user_personal_info (
   birth_date DATE NULL,
   CONSTRAINT fk_user_personal_info_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='회원 개인 정보: 주거 계약과 분리';
+
+CREATE TABLE IF NOT EXISTS home_contracts (
+ user_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+ contract_kind VARCHAR(10) NOT NULL,
+ deposit BIGINT UNSIGNED NOT NULL DEFAULT 0,
+ management_included BOOLEAN NOT NULL DEFAULT FALSE,
+ management_fee BIGINT UNSIGNED NOT NULL DEFAULT 0,
+ contract_fee BIGINT UNSIGNED NOT NULL DEFAULT 0,
+ management_bill_id BIGINT UNSIGNED NULL,
+ CONSTRAINT fk_home_contract_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+ CONSTRAINT fk_home_contract_bill FOREIGN KEY (management_bill_id) REFERENCES bill_items(id) ON DELETE SET NULL,
+ CONSTRAINT ck_home_contract_kind CHECK (contract_kind IN ('monthly','jeonse'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
