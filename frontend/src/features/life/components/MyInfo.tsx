@@ -14,6 +14,7 @@ import { spendBreakdown, sumAmount, useNotis } from '../derive'
 import { useLifeStore } from '../store'
 import styles from './myinfo.module.css'
 import { billPaidInMonth } from '../payments'
+import { validateLifeInfo } from '../validateLifeInfo'
 
 /* 내 정보 화면에 쓰는 생활 조각들: 수입·지출 카드, 이번 달 요약, 생활 정보 폼, 알림 스위치 */
 
@@ -87,7 +88,7 @@ export function LifeInfoForm({ onSaved, showHomeAddress = true }: { onSaved?: ()
   const [form, setForm] = useState({
     homeAddress: user ? settings.homeAddresses?.[user.id] ?? '' : '',
     rentDay: String(settings.rentDay),
-    rent: String(settings.rent * 10000),
+    rent: String(Math.round(settings.rent * 10000)),
     deposit: String(survey?.deposit ?? 0),
     mgmtFee: String(survey?.mgmtFee ?? useLifeStore.getState().bills.find((b) => b.name === '관리비' && b.tag === '관리비')?.amount ?? 0),
     moveIn: settings.moveIn,
@@ -101,6 +102,7 @@ export function LifeInfoForm({ onSaved, showHomeAddress = true }: { onSaved?: ()
     if (!user) return
     setError('')
     try {
+      const months = validateLifeInfo(form, monthly, mgmtIncluded, showHomeAddress)
       const terms: LoanTerms | undefined = !monthly && hasLoan ? validateLoanTerms({
         principal: Number(loan.principal), annualRate: Number(loan.annualRate),
         paymentDay: Number(loan.paymentDay), startDate: loan.startDate,
@@ -124,10 +126,9 @@ export function LifeInfoForm({ onSaved, showHomeAddress = true }: { onSaved?: ()
       saveSettings({
         ...currentSettings,
         homeAddresses: showHomeAddress ? { ...currentSettings.homeAddresses, [user.id]: form.homeAddress.trim() } : currentSettings.homeAddresses,
-        rentDay: Math.min(31, Math.max(1, Number(form.rentDay) || 15)),
+        rentDay: monthly ? Number(form.rentDay) : currentSettings.rentDay,
         rent: answers.rent / 10000,
-        moveIn: form.moveIn || settings.moveIn,
-        contractEnd: form.contractEnd || settings.contractEnd,
+        ...months,
       })
       // 설문에서 만든 관리비 한 항목을 갱신해 중복 등록을 막는다.
       useLifeStore.setState((state) => {

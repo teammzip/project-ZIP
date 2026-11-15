@@ -123,7 +123,7 @@ export function SettingsPage() {
               <button type="button" className={styles.row} onClick={() => setSheet('life')}>
                 <span className={styles.ico}>🏠</span>
                 <span className={styles.grow}>
-                  생활 정보<small>{lifeSummary}</small>
+                  내 집 정보<small>{lifeSummary}</small>
                 </span>
                 <i className={styles.chev} aria-hidden="true" />
               </button>
@@ -190,8 +190,8 @@ export function SettingsPage() {
         }
       }} onSaved={() => notify('프로필을 바꿨어요.')} />
 
-      <Modal open={sheet === 'life'} onClose={close} title="생활 정보">
-        <h3 className={styles.sheetTitle}>생활 정보</h3>
+      <Modal open={sheet === 'life'} onClose={close} title="내 집 정보">
+        <h3 className={styles.sheetTitle}>내 집 정보</h3>
         <LifeInfoForm
           onSaved={() => {
             close()

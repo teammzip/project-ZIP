@@ -22,6 +22,8 @@ const cssVars = {}
 vm.runInNewContext(compile('../src/lib/cssVar.ts'), { exports: cssVars })
 const payments = {}
 vm.runInNewContext(compile('../src/features/life/payments.ts'), { exports: payments })
+const lifeValidation = {}
+vm.runInNewContext(compile('../src/features/life/validateLifeInfo.ts'), { exports: lifeValidation })
 const currentMonth = date.todayStr().slice(0, 7)
 const settings = { rent: 55, rentDay: 25, region: '서울 마포구', notiOn: true, moveIn: currentMonth, contractEnd: currentMonth }
 const survey = { userId: 'member-a', kind: 'jeonse', contractFee: 20000000 }
@@ -47,6 +49,7 @@ function setup(kind) {
     if (name === '@/lib/date') return date
     if (name === '@/lib/cssVar') return cssVars
     if (name === '../payments') return payments
+    if (name === '../validateLifeInfo') return lifeValidation
     if (name === './interest') return interest
     if (name === './MyInfo') return info
     if (name === '../ledgerCategories') return { useLedgerCategories: () => [{ name: '공과금' }, { name: '관리비' }] }

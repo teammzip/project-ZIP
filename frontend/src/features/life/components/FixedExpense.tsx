@@ -249,7 +249,7 @@ function PayChecklist({ monthKey }: { monthKey: string }) {
           </div>
         </form>
       </Modal>
-      <Modal open={editingHousing} onClose={() => setEditingHousing(false)} title="생활 정보 수정">
+      <Modal open={editingHousing} onClose={() => setEditingHousing(false)} title="내 집 정보 수정">
         {editingHousing && <LifeInfoForm showHomeAddress={false} onSaved={() => setEditingHousing(false)} />}
       </Modal>
         <button type="button" className={styles.addToggle} onClick={() => setAdding(true)}>
