@@ -2,3 +2,4 @@
 export { AiAssistant } from './components/AiAssistant'
 export { HomeAiCard } from './components/HomeAiCard'
 export { useChatStore, usePhotoStore } from './store'
+export { deleteAllConversations } from './api'

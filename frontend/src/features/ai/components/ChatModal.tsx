@@ -6,6 +6,7 @@ import { useLoanStore } from '@/features/loan'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { getHousingContractKind } from '@/features/onboarding/useHousingContract'
 import { man, won } from '@/lib/date'
+import { askAi, createConversation, loadLatestConversation, recordExchange } from '../api'
 import { useChatStore, type ChatMsg, type SpendCard } from '../store'
 import { CHAT_TOPICS, SUMMARY_ASK, chatReply, type AiContext, type Topic } from '../topics'
 import styles from './Ai.module.css'
@@ -46,25 +47,58 @@ function makeSpendCard(): SpendCard {
   return { month: cur.month, total: cur.total, prevTotal: prev.total, fixed: cur.fixed, rows: cur.rows.slice(0, 5), top: vari[0] ?? null }
 }
 
-/** 홈 "AI와 대화" 모달. 대화는 이 브라우저에 저장돼서 다시 열면 이어짐. 답변은 AI 화면과 같은 데모 답변 */
+/** 홈 "AI와 대화" 모달. 대화는 서버 DB(ai_conversations · ai_messages)에 저장돼서 다시 열면 이어짐 (서버를 안 쓰면 이 브라우저에만). 자유 질문은 서버의 AI(Gemini)가 답하고, AI 를 쓸 수 없으면 데모 답변 */
 export function ChatModal({ open, onClose, opening, ctx }: Props) {
-  const { msgs, push, reset } = useChatStore()
+  const { push, reset, load, setConversationId, msgs } = useChatStore()
   const [busy, setBusy] = useState(false)
   const [text, setText] = useState('')
   const body = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const sentOpening = useRef<ChatOpening>(null)
 
+  /** 이 회원의 대화 중 가장 최근 것을 서버에서 한 번 불러옴 (서버를 안 쓰면 아무 일도 안 함) */
+  const userId = useAuthStore((s) => s.user?.id ?? null)
+  const syncedFor = useRef<string | null>(null)
+  const sync = useEffectEvent(async () => {
+    if (!userId || syncedFor.current === userId) return
+    syncedFor.current = userId
+    const latest = await loadLatestConversation('HOME_MODAL')
+    if (latest) load(latest.id, latest.msgs)
+  })
+
   const send = (q: string, topic?: string) => {
     const v = q.trim()
     if (!v || busy) return
     setBusy(true)
     push({ role: 'user', text: v })
-    setTimeout(() => {
+    void (async () => {
       const isSummary = topic === 'summary' || SUMMARY_ASK.test(v)
-      push(isSummary ? { role: 'bot', text: '이번 달 지출을 정리해 봤어요.', card: makeSpendCard() } : { role: 'bot', text: chatReply(v, topic, { ...ctx, hasPhoto: false }) })
+      // 대화방: 없으면 새로 만듦 (서버를 못 쓰면 null → 이 브라우저에서만 대화)
+      let id = useChatStore.getState().conversationId
+      if (!id) {
+        id = await createConversation('HOME_MODAL', topic)
+        if (id) setConversationId(id)
+      }
+      // 자유 질문(분야 없음 · 질문 분야)은 서버의 AI 가 답하고 질문·답이 저장됨. 그 밖의 답은 앱 안에서 만들고 따로 저장
+      const answer = !isSummary && (!topic || topic === 'qna') ? await askAi(id, v, topic) : null
+      if (answer) {
+        push({ role: 'bot', text: answer.text })
+        setBusy(false)
+        return
+      }
+      await new Promise((resolve) => setTimeout(resolve, 600))
+      const card = isSummary ? makeSpendCard() : undefined
+      const reply = isSummary ? '이번 달 지출을 정리해 봤어요.' : chatReply(v, topic, { ...ctx, hasPhoto: false })
+      push(card ? { role: 'bot', text: reply, card } : { role: 'bot', text: reply })
+      void recordExchange(id, v, reply, card)
       setBusy(false)
-    }, 600)
+    })()
+  }
+
+  /** 새 대화: 빈 대화방을 새로 만들어 두면 다음에 열어도 이 새 대화가 보임 */
+  const newChat = () => {
+    reset()
+    void createConversation('HOME_MODAL').then((id) => id && setConversationId(id))
   }
 
   // 카드: 정해진 질문이 있으면 바로 보내고, 없으면(자유 질문) 입력칸으로
@@ -82,13 +116,20 @@ export function ChatModal({ open, onClose, opening, ctx }: Props) {
       sentOpening.current = null
       return
     }
-    if (opening && sentOpening.current !== opening) {
-      sentOpening.current = opening
-      sendOpening(opening)
-    } else {
-      setTimeout(() => input.current?.focus(), 50)
+    let cancelled = false
+    void sync().then(() => {
+      if (cancelled) return
+      if (opening && sentOpening.current !== opening) {
+        sentOpening.current = opening
+        sendOpening(opening)
+      } else {
+        setTimeout(() => input.current?.focus(), 50)
+      }
+    })
+    return () => {
+      cancelled = true
     }
-  }, [open, opening])
+  }, [open, opening, userId])
 
   useEffect(() => {
     body.current?.scrollTo({ top: body.current.scrollHeight })
@@ -110,7 +151,7 @@ export function ChatModal({ open, onClose, opening, ctx }: Props) {
           <b>AI와 대화</b>
           <small>데모 버전이라 정해진 주제만 답해요</small>
         </div>
-        <button type="button" className={styles.chatNew} onClick={reset}>
+        <button type="button" className={styles.chatNew} onClick={newChat}>
           새 대화
         </button>
         <button type="button" className={styles.chatClose} onClick={onClose} aria-label="닫기">

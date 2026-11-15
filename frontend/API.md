@@ -440,6 +440,23 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 | GET | `/api/ai/conversations/{id}/messages` | — | `[message]` |
 | POST | `/api/ai/conversations/{id}/messages` | `{ text }` 또는 `multipart` (`text` + `photo`) | `{ user: message, reply: message }` |
 | DELETE | `/api/ai/conversations/{id}` | — | — |
+> ✅ **AI 대화는 서버에 구현돼 있어요** (Gemini, DB `ai_conversations` · `ai_messages` · `ai_usage_daily`). 아래 주소가 동작해요.
+>
+> | 주소 | 하는 일 |
+> |---|---|
+> | `GET /api/ai/conversations?entryPoint=` | 내 대화방 목록(최근 20개, 새것 먼저) |
+> | `POST /api/ai/conversations` `{ entryPoint, topic? }` | 새 대화방 → `{ id }` (201) |
+> | `GET /api/ai/conversations/{id}/messages` | 대화방의 말풍선 `[{ id, role, text, createdAt, card? }]` |
+> | `POST /api/ai/conversations/{id}/messages` `{ text, topic? }` | **AI 에게 질문** → `{ user, reply }`. 지난 대화는 서버가 DB에서 읽어 함께 보냄 |
+> | `POST /api/ai/conversations/{id}/exchanges` `{ text, reply, card? }` | 앱이 직접 답한 질문·답(정해진 분야·지출 요약 카드·데모 답변)을 저장. AI 호출·하루 한도 없음 |
+> | `DELETE /api/ai/conversations/{id}` · `DELETE /api/ai/conversations` | 대화방 하나 / 내 대화 전부(데이터 초기화) 삭제 → 204 |
+>
+> - 다른 사람의 대화방은 모두 404예요. 회원 탈퇴 시 대화도 함께 지워져요(FK CASCADE).
+> - 질문 1번마다 `ai_usage_daily`가 +1 (하루 기본 30번, 넘으면 429 `AI_LIMIT`). AI 호출이 실패하면(502 `AI_FAILED`) 아무것도 저장하지 않고 횟수도 되돌려요. 키가 없으면 503 `AI_DISABLED`.
+> - 제목(`title`)은 첫 질문 30자. 대화방 하나에 말풍선 400개까지. 사진은 저장하지 않아요(`attachment_id`는 비워 둠).
+> - 프론트: 홈 "AI와 대화"는 열 때 최근 대화를 불러와 이어가고 "새 대화"는 새 대화방을 만들어요. AI 화면은 화면을 열 때마다 새 대화방을 만들어요(이전 대화 복원은 아직 없음). 가짜 API 모드이거나 서버를 쓸 수 없으면 예전처럼 이 브라우저에서만 대화해요.
+> - 키는 `secrets/gemini.properties`의 `GEMINI_API_KEY`, 모델은 `GEMINI_MODEL`(기본 `gemini-3.1-flash-lite`).
+
 
 ```json
 { "id": "90", "role": "ASSISTANT", "text": "이번 달은 지난달보다 …", "createdAt": "…",

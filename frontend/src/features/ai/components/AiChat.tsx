@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } fro
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { cx } from '@/lib/cx'
 import { TopicCards } from './TopicCards'
+import { askAi, createConversation, recordExchange } from '../api'
 import { usePhotoStore } from '../store'
 import { PHOTO_NOTE, keywordReply, topicById, type Topic, type TopicAction } from '../topics'
 import styles from './AiChat.module.css'
@@ -40,6 +41,7 @@ export function AiChat({ region, name }: Props) {
   const cameraRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const alive = useRef(true)
+  const conversation = useRef<string | null>(null)
 
   useEffect(() => {
     alive.current = true
@@ -93,13 +95,27 @@ export function AiChat({ region, name }: Props) {
     closeTopic()
     setFree('')
     setPending(true)
-    setTimeout(() => {
+    // 대화방: 이 화면에서 처음 물을 때 만들고 계속 이어 씀 (서버를 못 쓰면 null → 이 화면에서만 대화)
+    void (async () => {
+      if (!conversation.current && text) conversation.current = await createConversation('AI_PAGE', t?.id)
+      const id = conversation.current
+      // 분야 없이 묻거나 "질문" 분야면 서버의 AI 에게(질문·답이 저장됨), 사진이 있거나 정해진 분야(초안·버튼이 있는 답)는 앱 안의 답변으로
+      const ai = text && !sentPhoto && (!t || t.id === 'qna') ? await askAi(id, text, t?.id) : null
+      if (ai) {
+        if (!alive.current) return
+        setMsgs((m) => [...m, { role: 'bot', text: ai.text, action: null }])
+        setPending(false)
+        return
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500))
       if (!alive.current) return
       let out = !text ? '사진을 받았어요. 어떤 도움이 필요한지 아래 카드에서 분야를 골라 물어봐 주세요.' : t ? t.reply(v, text, ctx) : keywordReply(text)
       if (sentPhoto && (t?.photo || !text)) out += PHOTO_NOTE
       setMsgs((m) => [...m, { role: 'bot', text: out, action: t?.action?.(v, text) ?? null }])
+      // 사진은 개인정보 방침상 저장하지 않으므로 사진 없는 질문만 대화방에 저장
+      if (text && !sentPhoto) void recordExchange(id, text, out)
       setPending(false)
-    }, 500)
+    })()
   }
 
   const runAction = (a: TopicAction, text: string, i: number) => {
