@@ -1,5 +1,6 @@
 package com.zip.backend.auth;
 
+import com.zip.backend.common.Sql;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -90,12 +91,49 @@ public class AuthRepository {
     }
 
     public boolean suspended(Account user, Instant now) {
-        // A suspended DB status is never silently ignored, even without a sanction row.
-        return "SUSPENDED".equals(user.status()) || jdbc.queryForObject("""
-            SELECT COUNT(*) FROM user_sanctions WHERE user_id = ?
-            AND sanction_type IN ('SUSPEND', 'BAN') AND revoked_at IS NULL
-            AND starts_at <= ? AND (ends_at IS NULL OR ends_at > ?)
-            """, Long.class, user.id(), Timestamp.from(now), Timestamp.from(now)) > 0;
+        boolean active = jdbc.queryForObject("SELECT COUNT(*) FROM user_sanctions s WHERE s.user_id = ? AND " + Sql.ACTIVE_SUSPENSION,
+            Long.class, user.id(), Timestamp.from(now), Timestamp.from(now)) > 0;
+        if (active) return true;
+        if (!"SUSPENDED".equals(user.status())) return false;
+        // A suspended DB status is never silently ignored, even without a sanction row. But when it came from
+        // sanctions that have all ended or been revoked, the account is active again (frontend/API.md 11장).
+        boolean hadSanction = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM user_sanctions WHERE user_id = ? AND sanction_type IN ('SUSPEND', 'BAN')", Long.class, user.id()) > 0;
+        if (!hadSanction) return true;
+        jdbc.update("UPDATE users SET status = 'ACTIVE' WHERE id = ? AND status = 'SUSPENDED'", user.id());
+        return false;
+    }
+
+    /** 로그인 거절 안내용 정지: 끝나는 시각(영구면 null) · 사유 */
+    public record Suspension(Instant endsAt, String reason) {}
+
+    /** 지금 걸려 있는 정지 (영구 정지, 아니면 가장 늦게 끝나는 것) */
+    public Optional<Suspension> activeSuspension(long userId, Instant now) {
+        return jdbc.query("SELECT s.ends_at, s.reason FROM user_sanctions s WHERE s.user_id = ? AND " + Sql.ACTIVE_SUSPENSION
+                + " ORDER BY CASE WHEN s.ends_at IS NULL THEN 1 ELSE 0 END DESC, s.ends_at DESC",
+            (rs, row) -> new Suspension(rs.getTimestamp(1) == null ? null : rs.getTimestamp(1).toInstant(), rs.getString(2)),
+            userId, Timestamp.from(now), Timestamp.from(now)).stream().findFirst();
+    }
+
+    /** 내 정보의 조치 횟수 (해제 · 만료돼도 횟수는 남음) */
+    public record SanctionCounts(long warns, long bans) {}
+
+    public SanctionCounts sanctionCounts(long userId) {
+        return jdbc.queryForObject("""
+            SELECT COALESCE(SUM(CASE WHEN sanction_type = 'WARNING' THEN 1 ELSE 0 END), 0),
+                   COALESCE(SUM(CASE WHEN sanction_type IN ('SUSPEND', 'BAN') THEN 1 ELSE 0 END), 0)
+            FROM user_sanctions WHERE user_id = ?
+            """, (rs, row) -> new SanctionCounts(rs.getLong(1), rs.getLong(2)), userId);
+    }
+
+    public record Warning(long id, String reason, Instant at) {}
+
+    /** 아직 확인하지 않은 경고 (앱에 들어올 때 경고 안내 창) */
+    public List<Warning> unseenWarnings(long userId) {
+        return jdbc.query("""
+            SELECT id, reason, starts_at FROM user_sanctions
+            WHERE user_id = ? AND sanction_type = 'WARNING' AND seen_at IS NULL AND revoked_at IS NULL ORDER BY starts_at, id
+            """, (rs, row) -> new Warning(rs.getLong(1), rs.getString(2), rs.getTimestamp(3).toInstant()), userId);
     }
 
     public long createSession(long userId, String hash, boolean remember, Instant now, Instant expires) {

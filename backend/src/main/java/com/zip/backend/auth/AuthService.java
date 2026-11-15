@@ -3,6 +3,9 @@ package com.zip.backend.auth;
 import com.zip.backend.common.ApiException;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -21,9 +24,11 @@ public class AuthService {
     private final long rememberSeconds;
     private final String dummyHash;
     private final com.zip.backend.files.ProfileFileService files;
+    private final com.zip.backend.region.RegionVerifyService regionVerify;
+    private static final DateTimeFormatter LIFTS_AT = DateTimeFormatter.ofPattern("M월 d일 HH:mm").withZone(ZoneId.of("Asia/Seoul"));
 
     public AuthService(AuthRepository repository, PasswordEncoder passwords, TokenService tokens, Clock clock,
-        com.zip.backend.files.ProfileFileService files,
+        com.zip.backend.files.ProfileFileService files, com.zip.backend.region.RegionVerifyService regionVerify,
         @Value("${zip.auth.access-seconds}") long accessSeconds,
         @Value("${zip.auth.remember-access-seconds}") long rememberSeconds) {
         if (accessSeconds <= 0 || rememberSeconds < accessSeconds) throw new IllegalArgumentException("Invalid token lifetime");
@@ -32,6 +37,7 @@ public class AuthService {
         this.tokens = tokens;
         this.clock = clock;
         this.files = files;
+        this.regionVerify = regionVerify;
         this.accessSeconds = accessSeconds;
         this.rememberSeconds = rememberSeconds;
         this.dummyHash = passwords.encode("unused-account-timing-pad");
@@ -46,7 +52,7 @@ public class AuthService {
             throw new ApiException(400, "아이디(이메일) 또는 비밀번호가 맞지 않아요.");
         }
         var now = clock.instant();
-        if (repository.suspended(user, now)) throw new ApiException(403, "이용이 정지된 계정이에요.", "SUSPENDED");
+        if (repository.suspended(user, now)) throw suspendedError(user.id(), now);
         boolean remember = Boolean.TRUE.equals(request.remember());
         var expires = now.plus(Duration.ofSeconds(remember ? rememberSeconds : accessSeconds));
         long sessionId = repository.createSession(user.id(), tokens.sessionHash(), remember, now, expires);
@@ -75,7 +81,7 @@ public class AuthService {
             repository.linkSocial(id, provider, subject);
             user = repository.findById(id).orElseThrow(() -> new ApiException(500, "계정을 만들지 못했어요."));
         }
-        if (repository.suspended(user, now)) throw new ApiException(403, "이용이 정지된 계정이에요.", "SUSPENDED");
+        if (repository.suspended(user, now)) throw suspendedError(user.id(), now);
         var expires = now.plus(Duration.ofSeconds(accessSeconds));
         long sessionId = repository.createSession(user.id(), tokens.sessionHash(), false, now, expires);
         repository.recordLogin(user.id(), now);
@@ -151,6 +157,16 @@ public class AuthService {
         return userResponse(repository.findById(userId).orElseThrow(() -> new ApiException(401, "로그인 정보가 없어요.")), false);
     }
 
+    /** 로그인 거절: 언제 풀리는지 · 사유를 같이 알려 줌 (예: 이용이 정지된 계정이에요. (11월 20일 18:00 해제) 사유: 욕설) */
+    private ApiException suspendedError(long userId, Instant now) {
+        var detail = new StringBuilder("이용이 정지된 계정이에요.");
+        repository.activeSuspension(userId, now).ifPresent(s -> {
+            detail.append(s.endsAt() == null ? " (영구 정지)" : " (" + LIFTS_AT.format(s.endsAt()) + " 해제)");
+            if (s.reason() != null && !s.reason().isBlank()) detail.append(" 사유: ").append(s.reason());
+        });
+        return new ApiException(403, detail.toString(), "SUSPENDED");
+    }
+
     private Map<String, Object> userResponse(AuthRepository.Account user, boolean firstLogin) {
         var result = new LinkedHashMap<String, Object>();
         result.put("id", Long.toString(user.id()));
@@ -167,6 +183,15 @@ public class AuthService {
         var agreedAt = repository.agreedAt(user.id());
         result.put("agreedAt", agreedAt == null ? null : agreedAt.toString());
         result.put("region", user.regionId() == null ? null : Map.of("id", user.regionId(), "name", user.regionName()));
+        // 경고 · 정지 (frontend/API.md 11장). 정지 중이면 로그인 · 요청이 막혀서 suspension 은 늘 null
+        var counts = repository.sanctionCounts(user.id());
+        result.put("warnCount", counts.warns());
+        result.put("banCount", counts.bans());
+        result.put("unseenWarnings", repository.unseenWarnings(user.id()).stream()
+            .map(w -> Map.of("id", Long.toString(w.id()), "reason", w.reason() == null ? "" : w.reason(), "at", w.at().toString())).toList());
+        result.put("suspension", null);
+        // 동네 인증 (30일 유지). 지났거나 동네가 바뀌었으면 null
+        result.put("regionVerifiedAt", regionVerify.verifiedAt(user.id()).map(Object::toString).orElse(null));
         var profile = repository.profile(user.id());
         result.put("bio", profile.bio());
         result.put("avatarFileId", profile.avatarFileId());

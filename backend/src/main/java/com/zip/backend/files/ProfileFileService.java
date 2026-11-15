@@ -132,7 +132,8 @@ public class ProfileFileService {
         String url = "/api/files/content/" + key;
         var types = jdbc.query("""
             SELECT f.mime_type FROM uploaded_files f WHERE f.storage_url = ? AND f.deleted_at IS NULL
-            AND (f.user_id = ? OR EXISTS (SELECT 1 FROM user_profiles p WHERE p.avatar_file_id = f.id AND p.user_id = f.user_id))
+            AND (f.user_id = ? OR EXISTS (SELECT 1 FROM user_profiles p WHERE p.avatar_file_id = f.id AND p.user_id = f.user_id)
+                 OR EXISTS (SELECT 1 FROM post_attachments a JOIN posts x ON x.id = a.post_id WHERE a.file_id = f.id AND x.status = 'VISIBLE'))
             """, (rs, row) -> rs.getString(1), url, viewerId);
         Path target = root.resolve(key).normalize();
         if (!target.startsWith(root) || types.isEmpty() || !Files.isRegularFile(target)) throw new ApiException(404, "사진이 없어요.");

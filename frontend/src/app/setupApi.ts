@@ -37,6 +37,11 @@ bindAuth({
   getToken: () => useAuthStore.getState().token,
   // 로그인 상태를 비우면 ProtectedRoute 가 알아서 시작 화면으로 보냄
   onUnauthorized: () => useAuthStore.getState().clearAuth(),
+  // 쓰는 중에 이용 정지되면 (서버가 403 SUSPENDED) 안내하고 로그아웃 → 다시 로그인하면 정지 기간 · 사유가 보여요
+  onSuspended: (message) => {
+    useAuthStore.getState().clearAuth()
+    window.alert(message)
+  },
 })
 
 // 계약은 서버에서 복원한다. 기존 로컬 기록을 서버로 자동 업로드하지 않는다.

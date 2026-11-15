@@ -30,7 +30,8 @@ type State = {
   removePost: (id: number) => void
   toggleLike: (id: number) => void
   /** staff = 관리자 화면에서 운영자로 쓴 댓글 */
-  addComment: (id: number, author: string, text: string, staff?: boolean) => void
+  /** replyTo: 답글이면 단 댓글의 순서 (답글의 답글은 같은 묶음의 맨 위 댓글로) */
+  addComment: (id: number, author: string, text: string, staff?: boolean, replyTo?: number) => void
   updateComment: (id: number, index: number, text: string) => void
   removeComment: (id: number, index: number) => void
   reset: () => void
@@ -57,8 +58,17 @@ export const useCommunityStore = create<State>()(
         updatePost: (id, draft) => tryChange(patch(get().posts, id, (p) => ({ ...p, ...draft }))),
         removePost: (id) => set((s) => ({ posts: s.posts.filter((p) => p.id !== id) })),
         toggleLike: (id) => set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) })) })),
-        addComment: (id, author, text, staff) =>
-          set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, comments: [...p.comments, staff ? { author, text, staff: true } : { author, text, ownerId: useAuthStore.getState().user?.id }] })) })),
+        addComment: (id, author, text, staff, replyTo) =>
+          set((s) => ({
+            posts: patch(s.posts, id, (p) => {
+              // 예전 댓글엔 번호가 없어서, 답글을 달 때 단 댓글에 번호를 붙여 둠
+              const comments = p.comments.map((c, i) => (i === replyTo && !c.id ? { ...c, id: `local-${Date.now()}-p` } : c))
+              const parent = replyTo !== undefined ? comments[replyTo] : undefined
+              const parentId = parent ? (parent.parentId ?? parent.id) : undefined
+              const mine = staff ? { staff: true } : { ownerId: useAuthStore.getState().user?.id }
+              return { ...p, comments: [...comments, { id: `local-${Date.now()}`, author, text, ...mine, ...(parentId ? { parentId } : {}) }] }
+            }),
+          })),
         updateComment: (id, index, text) =>
           set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, comments: p.comments.map((c, i) => (i === index ? { ...c, text } : c)) })) })),
         removeComment: (id, index) => set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, comments: p.comments.filter((_, i) => i !== index) })) })),

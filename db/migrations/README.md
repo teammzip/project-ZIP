@@ -4,6 +4,10 @@
 
 ## 적용 순서
 
+### 2026-11-15 커뮤니티 운영 (글 · 댓글 삭제 기록 · 목록 키)
+
+`20261115_04_community_admin.sql`을 한 번 실행합니다. `posts` · `comments`에 `deleted_by`(지운 사람, users FK · SET NULL)와 `delete_reason`(운영자가 지운 사유, 200자)을 추가하고, 목록 속도용 키 `idx_posts_status_created_at`(전체 동네 글 목록) · `idx_reports_created_at`(관리자 신고 목록)을 만듭니다. 파일 앞의 사전 확인 세 값이 모두 0이어야 하고, ALTER라 다시 실행하면 실패합니다. 기존 데이터는 그대로이고 새 칸은 비어 있어요. 격리 MySQL 8.0에서 새 DB(schema.sql)와 마이그레이션 적용 DB의 두 표 구조가 같음을 확인했습니다. 새 DB는 최신 schema.sql만 실행합니다.
+
 ### 2026-11-15 지도 저장 리스트
 
 `20261115_kakao_place_favorites.sql`까지 적용된 DB에 `20261115_03_place_lists.sql`을 한 번 실행합니다. `place_lists`(회원이 만든 장소 묶음: 내 장소 · 맛집 …)와 `place_list_items`(리스트에 넣은 장소, `place_key` = DB 장소 번호 또는 `kakao:카카오장소id`) 두 표를 추가합니다. 이메일 인증 파일과는 서로 영향이 없어 순서는 상관없습니다. 다시 실행해도 안전합니다. 새 DB는 최신 schema.sql만 실행합니다. 감사 기준(schema_expected.json)에는 아직 반영하지 않았습니다(+2표).

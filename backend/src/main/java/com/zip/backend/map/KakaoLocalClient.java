@@ -54,6 +54,17 @@ public class KakaoLocalClient {
             .header("Authorization", "KakaoAK " + key).retrieve().body(Response.class));
     }
 
+    /** 좌표 → 행정구역 (region_type H = 행정동, B = 법정동). 동네 인증용 */
+    public record RegionDocument(String region_type, String region_1depth_name, String region_2depth_name, String region_3depth_name) {}
+
+    record RegionResponse(List<RegionDocument> documents) {}
+
+    public List<RegionDocument> coordToRegion(double lat, double lon) {
+        var response = rest.get().uri(u -> u.path("/v2/local/geo/coord2regioncode.json").queryParam("x", lon).queryParam("y", lat).build())
+            .header("Authorization", "KakaoAK " + key).retrieve().body(RegionResponse.class);
+        return response == null || response.documents() == null ? List.of() : response.documents();
+    }
+
     private static List<Document> documents(Response response) {
         return response == null || response.documents() == null ? List.of() : response.documents();
     }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui'
-import { isPending, reasonLabel, useReportStore, type Post, type Report } from '@/features/community'
+import { isPending, reasonLabel, type Post, type Report } from '@/features/community'
 import { isActive, type BanRecord } from '@/features/moderation'
 import { cx } from '@/lib/cx'
 import { relTime } from '@/lib/date'
@@ -20,22 +20,26 @@ type Group = {
   reports: Report[]
   pending: boolean
   gone: boolean
+  /** 운영자가 지운 사유 (있으면) */
+  deleteReason?: string
   latest: number
 }
 
 type Props = {
   posts: Post[]
+  /** 신고 기록 (가짜 API 모드는 브라우저, 서버 모드는 /api/admin/reports) */
+  reports: Report[]
+  /** 고른 신고들을 처리: HIDDEN(삭제함) · DISMISSED(문제없음) */
+  resolve: (match: (r: Report) => boolean, status: 'HIDDEN' | 'DISMISSED') => void
   records: Record<string, BanRecord>
   /** 삭제 창 (경고도 줄지 고르기) */
-  onDelete: (title: string, msg: string, author: string, doDelete: () => void) => void
-  removePost: (id: number) => void
-  removeComment: (id: number, index: number) => void
+  onDelete: (title: string, msg: string, author: string, doDelete: (reason?: string) => void) => void
+  removePost: (id: number, reason?: string) => void
+  removeComment: (id: number, index: number, reason?: string) => void
 }
 
 /** 신고 관리: 대상별로 묶어서 신고 수 · 사유 · 내용 미리보기 · 작성자 이력을 한눈에, 바로 삭제(+경고) · 문제없음 처리 */
-export function AdminReports({ posts, records, onDelete, removePost, removeComment }: Props) {
-  const reports = useReportStore((s) => s.reports)
-  const resolve = useReportStore((s) => s.resolve)
+export function AdminReports({ posts, reports, resolve, records, onDelete, removePost, removeComment }: Props) {
   const [filter, setFilter] = useState<Filter>('pending')
   const [openKey, setOpenKey] = useState<string | null>(null)
 
@@ -46,12 +50,17 @@ export function AdminReports({ posts, records, onDelete, removePost, removeComme
     let g = map.get(key)
     if (!g) {
       const post = posts.find((p) => p.id === r.postId)
-      const commentIndex = r.targetType === 'COMMENT' && post ? post.comments.findIndex((c) => c.author === r.targetAuthor && c.text === r.targetText) : -1
-      g = { key, type: r.targetType, post, commentIndex, author: r.targetAuthor, text: r.targetText, reports: [], pending: false, gone: !post || (r.targetType === 'COMMENT' && commentIndex < 0), latest: 0 }
+      // 서버 모드는 댓글 번호(commentId)로, 가짜 API 모드는 작성자 + 내용으로 같은 댓글을 찾음
+      const commentIndex = r.targetType === 'COMMENT' && post
+        ? post.comments.findIndex((c) => (r.commentId ? c.id === r.commentId : c.author === r.targetAuthor && c.text === r.targetText))
+        : -1
+      const gone = r.gone ?? (!post || (r.targetType === 'COMMENT' && commentIndex < 0))
+      g = { key, type: r.targetType, post, commentIndex, author: r.targetAuthor, text: r.targetText, reports: [], pending: false, gone, latest: 0 }
       map.set(key, g)
     }
     g.reports.push(r)
     g.pending ||= isPending(r)
+    g.deleteReason ||= r.deleteReason
     g.latest = Math.max(g.latest, r.at)
   }
   const groups = [...map.values()]
@@ -64,8 +73,8 @@ export function AdminReports({ posts, records, onDelete, removePost, removeComme
   const remove = (g: Group) => {
     if (!g.post) return
     const post = g.post
-    if (g.type === 'POST') onDelete('글 삭제', `"${post.title}" 글을 삭제할까요? 댓글도 함께 사라지고 되돌릴 수 없어요.`, g.author, () => removePost(post.id))
-    else onDelete('댓글 삭제', `"${g.text}" 댓글을 삭제할까요? 되돌릴 수 없어요.`, g.author, () => removeComment(post.id, g.commentIndex))
+    if (g.type === 'POST') onDelete('글 삭제', `"${post.title}" 글을 삭제할까요? 댓글도 함께 사라지고 되돌릴 수 없어요.`, g.author, (reason) => removePost(post.id, reason))
+    else onDelete('댓글 삭제', `"${g.text}" 댓글을 삭제할까요? 되돌릴 수 없어요.`, g.author, (reason) => removeComment(post.id, g.commentIndex, reason))
   }
 
   return (
@@ -125,6 +134,9 @@ export function AdminReports({ posts, records, onDelete, removePost, removeComme
                   </>
                 )}
                 {g.gone && g.pending && <p className={styles.hot}>이미 삭제된 내용이에요.</p>}
+                {g.gone && g.deleteReason && (
+                  <p className={styles.sub}>삭제 사유: {g.deleteReason}</p>
+                )}
               </div>
 
               <div className={styles.reportMeta}>

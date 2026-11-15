@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuthStore } from '@/features/auth/store/authStore'
-import { authApi } from '@/features/auth/api'
+import { authApi, isMockApi } from '@/features/auth/api'
 import { Button, Modal } from '@/components/ui'
 import { fmt, monthDay } from '@/lib/date'
 import { VERIFY_DAYS, useRegionVerify } from '../derive'
-import { locateNeighborhood } from '../locateRegion'
+import { apiClient, getErrorMessage } from '@/lib/apiClient'
+import { locateNeighborhood, locatePoint, normRegion } from '../locateRegion'
 import { useLifeStore } from '../store'
 import styles from './verify.module.css'
 
@@ -37,6 +38,26 @@ export function RegionVerifyDialog({ open, onClose, onVerified }: Props) {
     const attempt = ++request.current.id
     const userId = useAuthStore.getState().user?.id
     setStep({ kind: 'locating' })
+    // 서버 모드: 좌표만 서버에 보내면 서버가 카카오로 동네를 찾아 내 동네 · 인증 시각을 저장 (POST /api/me/region-verify)
+    if (!isMockApi) {
+      try {
+        const coords = await locatePoint()
+        if (attempt !== request.current.id || userId !== useAuthStore.getState().user?.id) return
+        const { data } = await apiClient.post<{ region: { id: string; name: string; fullName: string }; dong: string; verifiedAt: string }>(
+          '/me/region-verify', { lat: coords.latitude, lon: coords.longitude })
+        if (attempt !== request.current.id || userId !== useAuthStore.getState().user?.id) return
+        const user = useAuthStore.getState().user
+        if (user) useAuthStore.getState().updateUser({ ...user, region: { id: data.region.id, name: data.region.name }, regionVerifiedAt: data.verifiedAt })
+        // 날씨 · 지도 · 커뮤니티가 쓰는 생활 설정의 동네도 인증한 동네로
+        const label = normRegion(`${data.region.fullName} ${data.dong}`)
+        verifyRegion(label, { lat: coords.latitude, lon: coords.longitude })
+        setStep({ kind: 'done', region: label })
+      } catch (err) {
+        if (attempt !== request.current.id) return
+        setStep({ kind: 'error', message: getErrorMessage(err) })
+      }
+      return
+    }
     try {
       const found = await locateNeighborhood()
       if (attempt !== request.current.id || userId !== useAuthStore.getState().user?.id || region !== useLifeStore.getState().settings.region) return
