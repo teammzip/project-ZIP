@@ -143,6 +143,11 @@ public class AuthService {
             for (var term : terms) repository.recordAgreement(userId, term.id(), now);
         }
         if (nickname != null) repository.updateNickname(userId, nickname);
+        if (addressOnly || consent) {
+            // users.region_id follows the address' 구·군 (null when none is found), used by the map and community.
+            String regionId = RegionMatcher.match(request.address(), repository.districts()).orElse(null);
+            if (!java.util.Objects.equals(regionId, user.regionId())) repository.updateRegion(userId, regionId);
+        }
         return userResponse(repository.findById(userId).orElseThrow(() -> new ApiException(401, "로그인 정보가 없어요.")), false);
     }
 

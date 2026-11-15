@@ -1,0 +1,90 @@
+package com.zip.backend.map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+
+/** 즐겨찾기: DB 장소(번호)와 카카오 장소("kakao:id", id · 이름만 저장) */
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Sql({"/auth-fixture.sql", "/map-favorites-fixture.sql"})
+class MapFavoriteIntegrationTests {
+    @Autowired MockMvc mvc;
+    @Autowired JdbcTemplate jdbc;
+    @Autowired PasswordEncoder passwords;
+
+    @BeforeEach void seed() {
+        String hash = passwords.encode("abcd123!");
+        jdbc.update("INSERT INTO users (id, login_id, password_hash, nickname) VALUES (1, 'tester01', ?, '회원하나'), (2, 'tester02', ?, '회원둘')", hash, hash);
+    }
+
+    private String login(String id) throws Exception {
+        String response = mvc.perform(post("/api/auth/login").contentType("application/json")
+            .content("{\"loginId\":\"" + id + "\",\"password\":\"abcd123!\"}"))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        return com.jayway.jsonpath.JsonPath.read(response, "$.accessToken");
+    }
+
+    private ResultActions save(String token, String placeId, String body) throws Exception {
+        var request = put("/api/me/place-favorites/{id}", placeId).header("Authorization", "Bearer " + token);
+        return mvc.perform(body == null ? request : request.contentType("application/json").content(body));
+    }
+
+    @Test void kakaoPlaceSavesOnlyIdNameAndCategoryAndListsWithDbPlaces() throws Exception {
+        String token = login("tester01");
+        save(token, "10", null).andExpect(status().isNoContent());
+        save(token, "kakao:12345", "{\"name\":\"  다이소 강남역2호점 \",\"category\":\"다이소\"}").andExpect(status().isNoContent());
+        // 두 번 저장해도 한 줄, 이름은 최신으로
+        save(token, "kakao:12345", "{\"name\":\"다이소 강남역2호점(새 이름)\",\"category\":\"다이소\"}").andExpect(status().isNoContent());
+
+        mvc.perform(get("/api/me/place-favorites").header("Authorization", "Bearer " + token)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(2)).andExpect(jsonPath("$[0]").value("10")).andExpect(jsonPath("$[1]").value("kakao:12345"));
+        mvc.perform(get("/api/me/place-favorites/kakao").header("Authorization", "Bearer " + token)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].id").value("kakao:12345"))
+            .andExpect(jsonPath("$[0].name").value("다이소 강남역2호점(새 이름)")).andExpect(jsonPath("$[0].category").value("다이소"));
+
+        // 다른 회원에게는 안 보임
+        mvc.perform(get("/api/me/place-favorites").header("Authorization", "Bearer " + login("tester02")))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+
+        mvc.perform(delete("/api/me/place-favorites/{id}", "kakao:12345").header("Authorization", "Bearer " + token)).andExpect(status().isNoContent());
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM kakao_place_favorites", Integer.class));
+    }
+
+    @Test void invalidKakaoFavoritesAreRejected() throws Exception {
+        String token = login("tester01");
+        save(token, "kakao:12345", null).andExpect(status().isBadRequest());
+        save(token, "kakao:12345", "{\"name\":\"   \",\"category\":\"다이소\"}").andExpect(status().isBadRequest());
+        save(token, "kakao:12345", "{\"name\":\"" + "가".repeat(61) + "\",\"category\":\"다이소\"}").andExpect(status().isBadRequest());
+        save(token, "kakao:12345", "{\"name\":\"다이소\",\"category\":\"없는종류\"}").andExpect(status().isBadRequest());
+        save(token, "kakao:abc", "{\"name\":\"다이소\",\"category\":\"다이소\"}").andExpect(status().isNotFound());
+        save(token, "999", null).andExpect(status().isNotFound());
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM kakao_place_favorites", Integer.class));
+        mvc.perform(get("/api/places/{id}/reviews", "kakao:12345").header("Authorization", "Bearer " + token)).andExpect(status().isBadRequest());
+    }
+
+    @Test void kakaoFavoritesAreLimitedPerUser() throws Exception {
+        for (int i = 0; i < MapService.KAKAO_FAVORITE_MAX; i++) {
+            jdbc.update("INSERT INTO kakao_place_favorites (user_id, kakao_place_id, name, category) VALUES (1, ?, '장소', '편의점')", Integer.toString(i));
+        }
+        String token = login("tester01");
+        save(token, "kakao:99999", "{\"name\":\"새 장소\",\"category\":\"편의점\"}").andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").isString());
+        // 이미 저장한 곳은 이름만 바꿀 수 있음
+        save(token, "kakao:0", "{\"name\":\"이름 바꿈\",\"category\":\"편의점\"}").andExpect(status().isNoContent());
+        assertEquals("이름 바꿈", jdbc.queryForObject("SELECT name FROM kakao_place_favorites WHERE kakao_place_id = '0'", String.class));
+    }
+}

@@ -1,7 +1,8 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef } from 'react'
-import { CAT_ICON, HOME, type PlaceItem } from '../data/places'
+import { HOME, type PlaceItem } from '../data/places'
+import { placeColors, placeIconSvg } from '../placeIcons'
 
 type Props = {
   places: PlaceItem[]
@@ -78,7 +79,8 @@ export function LeafletMap({ places, selectedId, onSelect, focus, fitKey, bottom
       const size = on ? 42 : 32
       const icon = L.divIcon({
         className: on ? 'zip-pin on' : 'zip-pin',
-        html: `<span>${CAT_ICON[p.cat] ?? '📍'}</span>${on ? `<b>${esc(p.n)}</b>` : ''}`,
+        // 종류 선 아이콘, 색은 종류 색 (고른 핀은 CSS 에서 흰색)
+        html: `<span style="color:${placeColors(p.cat).fg}">${placeIconSvg(p.cat, on ? 22 : 17)}</span>${on ? `<b>${esc(p.n)}</b>` : ''}`,
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2],
       })
@@ -98,8 +100,9 @@ export function LeafletMap({ places, selectedId, onSelect, focus, fitKey, bottom
       m.setView(m.unproject(point, viewZoom), viewZoom, { animate: false })
       return
     }
-    const bounds = L.latLngBounds([[HOME.lat, HOME.lon]])
-    for (const p of list) bounds.extend([p.lat, p.lon])
+    // 고른 칩의 장소들이 다 보이게 (장소가 없으면 지금 화면 그대로)
+    if (!list.length) return
+    const bounds = L.latLngBounds(list.map((p) => [p.lat, p.lon] as [number, number]))
     m.fitBounds(bounds, { paddingTopLeft: [40, 150], paddingBottomRight: [40, latest.current.bottomInset + 30], maxZoom: 17 })
   }, [fitKey, viewLat, viewLon, viewZoom, bottomInset])
 
@@ -107,7 +110,7 @@ export function LeafletMap({ places, selectedId, onSelect, focus, fitKey, bottom
     const m = map.current
     if (!m || currentLat === undefined || currentLon === undefined) return
     const marker = L.circleMarker([currentLat, currentLon], {
-      radius: 9, color: '#fff', weight: 3, fillColor: '#2563eb', fillOpacity: 1, interactive: false,
+      radius: 9, color: '#fff', weight: 3, fillColor: '#2f80ed' /* --color-primary (SVG 속성이라 CSS 변수를 못 씀) */, fillOpacity: 1, interactive: false,
     }).bindTooltip('내 위치', { permanent: true, direction: 'top', offset: [0, -10] }).addTo(m)
     return () => { marker.remove() }
   }, [currentLat, currentLon])

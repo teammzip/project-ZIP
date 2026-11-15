@@ -132,4 +132,19 @@ class ConsentAndProfileTests {
         updateMe(token, "{\"address\":\"서울 서대문구\",\"nickname\":\"새닉네임\"}").andExpect(status().isOk())
             .andExpect(jsonPath("$.address").value("서울 서대문구")).andExpect(jsonPath("$.nickname").value("새닉네임"));
     }
+
+    @Test void addressSetsRegionFromItsDistrictAndResetsVerificationWhenItChanges() throws Exception {
+        String token = socialToken();
+        updateMe(token, CONSENT.formatted("2026-10-18")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.region.id").value("2")).andExpect(jsonPath("$.region.name").value("마포구"));
+        jdbc.update("UPDATE users SET region_verified_at = CURRENT_TIMESTAMP");
+        // same district, different street: verification is kept
+        updateMe(token, "{\"address\":\"서울특별시 마포구 망원동\"}").andExpect(status().isOk()).andExpect(jsonPath("$.region.id").value("2"));
+        assertNotNull(jdbc.queryForObject("SELECT region_verified_at FROM users", java.sql.Timestamp.class));
+        updateMe(token, "{\"address\":\"서울시 용산구 이태원동\"}").andExpect(status().isOk()).andExpect(jsonPath("$.region.id").value("3"));
+        assertNull(jdbc.queryForObject("SELECT region_verified_at FROM users", java.sql.Timestamp.class));
+        // no known district → no region
+        updateMe(token, "{\"address\":\"서울 서대문구\"}").andExpect(status().isOk()).andExpect(jsonPath("$.region").isEmpty());
+        assertNull(jdbc.queryForObject("SELECT region_id FROM users", Long.class));
+    }
 }

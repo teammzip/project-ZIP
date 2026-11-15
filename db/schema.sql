@@ -710,6 +710,19 @@ CREATE TABLE IF NOT EXISTS `place_favorites` (
   CONSTRAINT `fk_place_favorites_place_id` FOREIGN KEY (`place_id`) REFERENCES `places` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자별 지도 즐겨찾기';
 
+-- 카카오 장소 즐겨찾기: 카카오 검색 장소는 places 에 저장하지 않으므로(카카오 운영 정책: 장소 정보 장기 저장 제한) 따로 둡니다. 카카오 장소 id 와 표시용 이름만 저장하고 주소 · 좌표는 저장하지 않습니다. (20261115_kakao_place_favorites.sql)
+CREATE TABLE IF NOT EXISTS `kakao_place_favorites` (
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '소유 사용자 번호',
+  `kakao_place_id` VARCHAR(50) NOT NULL COMMENT '카카오 장소 id (숫자 문자열)',
+  `name` VARCHAR(60) NOT NULL COMMENT '저장 목록에 보일 장소 이름',
+  `category` VARCHAR(20) NOT NULL COMMENT '우리 장소 종류 이름 (place_categories.name, 아이콘 표시용)',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록 일시',
+  PRIMARY KEY (`user_id`, `kakao_place_id`),
+  CONSTRAINT `fk_kakao_place_favorites_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_kakao_place_favorites_id` CHECK (`kakao_place_id` REGEXP '^[0-9]{1,50}$'),
+  CONSTRAINT `chk_kakao_place_favorites_name` CHECK (CHAR_LENGTH(TRIM(`name`)) > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='카카오 검색 장소 즐겨찾기 (id · 이름만, 주소 · 좌표 없음)';
+
 -- 장소 리뷰: 사용자가 장소에 남기는 별점과 한 줄 리뷰(확장 기능). 평균 별점과 리뷰 수는 이 표로 계산해 places 에 채웁니다. 한 사람이 한 장소에 하나만 남깁니다.
 CREATE TABLE IF NOT EXISTS `place_reviews` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '리뷰 아이디 — 자동 증가',

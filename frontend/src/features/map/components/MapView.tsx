@@ -1,12 +1,14 @@
-import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button, Modal } from '@/components/ui'
 import { RegionVerifyDialog, useRegionVerify } from '@/features/life'
 import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
 import { aiFind } from '../aiFind'
-import { mapApi } from '../api'
-import { CAT_ICON, DEFAULT_CATS, HOME, walkMin, type PlaceItem } from '../data/places'
+import { isKakaoPlace, mapApi, usePlaceNotice } from '../api'
+import { DEFAULT_CATS, walkMin, type PlaceItem } from '../data/places'
+import { placeColors } from '../placeIcons'
+import { PlaceIcon } from './PlaceIcon'
 import { useMapStore } from '../store'
 import { useMapData, useMapServerSync } from '../useMapData'
 import { useNeighborhoodPosition } from '../useNeighborhoodPosition'
@@ -26,8 +28,12 @@ const FILTERS: Array<{ key: string; label: string; re?: RegExp }> = [
   { key: 'quiet', label: '조용한', re: /조용|스터디/ },
 ]
 
-const bigUrl = (p: PlaceItem) => `https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lon}#map=18/${p.lat}/${p.lon}`
-const routeUrl = (p: PlaceItem) => `https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route=${HOME.lat}%2C${HOME.lon}%3B${p.lat}%2C${p.lon}`
+/* 카카오맵 링크 (https://apis.map.kakao.com/web/guide/#bigmapurl). 카카오 장소는 장소 id 로 열어 영업시간 · 사진 · 후기까지 보임 */
+const kakaoId = (p: PlaceItem) => (isKakaoPlace(p.id) ? p.id.slice('kakao:'.length) : null)
+const kakaoPoint = (p: PlaceItem) => `${encodeURIComponent(p.n.replace(/,/g, ' '))},${p.lat},${p.lon}`
+const bigUrl = (p: PlaceItem) => (kakaoId(p) ? `https://place.map.kakao.com/${kakaoId(p)}` : `https://map.kakao.com/link/map/${kakaoPoint(p)}`)
+/** 출발지는 카카오맵이 정함 (현재 위치 · 직접 입력) */
+const routeUrl = (p: PlaceItem) => `https://map.kakao.com/link/to/${kakaoId(p) ?? kakaoPoint(p)}`
 const walkText = (p: PlaceItem) => (walkMin(p) < 99 ? `도보 ${walkMin(p)}분` : '거리 정보 없음')
 /** 설명에서 "도보 약 N분"을 뺀 특징들 */
 const tagsOf = (p: PlaceItem) =>
@@ -36,8 +42,6 @@ const tagsOf = (p: PlaceItem) =>
     .map((t) => t.trim())
     .filter((t) => t && !/도보/.test(t))
 /** 종류마다 정해진 연한 배경 (썸네일) */
-const tint = (cat: string) => `hsl(${[...cat].reduce((h, c) => h + c.charCodeAt(0), 0) % 360} 75% 93%)`
-
 const MOBILE = '(max-width: 900px)'
 const subscribeMobile = (cb: () => void) => {
   const mq = window.matchMedia(MOBILE)
@@ -55,9 +59,28 @@ type Found = { q: string; items: Array<{ p: PlaceItem; why: string[] }>; named?:
  * - 검색은 장소 이름 + AI 장소 찾기("밤에 갈 수 있는 약국" → 가까운 순 추천 + 이유, 시연용)
  * - ★ 저장(즐겨찾기), 종류 편집(켜기 · 끄기 · 직접 검색어), ?cat=세탁방 으로 열면 그 종류부터 */
 export function MapView() {
-  const { on, custom, favs, ensureCat } = useMapStore()
+  const { on, custom, favs, favNames, ensureCat, toggleCat } = useMapStore()
   const position = useNeighborhoodPosition()
   const data = useMapData(position.point)
+  const placeNotice = usePlaceNotice((s) => s.notice)
+  const chipsRef = useRef<HTMLDivElement>(null)
+  // ⋯ 전체 종류 창: 바깥을 누르거나 Esc 면 닫힘
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!moreOpen) return
+    const onDown = (e: globalThis.PointerEvent) => {
+      if (!moreRef.current?.contains(e.target as Node)) setMoreOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMoreOpen(false)
+    document.addEventListener('pointerdown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [moreOpen])
+  const chipScroll = useHorizontalScroll(chipsRef, `${on.join()}|${custom.join()}`)
   const places = data.places
   useMapServerSync()
   const mobile = useMobile()
@@ -98,6 +121,10 @@ export function MapView() {
   })()
   const rule = FILTERS.find((f) => f.key === filter)?.re
   const list = (found ? base : [...base].sort((a, b) => walkMin(a) - walkMin(b))).filter((p) => !rule || rule.test(p.d))
+  // 저장 탭: 지금 불러온 장소에 없는 카카오 저장 장소 (좌표를 저장하지 않아 지도 핀 없이 목록으로만)
+  const savedKakao = tab === 'fav' && !found
+    ? favs.filter((id) => isKakaoPlace(id) && favNames[id] && !list.some((p) => p.id === id)).map((id) => ({ id, ...favNames[id] }))
+    : []
   const activeSelectedId = selectedLocationKey === locationKey ? selId : null
   // 검색 결과는 불러온 목록에 없을 수 있어서 함께 찾음
   const pool = found ? [...found.items.map((r) => r.p), ...places] : places
@@ -168,7 +195,7 @@ export function MapView() {
       }}
     >
       <span className={styles.searchPin} aria-hidden="true">
-        📍
+        <PlaceIcon cat="기타" size={20} />
       </span>
       <input value={query} onChange={(e) => setQuery(e.target.value)} maxLength={40} placeholder="장소 검색 · AI에게 물어보기" aria-label="장소 검색 또는 AI에게 물어보기" type="search" />
       {found && (
@@ -208,21 +235,69 @@ export function MapView() {
 
         <div className={styles.overlayTop}>
           <div className={styles.mobileOnly}>{searchBox}</div>
-          {/* 종류 칩 */}
-          <div className={styles.chips} role="radiogroup" aria-label="장소 종류">
+          {/* 종류 칩 줄 + 끝의 ⋯ (전체 종류 2열 창) */}
+          <div className={styles.chipBar}>
+          <div className={cx(styles.chipsWrap, chipScroll.left && styles.fadeLeft, chipScroll.right && styles.fadeRight)}>
+          {chipScroll.left && (
+            <button type="button" className={cx(styles.chipArrow, styles.chipArrowLeft)} aria-label="종류 칩 왼쪽으로" onClick={() => chipScroll.by(-1)}>
+              ‹
+            </button>
+          )}
+          <div ref={chipsRef} className={styles.chips} role="radiogroup" aria-label="장소 종류">
             {on.map((c) => (
-              <Chip key={c} on={!found && tab === 'near' && cat === c} onClick={() => pickCat(c)}>
-                {CAT_ICON[c] ?? '📍'} {c}
+              <Chip key={c} color={placeColors(c).fg} on={!found && tab === 'near' && cat === c} onClick={() => pickCat(c)}>
+                <PlaceIcon cat={c} /> {c}
               </Chip>
             ))}
             {custom.map((k) => (
-              <Chip key={k} on={!found && tab === 'near' && cat === CUSTOM + k} onClick={() => pickCat(CUSTOM + k)}>
-                🔎 {k}
+              <Chip key={k} color={placeColors('검색').fg} on={!found && tab === 'near' && cat === CUSTOM + k} onClick={() => pickCat(CUSTOM + k)}>
+                <PlaceIcon cat="검색" /> {k}
               </Chip>
             ))}
-            <button type="button" className={cx(styles.chip, styles.chipEdit)} onClick={() => setEditing(true)}>
-              ⚙ 편집
+          </div>
+          {chipScroll.right && (
+            <button type="button" className={cx(styles.chipArrow, styles.chipArrowRight)} aria-label="종류 칩 오른쪽으로" onClick={() => chipScroll.by(1)}>
+              ›
             </button>
+          )}
+          </div>
+          <div ref={moreRef} className={styles.moreWrap}>
+            <button type="button" className={cx(styles.moreBtn, moreOpen && styles.moreBtnOn)} aria-label="전체 장소 종류" aria-haspopup="menu" aria-expanded={moreOpen} onClick={() => setMoreOpen((v) => !v)}>
+              <span aria-hidden="true">⋯</span>
+            </button>
+            {moreOpen && (
+              <div className={styles.morePanel} role="menu" aria-label="전체 장소 종류">
+                <div className={styles.moreGrid}>
+                  {data.kinds.map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      role="menuitem"
+                      className={cx(styles.moreItem, !found && tab === 'near' && cat === k && styles.moreItemOn)}
+                      onClick={() => {
+                        if (!on.includes(k)) toggleCat(k) // 칩에 없던 종류는 칩에도 추가
+                        pickCat(k)
+                        setMoreOpen(false)
+                      }}
+                    >
+                      <span style={{ color: placeColors(k).fg }}><PlaceIcon cat={k} size={20} /></span>
+                      {k}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className={styles.moreEdit}
+                  onClick={() => {
+                    setMoreOpen(false)
+                    setEditing(true)
+                  }}
+                >
+                  ⚙ 칩 편집 · 검색어 추가
+                </button>
+              </div>
+            )}
+          </div>
           </div>
         </div>
 
@@ -267,6 +342,7 @@ export function MapView() {
               {data.loading ? '서버에서 장소를 불러오고 있어요.' : data.error}
             </p>
           )}
+          {data.server && placeNotice && <p className={styles.note} role="status">{placeNotice}</p>}
           {selected ? (
             <PlaceDetail p={selected} onBack={() => {
               setSelId(null)
@@ -285,7 +361,7 @@ export function MapView() {
                     setTab('near')
                   }}
                 >
-                  <i aria-hidden="true">📍</i> {place}
+                  <PlaceIcon cat="기타" size={16} /> {place}
                 </button>
                 <button
                   type="button"
@@ -348,8 +424,18 @@ export function MapView() {
                   <PlaceRow key={p.id} p={p} rank={i + 1} why={found?.items.find((r) => r.p.id === p.id)?.why} onClick={() => select(p)} />
                 ))}
               </ol>
-              {!found && !list.length && <p className={styles.empty}>{tab === 'fav' ? '아직 저장한 장소가 없어요. 장소 오른쪽의 ☆를 눌러 보세요.' : data.server ? '이 조건의 장소가 아직 없어요.' : '이 조건의 장소가 예시 데이터에 없어요.'}</p>}
-              <p className={styles.note}>{data.server ? '장소는 서버(DB)에서 불러왔어요.' : '장소는 예시 데이터예요.'} 지도 © OpenStreetMap</p>
+              {savedKakao.length > 0 && (
+                <>
+                  <p className={styles.note}>저장한 카카오 장소 · 누르면 카카오맵에서 열려요</p>
+                  <ol className={styles.list}>
+                    {savedKakao.map((s) => (
+                      <SavedKakaoRow key={s.id} id={s.id} n={s.n} cat={s.cat} />
+                    ))}
+                  </ol>
+                </>
+              )}
+              {!found && !list.length && !savedKakao.length && <p className={styles.empty}>{tab === 'fav' ? '아직 저장한 장소가 없어요. 장소 오른쪽의 ☆를 눌러 보세요.' : data.server ? '이 조건의 장소가 아직 없어요.' : '이 조건의 장소가 예시 데이터에 없어요.'}</p>}
+              <p className={styles.note}>{!data.server ? '장소는 예시 데이터예요.' : list.some((p) => isKakaoPlace(p.id)) || savedKakao.length ? '장소 검색 © Kakao.' : '장소는 서버(DB)에서 불러왔어요.'} 지도 © OpenStreetMap</p>
             </>
           )}
         </div>
@@ -369,9 +455,9 @@ export function MapView() {
   )
 }
 
-function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
+function Chip({ on, color, onClick, children }: { on: boolean; color: string; onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" role="radio" aria-checked={on} className={cx(styles.chip, on && styles.chipOn)} onClick={onClick}>
+    <button type="button" role="radio" aria-checked={on} className={cx(styles.chip, on && styles.chipOn)} style={{ '--chip': color } as CSSProperties} onClick={onClick}>
       {children}
     </button>
   )
@@ -389,12 +475,30 @@ function FavStar({ p, big }: { p: PlaceItem; big?: boolean }) {
       aria-pressed={fav}
       onClick={(e: MouseEvent) => {
         e.stopPropagation()
-        toggleFav(p.id)
+        // 카카오 장소는 이름 · 종류만 같이 저장 (주소 · 좌표는 저장 안 함 — 카카오 장소 정보 장기 저장 제한)
+        toggleFav(p.id, isKakaoPlace(p.id) ? { n: p.n, cat: p.cat } : undefined)
       }}
     >
-      {fav ? '★' : '☆'}
+      <ActionIcon name="star" filled={fav} />
       {big && <span>{fav ? '저장됨' : '저장'}</span>}
     </button>
+  )
+}
+
+/** 지도 화면 버튼 아이콘 (선 아이콘, 색은 글자색 currentColor 를 따름) */
+function ActionIcon({ name, filled }: { name: 'star' | 'route' | 'info' | 'map'; filled?: boolean }) {
+  return (
+    <svg className={styles.actionIcon} viewBox="0 0 24 24" aria-hidden="true" fill={filled ? 'currentColor' : 'none'}>
+      {name === 'star' && <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.9z" />}
+      {name === 'route' && <path d="M20.5 3.5L3.5 10.6l7 2.9 2.9 7z" />}
+      {name === 'info' && (
+        <>
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M12 11v5.5M12 7.6v.1" />
+        </>
+      )}
+      {name === 'map' && <path d="M9 4.5L3.5 6.5v13l5.5-2 6 2 5.5-2v-13l-5.5 2-6-2zM9 4.5v13M15 6.5v13" />}
+    </svg>
   )
 }
 
@@ -403,8 +507,8 @@ function PlaceRow({ p, rank, why, onClick }: { p: PlaceItem; rank: number; why?:
   return (
     <li>
       <div className={styles.row} role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => e.key === 'Enter' && onClick()}>
-        <span className={styles.thumb} style={{ background: tint(p.cat) }} aria-hidden="true">
-          {CAT_ICON[p.cat] ?? '📍'}
+        <span className={styles.thumb} style={{ background: placeColors(p.cat).bg, color: placeColors(p.cat).fg }} aria-hidden="true">
+          <PlaceIcon cat={p.cat} size={30} />
         </span>
         <span className={styles.rowMain}>
           <span className={styles.rowName}>
@@ -422,6 +526,59 @@ function PlaceRow({ p, rank, why, onClick }: { p: PlaceItem; rank: number; why?:
   )
 }
 
+/** 가로로 넘치는 줄: 마우스 휠(세로)로도 옆으로 움직이고, 양쪽에 더 있는지 알려 줌 (‹ › 버튼 · 끝 흐림용).
+ * PC 마우스는 가로 스크롤을 못 해서 필요해요. key 가 바뀌면(칩 추가 · 삭제) 다시 잼 */
+function useHorizontalScroll(ref: React.RefObject<HTMLDivElement | null>, key: string) {
+  const [edges, setEdges] = useState({ left: false, right: false })
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const update = () => setEdges({ left: el.scrollLeft > 2, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 })
+    const onWheel = (e: WheelEvent) => {
+      if (el.scrollWidth <= el.clientWidth || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+      e.preventDefault() // 지도 확대 · 페이지 스크롤 대신 칩을 옆으로
+      el.scrollLeft += e.deltaY
+    }
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    el.addEventListener('wheel', onWheel, { passive: false })
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', update)
+      el.removeEventListener('wheel', onWheel)
+      ro.disconnect()
+    }
+  }, [ref, key])
+  const by = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.7, behavior: 'smooth' })
+  return { ...edges, by }
+}
+
+/** 저장 탭의 카카오 장소 (이름 · 종류만 있음): 누르면 카카오맵 장소 페이지, ★ 로 저장 취소 */
+function SavedKakaoRow({ id, n, cat }: { id: string; n: string; cat: string }) {
+  const toggleFav = useMapStore((s) => s.toggleFav)
+  return (
+    <li>
+      <div className={styles.row}>
+        <a className={styles.rowLink} href={`https://place.map.kakao.com/${id.slice('kakao:'.length)}`} target="_blank" rel="noopener noreferrer">
+          <span className={styles.thumb} style={{ background: placeColors(cat).bg, color: placeColors(cat).fg }} aria-hidden="true">
+            <PlaceIcon cat={cat} size={30} />
+          </span>
+          <span className={styles.rowMain}>
+            <span className={styles.rowName}>
+              <b>{n}</b>
+            </span>
+            <small>{cat} · 카카오맵에서 보기 ↗</small>
+          </span>
+        </a>
+        <button type="button" className={cx(styles.star, styles.starOn)} aria-label={`${n} 저장 취소`} aria-pressed onClick={() => toggleFav(id)}>
+          <ActionIcon name="star" filled />
+        </button>
+      </div>
+    </li>
+  )
+}
+
 /** 장소 상세: 이름 · 종류 · 도보, 특징, 저장 · 길찾기 · 큰 지도 */
 function PlaceDetail({ p, onBack }: { p: PlaceItem; onBack: () => void }) {
   return (
@@ -430,8 +587,8 @@ function PlaceDetail({ p, onBack }: { p: PlaceItem; onBack: () => void }) {
         ‹ 목록
       </button>
       <div className={styles.detailHead}>
-        <span className={styles.thumbBig} style={{ background: tint(p.cat) }} aria-hidden="true">
-          {CAT_ICON[p.cat] ?? '📍'}
+        <span className={styles.thumbBig} style={{ background: placeColors(p.cat).bg, color: placeColors(p.cat).fg }} aria-hidden="true">
+          <PlaceIcon cat={p.cat} size={36} />
         </span>
         <div>
           <h2>{p.n}</h2>
@@ -448,12 +605,13 @@ function PlaceDetail({ p, onBack }: { p: PlaceItem; onBack: () => void }) {
       <div className={styles.actions}>
         <FavStar p={p} big />
         <a className={styles.action} href={routeUrl(p)} target="_blank" rel="noopener noreferrer">
-          <b>↗</b>
+          <ActionIcon name="route" />
           <span>길찾기</span>
         </a>
         <a className={styles.action} href={bigUrl(p)} target="_blank" rel="noopener noreferrer">
-          <b>🗺</b>
-          <span>큰 지도</span>
+          {/* 카카오 장소: 카카오맵 장소 페이지(영업시간 · 사진 · 후기), DB 장소: 카카오맵에서 위치 보기 */}
+          <ActionIcon name={kakaoId(p) ? 'info' : 'map'} />
+          <span>{kakaoId(p) ? '더 알아보기' : '큰 지도'}</span>
         </a>
       </div>
     </div>
@@ -483,7 +641,7 @@ function CategoryEditor({ kinds, places, current, onCurrentGone, onAdded }: { ki
               }}
             >
               {isOn && '✓ '}
-              {CAT_ICON[c] ?? '📍'} {c} {places.filter((p) => p.cat === c).length}
+              <PlaceIcon cat={c} /> {c} {places.filter((p) => p.cat === c).length}
             </button>
           )
         })}

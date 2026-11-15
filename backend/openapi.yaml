@@ -1028,7 +1028,7 @@ paths:
     get:
       tags: [지도]
       summary: 동네 장소 (종류 또는 검색어, 가까운 순)
-      description: 'category 또는 q 가 있고 서버에 카카오 키(KAKAO_REST_KEY)가 있으면 지도 중심(lat · lon, 없으면 우리 집) 근처를 카카오 로컬 API 에서 찾아 places 에 저장(source=KAKAO) · 갱신한 뒤 돌려줘요. 키가 없거나 카카오가 실패하면 DB 에 있는 장소. category · q 가 둘 다 없으면 DB 의 동네 장소 전체'
+      description: 'category 또는 q 가 있고 서버에 카카오 키(KAKAO_REST_KEY)가 있으면 지도 중심(lat · lon, 없으면 우리 집) 근처를 카카오 로컬 API 에서 찾아 DB 에 저장하지 않고 그대로 돌려줘요(id 는 "kakao:카카오장소id", 같은 검색 10분 캐시). 한도 초과 · 키 없음 · 카카오 실패면 DB 에 있는 장소를 주고, 카카오를 못 쓴 이유를 응답 헤더 X-Place-Notice(user-limit · daily-limit · error)로 알려요. category · q 가 둘 다 없으면 DB 의 동네 장소 전체'
       parameters:
         - { name: regionId, in: query, required: true, schema: { type: string } }
         - { name: category, in: query, schema: { type: string }, example: 세탁방 }
@@ -1107,16 +1107,36 @@ paths:
     get:
       tags: [지도]
       summary: 저장(★)한 장소 id
+      description: DB 장소는 번호, 카카오 장소는 "kakao:카카오장소id"
       responses:
         '200': { description: 장소 id, content: { application/json: { schema: { type: array, items: { type: string } } } } }
+  /api/me/place-favorites/kakao:
+    get:
+      tags: [지도]
+      summary: 저장한 카카오 장소의 이름 · 종류 (저장 목록용, 주소 · 좌표 없음)
+      responses:
+        '200':
+          description: 저장한 카카오 장소
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object, properties: { id: { type: string }, name: { type: string }, category: { type: string } } }
   /api/me/place-favorites/{placeId}:
     parameters:
       - { name: placeId, in: path, required: true, schema: { type: string } }
     put:
       tags: [지도]
       summary: 저장(★)
+      description: 카카오 장소("kakao:…")는 본문 { name, category } 가 필요해요. id · 이름 · 종류만 저장하고 주소 · 좌표는 저장하지 않아요 (한 사람당 200곳)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, properties: { name: { type: string, maxLength: 60 }, category: { type: string } } }
       responses:
         '204': { description: 저장 완료 }
+        '400': { description: '카카오 장소의 이름 · 종류가 없거나 잘못됨 · 200곳 초과' }
     delete:
       tags: [지도]
       summary: 저장 풀기

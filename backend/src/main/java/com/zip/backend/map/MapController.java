@@ -24,9 +24,15 @@ public class MapController {
     public List<Map<String, Object>> places(@AuthenticationPrincipal Jwt jwt, @RequestParam String regionId,
         @RequestParam(required = false) String category, @RequestParam(required = false) String q,
         @RequestParam(required = false) String filter, @RequestParam(required = false) Double lat,
-        @RequestParam(required = false) Double lon, @RequestParam(defaultValue = "false") boolean wide) {
-        return map.places(userId(jwt), regionId, category, q, filter, lat, lon, wide);
+        @RequestParam(required = false) Double lon, @RequestParam(defaultValue = "false") boolean wide,
+        jakarta.servlet.http.HttpServletResponse response) {
+        var result = map.places(userId(jwt), regionId, category, q, filter, lat, lon, wide);
+        // 카카오를 못 써서 DB 장소로 대신했으면 이유 코드 (user-limit · daily-limit · error)
+        if (result.notice() != null) response.setHeader(PLACE_NOTICE, result.notice());
+        return result.items();
     }
+
+    static final String PLACE_NOTICE = "X-Place-Notice";
 
     @PostMapping("/api/places/ai-search")
     public List<Map<String, Object>> aiSearch(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody MapRequests.AiSearch request) {
@@ -47,7 +53,15 @@ public class MapController {
 
     @PutMapping("/api/me/place-favorites/{placeId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void addFavorite(@AuthenticationPrincipal Jwt jwt, @PathVariable String placeId) { map.addFavorite(userId(jwt), placeId); }
+    public void addFavorite(@AuthenticationPrincipal Jwt jwt, @PathVariable String placeId,
+        @RequestBody(required = false) MapRequests.KakaoFavorite kakaoPlace) {
+        // 카카오 장소("kakao:…")는 { name, category } 를 같이 보냄 (id · 이름만 저장, 주소 · 좌표는 저장 안 함)
+        map.addFavorite(userId(jwt), placeId, kakaoPlace);
+    }
+
+    /** 저장한 카카오 장소의 이름 · 종류 (저장 목록용) */
+    @GetMapping("/api/me/place-favorites/kakao")
+    public List<Map<String, String>> kakaoFavorites(@AuthenticationPrincipal Jwt jwt) { return map.kakaoFavorites(userId(jwt)); }
 
     @DeleteMapping("/api/me/place-favorites/{placeId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
