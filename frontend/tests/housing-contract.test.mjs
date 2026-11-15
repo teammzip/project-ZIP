@@ -50,6 +50,9 @@ function setup(kind) {
     if (name === '@/lib/cssVar') return cssVars
     if (name === '../payments') return payments
     if (name === '../validateLifeInfo') return lifeValidation
+    if (name === '@/features/auth/api') return { isMockApi: true }
+    if (name === '../homeApi') return {}
+    if (name === '@/lib/apiClient') return { getErrorMessage: (cause) => cause.message }
     if (name === './interest') return interest
     if (name === './MyInfo') return info
     if (name === '../ledgerCategories') return { useLedgerCategories: () => [{ name: '공과금' }, { name: '관리비' }] }
