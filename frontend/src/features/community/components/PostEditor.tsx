@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cx } from '@/lib/cx'
-import { checkAttachments, MAX_ATTACHMENTS, readAttachments, STORAGE_FULL } from '../attachments'
+import { checkAttachments, MAX_ATTACHMENTS, PHOTO_TYPES, readAttachments } from '../attachments'
 import { CAT_ICON } from '../data/display'
 import { CATEGORIES } from '../data/seed'
 import type { Attachment, Post, PostDraft } from '../types'
@@ -24,8 +24,8 @@ type Props = {
   locked?: boolean
   /** 글이 올라갈 동네 (표시만) */
   region?: string
-  /** 저장 공간이 부족해 실패하면 false */
-  onSave: (draft: PostDraft) => boolean
+  /** 성공이면 null, 실패면 화면에 보일 오류 문구 */
+  onSave: (draft: PostDraft) => Promise<string | null>
 }
 
 /** 글쓰기 화면 (에브리타임 글쓰기처럼): 위 ✕ · 글 쓰기 · 완료 → 주제 칩 → 큰 제목 → 넓은 본문 → 아래 📷 사진 · 글자 수 · 동네.
@@ -81,12 +81,12 @@ function ComposerBody({ onClose, initial, locked, region, onSave }: Omit<Props, 
     }
   }
 
-  const submit = () => {
+  const submit = async () => {
     if (!ready) return setError(locked ? '이용 정지 중에는 글을 쓸 수 없어요.' : '제목과 내용을 입력해 주세요.')
     setBusy(true)
-    const ok = onSave({ cat, title: title.trim(), body: body.trim(), attachments: files })
+    const problem = await onSave({ cat, title: title.trim(), body: body.trim(), attachments: files })
     setBusy(false)
-    if (!ok) return setError(STORAGE_FULL)
+    if (problem) return setError(problem)
     onClose()
   }
 
@@ -147,12 +147,12 @@ function ComposerBody({ onClose, initial, locked, region, onSave }: Omit<Props, 
         </div>
 
         <footer className={styles.composerTools}>
-          <button type="button" className={styles.toolBtn} onClick={() => fileInput.current?.click()} disabled={locked || files.length >= MAX_ATTACHMENTS} aria-label="사진 · 파일 첨부">
+          <button type="button" className={styles.toolBtn} onClick={() => fileInput.current?.click()} disabled={locked || files.length >= MAX_ATTACHMENTS} aria-label="사진 첨부">
             📷 <span>
               {files.length}/{MAX_ATTACHMENTS}
             </span>
           </button>
-          <input ref={fileInput} type="file" multiple hidden onChange={(e) => addFiles(e.target.files)} />
+          <input ref={fileInput} type="file" multiple hidden accept={PHOTO_TYPES.join(',')} onChange={(e) => addFiles(e.target.files)} />
           <span className={styles.toolGrow} />
           {region && <span className={styles.toolRegion}>📍 {region}</span>}
           <span className={cx(styles.toolCount, body.length > BODY_MAX - 50 && styles.warn)}>
@@ -164,12 +164,12 @@ function ComposerBody({ onClose, initial, locked, region, onSave }: Omit<Props, 
   )
 }
 
-/** 첨부 보기: 사진은 바로 보이고, 다른 파일은 내려받기 링크 */
+/** 첨부 보기: 사진은 바로 보이고, 예전에 브라우저에 저장된 다른 파일은 내려받기 링크 */
 export function Attachments({ files }: { files: Attachment[] }) {
   return (
     <div className={styles.attachments}>
       {files.map((f, i) => {
-        const valid = f.data.startsWith('data:')
+        const valid = f.data.startsWith('data:') || f.data.startsWith('/api/files/')
         return valid && f.type.startsWith('image/') ? (
           <a key={`${f.name}-${i}`} href={f.data} download={f.name} className={styles.photo}>
             <img src={f.data} alt={f.name} />

@@ -1,11 +1,15 @@
-/* 첨부 파일 규칙과 읽기 (백엔드 담당 시안과 같은 기준: 최대 5개, 합계 2MB) */
+/* 첨부 파일 규칙과 읽기 (서버와 같은 기준: 사진 JPEG · PNG만, 최대 5개, 합계 2MB) */
 import type { Attachment } from './types'
 
 export const MAX_ATTACHMENTS = 5
 export const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024
+/** 첨부는 사진만 (문서는 악성 파일 · 개인정보 노출 위험이 있어 받지 않아요) */
+export const PHOTO_TYPES = ['image/jpeg', 'image/png']
 
 /** 붙일 수 없으면 이유를, 괜찮으면 null */
 export function checkAttachments(current: Attachment[], adding: File[]) {
+  const wrong = adding.find((file) => !PHOTO_TYPES.includes(file.type))
+  if (wrong) return `사진(JPEG · PNG)만 붙일 수 있어요: ${wrong.name}`
   if (current.length + adding.length > MAX_ATTACHMENTS) return `첨부 파일은 최대 ${MAX_ATTACHMENTS}개까지 올릴 수 있어요.`
   const total = current.reduce((t, f) => t + f.size, 0) + adding.reduce((t, f) => t + f.size, 0)
   if (total > MAX_ATTACHMENT_BYTES) return '첨부 파일은 합계 2MB 이하여야 해요.'

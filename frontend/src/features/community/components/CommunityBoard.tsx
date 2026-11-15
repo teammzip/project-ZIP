@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { isMockApi } from '@/features/auth'
 import { useSearchParams } from 'react-router-dom'
 import { normRegion, RegionAccessGate, RegionVerifyDialog, useRegionVerify } from '@/features/life'
 import { banMessage, useActiveBan } from '@/features/moderation'
@@ -7,7 +8,8 @@ import { relTime } from '@/lib/date'
 import { CAT_ICON, shortRegion } from '../data/display'
 import { CATEGORIES, NEARBY } from '../data/seed'
 import { useCommunityStore } from '../store'
-import type { Post } from '../types'
+import { commentCountOf, type Post } from '../types'
+import { useCommunityActions, useServerPost, useServerPosts } from '../useCommunity'
 import styles from './Community.module.css'
 import { PostDetail } from './PostDetail'
 import { PostComposer } from './PostEditor'
@@ -43,7 +45,8 @@ export function CommunityBoard(props: Props) {
 }
 
 function VerifiedCommunityBoard({ region, author, uid }: Props) {
-  const { posts, addPost } = useCommunityStore()
+  const { posts: localPosts } = useCommunityStore()
+  const actions = useCommunityActions()
   const ban = useActiveBan(author, uid)
   const [params, setParams] = useSearchParams()
   const [scope, setScope] = useState<Scope>('here')
@@ -62,15 +65,26 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
   const near = NEARBY[here] ?? []
   const inScope = (p: Post) => !region || scope === 'all' || (scope === 'near' ? near.includes(normRegion(p.region)) : normRegion(p.region) === here)
   const q = query.trim().toLowerCase()
-  const items = posts.filter((p) => inScope(p) && (cat === '전체' || p.cat === cat) && (!q || `${p.title} ${p.body}`.toLowerCase().includes(q))).sort((a, b) => b.ts - a.ts)
+  // 서버 모드: 검색어는 0.3초 멈추면 서버에 물어봄 (글자마다 부르지 않게)
+  const [serverQ, setServerQ] = useState(query)
+  useEffect(() => {
+    const timer = setTimeout(() => setServerQ(query), 300)
+    return () => clearTimeout(timer)
+  }, [query])
+  const server = useServerPosts(scope, cat, serverQ)
+  const serverPost = useServerPost(selectedId)
+  const serverItems = server.data?.pages.flatMap((page) => page.items) ?? []
+  // 가짜 API 모드는 이 브라우저 글을 여기서 거르고, 서버 모드는 서버가 걸러 준 글
+  const items = isMockApi
+    ? localPosts.filter((p) => inScope(p) && (cat === '전체' || p.cat === cat) && (!q || `${p.title} ${p.body}`.toLowerCase().includes(q))).sort((a, b) => b.ts - a.ts)
+    : serverItems
   // 지금 뜨는 이야기: 공감 + 댓글×2 가 많은 순 (지금 보는 동네 범위 안에서)
-  const hot = posts
-    .filter(inScope)
-    .map((p) => ({ p, score: p.likes + p.comments.length * 2 }))
+  const hot = (isMockApi ? localPosts.filter(inScope) : serverItems)
+    .map((p) => ({ p, score: p.likes + commentCountOf(p) * 2 }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 5)
     .map((x) => x.p)
-  const selected = selectedId ? posts.find((p) => p.id === selectedId) : undefined
+  const selected = selectedId ? (isMockApi ? localPosts.find((p) => p.id === selectedId) : serverPost.data) : undefined
 
   const open = (id: number | null) => {
     setParams(id ? { post: String(id) } : {})
@@ -102,6 +116,14 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
 
         {selected ? (
           <PostDetail post={selected} author={author} locked={locked} verified={verified} onVerify={() => setVerifyFor('act')} onBack={() => open(null)} onDeleted={() => open(null)} />
+        ) : selectedId && !isMockApi && (serverPost.isLoading || serverPost.isError) ? (
+          // 서버 모드: 글을 불러오는 중이거나 지워진 글
+          <div className={styles.empty}>
+            <b>{serverPost.isLoading ? '글을 불러오고 있어요…' : '지워졌거나 볼 수 없는 글이에요.'}</b>
+            <button type="button" className={styles.back} onClick={() => open(null)}>
+              ‹ 동네생활로
+            </button>
+          </div>
         ) : (
           <>
             {/* 머리말 */}
@@ -176,7 +198,17 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
                 <FeedItem key={p.id} post={p} onOpen={() => open(p.id)} />
               ))}
             </ul>
-            {!items.length && (
+            {!isMockApi && server.isError && (
+              <p className={styles.scopeNote} role="alert">
+                글을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+              </p>
+            )}
+            {!isMockApi && server.hasNextPage && (
+              <button type="button" className={styles.moreBtn} onClick={() => void server.fetchNextPage()} disabled={server.isFetchingNextPage}>
+                {server.isFetchingNextPage ? '불러오는 중…' : '글 더 보기'}
+              </button>
+            )}
+            {!items.length && !(!isMockApi && server.isLoading) && (
               <div className={styles.empty}>
                 <span aria-hidden="true">🌱</span>
                 <b>{q ? `"${query}" 이야기를 찾지 못했어요` : '아직 글이 없어요'}</b>
@@ -202,7 +234,7 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
                   <span className={styles.hotText}>
                     <span>{p.title}</span>
                     <small>
-                      {p.cat} · 공감 {p.likes} · 댓글 {p.comments.length}
+                      {p.cat} · 공감 {p.likes} · 댓글 {commentCountOf(p)}
                     </small>
                   </span>
                 </button>
@@ -243,15 +275,15 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
         onClose={() => setWriting(false)}
         locked={locked}
         region={place}
-        onSave={(draft) => {
-          const ok = addPost({ ...draft, region: region || '서울 마포구', author })
-          if (ok) {
+        onSave={async (draft) => {
+          const problem = await actions.addPost(draft, region || '서울 마포구', author)
+          if (!problem) {
             setCat('전체')
             setScope('here')
             setQuery('')
             open(null)
           }
-          return ok
+          return problem
         }}
       />
     </div>
@@ -273,7 +305,7 @@ function FeedItem({ post, onOpen }: { post: Post; onOpen: () => void }) {
             </span>
             <span className={styles.counts}>
               {post.likes > 0 && <span className={styles.likeCount}>♡ {post.likes}</span>}
-              {post.comments.length > 0 && <span className={styles.cmtCountSm}>💬 {post.comments.length}</span>}
+              {commentCountOf(post) > 0 && <span className={styles.cmtCountSm}>💬 {commentCountOf(post)}</span>}
             </span>
           </span>
         </span>

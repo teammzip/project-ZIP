@@ -443,10 +443,14 @@ CREATE TABLE IF NOT EXISTS `posts` (
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
   `deleted_at` DATETIME NULL COMMENT '삭제 일시 — 소프트 삭제',
+  `deleted_by` BIGINT UNSIGNED NULL COMMENT '지운 사람 — 작성자 본인 또는 운영자 (20261115_04)',
+  `delete_reason` VARCHAR(200) NULL COMMENT '운영자가 지운 사유 — 작성자 본인 삭제는 비움',
   PRIMARY KEY (`id`),
   KEY `idx_posts_region_id_category_created_at` (`region_id`, `category`, `created_at`),
+  KEY `idx_posts_status_created_at` (`status`, `created_at`, `id`),
   CONSTRAINT `fk_posts_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_posts_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE RESTRICT
+  CONSTRAINT `fk_posts_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_posts_deleted_by` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='커뮤니티 글: 커뮤니티의 글 한 개.';
 
 -- 글 좋아요: 누가 어느 글에 좋아요를 눌렀는지. 한 사람이 한 글에 한 번만 누를 수 있어서 (글, 사용자)가 기본키입니다.
@@ -470,11 +474,14 @@ CREATE TABLE IF NOT EXISTS `comments` (
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '댓글 수정 일시',
   `deleted_at` DATETIME NULL COMMENT '삭제 일시 — 소프트 삭제',
+  `deleted_by` BIGINT UNSIGNED NULL COMMENT '지운 사람 — 작성자 본인 또는 운영자 (20261115_04)',
+  `delete_reason` VARCHAR(200) NULL COMMENT '운영자가 지운 사유 — 작성자 본인 삭제는 비움',
   PRIMARY KEY (`id`),
   KEY `idx_comments_post_id_created_at` (`post_id`, `created_at`),
   CONSTRAINT `fk_comments_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_comments_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_comments_parent_id` FOREIGN KEY (`parent_id`) REFERENCES `comments` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_comments_parent_id` FOREIGN KEY (`parent_id`) REFERENCES `comments` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_comments_deleted_by` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='댓글: 글에 달린 댓글.';
 
 -- 신고: 운영 정책에 어긋나는 글·댓글을 신고한 기록(정책 제3조). 운영자가 확인해 숨김 처리하거나 기각합니다.
@@ -491,6 +498,7 @@ CREATE TABLE IF NOT EXISTS `reports` (
   `handled_at` DATETIME NULL COMMENT '처리 일시',
   PRIMARY KEY (`id`),
   KEY `idx_reports_target_type_target_id` (`target_type`, `target_id`),
+  KEY `idx_reports_created_at` (`created_at`, `id`),
   CONSTRAINT `fk_reports_reporter_id` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_reports_handled_by` FOREIGN KEY (`handled_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   `target_author_snapshot` VARCHAR(12) NULL COMMENT '신고 당시 작성자 표시명 — 삭제 후 표시용, 권한 근거로 사용 금지',

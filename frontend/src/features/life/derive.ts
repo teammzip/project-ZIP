@@ -172,5 +172,11 @@ export function useRegionVerify() {
     const timer = window.setInterval(() => setNow(Date.now()), 30000)
     return () => { window.clearTimeout(refresh); window.clearInterval(timer) }
   }, [verify?.at])
+  // 서버 모드: 서버가 저장한 인증 시각(30일 지났으면 null)을 지금 동네의 인증으로 봄.
+  // 서버는 regionVerifiedAt 을 늘(없으면 null) 주고, 가짜 API 모드 회원에는 이 칸이 없어서(undefined) 구분돼요
+  const serverAt = useAuthStore((s) => s.user?.regionVerifiedAt)
+  if (serverAt !== undefined) {
+    return regionVerification(region, serverAt && userId ? { region, at: Date.parse(serverAt), userId } : null, userId, now)
+  }
   return regionVerification(region, verify, userId, now)
 }

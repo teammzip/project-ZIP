@@ -1,5 +1,15 @@
 /* 정지 기록을 읽는 규칙 (화면 · 가짜 API 가 같이 씀) */
-import { useBanStore, type BanRecord } from './store'
+import { useAuthStore } from '@/features/auth/store/authStore'
+import { isMockApi } from '@/lib/apiMode'
+import { useBanStore, type BanRecord, type SanctionEntry } from './store'
+
+/** 서버의 경고 · 정지 한 건 → 화면 기록 모양 (관리자 이력 · 내 내역이 같이 씀) */
+export const toSanctionEntry = (s: { type: 'WARNING' | 'SUSPEND' | 'BAN'; days: number | null; reason: string }, at: string): SanctionEntry => ({
+  at: Date.parse(at),
+  days: s.type === 'SUSPEND' ? s.days : null,
+  reason: s.reason,
+  warn: s.type === 'WARNING',
+})
 
 const DAY = 86400000
 const two = (n: number) => String(n).padStart(2, '0')
@@ -39,13 +49,19 @@ export function findActiveBan(who: { nicks?: string[]; uid?: string }) {
 /** 화면에서: 이 사람이 지금 정지 중이면 그 기록 (기록이 바뀌면 다시 그림) */
 export function useActiveBan(nick?: string, uid?: string) {
   const records = useBanStore((s) => s.records)
-  if (!nick && !uid) return null
+  // 서버 모드: 정지 중이면 서버가 로그인 · 모든 요청을 403 으로 막아서 화면에서 따로 막을 정지가 없음
+  if (!isMockApi || (!nick && !uid)) return null
   return Object.values(records).find((r) => isActive(r) && (r.nick === nick || (!!uid && r.uid === uid))) ?? null
 }
 
 /** 내가 받은 경고 · 정지 횟수 (한 번도 없으면 null → 내 정보에 줄을 안 보여 줌) */
 export function useMySanctions(nick?: string) {
   const record = useBanStore((s) => (nick ? s.records[nick] : undefined))
+  const user = useAuthStore((s) => s.user)
+  if (!isMockApi) {
+    const warns = user?.warnCount ?? 0, bans = user?.banCount ?? 0
+    return warns || bans ? { warns, bans } : null
+  }
   if (!record || !record.history.length) return null
   return { warns: record.warns, bans: record.count }
 }

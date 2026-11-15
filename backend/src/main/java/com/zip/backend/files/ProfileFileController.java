@@ -19,7 +19,7 @@ public class ProfileFileController {
         return files.upload(Long.parseLong(jwt.getSubject()), Long.parseLong(jwt.getClaimAsString("sid")), file);
     }
 
-    // Only referenced profile pictures are public; unlinked uploads require their owner's token.
+    // Profile pictures and attachments of visible posts are public; other uploads require their owner's token.
     @GetMapping("/api/files/content/{key}")
     public ResponseEntity<FileSystemResource> content(@PathVariable String key, @AuthenticationPrincipal Jwt jwt) {
         var content = files.content(key, jwt == null ? null : Long.parseLong(jwt.getSubject()));

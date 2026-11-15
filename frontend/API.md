@@ -149,7 +149,7 @@ GET/PUT `/api/me/home-info` 구현 및 내 집 정보 폼 연결 완료. 계약 
 - 사진은 `POST /api/files`로 올리고 `PATCH /api/auth/me`에 `{ avatarFileId, bio }`를 보내요. 캐릭터를 고르면 `{ avatarEmoji, avatarColor, avatarFileId: null }`, "기본으로"는 셋 다 `null`.
 - 한 줄 소개 최대 30자, 닉네임 2~12자 (닉네임은 같은 `PATCH /api/auth/me`)
 - 저장 위치는 **`user_profiles`**예요. avatar_file_id → uploaded_files로 URL을 조회해요. 기존 프로필 행이 없어도 최초 수정 시 생성해요. 생략한 필드는 유지하고, bio의 null은 빈 문자열로 저장해요. 캐릭터는 최대 20자, 배경은 #RRGGBB 형식, 사진 ID는 문자열이며 본인 소유의 삭제되지 않은 JPEG/PNG 파일만 허용해요. 잘못된 파일 ID이면 닉네임을 포함한 요청 전체를 롤백해요.
-- 업로드는 현재 프로필용 JPEG/PNG 단일 파일·2MB 이하를 지원해요. 내용 형식과 픽셀 범위를 검사하고 메타데이터를 제거해 저장해요. 연결된 프로필 사진은 `/api/files/content/{key}`에서 공개 조회되며 연결 전 파일은 본인 토큰으로만 조회해요. 커뮤니티 문서 업로드와 여러 첨부 합계 검증은 후속 구현이에요.
+- 업로드는 현재 프로필용 JPEG/PNG 단일 파일·2MB 이하를 지원해요. 내용 형식과 픽셀 범위를 검사하고 메타데이터를 제거해 저장해요. 연결된 프로필 사진은 `/api/files/content/{key}`에서 공개 조회되며 연결 전 파일은 본인 토큰으로만 조회해요. 커뮤니티 글 첨부도 같은 `POST /api/files` 로 사진만 올려요(문서 첨부는 받지 않음, 7장).
 - 프론트는 서버 저장 성공 후에만 완료 안내를 보여요. 로그인·수정 응답·새로고침 조회에서 표시 캐시를 갱신하고 로그아웃 시 이전 회원 프로필을 비워요.
 
 ### 회원 탈퇴
@@ -196,6 +196,8 @@ GET/PUT `/api/me/home-info` 구현 및 내 집 정보 폼 연결 완료. 계약 
 - 가입하면 `user_settings` 기본 줄을 같이 만들어 주세요.
 
 ### 동네 인증
+
+> **2026-11-15 구현**: `POST /api/me/region-verify { lat, lon }` → `{ region: { id, name, fullName }, dong, verifiedAt, expiresAt }`. 서버가 카카오 좌표 → 행정구역(`coord2regioncode`, 행정동 우선)으로 시 · 도 / 구 · 군을 찾아 `users.region_id` · `region_verified_at` 을 저장해요. 동네 표(regions)에 없는 구 · 군은 카카오 이름으로 만들어요(전국 인증 가능). 대한민국 밖 좌표 400, 카카오 키 없음 · 실패 503, 한 사람당 한 시간 10번(429). `GET /api/auth/me` 의 `regionVerifiedAt` 은 30일 안이면 시각, 아니면 null. **커뮤니티 글쓰기 · 댓글 · 공감은 서버가 30일 인증을 검사해요(403 `REGION_VERIFY_REQUIRED`).** 서버 모드 화면은 GPS 좌표만 보내고, 인증 여부도 `regionVerifiedAt` 으로 판단해요.
 - 마이페이지 > 내 정보 > 계정 · 설정의 **📍 동네 인증**, 또는 커뮤니티에서 인증 안 한 사람이 글쓰기 · 댓글 · 공감을 누르면 인증 창이 떠요.
 - 프론트가 휴대폰 위치(GPS) 좌표를 보내면, 서버가 좌표 → 행정구역(카카오 로컬 `coord2regioncode` 등)으로 바꿔 그 동네를 `users.region_id`로 정하고 인증 시각을 저장해요.
   - 우리 동네와 다른 곳이면 프론트가 먼저 "지금 위치는 ○○구예요. 이 동네로 바꾸고 인증할까요?"를 물어보고, 확인하면 같은 요청을 보내요.
@@ -392,6 +394,8 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 ## 7. 커뮤니티 · 첨부 · 신고 📝
 
+> **2026-11-15 백엔드 구현 · 프론트 연결 (회원 기능)**: 아래 표의 API가 모두 있어요. 서버 모드(`VITE_USE_MOCK=false`)에서 동네생활 화면 · 글 상세 · 글쓰기 · 홈 꿀팁이 서버를 써요. 응답에는 표의 모양에 `reported`(내가 신고했는지) · `homeTip` 이 더 있어요. 첨부는 사진(JPEG · PNG)만, 쓰기는 동네가 있어야 해요(403 `REGION_REQUIRED`). 관리자 화면의 게시글 관리 · 신고 관리(삭제 · 운영자 댓글 · 홈 꿀팁 지정 · 신고 처리)도 서버 모드에서 `/api/admin/**` 를 써요(11장). 회원 관리 · 경고 · 정지는 아직 브라우저 기록이에요. 자세한 서버 규칙은 [backend/IMPLEMENTATION.md](../backend/IMPLEMENTATION.md#커뮤니티).
+
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
 | GET | `/api/posts?scope=here\|near\|all&category=TIP&q=&page=0` | — | `{ items: [post], hasNext }` |
@@ -401,7 +405,7 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 | PATCH | `/api/posts/{id}` | `{ category, title, body, attachmentIds }` | `post` (내 글만) |
 | DELETE | `/api/posts/{id}` | — | — (내 글만, `status = DELETED`) |
 | PUT · DELETE | `/api/posts/{id}/like` | — | `{ liked, likes }` |
-| POST | `/api/posts/{id}/comments` | `{ body }` | `comment` |
+| POST | `/api/posts/{id}/comments` | `{ body, parentId? }` | `comment` (`parentId` = 답글. 한 단계만: 답글에 단 답글은 그 묶음의 맨 위 댓글로. 응답 · 상세의 댓글에도 `parentId`) |
 | PATCH | `/api/comments/{id}` | `{ body }` | `comment` (내 댓글만) |
 | DELETE | `/api/comments/{id}` | — | — (내 댓글만) |
 | POST | `/api/files` | `multipart/form-data` (`file`) | `{ id, name, type, size, url }` |
@@ -420,9 +424,9 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 - `mine`: 토큰의 사용자가 쓴 글·댓글이면 `true` → 수정·삭제 버튼이 보여요. `liked`도 토큰 기준.
 - 숨김(`HIDDEN`)·삭제(`DELETED`) 글과 댓글은 목록에 넣지 마세요. `like_count`·`comment_count`는 서버가 맞춰 주세요.
 - **첨부**: 파일을 먼저 `POST /api/files`로 올리고 받은 `id`를 글 저장 때 `attachmentIds`로 보내요 (`uploaded_files` + `post_attachments`, 순서 = 배열 순서).
-  - 최대 5개 · 합계 2MB · 이미지/문서 형식만 · 내가 올린 파일만 붙일 수 있게 서버에서 검사
+  - 최대 5개 · 합계 2MB · **사진(JPEG · PNG)만** · 내가 올린 파일만 붙일 수 있게 서버에서 검사. 문서(PDF 등)는 악성 파일 · 개인정보 노출 위험이 있어 받지 않기로 했어요(2026-11-15).
   - 수정할 때 `attachmentIds`에서 빠진 파일은 연결을 끊고 지워 주세요.
-  - 지금 프론트는 첨부를 브라우저에 data URL로 저장해요 (`Attachment { name, type, size, data }`). 서버가 생기면 `data` 대신 `url`을 써요.
+  - 브라우저 저장 모드도 같은 규칙(사진만)이에요. 브라우저 모드는 첨부를 data URL로 저장하고(`Attachment { name, type, size, data }`), 서버 모드는 `/api/files/content/…` 주소를 써요.
 - **신고**: `targetType` `POST` · `COMMENT`, `reason` `ABUSE` · `FALSE_INFO` · `PRIVACY` · `AD_ILLEGAL` · `COPYRIGHT` · `OTHER` (`reports`).
   - COMMENT targetId는 **comments.id**예요. 현재 브라우저의 postId/commentIndex를 서버 ID로 그대로 사용할 수 없어요. 서버 연결 때 안정적인 댓글 ID로 전환해야 해요.
   - DB UNIQUE(reporter_id,target_type,target_id)는 기각/숨김 처리 후에도 같은 회원의 재신고를 막아요. target_author_snapshot/target_text_snapshot은 서버가 실제 대상에서 복사하고 클라이언트 값을 신뢰하지 않아요.
@@ -536,6 +540,8 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 ## 11. 관리자 · 이용 정지 📝
 
+> **2026-11-15 백엔드 구현 · 프론트 연결**: 아래 API가 모두 있어요(`stats` · `members` · `sanctions` · `bulk` · 정지 해제 · 게시글 · 신고). 서버 모드에서 관리자 화면의 회원 관리 · 신고 관리 · 게시글 관리, 회원 화면의 경고 안내 창 · 받은 경고/정지 내역 · 쓰는 중 정지(403 `SUSPENDED` → 안내 후 로그아웃)가 서버를 써요. 추가: `GET /api/me/sanctions`, `POST /api/me/warnings/seen`. 자세한 규칙은 [backend/IMPLEMENTATION.md](../backend/IMPLEMENTATION.md#회원-관리--경고--정지).
+
 `role = ADMIN`만 쓸 수 있어요 (아니면 **403**). 프론트는 관리자 계정을 로그인하자마자 `/admin`으로 보내고, 앱 화면에는 못 들어가게 막아요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
@@ -547,7 +553,7 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 | POST | `/api/admin/sanctions/bulk` | `{ memberIds, type, days, reason }` | — (여러 명 한꺼번에) |
 | DELETE | `/api/admin/members/{id}/sanctions/active` | — (정지 해제) | `member` |
 | GET | `/api/admin/posts?category=&regionId=&q=&page=0` | — | `{ items: [post], hasNext }` (댓글 포함) |
-| DELETE | `/api/admin/posts/{id}?reason=` · `/api/admin/comments/{id}?reason=` | — (사유는 쿼리로) | — |
+| DELETE | `/api/admin/posts/{id}?reason=` · `/api/admin/comments/{id}?reason=` | — (사유는 쿼리로, 200자. `delete_reason` 에 저장) | — |
 | GET | `/api/admin/reports?status=RECEIVED` | — | `[report]` |
 | PATCH | `/api/admin/reports/{id}` | `{ status: "HIDDEN" \| "DISMISSED" }` | — |
 

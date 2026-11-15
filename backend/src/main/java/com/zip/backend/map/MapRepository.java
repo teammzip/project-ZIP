@@ -54,7 +54,7 @@ public class MapRepository {
         }
         if (keyword != null) {
             sql.append(" AND (p.name LIKE ? ESCAPE '!' OR p.description LIKE ? ESCAPE '!' OR c.name LIKE ? ESCAPE '!')");
-            var like = "%" + keyword.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+            var like = com.zip.backend.common.Sql.likeContains(keyword);
             args.addAll(List.of(like, like, like));
         }
         return jdbc.query(sql.append(" ORDER BY p.id").toString(), MapRepository::place, args.toArray());

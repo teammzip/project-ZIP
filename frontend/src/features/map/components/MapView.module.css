@@ -79,7 +79,7 @@
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
-.map :global(.zip-pin:hover span) {
+.map :global(.zip-pin:not(.on):hover span) {
   transform: scale(1.12);
   box-shadow: 0 4px 12px rgba(47, 128, 237, 0.3);
 }

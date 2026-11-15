@@ -60,11 +60,17 @@ function getPosition() {
 
 type NominatimAddress = Partial<Record<'province' | 'state' | 'city' | 'county' | 'borough' | 'city_district' | 'district' | 'municipality' | 'town' | 'village' | 'suburb' | 'quarter' | 'neighbourhood', string>>
 
-/** 지금 위치의 동네 이름 (예: '서울 마포구', '경기 성남시 분당구') */
-export async function locateNeighborhood() {
+/** 지금 위치 좌표 (오차가 크면 거절). 서버 동네 인증은 이 좌표만 보내고 동네 이름은 서버가 카카오로 찾아요 */
+export async function locatePoint() {
   const { coords } = await getPosition()
   if (!Number.isFinite(coords.accuracy) || coords.accuracy < 0 || coords.accuracy > 1000) throw new Error('위치 오차가 커서 인증할 수 없어요. GPS를 켜고 다시 시도해 주세요.')
   if (!Number.isFinite(coords.latitude) || !Number.isFinite(coords.longitude) || Math.abs(coords.latitude) > 90 || Math.abs(coords.longitude) > 180) throw new Error('현재 위치를 확인하지 못했어요.')
+  return coords
+}
+
+/** 지금 위치의 동네 이름 (예: '서울 마포구', '경기 성남시 분당구') */
+export async function locateNeighborhood() {
+  const coords = await locatePoint()
   const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&accept-language=ko&lat=${coords.latitude}&lon=${coords.longitude}`
   let addr: NominatimAddress | undefined
   try {

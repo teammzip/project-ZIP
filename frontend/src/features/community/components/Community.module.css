@@ -1137,3 +1137,65 @@
     border-radius: 0;
   }
 }
+
+/* 서버 모드: 글 20개씩 더 보기 */
+.moreBtn {
+  display: block;
+  width: 100%;
+  margin: 12px 0 4px;
+  padding: 12px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.moreBtn:hover:not(:disabled) {
+  color: var(--color-primary);
+}
+
+/* 답글: 맨 위 댓글 아래에 들여 써서 (한 단계) */
+.reply {
+  position: relative;
+  margin-left: 40px;
+  padding-left: 12px;
+  border-left: 2px solid var(--color-line);
+}
+
+.reply::before {
+  content: "↳";
+  position: absolute;
+  top: 16px;
+  left: -26px;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+/* 답글이 달린 채로 지워진 댓글 자리 */
+.deletedComment {
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+/* 댓글 입력 줄: 누구에게 다는 답글인지 */
+.commentBar {
+  flex-wrap: wrap;
+}
+
+.replyChip {
+  display: inline-flex;
+  flex-basis: 100%;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.replyChip button {
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--color-muted);
+}

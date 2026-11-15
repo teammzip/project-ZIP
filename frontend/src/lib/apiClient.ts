@@ -3,6 +3,7 @@ import axios, { isAxiosError } from 'axios'
 /* 모든 서버 요청은 이 apiClient 로 보냅니다.
  * - 로그인 토큰을 Authorization 헤더에 자동으로 붙임
  * - 401(로그인 만료)이 오면 onUnauthorized 를 불러 로그아웃 처리
+ * - 403 + code SUSPENDED(쓰는 중에 이용 정지됨)면 onSuspended(서버 안내 문구)
  * 토큰을 어디서 읽을지는 app/setupApi.ts 에서 bindAuth() 로 연결합니다. (lib 가 features 를 몰라도 되게) */
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
@@ -11,10 +12,12 @@ export const apiClient = axios.create({
 
 let getToken: () => string | null = () => null
 let onUnauthorized: () => void = () => {}
+let onSuspended: (message: string) => void = () => {}
 
-export function bindAuth(opts: { getToken: () => string | null; onUnauthorized: () => void }) {
+export function bindAuth(opts: { getToken: () => string | null; onUnauthorized: () => void; onSuspended?: (message: string) => void }) {
   getToken = opts.getToken
   onUnauthorized = opts.onUnauthorized
+  if (opts.onSuspended) onSuspended = opts.onSuspended
 }
 
 apiClient.interceptors.request.use((config) => {
@@ -30,6 +33,10 @@ apiClient.interceptors.response.use(
       const token = getToken()
       // 이전 세션의 늦은 401로 새 로그인까지 해제하지 않는다.
       if (token && error.config?.headers?.Authorization === `Bearer ${token}`) onUnauthorized()
+    }
+    if (isAxiosError<{ message?: string; code?: string }>(error) && error.response?.status === 403 && error.response.data?.code === 'SUSPENDED') {
+      const token = getToken()
+      if (token && error.config?.headers?.Authorization === `Bearer ${token}`) onSuspended(error.response.data.message ?? '이용이 정지된 계정이에요.')
     }
     return Promise.reject(error)
   },

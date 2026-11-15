@@ -8,11 +8,12 @@
 | GET `/api/auth/me` | 로그인 회원 조회, 문자열 ID, 약관 동의 시각 |
 | PATCH `/api/auth/me` | 닉네임·소개·캐릭터·배경색·프로필 사진 연결, 변경된 User 반환 |
 | POST `/api/files` | 프로필용 JPEG/PNG 단일 파일·2MB 이하 업로드, 파일 메타데이터 반환 |
-| GET `/api/files/content/{key}` | 연결된 프로필 사진 공개 조회, 연결 전 업로드는 소유자만 조회 |
+| GET `/api/files/content/{key}` | 연결된 프로필 사진 · 보이는 글의 첨부 사진 공개 조회, 연결 전 업로드는 소유자만 조회 |
 | POST `/api/auth/logout` | 현재 DB 세션 해제, 해당 토큰 즉시 차단 |
 | PATCH `/api/auth/me/password` | 현재 비밀번호 확인, 새 비밀번호 검증, 모든 DB 세션 해제 |
 | GET `/api/terms` | 비로그인 조회, 시행일이 지난 최신 문서 종류별 1개 |
 | 지도 9개 (`/api/places/**`, `/api/me/place-favorites/**`, `/api/me/map-settings`) | 아래 [지도](#지도) 참고 |
+| 커뮤니티 (`/api/posts/**`, `/api/comments/**`, `/api/reports`) | 아래 [커뮤니티](#커뮤니티) 참고 |
 | GET `/api/me/settings` | 로그인 회원의 생활 설정 조회, 행이 없으면 기본값 |
 | PUT `/api/me/settings` | 월세·납부일·연월·알림·집 주소·동네 저장 |
 | GET/POST `/api/bills` | 월별 고정 지출 조회·항목 추가 |
@@ -121,7 +122,7 @@ point는 null 또는 lat/lon 한 쌍이며 위도 ±90, 경도 ±180, 소수점 
 
 200 응답과 GET `/api/auth/me`, 재로그인의 user 응답에 같은 값이 있어야 합니다. 필드는 하나 이상 보내야 하며 생략한 값은 유지합니다. bio는 최대 30자, 캐릭터는 최대 20자, 색은 #RRGGBB입니다. null은 해당 선택 필드를 초기화하며 bio는 빈 문자열로 바뀝니다. 닉네임과 프로필은 한 트랜잭션으로 저장됩니다.
 
-사진은 POST `/api/files`의 Body → form-data에서 `file` 키를 File로 선택해 JPEG/PNG를 올립니다. 반환된 문자열 id를 PATCH의 avatarFileId에 넣으세요. 파일 크기 2MB, 가로·세로 4096px 및 총 1600만 화소를 제한하고 실제 이미지 형식과 MIME이 일치하는지 확인합니다. 서버는 픽셀을 재인코딩해 EXIF 등 원본 메타데이터를 저장하지 않습니다. 현재 일반 문서와 커뮤니티 다중 첨부는 지원하지 않습니다.
+사진은 POST `/api/files`의 Body → form-data에서 `file` 키를 File로 선택해 JPEG/PNG를 올립니다. 반환된 문자열 id를 PATCH의 avatarFileId에 넣으세요. 파일 크기 2MB, 가로·세로 4096px 및 총 1600만 화소를 제한하고 실제 이미지 형식과 MIME이 일치하는지 확인합니다. 서버는 픽셀을 재인코딩해 EXIF 등 원본 메타데이터를 저장하지 않습니다. 문서 파일(PDF 등)은 받지 않습니다. 커뮤니티 글 첨부도 같은 사진 업로드를 씁니다.
 
 연결된 프로필 사진은 응답의 avatarUrl로 공개 표시됩니다. 연결 전/해제 후에는 유효한 소유자 토큰으로만 읽을 수 있습니다. 다른 회원·삭제 파일·문서 파일·존재하지 않는 파일 연결은 404이며 요청의 닉네임 변경도 롤백됩니다. 프론트에서 캐릭터를 고르거나 기본으로 돌아가면 avatarFileId를 null로 해제합니다.
 
@@ -156,6 +157,54 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 현재 본문에는 책임자·연락처·클라우드 업체/국가·AI 업체/국외 이전 항목 등의 `[ ]` 빈칸이 남아 있습니다. 문자 업체도 결정 후 실제 처리 내용을 반영해야 합니다. 외부 날씨·주소 검색은 이미 브라우저에서 호출하므로 제공 항목과 처리방침 설명을 점검해야 합니다. 재가입 차단용 banned_identities 및 신고 스냅샷의 탈퇴 후 보관 정책도 실제 구현과 맞춰야 합니다. 보관 기간·파기·휴면 계정·HTTPS에 대한 본문 약속은 구현 및 운영 절차로 확인해야 하며 이번에는 법적 적절성을 판정하거나 본문을 임의로 개정하지 않았습니다.
 
 본문 변경 시 프론트 버전과 DB 새 버전을 함께 추가하고 기존 약관/동의 이력은 보존합니다. API는 각 종류의 시행일이 지난 최신 문서를 조회하며 미래 문서를 노출하지 않습니다.
+
+## 커뮤니티
+
+`com.zip.backend.community` (CommunityController · CommunityService · CommunityRepository). 모두 로그인 후 요청이며 응답 모양은 `frontend/API.md` 7장과 같아요.
+
+| API | 현재 동작 |
+|---|---|
+| GET `/api/posts?scope=here|near|all&category=&q=&page=0` | 보이는 글(VISIBLE) 새 글부터 20개 + `hasNext`. here = 내 동네(`users.region_id`), near = 내 동네 + `region_neighbors`, all = 전체. 동네가 없으면 here · near 는 빈 목록. `q` 는 제목 · 본문(40자) |
+| GET `/api/posts/home-tips` | `is_home_tip` 글 최대 3개 (지정은 관리자 기능 단계에서) |
+| GET `/api/posts/{id}` | 댓글(VISIBLE) · 첨부 포함, `mine` · `liked` · `reported` 는 토큰 기준 |
+| POST · PATCH · DELETE `/api/posts/{id}` | 쓰기는 동네(`region_id`)가 있어야 함(없으면 403 `REGION_REQUIRED`). 제목 100자 한 줄 · 본문 2000자. 수정 · 삭제는 내 글만(403), 삭제는 `status=DELETED` |
+| PUT · DELETE `/api/posts/{id}/like` | 한 번만 반영, `like_count` 를 서버가 맞춤 → `{ liked, likes }` |
+| POST `/api/posts/{id}/comments` · PATCH · DELETE `/api/comments/{id}` | 200자, 내 댓글만 수정 · 삭제, `comment_count` 를 서버가 맞춤 |
+| POST `/api/reports` | 대상 작성자 · 제목/댓글을 서버가 복사(스냅샷). 같은 대상 두 번 409, 내 글 · 댓글 400, 기타(OTHER)는 detail 필수 |
+
+- **첨부**: `POST /api/files` 로 사진(JPEG · PNG)을 올린 뒤 `attachmentIds` 로 붙여요. 최대 5개 · 합계 2MB · 내가 올린 파일 · 다른 글이나 프로필 사진에 안 쓰인 파일만. 수정에서 뺀 첨부는 연결을 끊고 파일도 지워요(커밋 뒤). 문서(PDF 등)는 악성 파일 · 개인정보 노출 위험이 있어 받지 않기로 했어요(사진만).
+- **정지 회원**: 보안 설정에서 토큰 자체가 막혀요. **동네 인증**: 글쓰기 · 댓글 · 공감은 `POST /api/me/region-verify`(`com.zip.backend.region`, 카카오 좌표 → 행정구역)로 인증한 지 30일 안이어야 해요(403 `REGION_VERIFY_REQUIRED`). `RegionVerifyIntegrationTests` 5개 + 격리 MySQL · 실제 카카오로 확인.
+- **관리자** (`AdminCommunityController`, `/api/admin/**` 는 ADMIN 만):
+  - GET `/api/admin/posts?category=&q=&page=` 보이는 글 50개씩 (댓글 · 첨부 · `homeTip` 포함)
+  - DELETE `/api/admin/posts/{id}` · `/api/admin/comments/{id}` (`?reason=` 200자 → `delete_reason`, 지운 운영자 → `deleted_by`) → 상태 DELETED, 그 글 · 댓글에 들어온 접수 중 신고는 HIDDEN(처리자 · 시각 기록)
+  - POST `/api/admin/posts/{id}/comments` 운영자 댓글 (응답 · 회원 화면에 `staff: true`, 관리자는 동네 없이 가능)
+  - PUT · DELETE `/api/admin/posts/{id}/home-tip` 홈 "자취 꿀팁" 지정 · 해제
+  - GET `/api/admin/reports?status=` 신고 한 건씩 `{ id, targetType, targetId, postId, target: { title | text, author, deleted }, reason, detail, reporter, status, createdAt }` (최근 500건)
+  - PATCH `/api/admin/reports?targetType=&targetId=` · `/api/admin/reports/{id}` `{ status: HIDDEN | DISMISSED }` → 그 대상의 접수 중 신고 전부. HIDDEN 이면 글 · 댓글도 HIDDEN
+- **답글**: 댓글 `{ body, parentId }` → `comments.parent_id`. 한 단계만(답글에 단 답글은 맨 위 댓글로), 다른 글의 댓글 400, 없는 · 지운 댓글 404. 맨 위 댓글을 지워도 답글은 남고 화면이 "삭제된 댓글" 아래로 묶어요.
+- **삭제 기록**: `posts` · `comments`의 `deleted_by` · `delete_reason` (`db/migrations/20261115_04_community_admin.sql`). 본인 삭제는 본인 · 사유 없음, 운영자 삭제는 운영자 · 사유, 신고로 숨기면 "신고 처리로 숨김". 신고 목록 `target.deleteReason`.
+- **아직 없음**: 문서 첨부.
+- **검증**: `CommunityIntegrationTests` 7개, `AdminCommunityIntegrationTests` 5개 (권한 · 운영자 댓글 · 삭제와 신고 처리 · 신고 숨김/기각 · 홈 꿀팁).
+
+## 회원 관리 · 경고 · 정지
+
+`com.zip.backend.moderation` (ModerationController · ModerationService · ModerationRepository). 규칙은 `frontend/API.md` 11장과 같아요.
+
+| API | 현재 동작 |
+|---|---|
+| GET `/api/admin/stats` | 회원 · 정지 중 · 정지 누적 · 경고 누적 · 보이는 글 · 댓글 수 (관리자 제외) |
+| GET `/api/admin/members?q=&status=ACTIVE|SUSPENDED&minBans=&minWarns=&sort=activity|bans|warns|joined&page=` | 50명씩. 닉네임 · 아이디 검색, `warns` · `bans` 는 해제 · 만료돼도 남는 누적 횟수 |
+| GET `/api/admin/members/{id}/sanctions` | 조치 이력 (최근 것부터, 처리 운영자 · 해제 사유 포함) |
+| POST `/api/admin/members/{id}/sanctions` | `{ type: WARNING | SUSPEND | BAN, days, reason }` — SUSPEND 는 1 · 3 · 5 · 10일, 사유 200자. 정지면 `users.status = SUSPENDED`. 관리자 · 나에게는 400 |
+| POST `/api/admin/sanctions/bulk` | `{ memberIds(최대 100), type, days, reason }` — 하나라도 안 되면 아무것도 안 걸림 |
+| DELETE `/api/admin/members/{id}/sanctions/active` | `{ reason? }` 지금 걸린 정지 해제(revoked_at · revoked_by · revoke_reason), 상태 ACTIVE. 정지 중이 아니면 400 |
+| GET `/api/me/sanctions` · POST `/api/me/warnings/seen` | 내 경고 · 정지 내역 / 경고 안내 창 "확인했어요"(`seen_at`) |
+
+- `GET /api/auth/me` 에 `warnCount` · `banCount` · `unseenWarnings: [{ id, reason, at }]` · `suspension: null` 이 더해졌어요 (정지 중이면 로그인 · 요청이 403 이라 suspension 은 늘 null).
+- 정지 중 로그인은 403 `SUSPENDED` + "이용이 정지된 계정이에요. (11월 20일 18:00 해제) 사유: …" 처럼 해제 시각 · 사유를 알려요. 이미 로그인한 토큰도 다음 요청부터 403 이고, 프론트는 안내 후 로그아웃해요.
+- 정지가 끝나거나 해제되면 다음 로그인 · 요청 때 `users.status` 를 ACTIVE 로 되돌려요. 조치 기록 없이 직접 SUSPENDED 로 둔 계정은 그대로 막아요.
+- 정지 시작 시각은 초 단위로 내림해서 저장해요 (MySQL DATETIME 이 초 아래를 반올림해 "아직 시작 전"으로 보이는 것을 막음).
+- **검증**: `ModerationIntegrationTests` 7개 + 격리 MySQL 에서 실제 백엔드로 경고 · 정지 · 즉시 차단 · 해제 · 영구 정지 확인.
 
 ## 지도
 

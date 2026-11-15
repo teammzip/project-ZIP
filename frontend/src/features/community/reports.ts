@@ -29,6 +29,12 @@ export type Report = {
   detail: string
   reporter: string
   at: number
+  /** 서버 모드: 신고된 댓글 번호 (같은 댓글 찾기용) */
+  commentId?: string
+  /** 서버 모드: 대상이 지금 안 보이는지 (삭제 · 숨김) */
+  gone?: boolean
+  /** 서버 모드: 운영자가 지운 사유 */
+  deleteReason?: string
   /** 처리 상태: 접수(처리 대기) · 숨김(내용 삭제) · 기각(문제없음). 예전 기록엔 없을 수 있음 → 접수로 봄 */
   status?: 'RECEIVED' | 'HIDDEN' | 'DISMISSED'
 }

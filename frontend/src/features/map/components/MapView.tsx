@@ -561,7 +561,11 @@ function useHorizontalScroll(ref: React.RefObject<HTMLDivElement | null>, key: s
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    const update = () => setEdges({ left: el.scrollLeft > 2, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2 })
+    // 값이 바뀔 때만 다시 그림 (같은 값이면 이전 객체 그대로)
+    const update = () => {
+      const left = el.scrollLeft > 2, right = el.scrollLeft + el.clientWidth < el.scrollWidth - 2
+      setEdges((prev) => (prev.left === left && prev.right === right ? prev : { left, right }))
+    }
     const onWheel = (e: WheelEvent) => {
       if (el.scrollWidth <= el.clientWidth || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
       e.preventDefault() // 지도 확대 · 페이지 스크롤 대신 칩을 옆으로

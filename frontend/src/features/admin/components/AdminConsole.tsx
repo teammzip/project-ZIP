@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Button, Modal } from '@/components/ui'
-import { isPending, reasonLabel, type Report, useCommunityStore, useReportStore } from '@/features/community'
+import { isPending, reasonLabel, type Post, type Report, useAdminCommunity } from '@/features/community'
 import { AdminInquiries } from '@/features/support'
-import { banLabel, fmtAt, isActive, useBanStore, type BanRecord } from '@/features/moderation'
+import { banLabel, fmtAt, isActive, useAdminModeration, type BanRecord } from '@/features/moderation'
 import { cx } from '@/lib/cx'
 import { relTime } from '@/lib/date'
 import { AdminReports } from './AdminReports'
@@ -25,10 +25,11 @@ type DialogState = {
   /** 글 · 댓글 삭제 창: 삭제가 중심이고, 작성자에게는 '경고도 주기' 체크만 (정지는 회원 관리에서) */
   deleteFor?: { author: string; banned: boolean; staff?: boolean }
   initial: string
-  onOk: (action: Action, reason: string) => void
+  /** reason = 경고 · 정지 사유, deleteReason = 삭제 창에서 적은 삭제 사유 */
+  onOk: (action: Action, reason: string, deleteReason?: string) => void
 }
 
-type Member = { nick: string; uid: string; posts: number; cmts: number; count: number; warns: number; rec: BanRecord | null; active: boolean }
+type Member = { nick: string; uid: string; posts: number; cmts: number; count: number; warns: number; rec: BanRecord | null; active: boolean; joined?: string }
 
 /** 시안이라 가입 기록이 없어서 닉네임으로 정한 예시 가입일 (실제로는 users.created_at) */
 function joinedAt(nick: string) {
@@ -41,34 +42,29 @@ function joinedAt(nick: string) {
 const actionText = (e: { warn?: boolean; days: number | null }) => (e.warn ? '경고' : e.days ? `${e.days}일 정지` : '영구 정지')
 
 export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLogout: () => void; logoutPending?: boolean }) {
-  const { posts, removePost, removeComment, addComment } = useCommunityStore()
-  const { records, ban, warn, unban } = useBanStore()
+  // 게시글 · 신고: 가짜 API 모드는 이 브라우저, 서버 모드는 /api/admin/** (회원 관리 · 정지는 아직 브라우저 기록)
+  const admin = useAdminCommunity(me)
+  const { posts, reports } = admin
+  // 경고 · 정지: 가짜 API 모드는 이 브라우저, 서버 모드는 /api/admin/members · sanctions · stats
+  const moderation = useAdminModeration()
+  const { records, ban, warn, unban } = moderation
   const [tab, setTab] = useState<Tab>('members')
   const [dialog, setDialog] = useState<DialogState | null>(null)
-  const reports = useReportStore((s) => s.reports)
-  const resolveReports = useReportStore((s) => s.resolve)
   // 처리 대기 신고 = 신고가 들어온 대상(글 · 댓글) 중 아직 처리 안 한 것
   const pendingTargets = new Set(reports.filter(isPending).map((r) => (r.targetType === 'POST' ? `P${r.postId}` : `C${r.postId}|${r.targetAuthor}|${r.targetText}`))).size
   /** 글 · 댓글을 지우면 거기 들어온 신고도 '삭제함'으로 처리 */
-  const deletePost = (id: number) => {
-    removePost(id)
-    resolveReports((r) => r.postId === id, 'HIDDEN')
-  }
-  const deleteComment = (id: number, index: number) => {
-    const c = posts.find((p) => p.id === id)?.comments[index]
-    removeComment(id, index)
-    if (c) resolveReports((r) => r.targetType === 'COMMENT' && r.postId === id && r.targetAuthor === c.author && r.targetText === c.text, 'HIDDEN')
-  }
+  const deletePost = (id: number, reason?: string) => void admin.removePost(id, reason)
+  const deleteComment = (id: number, index: number, reason?: string) => void admin.removeComment(id, index, reason)
   /** staff = 운영자 댓글 (경고 고르기 없이 삭제만) */
-  const confirmDelete = (title: string, msg: string, author: string, doDelete: () => void, staff?: boolean) =>
+  const confirmDelete = (title: string, msg: string, author: string, doDelete: (reason?: string) => void, staff?: boolean) =>
     setDialog({
       title,
       msg,
       okText: '삭제',
       deleteFor: { author, banned: isActive(records[author]), staff },
       initial: 'none',
-      onOk: (a, reason) => {
-        doDelete()
+      onOk: (a, reason, deleteReason) => {
+        doDelete(deleteReason || undefined)
         act(author, a, reason)
       },
     })
@@ -79,15 +75,23 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
     if (!map.has(nick)) map.set(nick, { nick, uid: '', posts: 0, cmts: 0, count: 0, warns: 0, rec: null, active: false })
     return map.get(nick)!
   }
-  for (const p of posts) {
-    get(p.author).posts++
-    for (const c of p.comments) get(c.author).cmts++
+  const server = moderation.server
+  // 서버 모드는 서버 회원 전체와 서버가 센 글 · 댓글 수, 가짜 API 모드는 이 브라우저 글로 셈
+  if (!server) {
+    for (const p of posts) {
+      get(p.author).posts++
+      for (const c of p.comments) get(c.author).cmts++
+    }
   }
   Object.keys(records).forEach(get)
   map.delete(me)
   const members = [...map.values()].map((m) => {
     const rec = records[m.nick] ?? null
-    return { ...m, rec, uid: rec?.uid ?? '', count: rec?.count ?? 0, warns: rec?.warns ?? 0, active: isActive(rec) }
+    const counted = server?.counts[m.nick]
+    return {
+      ...m, rec, uid: rec?.uid ?? '', count: rec?.count ?? 0, warns: rec?.warns ?? 0, active: isActive(rec),
+      ...(counted ? { posts: counted.posts, cmts: counted.cmts, joined: counted.joinedAt } : {}),
+    }
   })
 
   /** 조치 적용 */
@@ -98,14 +102,15 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
   }
 
   const comments = posts.reduce((t, p) => t + p.comments.length, 0)
+  const s = server?.stats
   const stats: Array<[number, string]> = [
-    [members.length, '전체 회원'],
-    [members.filter((m) => m.active).length, '지금 정지 중'],
-    [members.reduce((t, m) => t + m.count, 0), '누적 정지 횟수'],
-    [members.reduce((t, m) => t + m.warns, 0), '누적 경고'],
+    [s?.members ?? members.length, '전체 회원'],
+    [s?.suspended ?? members.filter((m) => m.active).length, '지금 정지 중'],
+    [s?.totalBans ?? members.reduce((t, m) => t + m.count, 0), '누적 정지 횟수'],
+    [s?.totalWarns ?? members.reduce((t, m) => t + m.warns, 0), '누적 경고'],
     [pendingTargets, '처리 대기 신고'],
-    [posts.length, '게시글'],
-    [comments, '댓글'],
+    [s?.posts ?? posts.length, '게시글'],
+    [s?.comments ?? comments, '댓글'],
   ]
 
   return (
@@ -136,10 +141,17 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
         ))}
       </section>
 
+      {/* 서버 모드: 게시글 · 신고를 불러오는 중이거나 실패 */}
+      {(admin.loading || admin.error || moderation.error) && (
+        <p className={cx(styles.hint, (admin.error || moderation.error) && styles.hot)} role={admin.error || moderation.error ? 'alert' : 'status'}>
+          {admin.error || moderation.error ? '관리자 데이터를 불러오지 못했어요. 관리자 계정인지 확인하고 새로고침해 주세요.' : '게시글 · 신고를 불러오고 있어요…'}
+        </p>
+      )}
+
       {tab === 'members' ? (
-        <Members members={members} openDialog={setDialog} act={act} unban={unban} />
+        <Members members={members} openDialog={setDialog} act={act} unban={unban} loadHistory={moderation.loadHistory} />
       ) : tab === 'reports' ? (
-        <AdminReports posts={posts} records={records} onDelete={confirmDelete} removePost={deletePost} removeComment={deleteComment} />
+        <AdminReports posts={posts} reports={reports} resolve={(match, status) => void admin.resolve(match, status)} records={records} onDelete={confirmDelete} removePost={deletePost} removeComment={deleteComment} />
       ) : tab === 'inquiries' ? (
         <main className={styles.pane}><AdminInquiries /></main>
       ) : (
@@ -149,7 +161,9 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
           onDelete={confirmDelete}
           removePost={deletePost}
           removeComment={deleteComment}
-          onAddComment={(id, text) => addComment(id, me, text, true)}
+          onAddComment={(id, text) => void admin.addStaffComment(id, text)}
+          reports={reports}
+          onHomeTip={admin.setHomeTip && ((id, on) => void admin.setHomeTip!(id, on))}
         />
       )}
 
@@ -163,9 +177,11 @@ type MembersProps = {
   openDialog: (d: DialogState) => void
   act: (nick: string, a: Action, reason: string) => void
   unban: (nick: string) => void
+  /** 서버 모드: 기록 버튼을 누르면 그 회원의 조치 이력을 받아 옴 */
+  loadHistory?: (nick: string) => Promise<void>
 }
 
-function Members({ members, openDialog, act, unban }: MembersProps) {
+function Members({ members, openDialog, act, unban, loadHistory }: MembersProps) {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('')
   const [minBans, setMinBans] = useState('')
@@ -288,7 +304,11 @@ function Members({ members, openDialog, act, unban }: MembersProps) {
                 checked={!!selected[m.nick]}
                 onCheck={(v) => setSelected({ ...selected, [m.nick]: v })}
                 histOpen={openHist === m.nick}
-                onHist={() => setOpenHist(openHist === m.nick ? null : m.nick)}
+                onHist={() => {
+                  const opening = openHist !== m.nick
+                  setOpenHist(opening ? m.nick : null)
+                  if (opening) void loadHistory?.(m.nick)
+                }}
                 onWarn={() =>
                   openDialog({
                     title: `"${m.nick}" 회원 경고`,
@@ -335,7 +355,7 @@ function MemberRow({ m, checked, onCheck, histOpen, onHist, onWarn, onBan }: Row
         </td>
         <td>{m.nick}</td>
         <td>{m.uid || '-'}</td>
-        <td>{joinedAt(m.nick)}</td>
+        <td>{m.joined ?? joinedAt(m.nick)}</td>
         <td>{m.posts}</td>
         <td>{m.cmts}</td>
         <td className={cx(m.warns >= 3 && styles.hot)}>{m.warns}회</td>
@@ -374,22 +394,24 @@ function MemberRow({ m, checked, onCheck, histOpen, onHist, onWarn, onBan }: Row
 }
 
 type PostsProps = {
-  posts: ReturnType<typeof useCommunityStore.getState>['posts']
+  posts: Post[]
+  reports: Report[]
+  /** 홈 "자취 꿀팁" 지정 · 해제 (서버 모드만) */
+  onHomeTip?: (id: number, on: boolean) => void
   isBanned: (nick: string) => boolean
-  onDelete: (title: string, msg: string, author: string, doDelete: () => void, staff?: boolean) => void
+  onDelete: (title: string, msg: string, author: string, doDelete: (reason?: string) => void, staff?: boolean) => void
   /** 운영자로 댓글 쓰기 */
   onAddComment: (id: number, text: string) => void
-  removePost: (id: number) => void
-  removeComment: (id: number, index: number) => void
+  removePost: (id: number, reason?: string) => void
+  removeComment: (id: number, index: number, reason?: string) => void
 }
 
-function Posts({ posts, isBanned, onDelete, removePost, removeComment, onAddComment }: PostsProps) {
+function Posts({ posts, reports, onHomeTip, isBanned, onDelete, removePost, removeComment, onAddComment }: PostsProps) {
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('')
   const [region, setRegion] = useState('')
   const [openId, setOpenId] = useState<number | null>(null)
   const [reportedOnly, setReportedOnly] = useState(false)
-  const reports = useReportStore((s) => s.reports)
   const reportsOf = (id: number) => reports.filter((r) => r.postId === id)
   const cats = [...new Set(posts.map((p) => p.cat))]
   const regions = [...new Set(posts.map((p) => p.region).filter(Boolean))]
@@ -449,9 +471,10 @@ function Posts({ posts, isBanned, onDelete, removePost, removeComment, onAddComm
                 open={openId === p.id}
                 onToggle={() => setOpenId(openId === p.id ? null : p.id)}
                 banned={isBanned(p.author)}
-                onDeletePost={() => onDelete('글 삭제', `"${p.title}" 글을 삭제할까요? 댓글도 함께 사라지고 되돌릴 수 없어요.`, p.author, () => removePost(p.id))}
-                onDeleteComment={(i) => onDelete('댓글 삭제', `"${p.comments[i].text}" 댓글을 삭제할까요? 되돌릴 수 없어요.`, p.comments[i].author, () => removeComment(p.id, i), p.comments[i].staff)}
+                onDeletePost={() => onDelete('글 삭제', `"${p.title}" 글을 삭제할까요? 댓글도 함께 사라지고 되돌릴 수 없어요.`, p.author, (reason) => removePost(p.id, reason))}
+                onDeleteComment={(i) => onDelete('댓글 삭제', `"${p.comments[i].text}" 댓글을 삭제할까요? 되돌릴 수 없어요.`, p.comments[i].author, (reason) => removeComment(p.id, i, reason), p.comments[i].staff)}
                 onAddComment={(text) => onAddComment(p.id, text)}
+                onHomeTip={onHomeTip && (() => onHomeTip(p.id, !p.homeTip))}
               />
             ))}
           </tbody>
@@ -471,9 +494,10 @@ type PostRowProps = {
   onDeletePost: () => void
   onDeleteComment: (index: number) => void
   onAddComment: (text: string) => void
+  onHomeTip?: () => void
 }
 
-function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteComment, onAddComment }: PostRowProps) {
+function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteComment, onAddComment, onHomeTip }: PostRowProps) {
   const [reply, setReply] = useState('')
   const idText = String(p.id).length > 6 ? `…${String(p.id).slice(-4)}` : String(p.id)
   return (
@@ -497,6 +521,11 @@ function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteCom
         <td>{p.likes}</td>
         <td>{p.comments.length}</td>
         <td>
+          {onHomeTip && (
+            <Button variant="line" onClick={onHomeTip} aria-pressed={!!p.homeTip} title="홈 화면 '자취 꿀팁'에 보이기">
+              {p.homeTip ? '★ 홈 꿀팁 해제' : '☆ 홈 꿀팁'}
+            </Button>
+          )}{' '}
           <Button variant="danger" onClick={onDeletePost}>
             삭제
           </Button>
@@ -519,7 +548,7 @@ function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteCom
             )}
             {!!p.attachments?.length && <div className={styles.sub}>첨부 {p.attachments.length}개: {p.attachments.map((a) => a.name).join(', ')}</div>}
             {p.comments.map((c, i) => (
-              <div key={i} className={styles.cmtRow}>
+              <div key={c.id ?? i} className={styles.cmtRow}>
                 <b>
                   {c.author} {c.staff && <span className={cx(styles.badge, styles.staff)}>운영자</span>}
                 </b>
@@ -559,10 +588,11 @@ function ActionDialog({ state, onClose }: { state: DialogState; onClose: () => v
   const [value, setValue] = useState(state.initial)
   const [reason, setReason] = useState('')
   const [warnToo, setWarnToo] = useState(false)
+  const [deleteReason, setDeleteReason] = useState('')
   const del = state.deleteFor
   const confirm = () => {
     const a: Action = del ? (warnToo ? 'warn' : null) : value === 'none' ? null : value === 'warn' ? 'warn' : value === 'perm' ? 0 : Number(value)
-    state.onOk(a, reason.trim())
+    state.onOk(a, reason.trim() || (del ? deleteReason.trim() : ''), del ? deleteReason.trim() : undefined)
     onClose()
   }
   return (
@@ -571,8 +601,9 @@ function ActionDialog({ state, onClose }: { state: DialogState; onClose: () => v
         <h3>{state.title}</h3>
         <p>{state.msg}</p>
         {del ? (
-          // 삭제 창: 작성자에게는 경고만 (정지 · 영구 정지는 회원 관리에서)
+          // 삭제 창: 삭제 사유(선택, 서버에 남음) + 작성자에게는 경고만 (정지 · 영구 정지는 회원 관리에서)
           <div className={styles.warnBox}>
+            <input className={styles.reasonInput} value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} maxLength={200} placeholder="삭제 사유 (선택, 예: 광고 · 욕설)" aria-label="삭제 사유" autoFocus />
             {del.staff ? (
               <p className={styles.sub}>운영자가 쓴 댓글이에요.</p>
             ) : del.banned ? (
@@ -584,7 +615,7 @@ function ActionDialog({ state, onClose }: { state: DialogState; onClose: () => v
                   작성자 "{del.author}" 님에게 경고도 줄래요
                 </label>
                 {warnToo && (
-                  <input className={styles.reasonInput} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={60} placeholder="경고 사유 (예: 욕설 · 비방)" aria-label="경고 사유" autoFocus />
+                  <input className={styles.reasonInput} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={60} placeholder="경고 사유 (비우면 삭제 사유)" aria-label="경고 사유" />
                 )}
                 <p className={styles.sub}>기간 정지 · 영구 정지는 회원 관리 탭에서 할 수 있어요.</p>
               </>

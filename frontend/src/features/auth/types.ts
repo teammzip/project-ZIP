@@ -29,6 +29,15 @@ export type User = {
   avatarUrl?: string | null
   avatarEmoji?: string | null
   avatarColor?: string | null
+  /** 서버 모드: 받은 경고 · 정지 횟수 (해제 · 만료돼도 남음) */
+  warnCount?: number
+  banCount?: number
+  /** 서버 모드: 아직 확인하지 않은 경고 → 앱에 들어올 때 경고 안내 창 */
+  unseenWarnings?: Array<{ id: string; reason: string; at: string }>
+  /** 서버 모드: 동네 인증 시각 (30일 지났거나 동네가 바뀌었으면 null) */
+  regionVerifiedAt?: string | null
+  /** 정지 정보 (서버는 정지 중이면 로그인 자체를 막아서 늘 null) */
+  suspension?: { until: string | null; permanent: boolean; reason: string; count: number } | null
 }
 
 /** POST /auth/login — loginId 는 아이디 또는 이메일 */
