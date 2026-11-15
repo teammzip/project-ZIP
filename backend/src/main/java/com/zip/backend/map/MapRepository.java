@@ -113,6 +113,57 @@ public class MapRepository {
         jdbc.update("DELETE FROM kakao_place_favorites WHERE user_id = ? AND kakao_place_id = ?", userId, kakaoPlaceId);
     }
 
+    // ---------- 저장 리스트 (place_lists · place_list_items) ----------
+
+    public record PlaceList(long id, String name, String color) {}
+
+    public List<PlaceList> placeLists(long userId) {
+        return jdbc.query("SELECT id, name, color FROM place_lists WHERE user_id = ? ORDER BY sort_order, id",
+            (rs, row) -> new PlaceList(rs.getLong("id"), rs.getString("name"), rs.getString("color")), userId);
+    }
+
+    /** 회원의 모든 리스트 줄: [리스트 id, 장소 키] (넣은 순서) */
+    public List<Object[]> placeListItems(long userId) {
+        return jdbc.query("""
+            SELECT i.list_id, i.place_key FROM place_list_items i JOIN place_lists l ON l.id = i.list_id
+            WHERE l.user_id = ? ORDER BY i.created_at, i.place_key
+            """, (rs, row) -> new Object[] {rs.getLong(1), rs.getString(2)}, userId);
+    }
+
+    public long insertPlaceList(long userId, String name, String color) {
+        int next = jdbc.queryForObject("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM place_lists WHERE user_id = ?", Integer.class, userId);
+        var keys = new org.springframework.jdbc.support.GeneratedKeyHolder();
+        jdbc.update(connection -> {
+            var ps = connection.prepareStatement("INSERT INTO place_lists (user_id, name, color, sort_order) VALUES (?, ?, ?, ?)", new String[] {"id"});
+            ps.setLong(1, userId); ps.setString(2, name); ps.setString(3, color); ps.setInt(4, next);
+            return ps;
+        }, keys);
+        return keys.getKey().longValue();
+    }
+
+    public int updatePlaceList(long userId, long listId, String name, String color) {
+        return jdbc.update("UPDATE place_lists SET name = ?, color = ? WHERE id = ? AND user_id = ?", name, color, listId, userId);
+    }
+
+    public int deletePlaceList(long userId, long listId) {
+        return jdbc.update("DELETE FROM place_lists WHERE id = ? AND user_id = ?", listId, userId);
+    }
+
+    /** 이 장소가 들어 있는 리스트를 listIds 로 바꿈 (회원의 리스트만) */
+    public void setPlaceListMembership(long userId, String placeKey, List<Long> listIds) {
+        jdbc.update("DELETE FROM place_list_items WHERE place_key = ? AND list_id IN (SELECT id FROM place_lists WHERE user_id = ?)", placeKey, userId);
+        for (long listId : listIds) jdbc.update("INSERT INTO place_list_items (list_id, place_key) VALUES (?, ?)", listId, placeKey);
+    }
+
+    /** 이 장소를 리스트 하나에 더함 (이미 있으면 그대로) */
+    public void addToPlaceList(long listId, String placeKey) {
+        try {
+            jdbc.update("INSERT INTO place_list_items (list_id, place_key) VALUES (?, ?)", listId, placeKey);
+        } catch (DuplicateKeyException alreadyIn) {
+            // 그대로
+        }
+    }
+
     /** user_settings.map_categories · map_keywords 를 순서대로 (줄이 없거나 NULL 이면 비어 있음) */
     public Optional<List<String>> mapList(long userId, String column) {
         if (!column.equals("map_categories") && !column.equals("map_keywords")) throw new IllegalArgumentException(column);

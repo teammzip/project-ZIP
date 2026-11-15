@@ -9,6 +9,8 @@ import { isKakaoPlace, mapApi, usePlaceNotice } from '../api'
 import { DEFAULT_CATS, walkMin, type PlaceItem } from '../data/places'
 import { placeColors } from '../placeIcons'
 import { PlaceIcon } from './PlaceIcon'
+import { SaveSheet } from './SaveSheet'
+import { openSaveSheet, useFavNote } from '../saveSheet'
 import { useMapStore } from '../store'
 import { useMapData, useMapServerSync } from '../useMapData'
 import { useNeighborhoodPosition } from '../useNeighborhoodPosition'
@@ -59,10 +61,11 @@ type Found = { q: string; items: Array<{ p: PlaceItem; why: string[] }>; named?:
  * - 검색은 장소 이름 + AI 장소 찾기("밤에 갈 수 있는 약국" → 가까운 순 추천 + 이유, 시연용)
  * - ★ 저장(즐겨찾기), 종류 편집(켜기 · 끄기 · 직접 검색어), ?cat=세탁방 으로 열면 그 종류부터 */
 export function MapView() {
-  const { on, custom, favs, favNames, ensureCat, toggleCat } = useMapStore()
+  const { on, custom, favs, favNames, lists, ensureCat, toggleCat } = useMapStore()
   const position = useNeighborhoodPosition()
   const data = useMapData(position.point)
   const placeNotice = usePlaceNotice((s) => s.notice)
+  const favNote = useFavNote((s) => s.note)
   const chipsRef = useRef<HTMLDivElement>(null)
   // ⋯ 전체 종류 창: 바깥을 누르거나 Esc 면 닫힘
   const [moreOpen, setMoreOpen] = useState(false)
@@ -311,10 +314,11 @@ export function MapView() {
               setTab(tab === 'fav' ? 'near' : 'fav')
             }}
             aria-pressed={tab === 'fav'}
-            aria-label="저장한 장소"
-            title="저장한 장소"
+            aria-label={`내가 저장한 곳 보기 (${favs.length}곳)`}
+            title="내가 저장한 곳 보기"
           >
             ★
+            {favs.length > 0 && <span className={styles.fabBadge} aria-hidden="true">{favs.length > 99 ? '99+' : favs.length}</span>}
           </button>
           <button type="button" className={styles.fab} onClick={goCurrent} aria-label={verified ? '현 위치 다시 인증' : '현 위치 인증'} title={verified ? '현 위치 다시 인증' : '현 위치 인증'} aria-haspopup="dialog">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -343,6 +347,11 @@ export function MapView() {
             </p>
           )}
           {data.server && placeNotice && <p className={styles.note} role="status">{placeNotice}</p>}
+          {favNote && (
+            <p className={styles.favNote} role="status">
+              {favNote}
+            </p>
+          )}
           {selected ? (
             <PlaceDetail p={selected} onBack={() => {
               setSelId(null)
@@ -361,7 +370,7 @@ export function MapView() {
                     setTab('near')
                   }}
                 >
-                  <PlaceIcon cat="기타" size={16} /> {place}
+                  <PlaceIcon cat="기타" size={16} /> {place.split(' ').at(-1)} 주변
                 </button>
                 <button
                   type="button"
@@ -373,7 +382,7 @@ export function MapView() {
                     setTab('fav')
                   }}
                 >
-                  <i aria-hidden="true">★</i> 저장 {favs.length}
+                  <i aria-hidden="true">★</i> 내가 저장한 곳 <b className={styles.tabCount}>{favs.length}</b>
                 </button>
               </div>
 
@@ -383,18 +392,17 @@ export function MapView() {
                     <span className={styles.ai}>{found.named ? '🔎 검색 결과' : '✨ AI 추천'}</span> &ldquo;{found.q}&rdquo;
                   </>
                 ) : tab === 'fav' ? (
-                  '저장한 장소'
+                  '내가 저장한 곳'
                 ) : (
                   <>이 주변 {cat.startsWith(CUSTOM) ? cat.slice(CUSTOM.length) : cat}</>
                 )}
-                <small>{list.length}곳</small>
+                <small>{list.length + savedKakao.length}곳</small>
               </h2>
 
-              {!found && (
+              {!found && tab === 'near' && (
                 <div className={styles.filters}>
                   {FILTERS.map((f) => (
                     <button key={f.key} type="button" className={cx(styles.filter, filter === f.key && styles.filterOn)} aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
-                      {f.key !== 'near' && '# '}
                       {f.label}
                     </button>
                   ))}
@@ -402,8 +410,9 @@ export function MapView() {
               )}
 
               {found && !found.items.length && <p className={styles.empty}>&ldquo;{found.q}&rdquo;에 맞는 곳을 못 찾았어요. 다른 말로 물어보거나 ⚙ 편집에서 종류를 추가해 보세요.</p>}
-              {!found && (
-                <div className={styles.examples}>
+              {!found && tab === 'near' && (
+                <div ref={dragScroll} className={styles.examples}>
+                  <span className={styles.examplesLabel}>✨ AI에게</span>
                   {AI_EXAMPLES.map((q) => (
                     <button
                       key={q}
@@ -413,28 +422,47 @@ export function MapView() {
                         void search(q)
                       }}
                     >
-                      ✨ {q}
+                      {q}
                     </button>
                   ))}
                 </div>
               )}
 
-              <ol className={styles.list}>
-                {list.map((p, i) => (
-                  <PlaceRow key={p.id} p={p} rank={i + 1} why={found?.items.find((r) => r.p.id === p.id)?.why} onClick={() => select(p)} />
-                ))}
-              </ol>
-              {savedKakao.length > 0 && (
-                <>
-                  <p className={styles.note}>저장한 카카오 장소 · 누르면 카카오맵에서 열려요</p>
-                  <ol className={styles.list}>
-                    {savedKakao.map((s) => (
-                      <SavedKakaoRow key={s.id} id={s.id} n={s.n} cat={s.cat} />
-                    ))}
-                  </ol>
-                </>
+              {tab === 'fav' && !found ? (
+                // 내가 저장한 곳: 내가 만든 리스트별로 세로로 (리스트 제목 → 그 리스트 장소들). 한 장소가 여러 리스트에 보일 수 있음
+                (lists.length ? lists : [{ id: 'all', name: '내 장소', color: '#03c75a', placeIds: favs }]).map((l) => {
+                  const ids = l.placeIds.filter((id) => favs.includes(id))
+                  const rows = list.filter((p) => ids.includes(p.id))
+                  const kakaoRows = savedKakao.filter((k) => ids.includes(k.id))
+                  if (!rows.length && !kakaoRows.length) return null
+                  return (
+                    <section key={l.id} className={styles.favGroup} aria-label={`${l.name} ${ids.length}곳`}>
+                      <h3 className={styles.favGroupTitle}>
+                        <span className={styles.listStar} style={{ background: l.color }} aria-hidden="true">
+                          ★
+                        </span>
+                        {l.name}
+                        <small>{ids.length}</small>
+                      </h3>
+                      <ol className={styles.list}>
+                        {rows.map((p, i) => (
+                          <PlaceRow key={p.id} p={p} rank={i + 1} onClick={() => select(p)} />
+                        ))}
+                        {kakaoRows.map((k) => (
+                          <SavedKakaoRow key={k.id} id={k.id} n={k.n} cat={k.cat} />
+                        ))}
+                      </ol>
+                    </section>
+                  )
+                })
+              ) : (
+                <ol className={styles.list}>
+                  {list.map((p, i) => (
+                    <PlaceRow key={p.id} p={p} rank={i + 1} why={found?.items.find((r) => r.p.id === p.id)?.why} onClick={() => select(p)} />
+                  ))}
+                </ol>
               )}
-              {!found && !list.length && !savedKakao.length && <p className={styles.empty}>{tab === 'fav' ? '아직 저장한 장소가 없어요. 장소 오른쪽의 ☆를 눌러 보세요.' : data.server ? '이 조건의 장소가 아직 없어요.' : '이 조건의 장소가 예시 데이터에 없어요.'}</p>}
+              {!found && !list.length && !savedKakao.length && <p className={styles.empty}>{tab === 'fav' ? '아직 저장한 곳이 없어요. 장소 오른쪽의 [☆ 저장]을 누르면 여기에 모여요.' : data.server ? '이 조건의 장소가 아직 없어요.' : '이 조건의 장소가 예시 데이터에 없어요.'}</p>}
               <p className={styles.note}>{!data.server ? '장소는 예시 데이터예요.' : list.some((p) => isKakaoPlace(p.id)) || savedKakao.length ? '장소 검색 © Kakao.' : '장소는 서버(DB)에서 불러왔어요.'} 지도 © OpenStreetMap</p>
             </>
           )}
@@ -447,6 +475,7 @@ export function MapView() {
         setSheet('peek')
         setCenterRequest((value) => value + 1)
       }} />
+      <SaveSheet />
       <Modal open={editing} onClose={() => setEditing(false)} title="장소 종류 편집">
         <h3 className={styles.editTitle}>장소 종류 편집</h3>
         <CategoryEditor kinds={data.kinds} places={places} current={cat} onCurrentGone={(next) => pickCat(next)} onAdded={(k) => pickCat(CUSTOM + k)} />
@@ -466,21 +495,20 @@ function Chip({ on, color, onClick, children }: { on: boolean; color: string; on
 /** ☆ / ★ 저장 버튼 */
 function FavStar({ p, big }: { p: PlaceItem; big?: boolean }) {
   const fav = useMapStore((s) => s.favs.includes(p.id))
-  const toggleFav = useMapStore((s) => s.toggleFav)
   return (
     <button
       type="button"
-      className={cx(styles.star, fav && styles.starOn, big && styles.starBig)}
-      aria-label={fav ? `${p.n} 저장 취소` : `${p.n} 저장`}
+      className={cx(big ? styles.star : styles.saveBtn, fav && (big ? styles.starOn : styles.saveBtnOn), big && styles.starBig)}
+      aria-label={fav ? `${p.n} 저장한 리스트 바꾸기` : `${p.n} 리스트에 저장`}
       aria-pressed={fav}
       onClick={(e: MouseEvent) => {
         e.stopPropagation()
-        // 카카오 장소는 이름 · 종류만 같이 저장 (주소 · 좌표는 저장 안 함 — 카카오 장소 정보 장기 저장 제한)
-        toggleFav(p.id, isKakaoPlace(p.id) ? { n: p.n, cat: p.cat } : undefined)
+        // 저장 창에서 리스트를 골라 저장 (카카오 장소는 이름 · 종류만 서버에 — 주소 · 좌표는 저장 안 함)
+        openSaveSheet({ id: p.id, n: p.n, cat: p.cat })
       }}
     >
       <ActionIcon name="star" filled={fav} />
-      {big && <span>{fav ? '저장됨' : '저장'}</span>}
+      <span>{fav ? '저장됨' : '저장'}</span>
     </button>
   )
 }
@@ -554,9 +582,58 @@ function useHorizontalScroll(ref: React.RefObject<HTMLDivElement | null>, key: s
   return { ...edges, by }
 }
 
+/** 가로로 넘치는 줄에 붙이는 ref: 마우스 휠(세로)로 옆으로, PC 에서는 끌어서도 옆으로.
+ * 끌었을 때는 버튼 클릭으로 치지 않음. 줄이 다시 그려질 때마다 새로 붙고 사라지면 떼어 냄 (React 19 ref 정리) */
+function dragScroll(el: HTMLDivElement | null) {
+  if (!el) return
+  let startX = 0
+  let startLeft = 0
+  let dragging = false
+  let moved = false
+  const onWheel = (e: WheelEvent) => {
+    if (el.scrollWidth <= el.clientWidth || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+    e.preventDefault()
+    el.scrollLeft += e.deltaY
+  }
+  const onDown = (e: globalThis.PointerEvent) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return // 손가락은 원래대로 밀기
+    dragging = true
+    moved = false
+    startX = e.clientX
+    startLeft = el.scrollLeft
+  }
+  const onMove = (e: globalThis.PointerEvent) => {
+    if (!dragging) return
+    const dx = e.clientX - startX
+    if (Math.abs(dx) > 4) moved = true
+    if (moved) el.scrollLeft = startLeft - dx
+  }
+  const onUp = () => {
+    dragging = false
+  }
+  const onClick = (e: globalThis.MouseEvent) => {
+    if (moved) {
+      e.preventDefault()
+      e.stopPropagation()
+      moved = false
+    }
+  }
+  el.addEventListener('wheel', onWheel, { passive: false })
+  el.addEventListener('pointerdown', onDown)
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+  el.addEventListener('click', onClick, true)
+  return () => {
+    el.removeEventListener('wheel', onWheel)
+    el.removeEventListener('pointerdown', onDown)
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+    el.removeEventListener('click', onClick, true)
+  }
+}
+
 /** 저장 탭의 카카오 장소 (이름 · 종류만 있음): 누르면 카카오맵 장소 페이지, ★ 로 저장 취소 */
 function SavedKakaoRow({ id, n, cat }: { id: string; n: string; cat: string }) {
-  const toggleFav = useMapStore((s) => s.toggleFav)
   return (
     <li>
       <div className={styles.row}>
@@ -571,8 +648,15 @@ function SavedKakaoRow({ id, n, cat }: { id: string; n: string; cat: string }) {
             <small>{cat} · 카카오맵에서 보기 ↗</small>
           </span>
         </a>
-        <button type="button" className={cx(styles.star, styles.starOn)} aria-label={`${n} 저장 취소`} aria-pressed onClick={() => toggleFav(id)}>
+        <button
+          type="button"
+          className={cx(styles.saveBtn, styles.saveBtnOn)}
+          aria-label={`${n} 저장한 리스트 바꾸기`}
+          aria-pressed
+          onClick={() => openSaveSheet({ id, n, cat })}
+        >
           <ActionIcon name="star" filled />
+          <span>저장됨</span>
         </button>
       </div>
     </li>

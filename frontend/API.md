@@ -492,6 +492,10 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 | GET | `/api/me/place-favorites` | — | `[placeId]` (DB 장소는 번호, 카카오 장소는 `"kakao:카카오장소id"`) |
 | PUT · DELETE | `/api/me/place-favorites/{placeId}` | 카카오 장소만 `{ name, category }` | — (★ 누르기 · 풀기) |
 | GET | `/api/me/place-favorites/kakao` | — | `[{ id: "kakao:…", name, category }]` (저장 목록에 보일 이름 · 종류) |
+| GET | `/api/me/place-lists` | — | `[{ id, name, color, placeIds }]` (★ 저장 창의 내 리스트. 처음이면 "내 장소"를 만들고 리스트에 안 든 저장 장소를 넣어 줌) |
+| POST | `/api/me/place-lists` | `{ name, color }` (20자 · `#RRGGBB`) | `{ id, name, color, placeIds: [] }` (같은 이름 409, 20개까지) |
+| PATCH · DELETE | `/api/me/place-lists/{id}` | `{ name, color }` | — (삭제하면 이 리스트에만 있던 장소는 저장도 풀림) |
+| PUT | `/api/me/place-favorites/{placeId}/lists` | `{ listIds, name?, category? }` | — (★ 저장 창의 [저장]: 고른 리스트들에 넣음, 비우면 저장 풂. 처음 저장하는 카카오 장소는 name · category 필요) |
 | GET · PUT | `/api/me/map-settings` | `{ categories: ["세탁방", …], keywords: ["빵집"] }` | 같은 모양 (칩에 보일 종류 · 직접 추가한 검색어) |
 | GET | `/api/places/{id}/reviews` | — | `[{ id, rating, body, author, createdAt }]` (확장 기능, 화면 없음) |
 | POST | `/api/places/{id}/reviews` | `{ rating, body }` | — (한 사람당 한 장소 하나) |

@@ -59,6 +59,35 @@ public class MapController {
         map.addFavorite(userId(jwt), placeId, kakaoPlace);
     }
 
+    /** ★ 저장 창: 이 장소를 넣을 리스트들 (비우면 저장 풂) */
+    @PutMapping("/api/me/place-favorites/{placeId}/lists")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void setPlaceLists(@AuthenticationPrincipal Jwt jwt, @PathVariable String placeId,
+        @RequestBody(required = false) MapRequests.PlaceListsInput input) {
+        map.setPlaceLists(userId(jwt), placeId, input);
+    }
+
+    /** 저장 리스트: [{ id, name, color, placeIds }] (처음이면 "내 장소"를 만들어 줌) */
+    @GetMapping("/api/me/place-lists")
+    public List<Map<String, Object>> placeLists(@AuthenticationPrincipal Jwt jwt) { return map.placeLists(userId(jwt)); }
+
+    @PostMapping("/api/me/place-lists")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> createPlaceList(@AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) MapRequests.PlaceListInput input) {
+        return map.createPlaceList(userId(jwt), input);
+    }
+
+    @PatchMapping("/api/me/place-lists/{listId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updatePlaceList(@AuthenticationPrincipal Jwt jwt, @PathVariable String listId,
+        @RequestBody(required = false) MapRequests.PlaceListInput input) {
+        map.updatePlaceList(userId(jwt), listId, input);
+    }
+
+    @DeleteMapping("/api/me/place-lists/{listId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deletePlaceList(@AuthenticationPrincipal Jwt jwt, @PathVariable String listId) { map.deletePlaceList(userId(jwt), listId); }
+
     /** 저장한 카카오 장소의 이름 · 종류 (저장 목록용) */
     @GetMapping("/api/me/place-favorites/kakao")
     public List<Map<String, String>> kakaoFavorites(@AuthenticationPrincipal Jwt jwt) { return map.kakaoFavorites(userId(jwt)); }
