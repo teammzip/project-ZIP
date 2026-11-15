@@ -489,8 +489,9 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 | GET | `/api/places?regionId=2&category=세탁방&lat=37.5496&lon=126.9137` | — | `[place]` (가까운 순. `lat` · `lon` = 지도 중심, 생략하면 우리 집) |
 | GET | `/api/places?regionId=2&q=빵집` | — | `[place]` (직접 추가한 검색어 칩: 이름 · 설명 · 종류에 글자 포함. 검색창은 `&wide=true` — 가게 이름 · 유명한 곳까지, 이름이 맞는 곳부터) |
 | POST | `/api/places/ai-search` | `{ q: "밤에 갈 수 있는 약국", regionId }` | `[{ place, reasons: ["약국", "24시간·심야 운영"], walkMin }]` (최대 5곳) |
-| GET | `/api/me/place-favorites` | — | `[placeId]` |
-| PUT · DELETE | `/api/me/place-favorites/{placeId}` | — | — (★ 누르기 · 풀기) |
+| GET | `/api/me/place-favorites` | — | `[placeId]` (DB 장소는 번호, 카카오 장소는 `"kakao:카카오장소id"`) |
+| PUT · DELETE | `/api/me/place-favorites/{placeId}` | 카카오 장소만 `{ name, category }` | — (★ 누르기 · 풀기) |
+| GET | `/api/me/place-favorites/kakao` | — | `[{ id: "kakao:…", name, category }]` (저장 목록에 보일 이름 · 종류) |
 | GET · PUT | `/api/me/map-settings` | `{ categories: ["세탁방", …], keywords: ["빵집"] }` | 같은 모양 (칩에 보일 종류 · 직접 추가한 검색어) |
 | GET | `/api/places/{id}/reviews` | — | `[{ id, rating, body, author, createdAt }]` (확장 기능, 화면 없음) |
 | POST | `/api/places/{id}/reviews` | `{ rating, body }` | — (한 사람당 한 장소 하나) |
@@ -501,12 +502,12 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 ```
 - **종류 15개**: 세탁방 · 편의점 · 약국 · 마트 · 카페 · 병원 · 헬스장 · 은행 · 미용실 · 다이소 · 공원 · 식당 · 반찬가게 · 세탁소 · 주민센터. 처음 칩에는 앞의 4개만 보여요.
   - DB place_categories 기본 데이터에 15개 모두 반영돼 있어요. 여기에 `기타`(📍, 정렬 99)가 있어요: 검색어로 찾은 장소 중 15종류에 안 맞는 곳을 담고, 칩 · 종류 편집에는 보이지 않아요.
-- **카카오 로컬 API (구현됨, 2026-11-08)**: 서버에 `KAKAO_REST_KEY`가 있으면 `category` · `q` 검색은 서버가 카카오에서 지도 중심 반경 1km를 찾아 `places`에 저장(`source=KAKAO`, `source_id`=카카오 장소 id) · 갱신한 뒤 줘요. 종류 칩 · 검색어 칩은 반경 1km, 검색창(`wide=true`)은 반경 5km + 거리 제한 없는 정확도 검색을 합쳐 이름이 같은 곳 → 이름에 든 곳 순이에요. 15종류에 안 맞는 검색 결과는 `기타`로 저장해요. 즐겨찾기 · 리뷰가 장소 번호를 쓰기 때문에 저장해요. 분류 코드가 있는 종류(편의점 CS2 · 약국 PM9 · 마트 MT1 · 카페 CE7 · 병원 HP8 · 은행 BK9 · 식당 FD6)는 코드로, 나머지는 키워드(세탁방 → "빨래방" 등)로 찾아요. 키가 없거나 실패하면 DB 장소만. 카카오는 영업시간을 주지 않아 `openHours`는 비어 있고, 24시간 · 저렴 · 조용 조건은 설명 글자로만 걸러요. 카카오 데이터 저장 · 캐시가 이용 약관에 맞는지 팀 확인이 필요해요.
+- **카카오 로컬 API (2026-11-15 변경)**: 서버에 `KAKAO_REST_KEY`가 있으면 `category` · `q` 검색은 서버가 카카오에서 지도 중심 근처를 찾아 **저장하지 않고 그대로** 줘요. 카카오 장소의 `id`는 `kakao:카카오장소id`예요(카카오 운영 정책: 장소 정보 장기 저장 제한). **즐겨찾기는 카카오 장소 id와 표시용 이름 · 종류만** `kakao_place_favorites`에 저장하고 주소 · 좌표는 저장하지 않아요(한 사람당 200곳). 그래서 저장 탭에서 지금 검색 결과에 없는 카카오 장소는 지도 핀 없이 목록으로 보이고, 누르면 카카오맵 장소 페이지가 열려요. 리뷰는 안 돼요(400). 화면에 "장소 검색 © Kakao"를 표시해요. 무료 쿼터 보호: 같은 검색 10분 캐시, 사람당 1분 30번, 서버 하루 30000번(설정으로 변경). 한도 · 실패면 DB 장소만 주고 응답 헤더 `X-Place-Notice`(`user-limit` · `daily-limit` · `error`)로 알려 주면 프론트가 안내 문구를 띄워요. 종류 칩 · 검색어 칩은 반경 1km, 검색창(`wide=true`)은 반경 5km + 거리 제한 없는 정확도 검색을 합쳐 이름이 같은 곳 → 이름에 든 곳 순이에요. 15종류에 안 맞는 검색 결과는 `기타`예요. 분류 코드가 있는 종류(편의점 CS2 · 약국 PM9 · 마트 MT1 · 카페 CE7 · 병원 HP8 · 은행 BK9 · 식당 FD6)는 코드로, 나머지는 키워드(세탁방 → "빨래방" 등)로 찾아요. 키가 없거나 실패하면 DB 장소만. 카카오는 영업시간을 주지 않아 `openHours`는 비어 있고, 24시간 · 저렴 · 조용 조건은 설명 글자로만 걸러요. 장기적으로는 공공데이터(소상공인 상가정보)를 우리 DB에 적재해 외부 호출을 줄이는 방안을 검토해요.
 - **AI 장소 찾기**: 지금은 프론트가 예시 데이터 안에서 말을 읽어 골라요 (`features/map/aiFind.ts` — "빨래·이불 → 세탁방", "밤·24 → 24시간 운영 가산점" 같은 규칙). 서버가 생기면 AI + 지도 검색 API(예: 카카오 로컬)로 바꾸고, 화면에 보일 **추천 이유**(`reasons`)를 같이 주세요.
 - **도보 시간**: 프론트는 설명의 "도보 약 N분"을 읽어 써요. 서버는 `walkMin`(우리 집 기준)을 따로 주면 좋아요.
 - **우리 집 위치 (🏠, "우리 집으로" 버튼, 길찾기 출발점)**: 지금은 예시 좌표(`HOME`, `features/map/data/places.ts`)예요. 서버가 생기면 `GET /api/auth/me`의 주소를 좌표로 바꿔 `home: { lat, lon }`으로 같이 주세요 (users.home_lat/home_lon). home은 현재 User 타입에 없는 확장 제안이에요. 인증 GPS·설문 중심점은 집 위치와 구분하고 덮어쓰지 마세요.
 - **조건 칩**(24시간 · 저렴한 · 조용한)은 지금 설명 글자로 걸러요. 서버는 `openHours` · 태그로 걸러 주면 더 정확해요 (`GET /api/places?…&filter=24h|cheap|quiet`).
-- **길찾기 · 큰 지도**는 OpenStreetMap 링크를 새 창으로 열어요 (서버 필요 없음).
+- **길찾기 · 큰 지도**는 카카오맵 링크를 새 창으로 열어요 (서버 필요 없음). 길찾기는 `map.kakao.com/link/to/…`(출발지는 카카오맵에서 현재 위치 등으로), 카카오 장소의 상세 버튼은 "영업시간 · 사진"으로 `place.map.kakao.com/{id}`(영업시간 · 사진 · 후기)를 열고, DB 장소는 `map.kakao.com/link/map/이름,lat,lon`을 열어요.
 - **홈 "내 주변 지도" 카드**: 브라우저 위치(Geolocation)로 현재 위치 주변을 보여 줘요(파란 점, ◎ 내 위치 버튼). 위치를 못 받으면 예시 좌표(`HOME`)로 보여 줘요. 서버 필요 없고, 카드를 누르면 `/map`으로 가며 `state.mapCenter`로 그 위치를 넘겨요. 장소 핀은 예시 데이터예요.
 - **홈 날씨 카드**: 프론트가 Open-Meteo(날씨) · Nominatim(주소 → 좌표)을 직접 불러요. 서버 API 없음.
 - **즐겨찾기 번호**: 지금은 `"종류:이름"`을 써요. 서버가 생기면 `places.id`로 바꿔요. DB는 place_favorites에 저장해요.

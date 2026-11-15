@@ -191,6 +191,18 @@ public class AuthRepository {
         jdbc.update("UPDATE users SET address = ? WHERE id = ?", address, userId);
     }
 
+    /** All 구·군 with their 시·도 name, for matching an address to users.region_id. */
+    public List<RegionMatcher.District> districts() {
+        return jdbc.query("SELECT r.id, r.name, p.name AS parent_name FROM regions r JOIN regions p ON p.id = r.parent_id",
+            (rs, row) -> new RegionMatcher.District(rs.getString("id"), rs.getString("name"), rs.getString("parent_name")));
+    }
+
+    /** A different neighborhood drops the old neighborhood verification. */
+    public void updateRegion(long userId, String regionId) {
+        jdbc.update("UPDATE users SET region_id = ?, region_verified_at = NULL WHERE id = ?",
+            regionId == null ? null : Long.valueOf(regionId), userId);
+    }
+
     public void revokeSession(long sessionId, long userId, Instant now) {
         jdbc.update("UPDATE auth_sessions SET revoked_at = ? WHERE id = ? AND user_id = ? AND revoked_at IS NULL",
             Timestamp.from(now), sessionId, userId);

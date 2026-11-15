@@ -9,6 +9,11 @@ JWT_SECRET=
 
 # Kakao Developers REST API key for map places (optional; empty = DB places only).
 KAKAO_REST_KEY=
+# Kakao free-quota guard (optional, defaults 30 and 30000): calls per user per minute and per server per day (Korea time).
+# Keep the daily limit below the free quota shown in the Kakao Developers console; do not enable paid overage.
+# Uncomment to change (an empty value would fail startup):
+# KAKAO_PER_USER_PER_MINUTE=30
+# KAKAO_DAILY_LIMIT=30000
 
 # Google social login (optional). Create an OAuth client in Google Cloud Console with the
 # redirect URI http://localhost:8080/login/oauth2/code/google . Leave blank to disable.

@@ -64,36 +64,6 @@ public class MapRepository {
         return jdbc.query(PLACE_SQL + " WHERE p.id = ?", MapRepository::place, placeId).stream().findFirst();
     }
 
-    /** 순서를 지켜 여러 장소 (카카오 결과 순서 = 가까운 순) */
-    public List<PlaceRow> placesByIds(List<Long> ids) {
-        if (ids.isEmpty()) return List.of();
-        var byId = new java.util.HashMap<Long, PlaceRow>();
-        jdbc.query(PLACE_SQL + " WHERE p.id IN (" + String.join(",", java.util.Collections.nCopies(ids.size(), "?")) + ")",
-            MapRepository::place, ids.toArray()).forEach(p -> byId.put(p.id(), p));
-        return ids.stream().map(byId::get).filter(java.util.Objects::nonNull).toList();
-    }
-
-    public Optional<Long> categoryId(String name) {
-        return jdbc.queryForList("SELECT id FROM place_categories WHERE name = ?", Long.class, name).stream().findFirst();
-    }
-
-    /** 카카오 장소를 저장하거나 최신 정보로 갱신 (같은 카카오 id 면 한 줄, uk_places_source_source_id). 장소 번호를 돌려줌 */
-    public long upsertKakao(long regionId, long categoryId, KakaoLocalClient.Document doc, String description) {
-        var address = doc.road_address_name() == null || doc.road_address_name().isBlank() ? doc.address_name() : doc.road_address_name();
-        jdbc.update("""
-            INSERT INTO places (region_id, category_id, name, description, lat, lon, address, phone, source, source_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'KAKAO', ?) AS n
-            ON DUPLICATE KEY UPDATE name = n.name, description = n.description, lat = n.lat, lon = n.lon,
-            address = n.address, phone = n.phone
-            """, regionId, categoryId, cut(doc.place_name(), 60), cut(description, 100), Double.parseDouble(doc.y()),
-            Double.parseDouble(doc.x()), cut(blankToNull(address), 200), cut(blankToNull(doc.phone()), 20), cut(doc.id(), 50));
-        return jdbc.queryForObject("SELECT id FROM places WHERE source = 'KAKAO' AND source_id = ?", Long.class, cut(doc.id(), 50));
-    }
-
-    private static String blankToNull(String value) { return value == null || value.isBlank() ? null : value; }
-
-    private static String cut(String value, int max) { return value == null || value.length() <= max ? value : value.substring(0, max); }
-
     public boolean regionExists(long regionId) {
         return !jdbc.queryForList("SELECT id FROM regions WHERE id = ?", Long.class, regionId).isEmpty();
     }
@@ -115,6 +85,32 @@ public class MapRepository {
 
     public void removeFavorite(long userId, long placeId) {
         jdbc.update("DELETE FROM place_favorites WHERE user_id = ? AND place_id = ?", userId, placeId);
+    }
+
+    /** 카카오 장소 즐겨찾기 한 곳 (카카오 장소 id · 표시용 이름 · 우리 종류 이름. 주소 · 좌표는 저장하지 않음) */
+    public record KakaoFavorite(String kakaoPlaceId, String name, String category) {}
+
+    public List<KakaoFavorite> kakaoFavorites(long userId) {
+        return jdbc.query("SELECT kakao_place_id, name, category FROM kakao_place_favorites WHERE user_id = ? ORDER BY created_at, kakao_place_id",
+            (rs, row) -> new KakaoFavorite(rs.getString("kakao_place_id"), rs.getString("name"), rs.getString("category")), userId);
+    }
+
+    public int kakaoFavoriteCount(long userId) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM kakao_place_favorites WHERE user_id = ?", Integer.class, userId);
+    }
+
+    /** 이미 저장한 곳이면 이름 · 종류만 최신으로 */
+    public void addKakaoFavorite(long userId, KakaoFavorite favorite) {
+        int updated = jdbc.update("UPDATE kakao_place_favorites SET name = ?, category = ? WHERE user_id = ? AND kakao_place_id = ?",
+            favorite.name(), favorite.category(), userId, favorite.kakaoPlaceId());
+        if (updated == 0) {
+            jdbc.update("INSERT INTO kakao_place_favorites (user_id, kakao_place_id, name, category) VALUES (?, ?, ?, ?)",
+                userId, favorite.kakaoPlaceId(), favorite.name(), favorite.category());
+        }
+    }
+
+    public void removeKakaoFavorite(long userId, String kakaoPlaceId) {
+        jdbc.update("DELETE FROM kakao_place_favorites WHERE user_id = ? AND kakao_place_id = ?", userId, kakaoPlaceId);
     }
 
     /** user_settings.map_categories · map_keywords 를 순서대로 (줄이 없거나 NULL 이면 비어 있음) */
