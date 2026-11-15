@@ -38,15 +38,14 @@ CREATE TABLE IF NOT EXISTS `region_neighbors` (
   CONSTRAINT `fk_region_neighbors_neighbor_region_id` FOREIGN KEY (`neighbor_region_id`) REFERENCES `regions` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='주변 동네: 어느 동네가 어느 동네와 이웃한지 적어 둔 표.';
 
--- 사용자: 가입한 사람 한 명당 한 줄. 로그인 정보(아이디·비밀번호), 본인 확인 정보(휴대전화·이메일), 닉네임과 사는 동네를 담습니다. 개인 데이터는 이 표의 id를 따라갑니다. 탈퇴 시 연결된 개인 데이터는 삭제하고 재가입 차단 해시는 별도 보존합니다.
+-- 사용자: 가입한 사람 한 명당 한 줄. 로그인 정보(아이디·비밀번호), 본인 확인 정보(이메일), 닉네임과 사는 동네를 담습니다. 개인 데이터는 이 표의 id를 따라갑니다. 탈퇴 시 연결된 개인 데이터는 삭제하고 재가입 차단 해시는 별도 보존합니다.
 CREATE TABLE IF NOT EXISTS `users` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '사용자 아이디 — 자동 증가',
   `login_id` VARCHAR(16) NULL COMMENT '로그인 아이디 — 일반 가입은 6~16자 영문 소문자·숫자 필수, 소셜 가입은 NULL 허용',
   `password_hash` VARCHAR(100) NULL COMMENT '비밀번호(해시) — 원문은 저장 안 함. 소셜 가입자는 비어 있음',
   `nickname` VARCHAR(12) NOT NULL COMMENT '닉네임 — 2~12자, 앱 인사말에 쓰임',
-  `email` VARCHAR(100) NULL COMMENT '이메일',
-  `phone` VARCHAR(11) NULL COMMENT '휴대전화 — 구분 기호 없이 숫자만 저장',
-  `phone_verified_at` DATETIME NULL COMMENT '휴대전화 인증 일시 — 가입 때 인증을 마친 시각',
+  `email` VARCHAR(100) NULL COMMENT '이메일 — 가입 화면에서는 인증을 거쳐 필수로 받음. 소셜 로그인은 제공 안 할 수 있어 비어 있을 수 있음. 아이디·비밀번호 찾기의 본인 확인에 씀',
+  `email_verified_at` DATETIME NULL COMMENT '이메일 인증 일시 — 인증번호로 이메일을 확인한 시각 (인증 전은 비어 있음)',
   `region_id` BIGINT UNSIGNED NULL COMMENT '사는 동네 아이디 — 내 정보의 "우리 동네"',
   `address` VARCHAR(200) NULL COMMENT '입력한 주소 — 가입할 때 쓴 주소 글자',
   `age_confirmed_at` DATETIME NULL COMMENT '만 14세 이상 확인 일시 — 가입 때 "만 14세 이상" 체크한 시각',
@@ -63,7 +62,6 @@ CREATE TABLE IF NOT EXISTS `users` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_users_login_id` (`login_id`),
   UNIQUE KEY `uk_users_email` (`email`),
-  UNIQUE KEY `uk_users_phone` (`phone`),
   CONSTRAINT `fk_users_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE SET NULL,
   CONSTRAINT `ck_users_home_point` CHECK ((`home_lat` IS NULL AND `home_lon` IS NULL) OR (`home_lat` IS NOT NULL AND `home_lon` IS NOT NULL AND `home_lat` BETWEEN -90 AND 90 AND `home_lon` BETWEEN -180 AND 180))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자: 가입한 사람 한 명당 한 줄.';
@@ -97,30 +95,30 @@ CREATE TABLE IF NOT EXISTS `auth_sessions` (
   CONSTRAINT `fk_auth_sessions_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='로그인 세션: 로그인한 기기마다 한 줄.';
 
--- 휴대전화 인증: 문자로 보낸 인증번호 기록. 가입, 아이디 찾기, 비밀번호 찾기에서 같은 방식으로 씁니다. 인증에 성공하면 "인증 완료 값"이 발급되고, 가입 요청(가입 화면의 휴대전화 인증)이나 비밀번호 재설정(password_resets)에 그 값을 함께 보냅니다.
-CREATE TABLE IF NOT EXISTS `phone_verifications` (
+-- 이메일 인증: 메일로 보낸 인증번호 기록. 가입, 아이디 찾기, 비밀번호 찾기에서 같은 방식으로 씁니다. 인증에 성공하면 "인증 완료 값"이 발급되고, 가입 요청이나 비밀번호 재설정(password_resets)에 그 값을 함께 보냅니다.
+CREATE TABLE IF NOT EXISTS `email_verifications` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '인증 아이디 — 자동 증가',
   `purpose` ENUM('SIGNUP','FIND_ID','RESET_PASSWORD') NOT NULL COMMENT '인증 목적 — 가입 / 아이디 찾기 / 비밀번호 찾기',
-  `phone` VARCHAR(11) NOT NULL COMMENT '인증받는 휴대전화 — 숫자만',
+  `email` VARCHAR(100) NOT NULL COMMENT '인증받는 이메일',
   `user_id` BIGINT UNSIGNED NULL COMMENT '대상 사용자 아이디 — 찾기일 때만 채움(가입 때는 비움). 탈퇴하면 함께 삭제',
   `code_hash` CHAR(64) NOT NULL COMMENT '인증번호(해시) — 6자리 번호를 해시로 저장',
   `attempt_count` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '틀린 횟수 — 횟수가 넘으면 잠금',
   `requested_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '인증번호 요청 일시',
-  `expires_at` DATETIME NOT NULL COMMENT '인증번호 만료 일시 — 보통 3분',
+  `expires_at` DATETIME NOT NULL COMMENT '인증번호 만료 일시 — 보통 3~5분',
   `verified_at` DATETIME NULL COMMENT '인증 성공 일시',
   `verified_token_hash` CHAR(64) NULL COMMENT '인증 완료 값(해시) — 인증 성공 때 발급. 가입·찾기 요청에 함께 보내는 값',
   `consumed_at` DATETIME NULL COMMENT '사용 일시 — 인증 완료 값을 가입·재설정에 쓴 시각(한 번만 사용)',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_phone_verifications_verified_token_hash` (`verified_token_hash`),
-  KEY `idx_phone_verifications_phone_requested_at` (`phone`, `requested_at`),
-  CONSTRAINT `fk_phone_verifications_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='휴대전화 인증: 문자로 보낸 인증번호 기록.';
+  UNIQUE KEY `uk_email_verifications_verified_token_hash` (`verified_token_hash`),
+  KEY `idx_email_verifications_email_requested_at` (`email`, `requested_at`),
+  CONSTRAINT `fk_email_verifications_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='이메일 인증: 메일로 보낸 인증번호 기록.';
 
--- 비밀번호 재설정 토큰: 비밀번호를 다시 정하도록 허락하는 1회용 토큰. 휴대전화 인증을 통과했을 때(시안의 바로 재설정)와 향후 이메일로 재설정 링크를 보낼 때(현재 미사용) 둘 다 이 표 한 줄로 처리합니다. 토큰은 해시만 저장하고, 한 번 쓰면 used_at 이 채워져 다시 쓸 수 없습니다.
+-- 비밀번호 재설정 토큰: 비밀번호를 다시 정하도록 허락하는 1회용 토큰. 이메일 인증을 통과했을 때 이 표 한 줄로 처리합니다. 토큰은 해시만 저장하고, 한 번 쓰면 used_at 이 채워져 다시 쓸 수 없습니다.
 CREATE TABLE IF NOT EXISTS `password_resets` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '재설정 아이디 — 자동 증가',
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '재설정하는 사용자 아이디',
-  `method` ENUM('PHONE','EMAIL') NOT NULL COMMENT '본인 확인 방법 — 휴대전화 인증 / 이메일 링크',
+  `method` ENUM('EMAIL') NOT NULL DEFAULT 'EMAIL' COMMENT '본인 확인 방법 — 이메일 인증',
   `token_hash` CHAR(64) NOT NULL COMMENT '재설정 토큰(해시) — 원문은 저장 안 함',
   `requested_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '요청 일시',
   `expires_at` DATETIME NOT NULL COMMENT '만료 일시 — 보통 10~30분',
@@ -526,24 +524,6 @@ CREATE TABLE IF NOT EXISTS `user_sanctions` (
 -- 5. AI · 지도 · 공용 데이터
 -- ----------------------------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `banned_identities` (
-  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '고유 번호',
-  `user_id` BIGINT UNSIGNED NULL COMMENT '대상 회원 — 탈퇴 시 연결만 해제',
-  `sanction_id` BIGINT UNSIGNED NULL COMMENT '관련 제재 — 삭제 시 연결만 해제',
-  `identity_type` ENUM('LOGIN_ID','NICKNAME','PHONE') NOT NULL COMMENT '재가입 차단 식별값 종류',
-  `identity_hash` CHAR(64) NOT NULL COMMENT '정규화한 식별값의 서버 비밀키 기반 HMAC-SHA256 — 원문 저장 금지',
-  `hash_key_version` SMALLINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'HMAC 키 버전 — 서버에서 키 관리',
-  `starts_at` DATETIME NOT NULL COMMENT '차단 시작 일시',
-  `expires_at` DATETIME NULL COMMENT '차단 만료 일시 — NULL은 영구',
-  `revoked_at` DATETIME NULL COMMENT '차단 해제 일시',
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록 일시',
-  PRIMARY KEY (`id`),
-  KEY `idx_banned_identity_lookup` (`identity_type`, `identity_hash`, `hash_key_version`),
-  UNIQUE KEY `uk_banned_sanction_identity` (`sanction_id`, `identity_type`),
-  CONSTRAINT `fk_banned_identities_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_banned_identities_sanction_id` FOREIGN KEY (`sanction_id`) REFERENCES `user_sanctions` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='탈퇴 후에도 유지하는 재가입 차단 식별값';
-
 CREATE TABLE IF NOT EXISTS `support_inquiries` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '고유 번호',
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '소유 사용자 번호',
@@ -858,7 +838,7 @@ INSERT IGNORE INTO `terms_documents` (`doc_type`, `version`, `title`, `content`,
 서비스의 내용은 운영상 필요에 따라 변경될 수 있으며, 중요한 변경은 사전에 알립니다.
 
 제3조 (회원가입과 계정)
-① 만 14세 이상인 이용자는 아이디, 닉네임, 휴대전화 번호, 이메일, 주소를 입력하고 이 약관과 개인정보 수집·이용에 동의하여 가입할 수 있습니다.
+① 만 14세 이상인 이용자는 아이디, 닉네임, 이메일, 주소를 입력하고 이 약관과 개인정보 수집·이용에 동의하여 가입할 수 있습니다.
 ② 이용자는 계정 정보를 직접 관리해야 하며, 타인에게 양도하거나 대여할 수 없습니다.
 ③ 허위 정보를 입력한 경우 서비스 이용이 제한될 수 있습니다.
 
@@ -884,13 +864,13 @@ INSERT IGNORE INTO `terms_documents` (`doc_type`, `version`, `title`, `content`,
 제9조 (약관의 변경)
 약관을 변경하는 경우 시행 7일 전(이용자에게 불리한 변경은 30일 전)에 서비스 내 공지로 알립니다.', 'AGREE', 1, '2026-10-18 00:00:00'),
   ('PRIVACY', '2026-10-18', 'ZIP 개인정보 처리방침', '1. 처리하는 개인정보 항목
-· 회원가입(필수): 아이디, 비밀번호, 닉네임, 휴대전화 번호, 이메일, 주소
+· 회원가입(필수): 아이디, 비밀번호, 닉네임, 이메일, 주소
 · 소셜 로그인(필수): 카카오·구글·네이버가 전달하는 식별값, 이메일, 이름(닉네임)
 · 서비스 이용 중 이용자가 입력하는 정보: 할 일, 일정, 가계부(수입·지출·월세·공과금) 기록, 커뮤니티 글·댓글, AI 대화 내용, AI에 첨부한 사진
 · 자동 수집: 접속 기록, 기기·브라우저 정보, 로그인 유지를 위한 정보(브라우저 저장소)
 
 2. 처리 목적
-· 회원 식별, 가입·로그인, 본인 확인(휴대전화 인증), 아이디·비밀번호 찾기, 부정 이용 방지
+· 회원 식별, 가입·로그인, 본인 확인(이메일 인증), 아이디·비밀번호 찾기, 부정 이용 방지
 · 주소: 우리 동네 커뮤니티·지도·쓰레기 배출 정보 제공
 · 이용 기록: 일정·가계부·알림 등 서비스 기능 제공
 · AI 대화·사진: 질문에 대한 답변 생성

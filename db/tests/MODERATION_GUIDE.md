@@ -2,13 +2,12 @@
 
 ## 준비와 범위
 
-reports, user_sanctions, banned_identities, support_inquiries를 검증합니다. users, regions, posts는 가상 대상 생성용입니다. 앞선 검증 종료 후 zip_test의 새 연결에서 시작합니다. 기존 트랜잭션이 없어야 하며 테스트 중 COMMIT·DDL·다른 START TRANSACTION을 실행하지 않습니다. 실제 계정·신고·운영자의 데이터는 사용하지 않습니다.
+reports, user_sanctions, support_inquiries를 검증합니다. users, regions, posts는 가상 대상 생성용입니다. 앞선 검증 종료 후 zip_test의 새 연결에서 시작합니다. 기존 트랜잭션이 없어야 하며 테스트 중 COMMIT·DDL·다른 START TRANSACTION을 실행하지 않습니다. 실제 계정·신고·운영자의 데이터는 사용하지 않습니다.
 
 ```sql
 USE zip_test;
 SHOW CREATE TABLE reports;
 SHOW CREATE TABLE user_sanctions;
-SHOW CREATE TABLE banned_identities;
 SHOW CREATE TABLE support_inquiries;
 ```
 
@@ -41,19 +40,17 @@ I04/I06은 SQL의 조회 조건을 검증하며 실제 로그인을 막는 기�
 12_moderation_negative.sql은 전체 실행하지 않습니다.
 
 1. J00 준비 블록(USE부터 SAVEPOINT 다음 SELECT까지)을 한 번 실행합니다. 출력 ID가 모두 숫자인지 확인합니다. missing ID는 이번 준비 단계에서 생성 후 삭제한 가상 행입니다.
-2. J01~J07을 각각 선택 실행하고 오류 번호와 키/컬럼을 비교합니다.
+2. J01~J05를 각각 선택 실행하고 오류 번호와 키/컬럼을 비교합니다.
 3. 예상 밖 성공이면 FAIL을 기록하고 `ROLLBACK TO SAVEPOINT moderation_negative_fixture;`로 준비 상태를 복구합니다. 다른 오류는 해당 검증 미확인입니다.
 4. J99 정리 블록을 실행하고 PASS를 확인합니다.
 
 | ID | 예상 오류 | 키·컬럼 |
 |---|---|---|
-| J01 | 1062 | uk_banned_sanction_identity |
-| J02 | 1452 | fk_user_sanctions_user_id |
-| J03 | 1452 | fk_user_sanctions_report_id |
-| J04 | 1452 | fk_reports_reporter_id |
-| J05 | 1452 | fk_banned_identities_user_id |
-| J06 | 1452 | fk_support_inquiries_user_id |
-| J07 | 1048 | content cannot be null |
+| J01 | 1452 | fk_user_sanctions_user_id |
+| J02 | 1452 | fk_user_sanctions_report_id |
+| J03 | 1452 | fk_reports_reporter_id |
+| J04 | 1452 | fk_support_inquiries_user_id |
+| J05 | 1048 | content cannot be null |
 
 J00의 일시적인 신고 행은 target_id=1을 사용하나 실제 글 1번을 조회·수정·삭제하지 않습니다. reports.target_id에는 직접 FK가 없어 대상 존재/종류 검사는 서버 책임이라는 점에 유의합니다.
 

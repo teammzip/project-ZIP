@@ -14,7 +14,7 @@ INSERT INTO social_accounts (user_id,provider,provider_user_id) VALUES (@auth_ne
 INSERT INTO auth_sessions (user_id,refresh_token_hash,expires_at)
 VALUES (@auth_neg_user,SHA2(CONCAT('session-',@auth_neg_tag),256),DATE_ADD(CURRENT_TIMESTAMP,INTERVAL 1 DAY));
 INSERT INTO password_resets (user_id,method,token_hash,expires_at)
-VALUES (@auth_neg_user,'PHONE',SHA2(CONCAT('reset-',@auth_neg_tag),256),DATE_ADD(CURRENT_TIMESTAMP,INTERVAL 10 MINUTE));
+VALUES (@auth_neg_user,'EMAIL',SHA2(CONCAT('reset-',@auth_neg_tag),256),DATE_ADD(CURRENT_TIMESTAMP,INTERVAL 10 MINUTE));
 INSERT INTO terms_documents (doc_type,version,title,content,consent_kind,effective_at)
 VALUES ('SERVICE',@auth_neg_version,'제약 검증 약관','가상 테스트 문서','AGREE',CURRENT_TIMESTAMP);
 SET @auth_neg_terms=LAST_INSERT_ID();
@@ -36,7 +36,7 @@ INSERT INTO auth_sessions (user_id,refresh_token_hash,expires_at)
 VALUES (@auth_neg_other,SHA2(CONCAT('session-',@auth_neg_tag),256),DATE_ADD(CURRENT_TIMESTAMP,INTERVAL 1 DAY));
 -- B06: 1062 / uk_password_resets_token_hash
 INSERT INTO password_resets (user_id,method,token_hash,expires_at)
-VALUES (@auth_neg_other,'PHONE',SHA2(CONCAT('reset-',@auth_neg_tag),256),DATE_ADD(CURRENT_TIMESTAMP,INTERVAL 10 MINUTE));
+VALUES (@auth_neg_other,'EMAIL',SHA2(CONCAT('reset-',@auth_neg_tag),256),DATE_ADD(CURRENT_TIMESTAMP,INTERVAL 10 MINUTE));
 -- B07: 1062 / uk_terms_documents_doc_type_version
 INSERT INTO terms_documents (doc_type,version,title,content,consent_kind,effective_at)
 VALUES ('SERVICE',@auth_neg_version,'중복 약관','가상 테스트 문서','AGREE',CURRENT_TIMESTAMP);

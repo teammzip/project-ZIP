@@ -6,7 +6,7 @@ import { getErrorMessage } from '@/lib/apiClient'
 import { cx } from '@/lib/cx'
 import { useSignup } from '../hooks/useAuthMutations'
 import { signupSchema } from '../schema'
-import { EyeButton, PhoneVerify, Row } from './AccountFields'
+import { EmailVerify, EyeButton, Row } from './AccountFields'
 import styles from './Account.module.css'
 
 type Props = {
@@ -15,8 +15,8 @@ type Props = {
 }
 
 /** 회원가입
- * 로그인 정보(아이디·비밀번호) · 회원 정보(닉네임·휴대전화 인증·이메일·주소) · 가입 약관 동의.
- * 필수 항목을 모두 채우고 약관에 동의하면 "가입하기"가 파랗게 켜짐 */
+ * 로그인 정보(아이디·비밀번호) · 회원 정보(닉네임·이메일 인증·주소) · 가입 약관 동의.
+ * 이메일 인증을 마치고 필수 항목을 모두 채우고 약관에 동의해야 "가입하기"가 파랗게 켜짐 (인증 전에는 누를 수 없음) */
 export function SignupForm({ onSuccess }: Props) {
   const signup = useSignup()
   const [showPw, setShowPw] = useState({ pw: false, pw2: false })
@@ -25,13 +25,13 @@ export function SignupForm({ onSuccess }: Props) {
     resolver: zodResolver(signupSchema),
     mode: 'onTouched',
     defaultValues: {
-      username: '', password: '', passwordConfirm: '', nickname: '', phone: '', phoneToken: '', email: '', address: '',
+      username: '', password: '', passwordConfirm: '', nickname: '', email: '', emailToken: '', address: '',
       agreeTerms: false, agreePrivacy: false, agreePolicy: false, ageOver14: false,
     },
   })
-  const [agreeTerms, agreePrivacy, agreePolicy, ageOver14, phoneValue, phoneToken] = useWatch({
+  const [agreeTerms, agreePrivacy, agreePolicy, ageOver14, emailValue, emailToken] = useWatch({
     control,
-    name: ['agreeTerms', 'agreePrivacy', 'agreePolicy', 'ageOver14', 'phone', 'phoneToken'],
+    name: ['agreeTerms', 'agreePrivacy', 'agreePolicy', 'ageOver14', 'email', 'emailToken'],
   })
 
   /** 칸을 건드렸거나 한 번 제출한 뒤에만 오류를 보여 줌 */
@@ -58,18 +58,15 @@ export function SignupForm({ onSuccess }: Props) {
       <Row id="su-nick" label="닉네임" hint={err('nickname')}>
         <input id="su-nick" maxLength={12} placeholder="앱에서 보여줄 이름 (2~12자)" autoComplete="nickname" {...register('nickname')} />
       </Row>
-      <PhoneVerify
-        id="su-phone"
+      <EmailVerify
+        id="su-email"
         purpose="SIGNUP"
-        phone={phoneValue}
-        onPhoneChange={(v) => setValue('phone', v, { shouldValidate: !!touchedFields.phone || isSubmitted, shouldTouch: true })}
-        token={phoneToken}
-        onToken={(t) => setValue('phoneToken', t, { shouldValidate: true })}
-        error={err('phone') ?? (isSubmitted ? errors.phoneToken?.message : undefined)}
+        email={emailValue}
+        onEmailChange={(v) => setValue('email', v, { shouldValidate: !!touchedFields.email || isSubmitted, shouldTouch: true })}
+        token={emailToken}
+        onToken={(t) => setValue('emailToken', t, { shouldValidate: true })}
+        error={err('email') ?? (isSubmitted ? errors.emailToken?.message : undefined)}
       />
-      <Row id="su-email" label="이메일" hint={err('email')}>
-        <input id="su-email" type="email" placeholder="you@example.com" autoComplete="email" {...register('email')} />
-      </Row>
       {/* TODO: 주소 검색(다음 우편번호 API 등) 붙이기. 동네 기능·쓰레기 배출 요일이 이 주소를 씀 */}
       <Row id="su-addr" label="주소" hint={err('address')}>
         <input id="su-addr" placeholder="예: 서울시 마포구 합정동 123-4" autoComplete="street-address" {...register('address')} />
@@ -95,7 +92,7 @@ export function SignupForm({ onSuccess }: Props) {
       <p className={styles.error} role="alert">
         {signup.isError ? getErrorMessage(signup.error) : ''}
       </p>
-      <button type="submit" className={cx(styles.submit, isValid && styles.submitOn)} disabled={signup.isPending}>
+      <button type="submit" className={cx(styles.submit, isValid && styles.submitOn)} disabled={signup.isPending || !emailToken}>
         {signup.isPending ? '가입하는 중…' : '가입하기'}
       </button>
     </form>

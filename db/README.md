@@ -6,7 +6,7 @@ Git 공개 전 확인 사항과 검토 범위는 [보안 검토 문서](SECURITY
 
 ## 1. 이번에 반영한 변경
 
-최신 프로젝트의 신고·위치·주거 설문·대출·개인 카테고리·집 주소 변경을 반영했습니다. 현재 기준은 **44테이블·358컬럼·기본키/UNIQUE 71개·외래키 62개·CHECK 15개·VIEW 2개**입니다.
+최신 프로젝트의 신고·위치·주거 설문·대출·개인 카테고리·집 주소 변경을 반영했습니다. 현재 기준은 **44테이블·352컬럼·기본키/UNIQUE 70개·외래키 61개·CHECK 17개·VIEW 2개**입니다.
 
 [위치·신고 저장 계약](LATEST_REQUIREMENTS.md), [주거·대출 저장 계약](HOUSING_AND_LOAN.md), [개인 카테고리·월별 납부·집 주소](LIFE_CATEGORIES.md), [백엔드 착수 전 점검](PRE_BACKEND_REVIEW.md)을 함께 확인하세요. 이전 문서에 날짜별 구조 수치가 나오면 당시 이력이며 이 문서의 현재 기준과 구분합니다.
 
@@ -27,7 +27,6 @@ Git 공개 전 확인 사항과 검토 범위는 [보안 검토 문서](SECURITY
 | 알림 삭제 | notifications.deleted_at |
 | AI 사용 방법 | guide 주제, ai_messages.card_type에 LINK 추가 |
 | 경고 확인·정지 해제 | user_sanctions.seen_at·revoked_at·revoked_by·revoke_reason |
-| 탈퇴 후 재가입 차단 | banned_identities에 식별값 HMAC와 차단 기간 보관 |
 | 고객센터 문의·답변 | support_inquiries, 문의당 관리자 답변 하나 |
 | 기념일·매년 반복 | events.is_anniversary·repeat_yearly (20261031_02_event_anniversaries.sql) |
 | 장소 분류 확대 | place_categories.icon, 15개 분류 기본 데이터 |
@@ -107,9 +106,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 ### 제재·탈퇴·고객센터
 
 - 경고 확인은 seen_at에 저장합니다. 조기 해제는 **원래 ends_at을 유지**하고 revoked_at·revoked_by·revoke_reason을 기록합니다. API 문서도 이 해제 규칙을 따르며, 유효 정지는 시작·종료 시각과 revoked_at을 함께 검사해야 합니다.
-- banned_identities는 로그인 ID·닉네임·휴대전화 각각을 정규화한 뒤 서버 비밀키 기반 HMAC-SHA256으로 저장합니다. SQL에서 임의 키나 단순 SHA 해시를 생성하지 않습니다. 차단 키 버전도 저장합니다.
-- 제재 시 차단 행들을 함께 만들고 해제 시 관련 행을 함께 해제해야 합니다. 탈퇴 시 회원·제재 FK만 NULL로 바뀌어 차단 해시는 남습니다. 제재 원문 이력은 회원 삭제 시 CASCADE되지만 활성 차단 식별값은 보존됩니다. 만료 행 정리는 서버 작업입니다.
-- **기존 제재의 HMAC 채우기는 마이그레이션에 포함하지 않았습니다.** 서버 키로 별도 이관한 뒤 탈퇴를 허용해야 기존 정지자의 재가입 차단이 유지됩니다. 닉네임만 같은 다른 사용자의 차단 가능성은 현재 API 요구사항에 따른 정책입니다.
+- 재가입 차단(banned_identities)은 2026-11-15에 하지 않기로 해서 표를 삭제했습니다. 정지·차단 회원이 탈퇴 후 다시 가입하는 것은 막지 않습니다.
 - 고객센터는 본인 문의만 조회하고 ADMIN만 전체 조회·답변합니다. 제목 1~100자, 문의·답변 1~3000자와 유형을 검증합니다. 답변은 UPDATE ... WHERE answered_at IS NULL로 원자적으로 저장해 중복 답변을 막습니다. nickname은 users에서 조회하고 답변 대기/완료는 answered_at으로 계산합니다.
 - 날씨는 현재 코드에서 외부 API 조회 및 캐시를 사용하므로 별도 영구 저장 테이블을 추가하지 않았습니다.
 
@@ -125,7 +122,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `users` | 회원 |
 | `social_accounts` | 소셜 계정 |
 | `auth_sessions` | 로그인 세션 |
-| `phone_verifications` | 휴대전화 인증 |
+| `email_verifications` | 이메일 인증 |
 | `password_resets` | 비밀번호 재설정 |
 | `terms_documents` | 약관 원문 |
 | `user_term_agreements` | 약관 동의 이력 |
@@ -147,7 +144,6 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `comments` | 댓글 |
 | `reports` | 신고 |
 | `user_sanctions` | 경고 및 정지 |
-| `banned_identities` | 재가입 차단 식별값 |
 | `support_inquiries` | 고객센터 문의 및 답변 |
 | `ai_topics` | AI 주제 |
 | `uploaded_files` | 업로드 파일 |
@@ -204,9 +200,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `login_id` | VARCHAR(16) | 허용 | — | 로그인 아이디 — 일반 가입은 6~16자 영문 소문자·숫자 필수, 소셜 가입은 NULL 허용 |
 | `password_hash` | VARCHAR(100) | 허용 | — | 비밀번호(해시) — 원문은 저장 안 함. 소셜 가입자는 비어 있음 |
 | `nickname` | VARCHAR(12) | 필수 | — | 닉네임 — 2~12자, 앱 인사말에 쓰임 |
-| `email` | VARCHAR(100) | 허용 | — | 이메일 |
-| `phone` | VARCHAR(11) | 허용 | — | 휴대전화 — 구분 기호 없이 숫자만 저장 |
-| `phone_verified_at` | DATETIME | 허용 | — | 휴대전화 인증 일시 — 가입 때 인증을 마친 시각 |
+| `email` | VARCHAR(100) | 허용 | — | 이메일 — 가입 화면에서는 인증을 거쳐 필수로 받음. 소셜 로그인은 제공 안 할 수 있어 비어 있을 수 있음. 아이디·비밀번호 찾기의 본인 확인에 씀 |
+| `email_verified_at` | DATETIME | 허용 | — | 이메일 인증 일시 — 인증번호로 이메일을 확인한 시각 (인증 전은 비어 있음) |
 | `region_id` | BIGINT UNSIGNED | 허용 | — | 사는 동네 아이디 — 내 정보의 "우리 동네" |
 | `address` | VARCHAR(200) | 허용 | — | 입력한 주소 — 가입할 때 쓴 주소 글자 |
 | `age_confirmed_at` | DATETIME | 허용 | — | 만 14세 이상 확인 일시 — 가입 때 "만 14세 이상" 체크한 시각 |
@@ -224,7 +219,6 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 - 기본키: `id`
 - UNIQUE `uk_users_login_id`: `login_id`
 - UNIQUE `uk_users_email`: `email`
-- UNIQUE `uk_users_phone`: `phone`
 - 외래키 `fk_users_region_id`: `region_id` → `regions` (`id`), ON DELETE SET NULL
 - CHECK: CONSTRAINT `ck_users_home_point` CHECK ((`home_lat` IS NULL AND `home_lon` IS NULL) OR (`home_lat` IS NOT NULL AND `home_lon` IS NOT NULL AND `home_lat` BETWEEN -90 AND 90 AND `home_lon` BETWEEN -180 AND 180))
 
@@ -265,27 +259,27 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 - UNIQUE `uk_auth_sessions_refresh_token_hash`: `refresh_token_hash`
 - 외래키 `fk_auth_sessions_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
-### `phone_verifications` — 휴대전화 인증
+### `email_verifications` — 이메일 인증
 
-휴대전화 인증: 문자로 보낸 인증번호 기록.
+이메일 인증: 메일로 보낸 인증번호 기록.
 
 | 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
 |---|---|---|---|---|
 | `id` | BIGINT UNSIGNED | 필수 | — | 인증 아이디 — 자동 증가 / 자동 번호 |
 | `purpose` | ENUM('SIGNUP','FIND_ID','RESET_PASSWORD') | 필수 | — | 인증 목적 — 가입 / 아이디 찾기 / 비밀번호 찾기 |
-| `phone` | VARCHAR(11) | 필수 | — | 인증받는 휴대전화 — 숫자만 |
+| `email` | VARCHAR(100) | 필수 | — | 인증받는 이메일 |
 | `user_id` | BIGINT UNSIGNED | 허용 | — | 대상 사용자 아이디 — 찾기일 때만 채움(가입 때는 비움). 탈퇴하면 함께 삭제 |
 | `code_hash` | CHAR(64) | 필수 | — | 인증번호(해시) — 6자리 번호를 해시로 저장 |
 | `attempt_count` | TINYINT UNSIGNED | 필수 | 0 | 틀린 횟수 — 횟수가 넘으면 잠금 |
 | `requested_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 인증번호 요청 일시 |
-| `expires_at` | DATETIME | 필수 | — | 인증번호 만료 일시 — 보통 3분 |
+| `expires_at` | DATETIME | 필수 | — | 인증번호 만료 일시 — 보통 3~5분 |
 | `verified_at` | DATETIME | 허용 | — | 인증 성공 일시 |
 | `verified_token_hash` | CHAR(64) | 허용 | — | 인증 완료 값(해시) — 인증 성공 때 발급. 가입·찾기 요청에 함께 보내는 값 |
 | `consumed_at` | DATETIME | 허용 | — | 사용 일시 — 인증 완료 값을 가입·재설정에 쓴 시각(한 번만 사용) |
 
 - 기본키: `id`
-- UNIQUE `uk_phone_verifications_verified_token_hash`: `verified_token_hash`
-- 외래키 `fk_phone_verifications_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- UNIQUE `uk_email_verifications_verified_token_hash`: `verified_token_hash`
+- 외래키 `fk_email_verifications_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `password_resets` — 비밀번호 재설정
 
@@ -295,7 +289,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 |---|---|---|---|---|
 | `id` | BIGINT UNSIGNED | 필수 | — | 재설정 아이디 — 자동 증가 / 자동 번호 |
 | `user_id` | BIGINT UNSIGNED | 필수 | — | 재설정하는 사용자 아이디 |
-| `method` | ENUM('PHONE','EMAIL') | 필수 | — | 본인 확인 방법 — 휴대전화 인증 / 이메일 링크 |
+| `method` | ENUM('EMAIL') | 필수 | 'EMAIL' | 본인 확인 방법 — 이메일 인증 |
 | `token_hash` | CHAR(64) | 필수 | — | 재설정 토큰(해시) — 원문은 저장 안 함 |
 | `requested_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 요청 일시 |
 | `expires_at` | DATETIME | 필수 | — | 만료 일시 — 보통 10~30분 |
@@ -773,28 +767,6 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 - 외래키 `fk_user_sanctions_report_id`: `report_id` → `reports` (`id`), ON DELETE SET NULL
 - 외래키 `fk_user_sanctions_created_by`: `created_by` → `users` (`id`), ON DELETE SET NULL
 
-### `banned_identities` — 재가입 차단 식별값
-
-탈퇴 후에도 유지하는 재가입 차단 식별값
-
-| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
-|---|---|---|---|---|
-| `id` | BIGINT UNSIGNED | 필수 | — | 고유 번호 / 자동 번호 |
-| `user_id` | BIGINT UNSIGNED | 허용 | — | 대상 회원 — 탈퇴 시 연결만 해제 |
-| `sanction_id` | BIGINT UNSIGNED | 허용 | — | 관련 제재 — 삭제 시 연결만 해제 |
-| `identity_type` | ENUM('LOGIN_ID','NICKNAME','PHONE') | 필수 | — | 재가입 차단 식별값 종류 |
-| `identity_hash` | CHAR(64) | 필수 | — | 정규화한 식별값의 서버 비밀키 기반 HMAC-SHA256 — 원문 저장 금지 |
-| `hash_key_version` | SMALLINT UNSIGNED | 필수 | 1 | HMAC 키 버전 — 서버에서 키 관리 |
-| `starts_at` | DATETIME | 필수 | — | 차단 시작 일시 |
-| `expires_at` | DATETIME | 허용 | — | 차단 만료 일시 — NULL은 영구 |
-| `revoked_at` | DATETIME | 허용 | — | 차단 해제 일시 |
-| `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 등록 일시 |
-
-- 기본키: `id`
-- UNIQUE `uk_banned_sanction_identity`: `sanction_id`, `identity_type`
-- 외래키 `fk_banned_identities_user_id`: `user_id` → `users` (`id`), ON DELETE SET NULL
-- 외래키 `fk_banned_identities_sanction_id`: `sanction_id` → `user_sanctions` (`id`), ON DELETE SET NULL
-
 ### `support_inquiries` — 고객센터 문의 및 답변
 
 고객센터 문의와 관리자 단일 답변
@@ -1040,7 +1012,7 @@ INSERT IGNORE는 기존 고유 키의 행을 갱신하지 않습니다. 장소 �
 ## 7. 서버 연결 시 검증 사항
 
 - 개인 데이터 소유권, 관리자 권한, 파일 MIME·소유권·최대 5개/합계 2MB는 서버에서 검사합니다. FK는 같은 사용자 소유인지까지 보장하지 않습니다.
-- 비밀번호·토큰 해시 생성, 휴대전화 인증 만료·사용 횟수·일회 사용, 로그인 세션 회수는 서버 로직입니다.
+- 비밀번호·토큰 해시 생성, 이메일 인증 만료·사용 횟수·일회 사용, 로그인 세션 회수는 서버 로직입니다.
 - 좌표 범위·좌표 쌍, JSON 원소 형식·개수·소유권, 금액·날짜·태그·수입 분류 일치 여부를 검사합니다.
 - 재가입 차단과 회원 상태, 제재 기간 만료·해제는 트랜잭션과 조회 시 검사를 통해 일관되게 처리합니다.
 - 외부 저장소 파일은 FK 삭제로 제거되지 않으므로 실제 파일 정리가 필요합니다. 프로필·게시글에 연결된 파일을 임의로 재사용하지 않도록 검사합니다.

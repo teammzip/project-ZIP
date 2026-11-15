@@ -30,23 +30,23 @@ UPDATE auth_sessions SET revoked_at=@auth_now WHERE id=@auth_session;
 SELECT 'A04 폐기 시각 기록·조건 조회' AS test,IF(COUNT(*)=0,'PASS','FAIL') AS result
 FROM auth_sessions WHERE user_id=@auth_user AND revoked_at IS NULL AND expires_at>@auth_now;
 
--- 00000000000은 연락 불가능한 형식 검사용 값. 서버 전화번호 검증 통과를 의미하지 않습니다.
-INSERT INTO phone_verifications (purpose,phone,user_id,code_hash,expires_at,verified_at,verified_token_hash)
-VALUES ('RESET_PASSWORD','00000000000',@auth_user,SHA2(CONCAT('code-',@auth_tag),256),
+-- example.invalid 는 실제로 쓸 수 없는 예약 도메인 값. 메일을 보내지 않는 형식 검사용입니다.
+INSERT INTO email_verifications (purpose,email,user_id,code_hash,expires_at,verified_at,verified_token_hash)
+VALUES ('RESET_PASSWORD','verify@example.invalid',@auth_user,SHA2(CONCAT('code-',@auth_tag),256),
  DATE_ADD(@auth_now,INTERVAL 3 MINUTE),@auth_now,SHA2(CONCAT('verified-',@auth_tag),256));
-SET @auth_phone=LAST_INSERT_ID();
-UPDATE phone_verifications SET consumed_at=@auth_now
-WHERE id=@auth_phone AND consumed_at IS NULL AND expires_at>@auth_now;
+SET @auth_email=LAST_INSERT_ID();
+UPDATE email_verifications SET consumed_at=@auth_now
+WHERE id=@auth_email AND consumed_at IS NULL AND expires_at>@auth_now;
 SELECT 'A05 인증 완료 값 첫 소비' AS test,IF(ROW_COUNT()=1,'PASS','FAIL') AS result;
-UPDATE phone_verifications SET consumed_at=@auth_now
-WHERE id=@auth_phone AND consumed_at IS NULL AND expires_at>@auth_now;
+UPDATE email_verifications SET consumed_at=@auth_now
+WHERE id=@auth_email AND consumed_at IS NULL AND expires_at>@auth_now;
 SELECT 'A06 인증 완료 값 재소비 조건' AS test,IF(ROW_COUNT()=0,'PASS','FAIL') AS result;
-INSERT INTO phone_verifications (purpose,phone,code_hash,expires_at)
-VALUES ('SIGNUP','00000000000',SHA2(CONCAT('signup-',@auth_tag),256),DATE_ADD(@auth_now,INTERVAL 3 MINUTE));
-SET @auth_unbound_phone=LAST_INSERT_ID();
+INSERT INTO email_verifications (purpose,email,code_hash,expires_at)
+VALUES ('SIGNUP','verify@example.invalid',SHA2(CONCAT('signup-',@auth_tag),256),DATE_ADD(@auth_now,INTERVAL 3 MINUTE));
+SET @auth_unbound_email=LAST_INSERT_ID();
 
 INSERT INTO password_resets (user_id,method,token_hash,expires_at)
-VALUES (@auth_user,'PHONE',SHA2(CONCAT('reset-',@auth_tag),256),DATE_ADD(@auth_now,INTERVAL 10 MINUTE));
+VALUES (@auth_user,'EMAIL',SHA2(CONCAT('reset-',@auth_tag),256),DATE_ADD(@auth_now,INTERVAL 10 MINUTE));
 SET @auth_reset=LAST_INSERT_ID();
 UPDATE password_resets SET used_at=@auth_now WHERE id=@auth_reset AND used_at IS NULL AND expires_at>@auth_now;
 SELECT 'A07 재설정 토큰 첫 소비' AS test,IF(ROW_COUNT()=1,'PASS','FAIL') AS result;
@@ -83,19 +83,19 @@ DELETE FROM users WHERE id=@auth_social_user;
 SELECT 'A11 회원 삭제 CASCADE' AS test,
  IF((SELECT COUNT(*) FROM social_accounts WHERE user_id=@auth_social_user)=0
  AND (SELECT COUNT(*) FROM auth_sessions WHERE user_id=@auth_user)=0
- AND (SELECT COUNT(*) FROM phone_verifications WHERE id=@auth_phone)=0
+ AND (SELECT COUNT(*) FROM email_verifications WHERE id=@auth_email)=0
  AND (SELECT COUNT(*) FROM password_resets WHERE user_id=@auth_user)=0
  AND (SELECT COUNT(*) FROM user_term_agreements WHERE user_id=@auth_user)=0
  AND (SELECT COUNT(*) FROM user_settings WHERE user_id=@auth_user)=0
  AND (SELECT COUNT(*) FROM user_profiles WHERE user_id=@auth_user)=0,'PASS','FAIL') AS result;
 SELECT 'A12 독립 기록 보존' AS test,
  IF((SELECT COUNT(*) FROM withdrawal_logs WHERE id=@auth_withdrawal)=1
- AND (SELECT COUNT(*) FROM phone_verifications WHERE id=@auth_unbound_phone AND user_id IS NULL)=1
+ AND (SELECT COUNT(*) FROM email_verifications WHERE id=@auth_unbound_email AND user_id IS NULL)=1
  AND (SELECT COUNT(*) FROM terms_documents WHERE id IN (@auth_terms,@auth_privacy,@auth_policy))=3,'PASS','FAIL') AS result;
 -- 가입 전 인증은 회원 삭제로 없어지지 않으므로 서버 만료 정리 작업이 필요합니다.
 ROLLBACK;
 SELECT 'A13 테스트 데이터 제거' AS test,
  IF((SELECT COUNT(*) FROM users WHERE id IN (@auth_user,@auth_social_user))=0
  AND (SELECT COUNT(*) FROM terms_documents WHERE id IN (@auth_terms,@auth_privacy,@auth_policy))=0
- AND (SELECT COUNT(*) FROM phone_verifications WHERE id=@auth_unbound_phone)=0
+ AND (SELECT COUNT(*) FROM email_verifications WHERE id=@auth_unbound_email)=0
  AND (SELECT COUNT(*) FROM withdrawal_logs WHERE id=@auth_withdrawal)=0,'PASS','FAIL') AS result;

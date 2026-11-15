@@ -48,7 +48,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/Auth' }
         '400': { $ref: '#/components/responses/BadRequest' }
-        '409': { description: 아이디 · 이메일 · 휴대전화 중복, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: 아이디 · 이메일 중복, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /api/auth/login:
     post:
       tags: [인증 · 내 정보]
@@ -126,10 +126,10 @@ paths:
       responses:
         '204': { description: 변경 완료 }
         '400': { description: 현재 비밀번호가 틀림, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
-  /api/auth/phone/send:
+  /api/auth/email/send:
     post:
       tags: [인증 · 내 정보]
-      summary: 휴대전화 인증번호 보내기 (3분 유효)
+      summary: 이메일 인증번호 보내기 (3분 유효)
       security: []
       requestBody:
         required: true
@@ -137,13 +137,13 @@ paths:
           application/json:
             schema:
               type: object
-              required: [phone, purpose]
+              required: [email, purpose]
               properties:
-                phone: { type: string, example: 010-1234-5678 }
-                purpose: { $ref: '#/components/schemas/PhonePurpose' }
+                email: { type: string, format: email, example: you@example.com }
+                purpose: { $ref: '#/components/schemas/EmailPurpose' }
       responses:
-        '204': { description: 문자 발송 }
-  /api/auth/phone/verify:
+        '204': { description: 메일 발송 }
+  /api/auth/email/verify:
     post:
       tags: [인증 · 내 정보]
       summary: 인증번호 확인 → 한 번만 쓰는 verificationToken
@@ -154,11 +154,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [phone, code, purpose]
+              required: [email, code, purpose]
               properties:
-                phone: { type: string }
+                email: { type: string, format: email }
                 code: { type: string, pattern: '^\d{6}$', example: '123456' }
-                purpose: { $ref: '#/components/schemas/PhonePurpose' }
+                purpose: { $ref: '#/components/schemas/EmailPurpose' }
       responses:
         '200':
           description: 확인 완료
@@ -175,11 +175,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [nickname, phone, phoneVerificationToken]
+              required: [nickname, email, emailVerificationToken]
               properties:
                 nickname: { type: string }
-                phone: { type: string }
-                phoneVerificationToken: { type: string }
+                email: { type: string, format: email }
+                emailVerificationToken: { type: string }
       responses:
         '200':
           description: 찾은 아이디
@@ -196,11 +196,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [username, phone, phoneVerificationToken]
+              required: [username, email, emailVerificationToken]
               properties:
                 username: { type: string }
-                phone: { type: string }
-                phoneVerificationToken: { type: string }
+                email: { type: string, format: email }
+                emailVerificationToken: { type: string }
       responses:
         '200':
           description: 확인 완료
@@ -1498,7 +1498,7 @@ components:
       properties:
         id: { type: string, example: '2' }
         name: { type: string, example: 마포구 }
-    PhonePurpose:
+    EmailPurpose:
       type: string
       enum: [SIGNUP, FIND_ID, RESET_PASSWORD]
 
@@ -1546,14 +1546,13 @@ components:
               at: { type: string, format: date-time }
     SignupRequest:
       type: object
-      required: [username, password, nickname, phone, phoneVerificationToken, email, address, agreeTerms, agreePrivacy, agreePolicy, ageOver14, termsVersion]
+      required: [username, password, nickname, email, emailVerificationToken, address, agreeTerms, agreePrivacy, agreePolicy, ageOver14, termsVersion]
       properties:
         username: { type: string, pattern: '^[a-z0-9]{6,16}$', example: tester01 }
         password: { type: string, format: password, minLength: 8, maxLength: 16, description: 영문 · 숫자 · 특수문자 모두 }
         nickname: { type: string, minLength: 2, maxLength: 12 }
-        phone: { type: string, example: 010-1234-5678 }
-        phoneVerificationToken: { type: string }
         email: { type: string, format: email, maxLength: 100, description: '필수 (frontend/src/features/auth/schema.ts 와 같은 규칙), 겹치면 안 됨' }
+        emailVerificationToken: { type: string, description: 이메일 인증 뒤 받은 값 }
         address: { type: string, minLength: 1, maxLength: 200, example: 서울 마포구 합정동, description: 필수 }
         agreeTerms: { type: boolean, enum: [true] }
         agreePrivacy: { type: boolean, enum: [true] }
