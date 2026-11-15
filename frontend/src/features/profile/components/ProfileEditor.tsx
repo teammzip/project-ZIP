@@ -9,6 +9,7 @@ import { getErrorMessage } from '@/lib/apiClient'
 import type { ProfileLook } from '../types'
 import { Avatar } from './Avatar'
 import styles from './Profile.module.css'
+import { ProfilePersonalInfo } from './ProfilePersonalInfo'
 
 type Props = {
   open: boolean
@@ -71,6 +72,7 @@ function EditorBody({ onClose, name, onSaveProfile, onSaved }: Omit<Props, 'open
   return (
     <form className={cx(common.form, styles.editor)} onSubmit={submit}>
       <h3 className={styles.sheetTitle}>프로필 편집</h3>
+      <ProfilePersonalInfo />
       <div className={styles.pick}>
         <Avatar name={nick || name} size={96} look={draft} />
         <div className={styles.pickBtns}>

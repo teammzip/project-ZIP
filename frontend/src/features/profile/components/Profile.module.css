@@ -198,3 +198,15 @@
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+.personalInfo {
+  padding: 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--color-bg);
+}
+
+.personalInfo h4 { margin: 0 0 8px; }
+.personalInfo dl { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 10px; margin: 14px 0 0; font-size: 14px; }
+.personalInfo dt { color: var(--color-muted); }
+.personalInfo dd { margin: 0; overflow-wrap: anywhere; }
