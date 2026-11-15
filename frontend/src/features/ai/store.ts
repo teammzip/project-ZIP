@@ -43,7 +43,12 @@ const MAX = 40
 
 type ChatState = {
   msgs: ChatMsg[]
+  /** 서버에 저장 중인 대화방 id (서버를 안 쓰거나 아직 안 만들었으면 null) */
+  conversationId: string | null
   push: (m: ChatMsg) => void
+  setConversationId: (id: string | null) => void
+  /** 서버에서 불러온 대화로 바꿈 */
+  load: (id: string, saved: ChatMsg[]) => void
   reset: () => void
 }
 
@@ -53,11 +58,14 @@ export const useChatStore = create<ChatState>()(
   persist(
     (set) => ({
       msgs: [{ role: 'bot', text: GREETING }],
+      conversationId: null,
       push: (m) => set((s) => ({ msgs: [...s.msgs, m].slice(-MAX) })),
-      reset: () => set({ msgs: [{ role: 'bot', text: GREETING }] }),
+      setConversationId: (id) => set({ conversationId: id }),
+      load: (id, saved) => set({ conversationId: id, msgs: [{ role: 'bot', text: GREETING } as ChatMsg, ...saved].slice(-MAX) }),
+      reset: () => set({ msgs: [{ role: 'bot', text: GREETING }], conversationId: null }),
     }),
     { name: 'zip-ai-chat', storage: account.storage, version: 1 },
   ),
 )
 
-account.bind(() => useChatStore.setState({ msgs: [{ role: 'bot', text: GREETING }] }), () => useChatStore.persist.rehydrate())
+account.bind(() => useChatStore.setState({ msgs: [{ role: 'bot', text: GREETING }], conversationId: null }), () => useChatStore.persist.rehydrate())

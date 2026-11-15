@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button, Card, Modal } from '@/components/ui'
-import { useChatStore } from '@/features/ai'
+import { deleteAllConversations, useChatStore } from '@/features/ai'
 import { LoginBadge, LoginMethod, PasswordChangeForm, useAuthStore, useLogout, useUpdateMe, useWithdraw } from '@/features/auth'
 import { useCommunityStore, useReportStore } from '@/features/community'
 import { LegalLinks } from '@/features/legal'
@@ -28,6 +28,7 @@ function resetAppData() {
   useCommunityStore.getState().reset()
   useReportStore.getState().reset()
   useChatStore.getState().reset()
+  void deleteAllConversations()
   useMemoStore.getState().reset()
   useProfileStore.getState().reset()
   useMapStore.getState().resetAll()

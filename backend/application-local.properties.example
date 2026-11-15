@@ -24,3 +24,6 @@ NAVER_CLIENT_SECRET=
 # http://localhost:8080/login/oauth2/code/kakao in Kakao Developers. Leave blank to disable.
 KAKAO_LOGIN_CLIENT_ID=
 KAKAO_LOGIN_CLIENT_SECRET=
+
+# AI chat (Google AI Studio / Gemini API key). Or put it in secrets/gemini.properties
+GEMINI_API_KEY=

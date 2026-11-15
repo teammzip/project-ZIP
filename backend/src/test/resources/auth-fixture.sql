@@ -68,6 +68,22 @@ CREATE TABLE user_profiles (
     avatar_emoji VARCHAR(20), avatar_color VARCHAR(20), updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (avatar_file_id) REFERENCES uploaded_files(id) ON DELETE SET NULL
 );
+CREATE TABLE ai_usage_daily (
+    user_id BIGINT NOT NULL, usage_date DATE NOT NULL, question_count INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, usage_date), FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TABLE ai_topics (id BIGINT AUTO_INCREMENT PRIMARY KEY, code VARCHAR(20) NOT NULL UNIQUE, name VARCHAR(30) NOT NULL, is_active TINYINT DEFAULT 1 NOT NULL);
+INSERT INTO ai_topics (code, name) VALUES ('qna', '자유 질문'), ('trash', '분리배출'), ('summary', '이번 달 지출 요약');
+CREATE TABLE ai_conversations (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL, topic_id BIGINT, entry_point VARCHAR(20) NOT NULL, title VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (topic_id) REFERENCES ai_topics(id) ON DELETE SET NULL
+);
+CREATE TABLE ai_messages (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY, conversation_id BIGINT NOT NULL, role VARCHAR(20) NOT NULL, content VARCHAR(5000) NOT NULL,
+    card_type VARCHAR(20), card_data VARCHAR(5000), attachment_id BIGINT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE
+);
 CREATE TABLE withdrawal_logs (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, former_user_id BIGINT NOT NULL,
     withdrawn_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
