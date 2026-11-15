@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { getErrorMessage } from '@/lib/apiClient'
 import { cx } from '@/lib/cx'
-import { usePhoneVerification } from '../hooks/useAuthMutations'
-import type { PhonePurpose } from '../types'
+import { useEmailVerification } from '../hooks/useAuthMutations'
+import type { EmailPurpose } from '../types'
 import styles from './Account.module.css'
 
 /* 회원가입 · 계정 찾기 화면이 같이 쓰는 입력 부품 (라벨 왼쪽 + 밑줄 입력 형식) */
@@ -31,41 +31,37 @@ export function EyeButton({ on, onClick, label }: { on: boolean; onClick: () => 
   return <button type="button" className={cx(styles.eye, on && styles.eyeOn)} onClick={onClick} aria-label={on ? `${label} 숨기기` : `${label} 보기`} aria-pressed={on} />
 }
 
-/** 숫자만 받아 0000-0000 모양으로 */
-const formatPhone = (v: string) => {
-  const d = v.replace(/\D/g, '').slice(0, 8)
-  return d.length > 4 ? `${d.slice(0, 4)}-${d.slice(4)}` : d
-}
+const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-type PhoneProps = {
+type EmailProps = {
   id: string
-  purpose: PhonePurpose
-  /** 010- 뒤 8자리 (0000-0000) */
-  phone: string
-  onPhoneChange: (v: string) => void
+  purpose: EmailPurpose
+  email: string
+  onEmailChange: (v: string) => void
   /** 인증을 마치면 받은 값. 비어 있으면 아직 인증 전 */
   token: string
   onToken: (token: string) => void
-  /** 바깥에서 넘겨주는 오류 (예: "휴대전화 인증을 해 주세요.") */
+  /** 바깥에서 넘겨주는 오류 (예: "이메일 인증을 해 주세요.") */
   error?: string
 }
 
-/** 휴대전화 + 인증(필수) → 인증번호 6자리 확인. 가입 · 아이디 찾기 · 비밀번호 찾기가 같이 씀
+/** 이메일 + 인증(필수) → 인증번호 6자리 확인. 가입 · 아이디 찾기 · 비밀번호 찾기가 같이 씀
  * (가짜 API 모드에서는 아무 6자리나 통과) */
-export function PhoneVerify({ id, purpose, phone, onPhoneChange, token, onToken, error }: PhoneProps) {
-  const { send, verify } = usePhoneVerification(purpose)
+export function EmailVerify({ id, purpose, email, onEmailChange, token, onToken, error }: EmailProps) {
+  const { send, verify } = useEmailVerification(purpose)
   const [code, setCode] = useState('')
   const [sent, setSent] = useState(false)
   const [localError, setLocalError] = useState('')
   const verified = !!token
 
   const sendCode = () => {
-    if (!/^\d{4}-\d{4}$/.test(phone)) {
-      setLocalError('휴대전화 번호를 확인해 주세요. (010-0000-0000)')
+    const value = email.trim()
+    if (!EMAIL_FORMAT.test(value) || value.length > 100) {
+      setLocalError('이메일 형식을 확인해 주세요.')
       return
     }
     setLocalError('')
-    send.mutate(`010-${phone}`, { onSuccess: () => setSent(true) })
+    send.mutate(value, { onSuccess: () => setSent(true) })
   }
   const verifyCode = () => {
     if (!/^\d{6}$/.test(code)) {
@@ -74,7 +70,7 @@ export function PhoneVerify({ id, purpose, phone, onPhoneChange, token, onToken,
     }
     setLocalError('')
     verify.mutate(
-      { phone: `010-${phone}`, code },
+      { email: email.trim(), code },
       {
         onSuccess: ({ verificationToken }) => {
           onToken(verificationToken)
@@ -87,7 +83,7 @@ export function PhoneVerify({ id, purpose, phone, onPhoneChange, token, onToken,
 
   const serverError = send.isError ? getErrorMessage(send.error) : verify.isError ? getErrorMessage(verify.error) : ''
   const hint = verified
-    ? { ok: true, text: '휴대전화 인증이 완료됐어요.' }
+    ? { ok: true, text: '이메일 인증이 완료됐어요.' }
     : localError || serverError
       ? { ok: false, text: localError || serverError }
       : sent
@@ -96,18 +92,18 @@ export function PhoneVerify({ id, purpose, phone, onPhoneChange, token, onToken,
 
   return (
     <>
-      <Row id={id} label="휴대전화" hint={sent ? undefined : hint.text} ok={hint.ok}>
-        <span className={styles.prefix}>010 -</span>
+      <Row id={id} label="이메일" hint={sent ? undefined : hint.text} ok={hint.ok}>
         <input
           id={id}
-          inputMode="numeric"
-          maxLength={9}
-          placeholder="0000-0000"
-          autoComplete="tel-national"
+          type="email"
+          maxLength={100}
+          placeholder="you@example.com"
+          autoComplete="email"
+          autoCapitalize="none"
           readOnly={verified}
-          value={phone}
+          value={email}
           onChange={(e) => {
-            onPhoneChange(formatPhone(e.target.value))
+            onEmailChange(e.target.value)
             setSent(false)
           }}
         />

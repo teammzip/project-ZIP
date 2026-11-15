@@ -7,7 +7,8 @@ export type User = {
   id: string
   /** 로그인 아이디 (6~16자 영문 소문자·숫자). 소셜 가입자는 없을 수 있음 */
   username?: string
-  email: string
+  /** 가입 화면에서는 인증을 거쳐 받음. 소셜 로그인은 제공 안 하면 비어 있을 수 있음 */
+  email?: string | null
   nickname: string
   birth?: string | null
   address: string
@@ -53,11 +54,9 @@ export type SignupRequest = ConsentRequest & {
   username: string
   password: string
   nickname: string
-  /** 010-0000-0000 */
-  phone: string
-  /** 휴대전화 인증을 마치고 받은 값 (POST /auth/phone/verify 응답) */
-  phoneVerificationToken: string
   email: string
+  /** 이메일 인증을 마치고 받은 값 (POST /auth/email/verify 응답) */
+  emailVerificationToken: string
   address: string
 }
 
@@ -71,15 +70,15 @@ export type UpdateMeRequest = Partial<ConsentRequest> & {
   avatarColor?: string | null
 }
 
-/** 휴대전화 인증 목적 (DB phone_verifications.purpose 와 같음) */
-export type PhonePurpose = 'SIGNUP' | 'FIND_ID' | 'RESET_PASSWORD'
+/** 이메일 인증 목적 (DB email_verifications.purpose 와 같음) */
+export type EmailPurpose = 'SIGNUP' | 'FIND_ID' | 'RESET_PASSWORD'
 
-/** POST /auth/find-id — 닉네임 + 휴대전화 인증 */
-export type FindIdRequest = { nickname: string; phone: string; phoneVerificationToken: string }
+/** POST /auth/find-id — 닉네임 + 이메일 인증 */
+export type FindIdRequest = { nickname: string; email: string; emailVerificationToken: string }
 export type FindIdResponse = { username: string }
 
-/** POST /auth/password-reset/verify — 아이디 + 휴대전화 인증이 맞으면 재설정 토큰을 줌 */
-export type PasswordResetVerifyRequest = { username: string; phone: string; phoneVerificationToken: string }
+/** POST /auth/password-reset/verify — 아이디 + 이메일 인증이 맞으면 재설정 토큰을 줌 */
+export type PasswordResetVerifyRequest = { username: string; email: string; emailVerificationToken: string }
 /** POST /auth/password-reset — 재설정 토큰으로 새 비밀번호 저장 (토큰은 한 번만 쓸 수 있음) */
 export type PasswordResetRequest = { resetToken: string; newPassword: string }
 
@@ -96,10 +95,10 @@ export type AuthResponse = {
 export interface AuthApi {
   login(req: LoginRequest): Promise<AuthResponse>
   signup(req: SignupRequest): Promise<AuthResponse>
-  /** POST /auth/phone/send — 휴대전화로 인증번호 보내기 */
-  sendPhoneCode(phone: string, purpose: PhonePurpose): Promise<void>
-  /** POST /auth/phone/verify — 인증번호 확인. 맞으면 다음 요청에 함께 보낼 값을 줌 */
-  verifyPhoneCode(phone: string, code: string, purpose: PhonePurpose): Promise<{ verificationToken: string }>
+  /** POST /auth/email/send — 이메일로 인증번호 보내기 */
+  sendEmailCode(email: string, purpose: EmailPurpose): Promise<void>
+  /** POST /auth/email/verify — 인증번호 확인. 맞으면 다음 요청에 함께 보낼 값을 줌 */
+  verifyEmailCode(email: string, code: string, purpose: EmailPurpose): Promise<{ verificationToken: string }>
   findId(req: FindIdRequest): Promise<FindIdResponse>
   verifyPasswordReset(req: PasswordResetVerifyRequest): Promise<{ resetToken: string }>
   resetPassword(req: PasswordResetRequest): Promise<void>

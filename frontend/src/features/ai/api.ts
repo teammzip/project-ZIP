@@ -42,16 +42,19 @@ export async function loadLatestConversation(entryPoint: EntryPoint): Promise<{ 
   }
 }
 
-/** 서버의 AI 에게 묻기. 질문과 답이 대화방에 저장됨. null 이면 AI 를 쓸 수 없는 상태(키 없음 · 오류)라서 데모 답변을 씀 */
+/** 서버의 AI 에게 묻기. 질문과 답이 대화방에 저장됨. null 이면 서버에 닿지 못한 상태(로그인 만료 · 서버 꺼짐)라서 데모 답변을 씀 */
 export async function askAi(conversationId: string | null, text: string, topic?: string): Promise<AiAnswer | null> {
   if (isMockApi || !conversationId) return null
   try {
     const { data } = await apiClient.post<{ reply: { text: string } }>(`/ai/conversations/${conversationId}/messages`, { text, topic })
     return data.reply.text ? { text: data.reply.text } : null
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 429) {
-      const message = (error.response.data as { message?: string } | undefined)?.message
-      return { text: message ?? '오늘 질문 한도를 모두 썼어요. 내일 다시 물어봐 주세요.', limited: true }
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+      const message = (error.response?.data as { message?: string } | undefined)?.message
+      if (status === 429) return { text: message ?? '오늘 질문 한도를 모두 썼어요. 내일 다시 물어봐 주세요.', limited: true }
+      // AI 쪽 문제(사용량 소진 · 일시 오류 · 준비 안 됨)는 데모 답변으로 속이지 않고 그대로 알려 줌
+      if (status === 502 || status === 503) return { text: message ?? 'AI가 지금 답하지 못했어요. 잠시 뒤에 다시 시도해 주세요.', limited: true }
     }
     return null
   }

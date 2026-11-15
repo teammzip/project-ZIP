@@ -4,6 +4,14 @@
 
 ## 적용 순서
 
+### 2026-11-15 지도 저장 리스트
+
+`20261115_kakao_place_favorites.sql`까지 적용된 DB에 `20261115_03_place_lists.sql`을 한 번 실행합니다. `place_lists`(회원이 만든 장소 묶음: 내 장소 · 맛집 …)와 `place_list_items`(리스트에 넣은 장소, `place_key` = DB 장소 번호 또는 `kakao:카카오장소id`) 두 표를 추가합니다. 이메일 인증 파일과는 서로 영향이 없어 순서는 상관없습니다. 다시 실행해도 안전합니다. 새 DB는 최신 schema.sql만 실행합니다. 감사 기준(schema_expected.json)에는 아직 반영하지 않았습니다(+2표).
+
+### 2026-11-15 휴대전화 인증 → 이메일 인증
+
+20261115_kakao_place_favorites까지 적용된 DB에 `20261115_02_email_verification.sql`을 한 번 실행합니다. users에서 phone·phone_verified_at을 지우고 email은 비어도 되는 채로 두고 email_verified_at을 추가합니다. phone_verifications를 지우고 email_verifications를 만들고, password_resets.method에서 PHONE을 빼고, banned_identities(재가입 차단)를 삭제합니다. 파일 앞의 사전 확인 SQL 두 개가 모두 0이어야 합니다. ALTER·DROP이라 다시 실행하면 실패합니다. 새 DB는 최신 schema.sql만 실행합니다.
+
 ### 2026-11-15 카카오 장소 즐겨찾기
 
 20261108까지 적용된 DB에 `20261115_kakao_place_favorites.sql`을 한 번 실행합니다. `kakao_place_favorites` 표 하나를 추가합니다(카카오 장소 id · 이름만, 주소 · 좌표 없음). 다시 실행해도 안전합니다. 새 DB는 최신 schema.sql만 실행합니다. 위 표 수 · 컬럼 수 감사 기준에는 아직 반영하지 않았습니다(+1표 · 5컬럼).

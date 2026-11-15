@@ -13,12 +13,12 @@ export const realAuthApi: AuthApi = {
     return data
   },
 
-  async sendPhoneCode(phone, purpose) {
-    await apiClient.post('/auth/phone/send', { phone, purpose })
+  async sendEmailCode(email, purpose) {
+    await apiClient.post('/auth/email/send', { email, purpose })
   },
 
-  async verifyPhoneCode(phone, code, purpose) {
-    const { data } = await apiClient.post<{ verificationToken: string }>('/auth/phone/verify', { phone, code, purpose })
+  async verifyEmailCode(email, code, purpose) {
+    const { data } = await apiClient.post<{ verificationToken: string }>('/auth/email/verify', { email, code, purpose })
     return data
   },
 

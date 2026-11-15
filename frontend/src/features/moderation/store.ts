@@ -17,9 +17,8 @@ export type SanctionEntry = {
 
 export type BanRecord = {
   nick: string
-  /** 아이디 · 휴대전화(숫자만)는 알면 같이 저장 → 같은 정보로 재가입 막기 */
+  /** 아이디는 알면 같이 저장 */
   uid?: string
-  phone?: string
   /** 정지 횟수 */
   count: number
   /** 경고 횟수 */
@@ -37,7 +36,7 @@ type State = {
   /** 닉네임 → 기록 */
   records: Record<string, BanRecord>
   /** days = 1·3·5·10, 0 이면 영구 */
-  ban: (nick: string, days: number, reason: string, info?: { uid?: string; phone?: string }) => void
+  ban: (nick: string, days: number, reason: string, info?: { uid?: string }) => void
   warn: (nick: string, reason: string) => void
   /** 정지 풀기 (횟수·이력은 남김) */
   unban: (nick: string) => void
@@ -51,7 +50,6 @@ export const useBanStore = create<State>()(
         set((s) => {
           const r = { ...(s.records[nick] ?? empty(nick)) }
           if (info?.uid) r.uid = info.uid
-          if (info?.phone) r.phone = info.phone.replace(/\D/g, '')
           r.count += 1
           r.perm = !days
           r.until = days ? Date.now() + days * DAY : null

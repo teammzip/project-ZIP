@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { apiClient } from '@/lib/apiClient'
 import type { PlaceItem } from './data/places'
+import type { PlaceList } from './store'
 
 /** 카카오 검색 장소의 id ("kakao:카카오장소id"). 서버 DB 에 없어서 저장 · 리뷰를 못 해요 */
 export const isKakaoPlace = (id: string) => id.startsWith('kakao:')
@@ -57,6 +58,14 @@ export const mapApi = {
   kakaoFavorites: async () =>
     Object.fromEntries((await apiClient.get<Array<{ id: string; name: string; category: string }>>('/me/place-favorites/kakao')).data.map((f) => [f.id, { n: f.name, cat: f.category }])),
   removeFavorite: (placeId: string) => apiClient.delete(`/me/place-favorites/${encodeURIComponent(placeId)}`),
+  /** 저장 리스트 (처음이면 서버가 "내 장소"를 만들어 줌) */
+  placeLists: async () => (await apiClient.get<PlaceList[]>('/me/place-lists')).data,
+  createPlaceList: async (name: string, color: string) => (await apiClient.post<PlaceList>('/me/place-lists', { name, color })).data,
+  /** 리스트 삭제: 이 리스트에만 있던 장소는 저장도 풀림 */
+  deletePlaceList: (listId: string) => apiClient.delete(`/me/place-lists/${encodeURIComponent(listId)}`),
+  /** ★ 저장 창의 [저장]: 이 장소를 넣을 리스트들 (비우면 저장 풂). 카카오 장소는 이름 · 종류도 */
+  setPlaceLists: (placeId: string, listIds: string[], meta?: { n: string; cat: string }) =>
+    apiClient.put(`/me/place-favorites/${encodeURIComponent(placeId)}/lists`, { listIds, ...(meta ? { name: meta.n, category: meta.cat } : {}) }),
   settings: async () => (await apiClient.get<MapSettings>('/me/map-settings')).data,
   saveSettings: async (settings: MapSettings) => (await apiClient.put<MapSettings>('/me/map-settings', settings)).data,
 }

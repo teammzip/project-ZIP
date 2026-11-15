@@ -27,12 +27,11 @@ export function banMessage(r: BanRecord) {
   return `이용이 정지된 계정이에요. ${r.perm ? '(영구 정지)' : `(${fmtAt(r.until!)} 해제)`}${why ? ` 사유: ${why}` : ''}`
 }
 
-/** 닉네임 · 아이디 · 휴대전화 중 하나라도 정지 중인 기록과 맞으면 그 기록 */
-export function findActiveBan(who: { nicks?: string[]; uid?: string; phone?: string }) {
-  const digits = who.phone?.replace(/\D/g, '')
+/** 닉네임 · 아이디 중 하나라도 정지 중인 기록과 맞으면 그 기록 */
+export function findActiveBan(who: { nicks?: string[]; uid?: string }) {
   return (
     Object.values(useBanStore.getState().records).find(
-      (r) => isActive(r) && ((who.nicks ?? []).includes(r.nick) || (!!who.uid && r.uid === who.uid) || (!!digits && r.phone === digits)),
+      (r) => isActive(r) && ((who.nicks ?? []).includes(r.nick) || (!!who.uid && r.uid === who.uid)),
     ) ?? null
   )
 }

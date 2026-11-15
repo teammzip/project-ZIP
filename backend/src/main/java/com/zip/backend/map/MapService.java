@@ -210,12 +210,114 @@ public class MapService {
         repository.addKakaoFavorite(userId, new MapRepository.KakaoFavorite(kakaoPlaceId, name, category));
     }
 
+    @Transactional
     public void removeFavorite(long userId, String placeId) {
-        if (placeId != null && placeId.startsWith(KAKAO_ID)) {
-            repository.removeKakaoFavorite(userId, kakaoPlaceId(placeId));
+        var key = placeKey(placeId);
+        repository.setPlaceListMembership(userId, key, List.of()); // 모든 리스트에서도 뺌
+        if (key.startsWith(KAKAO_ID)) repository.removeKakaoFavorite(userId, key.substring(KAKAO_ID.length()));
+        else repository.removeFavorite(userId, Long.parseLong(key));
+    }
+
+    // ---------- 저장 리스트 (★ 저장 창: 내 장소 · 맛집 …) ----------
+
+    static final String DEFAULT_LIST = "내 장소";
+    static final String DEFAULT_COLOR = "#03c75a";
+    static final int LIST_MAX = 20;
+    private static final Pattern COLOR = Pattern.compile("#[0-9a-fA-F]{6}");
+
+    /** 리스트 목록 + 각 리스트의 장소 키. 리스트가 하나도 없으면 "내 장소"를 만들고, 리스트에 안 든 저장 장소는 첫 리스트에 넣음 */
+    @Transactional
+    public List<Map<String, Object>> placeLists(long userId) {
+        var lists = repository.placeLists(userId);
+        var saved = favorites(userId);
+        var items = repository.placeListItems(userId);
+        var inSomeList = items.stream().map(row -> (String) row[1]).collect(java.util.stream.Collectors.toSet());
+        var orphans = saved.stream().filter(key -> !inSomeList.contains(key)).toList();
+        if (lists.isEmpty() || !orphans.isEmpty()) {
+            long first = lists.isEmpty() ? repository.insertPlaceList(userId, DEFAULT_LIST, DEFAULT_COLOR) : lists.get(0).id();
+            for (var key : orphans) repository.addToPlaceList(first, key);
+            lists = repository.placeLists(userId);
+            items = repository.placeListItems(userId);
+        }
+        // 저장이 풀린 장소가 리스트에 남아 있으면 보이지 않게 (저장 목록과 맞춤)
+        var savedSet = new java.util.HashSet<>(saved);
+        var result = new ArrayList<Map<String, Object>>();
+        for (var list : lists) {
+            var keys = items.stream().filter(row -> (long) row[0] == list.id()).map(row -> (String) row[1]).filter(savedSet::contains).toList();
+            result.add(Map.of("id", Long.toString(list.id()), "name", list.name(), "color", list.color(), "placeIds", keys));
+        }
+        return result;
+    }
+
+    @Transactional
+    public Map<String, Object> createPlaceList(long userId, MapRequests.PlaceListInput input) {
+        var valid = validList(input);
+        if (repository.placeLists(userId).size() >= LIST_MAX) throw new ApiException(400, "리스트는 " + LIST_MAX + "개까지 만들 수 있어요.");
+        long id;
+        try { id = repository.insertPlaceList(userId, valid[0], valid[1]); }
+        catch (org.springframework.dao.DuplicateKeyException duplicate) { throw new ApiException(409, "같은 이름의 리스트가 있어요."); }
+        return Map.of("id", Long.toString(id), "name", valid[0], "color", valid[1], "placeIds", List.of());
+    }
+
+    @Transactional
+    public void updatePlaceList(long userId, String listId, MapRequests.PlaceListInput input) {
+        var valid = validList(input);
+        int updated;
+        try { updated = repository.updatePlaceList(userId, listIdOf(listId), valid[0], valid[1]); }
+        catch (org.springframework.dao.DuplicateKeyException duplicate) { throw new ApiException(409, "같은 이름의 리스트가 있어요."); }
+        if (updated == 0) throw new ApiException(404, "리스트를 찾을 수 없어요.");
+    }
+
+    /** 리스트를 지우고, 그 때문에 어느 리스트에도 없게 된 장소는 저장도 풂 */
+    @Transactional
+    public void deletePlaceList(long userId, String listId) {
+        if (repository.deletePlaceList(userId, listIdOf(listId)) == 0) throw new ApiException(404, "리스트를 찾을 수 없어요.");
+        var stillListed = repository.placeListItems(userId).stream().map(row -> (String) row[1]).collect(java.util.stream.Collectors.toSet());
+        for (var key : favorites(userId)) if (!stillListed.contains(key)) removeFavorite(userId, key);
+    }
+
+    /** ★ 저장 창의 [저장]: 이 장소를 고른 리스트들에 넣음. 하나도 안 고르면 저장을 풂. 카카오 장소는 name · category 필요 */
+    @Transactional
+    public void setPlaceLists(long userId, String placeId, MapRequests.PlaceListsInput input) {
+        var key = placeKey(placeId);
+        var raw = input == null || input.listIds() == null ? List.<String>of() : input.listIds();
+        var mine = repository.placeLists(userId).stream().map(MapRepository.PlaceList::id).collect(java.util.stream.Collectors.toSet());
+        var listIds = new java.util.LinkedHashSet<Long>();
+        for (var value : raw) {
+            long id = listIdOf(value);
+            if (!mine.contains(id)) throw new ApiException(404, "리스트를 찾을 수 없어요.");
+            listIds.add(id);
+        }
+        if (listIds.isEmpty()) {
+            removeFavorite(userId, key);
             return;
         }
-        repository.removeFavorite(userId, id(placeId));
+        boolean noMeta = input.name() == null && input.category() == null;
+        // 이미 저장한 장소의 리스트만 바꿀 때는 이름 · 종류가 없어도 됨
+        if (!(noMeta && favorites(userId).contains(key))) {
+            addFavorite(userId, key, noMeta ? null : new MapRequests.KakaoFavorite(input.name(), input.category()));
+        }
+        repository.setPlaceListMembership(userId, key, List.copyOf(listIds));
+    }
+
+    /** [이름, 색] */
+    private static String[] validList(MapRequests.PlaceListInput input) {
+        var name = input == null || input.name() == null ? "" : input.name().strip();
+        if (name.isEmpty() || name.length() > 20 || CONTROL.matcher(name).find()) throw new ApiException(400, "리스트 이름은 20자 이내로 입력해 주세요.");
+        var color = input.color() == null || input.color().isBlank() ? DEFAULT_COLOR : input.color().strip();
+        if (!COLOR.matcher(color).matches()) throw new ApiException(400, "리스트 색(color)은 #RRGGBB 로 보내 주세요.");
+        return new String[] {name, color.toLowerCase(java.util.Locale.ROOT)};
+    }
+
+    private static long listIdOf(String value) {
+        if (value == null || !value.matches("[1-9][0-9]{0,18}")) throw new ApiException(404, "리스트를 찾을 수 없어요.");
+        return Long.parseLong(value);
+    }
+
+    /** 장소 키: DB 장소 "12", 카카오 장소 "kakao:123" (형식이 틀리면 404) */
+    private static String placeKey(String placeId) {
+        if (placeId != null && placeId.startsWith(KAKAO_ID)) return KAKAO_ID + kakaoPlaceId(placeId);
+        return Long.toString(id(placeId));
     }
 
     private static String kakaoPlaceId(String placeId) {

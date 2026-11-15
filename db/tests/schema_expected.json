@@ -16,7 +16,7 @@
       "table": "auth_sessions"
     },
     {
-      "table": "phone_verifications"
+      "table": "email_verifications"
     },
     {
       "table": "password_resets"
@@ -91,9 +91,6 @@
       "table": "user_sanctions"
     },
     {
-      "table": "banned_identities"
-    },
-    {
       "table": "support_inquiries"
     },
     {
@@ -128,6 +125,9 @@
     },
     {
       "table": "place_favorites"
+    },
+    {
+      "table": "kakao_place_favorites"
     },
     {
       "table": "place_reviews"
@@ -246,17 +246,7 @@
     },
     {
       "table": "users",
-      "column": "phone",
-      "type": "varchar(11)",
-      "nullable": "YES",
-      "auto": 0,
-      "generated": 0,
-      "charset": "",
-      "collation": ""
-    },
-    {
-      "table": "users",
-      "column": "phone_verified_at",
+      "column": "email_verified_at",
       "type": "datetime",
       "nullable": "YES",
       "auto": 0,
@@ -535,7 +525,7 @@
       "collation": ""
     },
     {
-      "table": "phone_verifications",
+      "table": "email_verifications",
       "column": "id",
       "type": "bigint unsigned",
       "nullable": "NO",
@@ -545,7 +535,7 @@
       "collation": ""
     },
     {
-      "table": "phone_verifications",
+      "table": "email_verifications",
       "column": "purpose",
       "type": "enum('signup','find_id','reset_password')",
       "nullable": "NO",
@@ -555,9 +545,9 @@
       "collation": ""
     },
     {
-      "table": "phone_verifications",
-      "column": "phone",
-      "type": "varchar(11)",
+      "table": "email_verifications",
+      "column": "email",
+      "type": "varchar(100)",
       "nullable": "NO",
       "auto": 0,
       "generated": 0,
@@ -565,7 +555,7 @@
       "collation": ""
     },
     {
-      "table": "phone_verifications",
+      "table": "email_verifications",
       "column": "user_id",
       "type": "bigint unsigned",
       "nullable": "YES",
@@ -575,7 +565,7 @@
       "collation": ""
     },
     {
-      "table": "phone_verifications",
+      "table": "email_verifications",
       "column": "code_hash",
       "type": "char(64)",
       "nullable": "NO",
@@ -585,7 +575,7 @@
       "collation": ""
     },
     {
-      "table": "phone_verifications",
+      "table": "email_verifications",
       "column": "attempt_count",
       "type": "tinyint unsigned",
       "nullable": "NO",
@@ -595,7 +585,7 @@
       "collation": ""
     },
     {
-      "table": "phone_verifications",
+      "table": "email_verifications",
       "column": "requested_at",
       "type": "datetime",
       "nullable": "NO",
@@ -605,7 +595,7 @@
       "collation": ""
     },
     {
-      "table": "phone_verifications",
+      "table": "email_verifications",
       "column": "expires_at",
       "type": "datetime",
       "nullable": "NO",
@@ -615,7 +605,7 @@
       "collation": ""
     },
     {
-      "table": "phone_verifications",
+      "table": "email_verifications",
       "column": "verified_at",
       "type": "datetime",
       "nullable": "YES",
@@ -625,7 +615,7 @@
       "collation": ""
     },
     {
-      "table": "phone_verifications",
+      "table": "email_verifications",
       "column": "verified_token_hash",
       "type": "char(64)",
       "nullable": "YES",
@@ -635,7 +625,7 @@
       "collation": ""
     },
     {
-      "table": "phone_verifications",
+      "table": "email_verifications",
       "column": "consumed_at",
       "type": "datetime",
       "nullable": "YES",
@@ -667,7 +657,7 @@
     {
       "table": "password_resets",
       "column": "method",
-      "type": "enum('phone','email')",
+      "type": "enum('email')",
       "nullable": "NO",
       "auto": 0,
       "generated": 0,
@@ -2775,106 +2765,6 @@
       "collation": ""
     },
     {
-      "table": "banned_identities",
-      "column": "id",
-      "type": "bigint unsigned",
-      "nullable": "NO",
-      "auto": 1,
-      "generated": 0,
-      "charset": "",
-      "collation": ""
-    },
-    {
-      "table": "banned_identities",
-      "column": "user_id",
-      "type": "bigint unsigned",
-      "nullable": "YES",
-      "auto": 0,
-      "generated": 0,
-      "charset": "",
-      "collation": ""
-    },
-    {
-      "table": "banned_identities",
-      "column": "sanction_id",
-      "type": "bigint unsigned",
-      "nullable": "YES",
-      "auto": 0,
-      "generated": 0,
-      "charset": "",
-      "collation": ""
-    },
-    {
-      "table": "banned_identities",
-      "column": "identity_type",
-      "type": "enum('login_id','nickname','phone')",
-      "nullable": "NO",
-      "auto": 0,
-      "generated": 0,
-      "charset": "",
-      "collation": ""
-    },
-    {
-      "table": "banned_identities",
-      "column": "identity_hash",
-      "type": "char(64)",
-      "nullable": "NO",
-      "auto": 0,
-      "generated": 0,
-      "charset": "",
-      "collation": ""
-    },
-    {
-      "table": "banned_identities",
-      "column": "hash_key_version",
-      "type": "smallint unsigned",
-      "nullable": "NO",
-      "auto": 0,
-      "generated": 0,
-      "charset": "",
-      "collation": ""
-    },
-    {
-      "table": "banned_identities",
-      "column": "starts_at",
-      "type": "datetime",
-      "nullable": "NO",
-      "auto": 0,
-      "generated": 0,
-      "charset": "",
-      "collation": ""
-    },
-    {
-      "table": "banned_identities",
-      "column": "expires_at",
-      "type": "datetime",
-      "nullable": "YES",
-      "auto": 0,
-      "generated": 0,
-      "charset": "",
-      "collation": ""
-    },
-    {
-      "table": "banned_identities",
-      "column": "revoked_at",
-      "type": "datetime",
-      "nullable": "YES",
-      "auto": 0,
-      "generated": 0,
-      "charset": "",
-      "collation": ""
-    },
-    {
-      "table": "banned_identities",
-      "column": "created_at",
-      "type": "datetime",
-      "nullable": "NO",
-      "auto": 0,
-      "generated": 0,
-      "charset": "",
-      "collation": ""
-    },
-    {
       "table": "support_inquiries",
       "column": "id",
       "type": "bigint unsigned",
@@ -3597,7 +3487,7 @@
     {
       "table": "places",
       "column": "source",
-      "type": "enum('manual','public_data')",
+      "type": "enum('manual','public_data','kakao')",
       "nullable": "NO",
       "auto": 0,
       "generated": 0,
@@ -3646,6 +3536,56 @@
     },
     {
       "table": "place_favorites",
+      "column": "created_at",
+      "type": "datetime",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "kakao_place_favorites",
+      "column": "user_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "kakao_place_favorites",
+      "column": "kakao_place_id",
+      "type": "varchar(50)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "kakao_place_favorites",
+      "column": "name",
+      "type": "varchar(60)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "kakao_place_favorites",
+      "column": "category",
+      "type": "varchar(20)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "kakao_place_favorites",
       "column": "created_at",
       "type": "datetime",
       "nullable": "NO",
@@ -3747,11 +3687,6 @@
       "columns": "email"
     },
     {
-      "table": "users",
-      "name": "uk_users_phone",
-      "columns": "phone"
-    },
-    {
       "table": "social_accounts",
       "name": "PRIMARY",
       "columns": "id"
@@ -3777,13 +3712,13 @@
       "columns": "refresh_token_hash"
     },
     {
-      "table": "phone_verifications",
+      "table": "email_verifications",
       "name": "PRIMARY",
       "columns": "id"
     },
     {
-      "table": "phone_verifications",
-      "name": "uk_phone_verifications_verified_token_hash",
+      "table": "email_verifications",
+      "name": "uk_email_verifications_verified_token_hash",
       "columns": "verified_token_hash"
     },
     {
@@ -3967,16 +3902,6 @@
       "columns": "id"
     },
     {
-      "table": "banned_identities",
-      "name": "PRIMARY",
-      "columns": "id"
-    },
-    {
-      "table": "banned_identities",
-      "name": "uk_banned_sanction_identity",
-      "columns": "sanction_id,identity_type"
-    },
-    {
       "table": "support_inquiries",
       "name": "PRIMARY",
       "columns": "id"
@@ -4057,9 +3982,19 @@
       "columns": "id"
     },
     {
+      "table": "places",
+      "name": "uk_places_source_source_id",
+      "columns": "source,source_id"
+    },
+    {
       "table": "place_favorites",
       "name": "PRIMARY",
       "columns": "user_id,place_id"
+    },
+    {
+      "table": "kakao_place_favorites",
+      "name": "PRIMARY",
+      "columns": "user_id,kakao_place_id"
     },
     {
       "table": "place_reviews",
@@ -4122,8 +4057,8 @@
       "delete_rule": "CASCADE"
     },
     {
-      "table": "phone_verifications",
-      "name": "fk_phone_verifications_user_id",
+      "table": "email_verifications",
+      "name": "fk_email_verifications_user_id",
       "column": "user_id",
       "target": "users",
       "target_column": "id",
@@ -4402,22 +4337,6 @@
       "delete_rule": "SET NULL"
     },
     {
-      "table": "banned_identities",
-      "name": "fk_banned_identities_user_id",
-      "column": "user_id",
-      "target": "users",
-      "target_column": "id",
-      "delete_rule": "SET NULL"
-    },
-    {
-      "table": "banned_identities",
-      "name": "fk_banned_identities_sanction_id",
-      "column": "sanction_id",
-      "target": "user_sanctions",
-      "target_column": "id",
-      "delete_rule": "SET NULL"
-    },
-    {
       "table": "support_inquiries",
       "name": "fk_support_inquiries_user_id",
       "column": "user_id",
@@ -4554,6 +4473,14 @@
       "delete_rule": "CASCADE"
     },
     {
+      "table": "kakao_place_favorites",
+      "name": "fk_kakao_place_favorites_user_id",
+      "column": "user_id",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
       "table": "place_reviews",
       "name": "fk_place_reviews_place_id",
       "column": "place_id",
@@ -4626,6 +4553,14 @@
     {
       "table": "places",
       "name": "ck_places_point"
+    },
+    {
+      "table": "kakao_place_favorites",
+      "name": "chk_kakao_place_favorites_id"
+    },
+    {
+      "table": "kakao_place_favorites",
+      "name": "chk_kakao_place_favorites_name"
     },
     {
       "table": "place_reviews",

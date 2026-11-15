@@ -1,4 +1,4 @@
--- zip_test 전용. 새 연결에서 전체 실행. 실제 차단/문자/로그인 처리는 수행하지 않습니다.
+-- zip_test 전용. 새 연결에서 전체 실행. 실제 차단/로그인 처리는 수행하지 않습니다.
 USE zip_test;
 START TRANSACTION;
 SET @mod_now=CURRENT_TIMESTAMP;
@@ -42,22 +42,12 @@ SELECT 'I04 기간·영구 정지 조회, 경고·만료 제외' AS test,IF(COUN
 FROM user_sanctions WHERE user_id=@mod_user AND sanction_type IN ('SUSPEND','BAN')
 AND starts_at<=@mod_now AND (ends_at IS NULL OR ends_at>@mod_now) AND revoked_at IS NULL;
 
--- SHA2는 비밀 없는 가상 fixture 값 생성 전용. 실제 운영 HMAC 구현 예제가 아닙니다.
-INSERT INTO banned_identities (user_id,sanction_id,identity_type,identity_hash,starts_at)
-VALUES (@mod_user,@mod_ban,'LOGIN_ID',SHA2(CONCAT('login-',@mod_tag),256),@mod_now),
- (@mod_user,@mod_ban,'NICKNAME',SHA2(CONCAT('nick-',@mod_tag),256),@mod_now),
- (@mod_user,@mod_ban,'PHONE',SHA2(CONCAT('phone-',@mod_tag),256),@mod_now);
-INSERT INTO banned_identities (user_id,sanction_id,identity_type,identity_hash,starts_at,expires_at)
-VALUES (@mod_user,@mod_suspend,'LOGIN_ID',SHA2(CONCAT('temp-',@mod_tag),256),@mod_now,DATE_ADD(@mod_now,INTERVAL 3 DAY));
-SET @mod_temp_identity=LAST_INSERT_ID();
-SELECT 'I05 차단 식별값 3종·키 버전 기본값' AS test,
- IF(COUNT(*)=3 AND COUNT(DISTINCT identity_type)=3 AND MIN(hash_key_version)=1,'PASS','FAIL') AS result
-FROM banned_identities WHERE sanction_id=@mod_ban AND expires_at IS NULL AND revoked_at IS NULL;
+SELECT 'I05 영구 정지는 종료 시각이 없음' AS test,IF(COUNT(*)=1,'PASS','FAIL') AS result
+FROM user_sanctions WHERE id=@mod_ban AND sanction_type='BAN' AND ends_at IS NULL AND revoked_at IS NULL;
 UPDATE user_sanctions SET revoked_at=@mod_now,revoked_by=@mod_admin,revoke_reason='가상 조기 해제' WHERE id=@mod_suspend;
-UPDATE banned_identities SET revoked_at=@mod_now WHERE id=@mod_temp_identity;
 SELECT 'I06 조기 해제와 원래 종료 시각 보존' AS test,
  IF((SELECT COUNT(*) FROM user_sanctions WHERE id=@mod_suspend AND revoked_at=@mod_now AND ends_at=DATE_ADD(@mod_now,INTERVAL 3 DAY))=1
- AND (SELECT COUNT(*) FROM banned_identities WHERE id=@mod_temp_identity AND revoked_at=@mod_now)=1
+
  AND (SELECT COUNT(*) FROM user_sanctions WHERE user_id=@mod_user AND sanction_type IN ('SUSPEND','BAN') AND starts_at<=@mod_now
  AND (ends_at IS NULL OR ends_at>@mod_now) AND revoked_at IS NULL)=1,'PASS','FAIL') AS result;
 
@@ -86,13 +76,10 @@ SELECT 'I12 신고자 삭제 후 신고 삭제·제재 보존' AS test,
  IF((SELECT COUNT(*) FROM reports WHERE id=@mod_report)=0
  AND (SELECT COUNT(*) FROM user_sanctions WHERE id IN (@mod_warn,@mod_suspend,@mod_ban) AND report_id IS NULL)=3,'PASS','FAIL') AS result;
 DELETE FROM users WHERE id=@mod_user;
-SELECT 'I13 탈퇴 후 차단 해시 보존' AS test,
+SELECT 'I13 탈퇴 후 제재·문의 삭제' AS test,
  IF((SELECT COUNT(*) FROM user_sanctions WHERE user_id=@mod_user)=0
  AND (SELECT COUNT(*) FROM support_inquiries WHERE id=@mod_inquiry)=0
- AND (SELECT COUNT(*) FROM banned_identities WHERE identity_hash IN
- (SHA2(CONCAT('login-',@mod_tag),256),SHA2(CONCAT('nick-',@mod_tag),256),SHA2(CONCAT('phone-',@mod_tag),256))
- AND user_id IS NULL AND sanction_id IS NULL AND revoked_at IS NULL)=3
- AND (SELECT COUNT(*) FROM banned_identities WHERE id=@mod_temp_identity AND user_id IS NULL AND sanction_id IS NULL AND revoked_at=@mod_now)=1,'PASS','FAIL') AS result;
+ AND (SELECT COUNT(*) FROM user_sanctions WHERE id IN (@mod_warn,@mod_suspend,@mod_ban))=0,'PASS','FAIL') AS result;
 ROLLBACK;
 SELECT 'I14 테스트 데이터 제거' AS test,
  IF((SELECT COUNT(*) FROM users WHERE id IN (@mod_user,@mod_reporter,@mod_admin))=0
@@ -101,5 +88,4 @@ SELECT 'I14 테스트 데이터 제거' AS test,
  AND (SELECT COUNT(*) FROM reports WHERE id=@mod_report)=0
  AND (SELECT COUNT(*) FROM user_sanctions WHERE user_id=@mod_user)=0
  AND (SELECT COUNT(*) FROM support_inquiries WHERE id=@mod_inquiry)=0
- AND (SELECT COUNT(*) FROM banned_identities WHERE identity_hash IN
- (SHA2(CONCAT('login-',@mod_tag),256),SHA2(CONCAT('nick-',@mod_tag),256),SHA2(CONCAT('phone-',@mod_tag),256),SHA2(CONCAT('temp-',@mod_tag),256)))=0,'PASS','FAIL') AS result;
+ AND (SELECT COUNT(*) FROM user_sanctions WHERE id IN (@mod_warn,@mod_suspend,@mod_ban))=0,'PASS','FAIL') AS result;

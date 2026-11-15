@@ -506,7 +506,81 @@
 }
 
 .tabOn i {
+  color: #ffb400;
+}
+
+.tabCount {
+  margin-left: 2px;
   color: var(--color-primary);
+}
+
+/* 목록의 저장 버튼: [☆ 저장] / [★ 저장됨] (아이콘만 있으면 헷갈려서 글자를 같이) */
+.saveBtn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 10px 6px 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-card);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.saveBtn .actionIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.saveBtn:hover {
+  border-color: #ffb400;
+  color: var(--color-text);
+}
+
+.saveBtnOn {
+  border-color: #ffe08a;
+  background: #fff8e1;
+  color: #b07a00;
+}
+
+.saveBtnOn .actionIcon {
+  color: #ffb400;
+}
+
+/* 저장 · 취소 직후 안내 */
+.favNote {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: #fff8e1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #7a5600;
+}
+
+/* 오른쪽 위 ★ 버튼의 저장 개수 */
+.fab {
+  position: relative;
+}
+
+.fabBadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 2px solid var(--color-card);
+  border-radius: 999px;
+  background: #ffb400;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 16px;
+  color: #fff;
+  text-align: center;
 }
 
 .listTitle {
@@ -528,59 +602,85 @@
   color: var(--color-purple);
 }
 
-/* PC: 칸이 좁으면 다음 줄로 넘김 (마우스로는 가로 스크롤을 할 수 없어서)
- * 모바일: 한 줄로 두고 손가락으로 밀기. 오른쪽 끝을 흐리게 해서 더 있다는 걸 보여 줌 */
-.filters,
-.examples {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-@media (max-width: 900px) {
-  .filters,
-  .examples {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding-right: 24px;
-    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
-  }
-
-  .filters::-webkit-scrollbar,
-  .examples::-webkit-scrollbar {
-    display: none;
-  }
+/* 정렬 · 조건: 버튼 대신 글자 탭 한 줄 (가까운 순 · 24시간 · 저렴한 · 조용한) */
+.filters {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-line);
 }
 
 .filter {
-  flex: none;
-  padding: 8px 16px;
-  border: 1px solid #e3e5ec;
-  border-radius: 999px;
+  position: relative;
+  padding: 6px 4px;
+  text-align: center;
+  white-space: nowrap;
   font-size: 14px;
   font-weight: 600;
-  color: #4b5263;
+  color: var(--color-muted);
+}
+
+.filter:hover {
+  color: var(--color-text);
 }
 
 .filterOn {
-  border-color: transparent;
-  background: #eaf3ff;
+  font-weight: 800;
   color: var(--color-primary);
 }
 
+.filterOn::after {
+  content: "";
+  position: absolute;
+  right: 18%;
+  bottom: -9px;
+  left: 18%;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-primary);
+}
+
+/* AI 예시: 작게 한 줄, 넘치면 옆으로 (휠 · 손가락) */
 .examples {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: grab;
+  user-select: none;
   margin-top: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+
+.examples::-webkit-scrollbar {
+  display: none;
+}
+
+.examplesLabel {
+  flex: none;
+  line-height: 24px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-purple);
 }
 
 .examples button {
   flex: none;
-  padding: 6px 12px;
+  padding: 0 10px;
+  height: 26px;
+  line-height: 24px;
+  border: 1px solid #e6e1ff;
   border-radius: 999px;
-  background: #f4f1ff;
+  background: var(--color-card);
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-purple);
+  color: #5b4fd1;
+}
+
+.examples button:hover {
+  background: #f4f1ff;
 }
 
 /* 장소 목록 */
@@ -951,4 +1051,272 @@
     width: 58px;
     height: 58px;
   }
+}
+
+/* 내가 저장한 곳: 종류별 묶음 (세로) */
+.favGroup + .favGroup {
+  margin-top: 18px;
+}
+
+.favGroupTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--color-line);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.favGroupTitle small {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.favGroupIcon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+/* 패널 탭 글자가 두 줄로 꺾이지 않게 */
+.tab {
+  overflow: hidden;
+  padding-right: 8px;
+  padding-left: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- ★ 저장 창 (SaveSheet) ---------- */
+.saveSheet {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.sheetHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.sheetHead b {
+  display: block;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.sheetHead small {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.sheetThumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+}
+
+.newListOpen {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--color-line);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.newListOpen span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid #c9cdd6;
+  border-radius: 50%;
+  font-size: 16px;
+}
+
+.newListOpen:hover {
+  color: var(--color-primary);
+}
+
+.newList {
+  display: grid;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.newList input {
+  padding: 10px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+}
+
+.colorDots {
+  display: flex;
+  gap: 8px;
+}
+
+.colorDot {
+  width: 26px;
+  height: 26px;
+  border: 3px solid var(--color-card);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--color-line);
+}
+
+.colorDotOn {
+  box-shadow: 0 0 0 2px var(--color-text);
+}
+
+.newListBtns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.newListBtns button {
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+.newListBtns .newListAdd {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.listPick {
+  max-height: min(50vh, 360px);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.listPick li + li {
+  border-top: 1px solid var(--color-line);
+}
+
+.listPickRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 4px;
+  text-align: left;
+}
+
+.listPickRow b {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.listPickRow small {
+  flex: 1;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+/* 리스트 색 별 (저장 창 · 저장 탭 제목) */
+.listStar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  color: #fff;
+}
+
+.listCheck {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid #c9cdd6;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 800;
+  color: #c9cdd6;
+}
+
+.listCheckOn {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.sheetError {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.sheetSave {
+  width: 100%;
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--color-primary);
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.sheetSave:disabled {
+  background: #eef0f4;
+  color: #a5abb8;
+}
+
+/* 저장 창: 리스트 줄 (체크 버튼 + 오른쪽 삭제 버튼) */
+.listPickItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.listPickItem .listPickRow {
+  flex: 1;
+  min-width: 0;
+}
+
+.listDelete {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #a5abb8;
+}
+
+.listDelete svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.listDelete:hover {
+  background: #fdecec;
+  color: var(--color-danger);
 }

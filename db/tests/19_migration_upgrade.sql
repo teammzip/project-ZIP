@@ -544,3 +544,65 @@ ALTER TABLE `places`
   ADD UNIQUE KEY `uk_places_source_source_id` (`source`, `source_id`);
 
 INSERT IGNORE INTO `place_categories` (`name`, `icon`, `sort_order`) VALUES ('기타', '📍', 99);
+
+-- 2026-11-15 카카오 검색 장소 즐겨찾기
+-- 카카오 장소는 places 에 저장하지 않으므로(카카오 운영 정책: 장소명 · 주소 · 좌표 장기 저장 제한) 즐겨찾기를 따로 둡니다.
+-- 저장하는 것: 회원 번호, 카카오 장소 id, 저장 목록에 보일 이름, 우리 종류 이름. 주소 · 좌표 · 전화번호는 저장하지 않습니다.
+-- 20261108 까지 적용된 DB 에 한 번 실행합니다. 새 DB 는 최신 schema.sql 만 실행합니다. 다시 실행해도 안전합니다.
+USE `zip_migration_test`;
+
+CREATE TABLE IF NOT EXISTS `kakao_place_favorites` (
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '소유 사용자 번호',
+  `kakao_place_id` VARCHAR(50) NOT NULL COMMENT '카카오 장소 id (숫자 문자열)',
+  `name` VARCHAR(60) NOT NULL COMMENT '저장 목록에 보일 장소 이름',
+  `category` VARCHAR(20) NOT NULL COMMENT '우리 장소 종류 이름 (place_categories.name, 아이콘 표시용)',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록 일시',
+  PRIMARY KEY (`user_id`, `kakao_place_id`),
+  CONSTRAINT `fk_kakao_place_favorites_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_kakao_place_favorites_id` CHECK (`kakao_place_id` REGEXP '^[0-9]{1,50}$'),
+  CONSTRAINT `chk_kakao_place_favorites_name` CHECK (CHAR_LENGTH(TRIM(`name`)) > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='카카오 검색 장소 즐겨찾기 (id · 이름만, 주소 · 좌표 없음)';
+
+-- 2026-11-15 휴대전화 인증을 이메일 인증으로 교체 (db/migrations/20261115_02_email_verification.sql 사본, 사전 확인 SQL 제외)
+USE `zip_migration_test`;
+
+ALTER TABLE `users`
+  DROP INDEX `uk_users_phone`,
+  DROP COLUMN `phone`,
+  DROP COLUMN `phone_verified_at`,
+  MODIFY COLUMN `email` VARCHAR(100) NULL COMMENT '이메일 — 가입 화면에서는 인증을 거쳐 필수로 받음. 소셜 로그인은 제공 안 할 수 있어 비어 있을 수 있음. 아이디·비밀번호 찾기의 본인 확인에 씀',
+  ADD COLUMN `email_verified_at` DATETIME NULL COMMENT '이메일 인증 일시 — 인증번호로 이메일을 확인한 시각 (인증 전은 비어 있음)' AFTER `email`;
+
+DROP TABLE IF EXISTS `phone_verifications`;
+
+CREATE TABLE IF NOT EXISTS `email_verifications` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '인증 아이디 — 자동 증가',
+  `purpose` ENUM('SIGNUP','FIND_ID','RESET_PASSWORD') NOT NULL COMMENT '인증 목적 — 가입 / 아이디 찾기 / 비밀번호 찾기',
+  `email` VARCHAR(100) NOT NULL COMMENT '인증받는 이메일',
+  `user_id` BIGINT UNSIGNED NULL COMMENT '대상 사용자 아이디 — 찾기일 때만 채움(가입 때는 비움). 탈퇴하면 함께 삭제',
+  `code_hash` CHAR(64) NOT NULL COMMENT '인증번호(해시) — 6자리 번호를 해시로 저장',
+  `attempt_count` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '틀린 횟수 — 횟수가 넘으면 잠금',
+  `requested_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '인증번호 요청 일시',
+  `expires_at` DATETIME NOT NULL COMMENT '인증번호 만료 일시 — 보통 3~5분',
+  `verified_at` DATETIME NULL COMMENT '인증 성공 일시',
+  `verified_token_hash` CHAR(64) NULL COMMENT '인증 완료 값(해시) — 인증 성공 때 발급. 가입·찾기 요청에 함께 보내는 값',
+  `consumed_at` DATETIME NULL COMMENT '사용 일시 — 인증 완료 값을 가입·재설정에 쓴 시각(한 번만 사용)',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_email_verifications_verified_token_hash` (`verified_token_hash`),
+  KEY `idx_email_verifications_email_requested_at` (`email`, `requested_at`),
+  CONSTRAINT `fk_email_verifications_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='이메일 인증: 메일로 보낸 인증번호 기록.';
+
+
+ALTER TABLE `password_resets`
+  MODIFY COLUMN `method` ENUM('EMAIL') NOT NULL DEFAULT 'EMAIL' COMMENT '본인 확인 방법 — 이메일 인증';
+
+DROP TABLE IF EXISTS `banned_identities`;
+
+SELECT 'U14 이메일 인증 전환 구조' AS test,
+ IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND COLUMN_NAME IN ('phone','phone_verified_at'))=0
+ AND (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND COLUMN_NAME='email' AND IS_NULLABLE='YES')=1
+ AND (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND COLUMN_NAME='email_verified_at')=1
+ AND (SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('phone_verifications','banned_identities'))=0
+ AND (SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='email_verifications')=1
+ AND (SELECT COUNT(*) FROM user_sanctions WHERE id=@mig_sanction)=1,'PASS','FAIL') AS result;

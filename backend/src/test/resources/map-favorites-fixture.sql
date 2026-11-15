@@ -9,3 +9,7 @@ CREATE TABLE place_favorites (user_id BIGINT NOT NULL, place_id BIGINT NOT NULL,
     PRIMARY KEY (user_id, place_id));
 CREATE TABLE kakao_place_favorites (user_id BIGINT NOT NULL, kakao_place_id VARCHAR(50) NOT NULL, name VARCHAR(60) NOT NULL,
     category VARCHAR(20) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (user_id, kakao_place_id));
+CREATE TABLE place_lists (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL, name VARCHAR(20) NOT NULL, color CHAR(7) NOT NULL,
+    sort_order INT DEFAULT 0 NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, UNIQUE (user_id, name));
+CREATE TABLE place_list_items (list_id BIGINT NOT NULL, place_key VARCHAR(60) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    PRIMARY KEY (list_id, place_key), FOREIGN KEY (list_id) REFERENCES place_lists (id) ON DELETE CASCADE);

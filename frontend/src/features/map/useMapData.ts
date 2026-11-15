@@ -55,6 +55,19 @@ export function useMapData(center?: { lat: number; lon: number } | null): MapDat
   }
 }
 
+/** 서버에 이미 저장한 값을 화면에 넣을 때: 아래 동기화가 다시 서버에 보내지 않게 잠깐 멈춤 */
+let syncMuted = false
+export function withoutMapSync(apply: () => void) {
+  syncMuted = true
+  try { apply() } finally { syncMuted = false }
+}
+
+/** 서버의 저장 장소 · 카카오 장소 이름 · 저장 리스트를 다시 받아 화면에 넣음 */
+export async function refreshSavedFromServer() {
+  const [favs, favNames, lists] = await Promise.all([mapApi.favorites(), mapApi.kakaoFavorites(), mapApi.placeLists()])
+  withoutMapSync(() => useMapStore.setState({ favs, favNames, lists }))
+}
+
 /** 서버 모드일 때 지도 설정(칩 · 검색어) · 즐겨찾기를 서버와 맞춤: 들어올 때 서버 값을 받고, 바뀌면 서버에 저장.
  * 저장이 실패하면 서버 값을 다시 받아 화면을 되돌려요. 지도 화면(MapView) 한 곳에서만 부르세요. */
 export function useMapServerSync() {
@@ -64,11 +77,11 @@ export function useMapServerSync() {
     let ready = false
     let alive = true
     const pull = () =>
-      Promise.all([mapApi.settings(), mapApi.favorites(), mapApi.kakaoFavorites()])
-        .then(([settings, favs, favNames]) => {
+      Promise.all([mapApi.settings(), mapApi.favorites(), mapApi.kakaoFavorites(), mapApi.placeLists()])
+        .then(([settings, favs, favNames, lists]) => {
           if (!alive) return
           ready = false
-          useMapStore.setState({ on: settings.categories, custom: settings.keywords, favs, favNames })
+          useMapStore.setState({ on: settings.categories, custom: settings.keywords, favs, favNames, lists })
           ready = true
         })
         .catch(() => {
@@ -76,7 +89,7 @@ export function useMapServerSync() {
         })
     void pull()
     const unsubscribe = useMapStore.subscribe((now, before) => {
-      if (!ready) return
+      if (!ready || syncMuted) return
       if (now.on !== before.on || now.custom !== before.custom) mapApi.saveSettings({ categories: now.on, keywords: now.custom }).catch(pull)
       if (now.favs !== before.favs) {
         for (const id of now.favs) if (!before.favs.includes(id)) mapApi.addFavorite(id, now.favNames[id]).catch(pull)

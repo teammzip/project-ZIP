@@ -1,3 +1,4 @@
+
 # 백엔드 API 약속
 
 프론트(React)와 백엔드가 주고받을 API를 정리한 문서예요. **DB는 [`../db/schema.sql`](../db/schema.sql)(2026-11-07 변경 반영)이 기준**이고, 표마다 어느 API가 쓰는지 같이 적었어요.
@@ -11,7 +12,7 @@
 
 | 영역 | 상태 | DB 표 |
 |---|---|---|
-| [인증 · 내 정보](#1-인증--내-정보-) | ✅ | `users` `social_accounts` `auth_sessions` `phone_verifications` `password_resets` `user_term_agreements` `withdrawal_logs` |
+| [인증 · 내 정보](#1-인증--내-정보-) | ✅ | `users` `social_accounts` `auth_sessions` `email_verifications` `password_resets` `user_term_agreements` `withdrawal_logs` |
 | [설정 · 동네·설문](#2-설정--동네-) | 📝 | `user_settings` `housing_surveys` `regions` `region_neighbors` · `users.region_verified_at` |
 | [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | 📝 | `events`(기념일·매년 반복 포함) `event_categories` `event_presets` `trash_schedules` |
 | [월세 · 고정 지출·대출](#4-월세--고정-지출-) | 📝 | `rent_payments` `bill_items` `bill_payments` `housing_loans` `loan_interest_charges` |
@@ -54,7 +55,7 @@ GET/PUT `/api/me/home-info` 구현 및 내 집 정보 폼 연결 완료. 계약 
 
 현재 백엔드의 PATCH `/api/auth/me`는 닉네임·한 줄 소개·캐릭터·배경색·프로필 사진 연결, 그리고 소셜 첫 가입의 주소·약관 동의(`address`, `agreeTerms`, `agreePrivacy`, `agreePolicy`, `ageOver14`, `termsVersion`; 한 번만 가능)를 지원해요. 사용자 ID·권한 등 지원하지 않는 키를 보내면 400이에요.
 
-> **서버 구현 현황(2026-11):** 로그인·로그아웃·내 정보·비밀번호 변경·프로필·회원 탈퇴·구글/네이버/카카오 소셜 로그인은 구현됨. **회원가입(`POST /auth/signup`), 휴대전화 인증, 아이디 찾기, 비밀번호 재설정, 토큰 재발급(`/auth/refresh`)은 아직 서버에 없어요.**
+> **서버 구현 현황(2026-11):** 로그인·로그아웃·내 정보·비밀번호 변경·프로필·회원 탈퇴·구글/네이버/카카오 소셜 로그인은 구현됨. **회원가입(`POST /auth/signup`), 이메일 인증, 아이디 찾기, 비밀번호 재설정, 토큰 재발급(`/auth/refresh`)은 아직 서버에 없어요.**
 
 ✅는 아래 기본 인증 요청 경로가 realAuthApi에 있다는 뜻이에요. 프로필은 연동되어 있지만 제재·위치 확장 필드와 refresh 제안까지 구현되어 있다는 뜻은 아니에요.
 
@@ -67,10 +68,10 @@ GET/PUT `/api/me/home-info` 구현 및 내 집 정보 폼 연결 완료. 계약 
 | PATCH | `/api/auth/me` | `{ nickname }` 또는 [소셜 첫 가입](#소셜-로그인) 정보 | `user` |
 | PATCH | `/api/auth/me/password` | `{ currentPassword, newPassword }` | — (현재 비밀번호가 틀리면 400) |
 | DELETE | `/api/auth/me` | — (회원 탈퇴) | — |
-| POST | `/api/auth/phone/send` | `{ phone, purpose }` | — |
-| POST | `/api/auth/phone/verify` | `{ phone, code, purpose }` | `{ verificationToken }` |
-| POST | `/api/auth/find-id` | `{ nickname, phone, phoneVerificationToken }` | `{ username }` |
-| POST | `/api/auth/password-reset/verify` | `{ username, phone, phoneVerificationToken }` | `{ resetToken }` |
+| POST | `/api/auth/email/send` | `{ email, purpose }` | — |
+| POST | `/api/auth/email/verify` | `{ email, code, purpose }` | `{ verificationToken }` |
+| POST | `/api/auth/find-id` | `{ nickname, email, emailVerificationToken }` | `{ username }` |
+| POST | `/api/auth/password-reset/verify` | `{ username, email, emailVerificationToken }` | `{ resetToken }` |
 | POST | `/api/auth/password-reset` | `{ resetToken, newPassword }` | — |
 | GET | `/api/oauth2/authorization/{kakao\|google\|naver}` | (페이지 이동) | 끝나면 `/oauth/callback?token=...`으로 보내기 |
 
@@ -111,27 +112,26 @@ GET/PUT `/api/me/home-info` 구현 및 내 집 정보 폼 연결 완료. 계약 
 ### 회원가입
 ```json
 { "username": "tester01", "password": "abcd123!", "nickname": "테스터",
-  "phone": "010-1234-5678", "phoneVerificationToken": "…",
-  "email": "t@zip.com", "address": "서울 마포구 합정동",
+  "email": "t@zip.com", "emailVerificationToken": "…", "address": "서울 마포구 합정동",
   "agreeTerms": true, "agreePrivacy": true, "agreePolicy": true, "ageOver14": true,
   "termsVersion": "2026-10-18" }
 ```
 - **입력 규칙** (`src/features/auth/schema.ts`와 같게 서버에서도 검사)
-  - 이메일은 필수·최대 100자, 주소는 공백 제거 후 필수·최대 200자예요. 소셜 첫 동의의 주소에도 같은 제한을 적용해요.
+  - 이메일은 가입 화면에서 필수·최대 100자이고 **인증을 마쳐야 가입 버튼이 켜져요**(DB `users.email`은 소셜 가입에서 못 받을 수 있어 NULL 허용). 주소는 공백 제거 후 필수·최대 200자예요. 소셜 첫 동의의 주소에도 같은 제한을 적용해요.
   - 동의 4개는 모두 true여야 하며 termsVersion은 서버가 유효한 동의 대상 버전인지 검사해요. 소셜 첫 동의도 주소·동의 4개·termsVersion을 함께 검사하고 일반 닉네임 수정에는 동의를 다시 요구하지 않아요.
   - 아이디 6~16자 영문 소문자·숫자 / 비밀번호 8~16자 영문·숫자·특수문자 모두 / 닉네임 2~12자
-  - 아이디 · 이메일 · 휴대전화는 겹치면 안 돼요 (`uk_users_*`)
+  - 아이디 · 이메일은 겹치면 안 돼요 (`uk_users_*`)
 - **저장할 곳**
-  - `phone`은 숫자만 (`01012345678`), `phone_verified_at` = 인증 시각
+  - `email`은 소문자로 저장하고, `email_verified_at` = 인증 시각
   - `ageOver14` → `users.age_confirmed_at`
   - `agreeTerms` · `agreePrivacy` · `agreePolicy` → `termsVersion`의 `terms_documents` 3줄(SERVICE · PRIVACY · POLICY)을 `user_term_agreements`에 기록
-  - 정지 기록이 있는 아이디 · 닉네임 · 휴대전화로는 가입을 막아 주세요 ([관리자](#11-관리자--이용-정지-))
+  - 정지 중인 계정과 같은 닉네임 · 아이디는 가입을 막아도 돼요. 재가입 차단용 `banned_identities` 표는 없앴어요 ([관리자](#11-관리자--이용-정지-))
 
-### 휴대전화 인증
-- `purpose`: `SIGNUP` · `FIND_ID` · `RESET_PASSWORD` (`phone_verifications.purpose`)
-- 흐름: `send` → 문자로 받은 6자리 입력 → `verify` → 받은 `verificationToken`을 가입·찾기 요청에 함께 보냄
+### 이메일 인증
+- `purpose`: `SIGNUP` · `FIND_ID` · `RESET_PASSWORD` (`email_verifications.purpose`)
+- 흐름: `send` → 메일로 받은 6자리 입력 → `verify` → 받은 `verificationToken`을 가입·찾기 요청에 함께 보냄
 - 인증번호는 3분, 틀린 횟수 제한(`attempt_count`), `verificationToken`은 **한 번만** 사용(`consumed_at`)
-- 비밀번호 찾기: `password-reset/verify`로 `resetToken`을 받고(`password_resets.method = PHONE`), 같은 화면에서 `password-reset`으로 새 비밀번호 저장. 메일은 보내지 않아요.
+- 비밀번호 찾기: `password-reset/verify`로 `resetToken`을 받고(`password_resets.method = EMAIL`), 같은 화면에서 `password-reset`으로 새 비밀번호 저장. 재설정 링크 메일은 따로 보내지 않아요.
 
 ### 소셜 로그인
 1. 프론트가 `/api/oauth2/authorization/{kakao|google|naver}`로 이동 → 백엔드가 소셜 로그인 처리 (`social_accounts`). 공급자별 키는 `secrets/*.properties`에 있고, 키가 없는 공급자는 꺼져 있어요.
@@ -155,9 +155,9 @@ GET/PUT `/api/me/home-info` 구현 및 내 집 정보 폼 연결 완료. 계약 
 ### 회원 탈퇴
 - `users` 한 줄을 지우면 개인 데이터는 CASCADE로 같이 지워져요. `withdrawal_logs`에는 지워진 번호와 시각만 남겨요.
 - ✅ 서버 구현됨: `DELETE /api/auth/me`(본문 없음, 성공 시 204). 로그인한 본인만 가능하고, 관리자 계정은 403("관리자 계정은 탈퇴할 수 없어요.")이에요. 일반·소셜 계정 모두 같고, 소셜 연결도 같이 지워져서 같은 소셜 계정으로 다시 로그인하면 새 가입이 돼요. 탈퇴 후 기존 토큰은 401이에요.
-- ⏳ 아직 없는 것: 정지 이력이 있는 회원의 재가입 차단(`banned_identities` HMAC 기록)은 제재 기능과 함께 구현해야 해요.
+- 정지 이력이 있는 회원의 재가입은 막지 않기로 해서 `banned_identities` 표를 없앴어요.
 - 업로드한 파일의 실제 저장소 파일은 서버가 따로 지워 주세요.
-- user_sanctions는 탈퇴 시 삭제돼요. 재가입 차단은 `banned_identities`의 HMAC·만료/해제 기록으로 유지해요. 타인이 남긴 신고 스냅샷의 개인정보와 실제 저장소 파일도 정책에 따라 별도 정리해요.
+- user_sanctions는 탈퇴 시 삭제돼요. 타인이 남긴 신고 스냅샷의 개인정보와 실제 저장소 파일도 정책에 따라 별도 정리해요.
 
 ---
 
@@ -496,6 +496,10 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 | GET | `/api/me/place-favorites` | — | `[placeId]` (DB 장소는 번호, 카카오 장소는 `"kakao:카카오장소id"`) |
 | PUT · DELETE | `/api/me/place-favorites/{placeId}` | 카카오 장소만 `{ name, category }` | — (★ 누르기 · 풀기) |
 | GET | `/api/me/place-favorites/kakao` | — | `[{ id: "kakao:…", name, category }]` (저장 목록에 보일 이름 · 종류) |
+| GET | `/api/me/place-lists` | — | `[{ id, name, color, placeIds }]` (★ 저장 창의 내 리스트. 처음이면 "내 장소"를 만들고 리스트에 안 든 저장 장소를 넣어 줌) |
+| POST | `/api/me/place-lists` | `{ name, color }` (20자 · `#RRGGBB`) | `{ id, name, color, placeIds: [] }` (같은 이름 409, 20개까지) |
+| PATCH · DELETE | `/api/me/place-lists/{id}` | `{ name, color }` | — (삭제하면 이 리스트에만 있던 장소는 저장도 풀림) |
+| PUT | `/api/me/place-favorites/{placeId}/lists` | `{ listIds, name?, category? }` | — (★ 저장 창의 [저장]: 고른 리스트들에 넣음, 비우면 저장 풂. 처음 저장하는 카카오 장소는 name · category 필요) |
 | GET · PUT | `/api/me/map-settings` | `{ categories: ["세탁방", …], keywords: ["빵집"] }` | 같은 모양 (칩에 보일 종류 · 직접 추가한 검색어) |
 | GET | `/api/places/{id}/reviews` | — | `[{ id, rating, body, author, createdAt }]` (확장 기능, 화면 없음) |
 | POST | `/api/places/{id}/reviews` | `{ rating, body }` | — (한 사람당 한 장소 하나) |
@@ -564,8 +568,8 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 - `warns` · `bans`는 지금까지 받은 경고 · 정지 횟수예요. 기간이 끝나거나 해제돼도 **횟수와 이력은 남아요**.
 - 정지 기간이 끝나면 `users.status`를 `ACTIVE`로 돌려 주세요 (로그인할 때 확인해도 돼요).
-- 정지 중이면: 로그인 · 글쓰기 · 댓글 · 좋아요 막기, 같은 **아이디 · 닉네임 · 휴대전화로 재가입** 막기.
-  - 탈퇴 시 user_sanctions는 삭제되지만 banned_identities는 user_id/sanction_id 연결만 NULL로 바뀌어 유지돼요. 서버 HMAC 키·정규화·만료·해제 동기화를 구현해야 해요.
+- 정지 중이면: 로그인 · 글쓰기 · 댓글 · 좋아요 막기, 재가입은 막지 않아요(`banned_identities` 표 삭제).
+  - 탈퇴 시 user_sanctions는 함께 삭제돼요.
 - **현재 브라우저 가짜 API의 화면**: 정지된 계정은 앱 대신 **이용 정지 안내(`/suspended`)**만 보고(정지 기간 · 사유 · 횟수 · 문의하기 · 로그아웃), 아직 확인 안 한 **경고**가 있으면 앱에 들어올 때 **경고 안내 창**(사유 · 누적 경고)이 한 번 떠요.
   - 예시 보기: `/suspended?demo`, 아무 화면 주소 뒤 `?demo=warn`
   - 서버가 생기면 `GET /api/auth/me`의 `user`에 `suspension: { until, permanent, reason, count } | null`, `warnCount`, `unseenWarnings: [{ id, reason, at }]`를 같이 주세요.
@@ -640,10 +644,10 @@ DB 저장 공간은 다음과 같이 반영되어 있어요. 실제 API 구현�
 | 고정 지출·개인 분류 | bill_items.tag VARCHAR(24), user_settings.ledger_category_settings, ledger_categories.name VARCHAR(24) |
 | 실제 집 주소 | user_settings.home_address |
 | 신고 | reporter/target UNIQUE, target_author_snapshot/target_text_snapshot |
-| 정지·경고 | user_sanctions.seen_at/revoked_at, banned_identities |
+| 정지·경고 | user_sanctions.seen_at/revoked_at |
 | 알림·지원·AI | notifications.deleted_at, support_inquiries, ai_topics.guide, ai_messages.LINK |
 
-- password_resets.method=EMAIL은 향후용이며 현재 화면은 PHONE만 사용해요.
+- 본인 확인은 이메일 인증만 써요(`password_resets.method = EMAIL`). 휴대전화 인증은 없앴어요.
 - 첨부 MIME·5개/2MB, 소유권, JSON 내부 원소, 관리자 역할, 동네 인증 유효기간은 서버가 검사해요.
 - DB 구조 감사는 44테이블·358컬럼·71키·62FK·15CHECK·2VIEW 기준이에요. API 구현이나 권한 테스트 통과를 뜻하지 않아요.
 - 소셜 provider_user_id 비교 규칙, refresh 세션 정책, 예상/실제 지출 집계 기준은 [백엔드 착수 전 점검](../db/PRE_BACKEND_REVIEW.md)에 따라 구현 전에 확정하세요.
