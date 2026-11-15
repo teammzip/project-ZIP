@@ -73,7 +73,7 @@ GET/PUT `/api/me/home-info` 구현 및 내 집 정보 폼 연결 완료. 계약 
 | POST | `/api/auth/find-id` | `{ nickname, email, emailVerificationToken }` | `{ username }` |
 | POST | `/api/auth/password-reset/verify` | `{ username, email, emailVerificationToken }` | `{ resetToken }` |
 | POST | `/api/auth/password-reset` | `{ resetToken, newPassword }` | — |
-| GET | `/api/oauth2/authorization/{kakao\|google\|naver}` | (페이지 이동) | 끝나면 `/oauth/callback?token=...`으로 보내기 |
+| GET | `/api/oauth2/authorization/{kakao\|google\|naver}` | (페이지 이동) | 끝나면 `/oauth/callback#token=...`으로 보내기 |
 
 - **처음 로그인 설문**: 로그인 응답의 `user.firstLogin`이 `true`면 앱이 "우리 집 설문" 별도 페이지(`/onboarding`)로 보내요. 질문: ① 생년월일 ② 간략한 주소 ③ 계약 유형(월세: 보증금 · 월세 · 관리비 포함 여부 · 포함 아니면 관리비 / 전세: 계약금 · 대출 여부와 금액 · 관리비) ④ 한 달 수입. 서버는 로그인 처리 직전 `users.last_login_at`이 `NULL`이었는지로 판단하고 값을 채워 주세요. 현재는 브라우저 `zip-housing-survey`에 저장하지만 DB에는 `housing_surveys`가 있어요. 아래 설문 API 제안으로 연결하고, 월세 설정·관리비 항목·동네 출처 변경을 함께 처리해요.
 - 테스트용 계정(가짜 API 모드): 아이디 `a1` / 비밀번호 `b1` — 처음 로그인 설문 확인용, 로그인할 때마다 처음 로그인으로 취급돼요.
@@ -135,7 +135,7 @@ GET/PUT `/api/me/home-info` 구현 및 내 집 정보 폼 연결 완료. 계약 
 
 ### 소셜 로그인
 1. 프론트가 `/api/oauth2/authorization/{kakao|google|naver}`로 이동 → 백엔드가 소셜 로그인 처리 (`social_accounts`). 공급자별 키는 `secrets/*.properties`에 있고, 키가 없는 공급자는 꺼져 있어요.
-2. 끝나면 `/oauth/callback?token=<accessToken>`으로 돌려보내기 → 프론트가 `GET /api/auth/me` 호출. 실패하면 `/oauth/callback?error=<문구>`.
+2. 끝나면 `/oauth/callback#token=<accessToken>`으로 돌려보내기 → 프론트는 URL 토큰을 즉시 제거하고 `GET /api/auth/me` 호출. fragment는 프론트 서버의 요청 URL에 전송되지 않아요. 구버전 query 콜백은 배포 전환 중 읽을 수 있어요. 실패하면 `/oauth/callback?error=<문구>`.
    - 같은 이메일로 가입한 다른 계정이 있으면 합치지 않고 오류(`EMAIL_EXISTS`)로 알려요. 카카오는 비즈 앱이 아니면 이메일이 없을 수 있고, 그래도 가입돼요.
 3. 처음 온 사람(`agreedAt: null`)은 동의 화면에서 `PATCH /api/auth/me`로 아래를 보내요
 ```json

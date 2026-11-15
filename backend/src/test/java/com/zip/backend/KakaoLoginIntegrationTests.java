@@ -66,7 +66,8 @@ class KakaoLoginIntegrationTests {
             "profile", Map.of("nickname", "지기"));
         var response = finish(user(123456789L, account));
         String url = response.getRedirectedUrl();
-        assertTrue(url.startsWith("http://localhost:3000/oauth/callback?token="), url);
+        assertTrue(url.startsWith("http://localhost:3000/oauth/callback#token="), url);
+        assertNull(java.net.URI.create(url).getRawQuery());
         String token = url.substring(url.indexOf("token=") + 6);
         mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
             .andExpect(status().isOk()).andExpect(jsonPath("$.provider").value("kakao"))

@@ -43,6 +43,15 @@ public class BillRepository {
             .stream().findFirst().orElseThrow(() -> new com.zip.backend.common.ApiException(404, "고정 지출 항목이 없어요."));
     }
 
+    public Row activeRow(long userId, long id, YearMonth month) {
+        return jdbc.query("""
+            SELECT b.*, p.id AS payment_id, p.amount, p.paid_at FROM bill_items b
+            LEFT JOIN bill_payments p ON p.bill_item_id = b.id AND p.period_ym = ?
+            WHERE b.id = ? AND b.user_id = ? AND b.is_active = 1
+            """, (rs, row) -> new Row(item(rs), payment(rs)), month.toString(), id, userId)
+            .stream().findFirst().orElse(null);
+    }
+
     public Payment payment(long id, YearMonth month) {
         return jdbc.query("SELECT id AS payment_id, amount, paid_at FROM bill_payments WHERE bill_item_id = ? AND period_ym = ?",
             (rs, row) -> payment(rs), id, month.toString()).stream().findFirst().orElse(null);

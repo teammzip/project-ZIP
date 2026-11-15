@@ -16,6 +16,7 @@ type HomeResponse = {
   managementBill: { id: string; name: string; defaultAmount: number; tag: string; paid: boolean; month: string } | null
 }
 let revision = 0
+let pendingLoad: { id: string; token: string; revision: number; promise: Promise<HomeResponse> } | null = null
 
 function session() {
   const { user, token } = useAuthStore.getState()
@@ -49,10 +50,15 @@ function apply(data: HomeResponse, owner: ReturnType<typeof session>, request: n
 }
 
 export async function loadHomeInfo() {
-  const owner = session(), request = ++revision
-  const { data } = await apiClient.get<HomeResponse>('/me/home-info')
-  apply(data, owner, request)
-  return data
+  const owner = session()
+  if (pendingLoad?.id === owner.id && pendingLoad.token === owner.token && pendingLoad.revision === revision) return pendingLoad.promise
+  const request = ++revision
+  const promise = apiClient.get<HomeResponse>('/me/home-info').then(({ data }) => {
+    apply(data, owner, request)
+    return data
+  }).finally(() => { if (pendingLoad?.revision === request) pendingLoad = null })
+  pendingLoad = { ...owner, revision: request, promise }
+  return promise
 }
 export async function saveHomeInfo(input: HomeInput) {
   const owner = session(), request = ++revision

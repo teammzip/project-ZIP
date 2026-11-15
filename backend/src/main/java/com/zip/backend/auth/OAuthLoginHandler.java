@@ -18,7 +18,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * Ends the OAuth redirect flow: issues our own access token and sends the browser back to the frontend
- * (<frontend-url>/oauth/callback?token=... as agreed in frontend/API.md). Failures go to the same page
+ * (<frontend-url>/oauth/callback#token=... as agreed in frontend/API.md). Failures go to the same page
  * with ?error=<message> so the user sees a reason instead of a blank page.
  */
 @Component
@@ -90,7 +90,10 @@ public class OAuthLoginHandler implements AuthenticationSuccessHandler, Authenti
         var session = request.getSession(false);
         if (session != null) session.invalidate();
         response.setHeader("Cache-Control", "no-store");
-        response.sendRedirect(UriComponentsBuilder.fromUriString(frontendUrl).path("/oauth/callback")
-            .queryParam(key, value).encode().build().toUriString());
+        response.setHeader("Referrer-Policy", "no-referrer");
+        var redirect = UriComponentsBuilder.fromUriString(frontendUrl).path("/oauth/callback");
+        if ("token".equals(key)) redirect.fragment("token=" + value);
+        else redirect.queryParam(key, value);
+        response.sendRedirect(redirect.encode().build().toUriString());
     }
 }

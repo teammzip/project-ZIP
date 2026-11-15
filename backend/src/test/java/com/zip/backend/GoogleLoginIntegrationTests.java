@@ -93,7 +93,10 @@ class GoogleLoginIntegrationTests {
     @Test void handlerRedirectsToFrontendCallbackWithWorkingToken() throws Exception {
         var response = finish(Map.of("sub", "sub-1", "email", "a@gmail.com", "email_verified", true, "name", "김지기"));
         String url = response.getRedirectedUrl();
-        assertTrue(url.startsWith("http://localhost:3000/oauth/callback?token="), url);
+        assertTrue(url.startsWith("http://localhost:3000/oauth/callback#token="), url);
+        assertNull(java.net.URI.create(url).getRawQuery());
+        assertEquals("no-store", response.getHeader("Cache-Control"));
+        assertEquals("no-referrer", response.getHeader("Referrer-Policy"));
         String token = url.substring(url.indexOf("token=") + 6);
         mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
     }

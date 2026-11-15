@@ -72,3 +72,16 @@ test('저장보다 먼저 시작한 조회가 늦게 도착해도 저장값을 �
   await assert.rejects(loading, /변경됐어요/)
   assert.equal(s.life.settings.rent, 55.0003)
 })
+
+test('같은 로그인 세션의 동시 조회는 요청 한 번으로 합친다', async () => {
+  const s = setup(); let resolve; let requests = 0
+  s.client.get = () => { requests++; return new Promise((done) => { resolve = done }) }
+  const first = s.loadHomeInfo(), second = s.loadHomeInfo()
+  assert.equal(requests, 1)
+  resolve({ data: s.response })
+  await Promise.all([first, second])
+  assert.equal(s.life.bills.length, 1)
+  s.client.get = async () => { requests++; return { data: s.response } }
+  await s.loadHomeInfo()
+  assert.equal(requests, 2)
+})

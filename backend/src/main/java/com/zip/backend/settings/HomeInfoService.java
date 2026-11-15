@@ -83,12 +83,14 @@ public class HomeInfoService {
         String id=(String)plan.get("id");
         LocalDate start=LocalDate.parse((String)plan.get("startDate")),today=LocalDate.now(clock.withZone(KOREA));
         var seen=new HashSet<>(jdbc.query("SELECT charge_date FROM loan_interest_charges WHERE loan_id=?",(rs,row)->YearMonth.from(rs.getDate(1).toLocalDate()),id));
+        long amount=BigDecimal.valueOf((Long)plan.get("principal")).multiply((BigDecimal)plan.get("annualRate")).divide(BigDecimal.valueOf(1200),0,RoundingMode.HALF_UP).longValueExact();
+        var pending=new ArrayList<Object[]>();
         for (YearMonth month=YearMonth.from(start);!month.isAfter(YearMonth.from(today));month=month.plusMonths(1)) {
             LocalDate date=month.atDay(Math.min((Integer)plan.get("paymentDay"),month.lengthOfMonth()));
             if (date.isBefore(start) || date.isAfter(today) || seen.contains(month)) continue;
-            long amount=BigDecimal.valueOf((Long)plan.get("principal")).multiply((BigDecimal)plan.get("annualRate")).divide(BigDecimal.valueOf(1200),0,RoundingMode.HALF_UP).longValueExact();
-            jdbc.update("INSERT INTO loan_interest_charges(loan_id,charge_date,principal,annual_rate,amount) VALUES (?,?,?,?,?)",id,date,(Long)plan.get("principal"),plan.get("annualRate"),amount);
+            pending.add(new Object[]{id,java.sql.Date.valueOf(date),plan.get("principal"),plan.get("annualRate"),amount});
         }
+        if (!pending.isEmpty()) jdbc.batchUpdate("INSERT INTO loan_interest_charges(loan_id,charge_date,principal,annual_rate,amount) VALUES (?,?,?,?,?)",pending);
     }
 
     private Map<String,Object> response(long user) {
@@ -104,7 +106,7 @@ public class HomeInfoService {
             String date=rs.getDate("charge_date").toLocalDate().toString(),id=rs.getString("loan_id");
             return Map.of("id",id+":"+date.substring(0,7),"loanId",id,"userId",Long.toString(user),"date",date,"amount",rs.getLong("amount"),"principal",rs.getLong("principal"),"annualRate",rs.getBigDecimal("annual_rate"));
         },user));
-        result.put("managementBill",contract==null?null:bills.list(user,YearMonth.now(clock.withZone(KOREA))).stream().filter(b->Objects.equals(b.get("id"),contract.get("managementBillId")) && Boolean.TRUE.equals(b.get("active"))).findFirst().orElse(null));
+        result.put("managementBill",contract==null || contract.get("managementBillId")==null?null:bills.currentActive(user,Long.parseLong((String)contract.get("managementBillId"))));
         return result;
     }
 }
