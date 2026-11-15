@@ -20,6 +20,9 @@ public final class MapRequests {
         @NotNull @Size(max = 15) List<@NotBlank @Size(max = 20) String> categories,
         @NotNull @Size(max = 20) List<@NotBlank @Size(max = 12) String> keywords) {}
 
+    /** 카카오 장소 즐겨찾기 때만 보냄: 저장 목록에 보일 이름과 우리 종류 이름 (주소 · 좌표는 받지 않음) */
+    public record KakaoFavorite(String name, String category) {}
+
     public record Review(
         @NotNull @Min(1) @Max(5) Integer rating,
         @Size(max = 300) String body) {}

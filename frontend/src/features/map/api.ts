@@ -1,5 +1,17 @@
+import { create } from 'zustand'
 import { apiClient } from '@/lib/apiClient'
 import type { PlaceItem } from './data/places'
+
+/** 카카오 검색 장소의 id ("kakao:카카오장소id"). 서버 DB 에 없어서 저장 · 리뷰를 못 해요 */
+export const isKakaoPlace = (id: string) => id.startsWith('kakao:')
+
+/** 서버가 카카오 대신 DB 장소를 준 이유 (응답 헤더 X-Place-Notice) → 화면 안내 문구 */
+const PLACE_NOTICES: Record<string, string> = {
+  'user-limit': '검색을 너무 자주 했어요. 1분 뒤에 다시 찾아 주세요. 지금은 저장된 장소만 보여 드려요.',
+  'daily-limit': '오늘 장소 검색 한도에 도달했어요. 내일 다시 찾을 수 있어요. 지금은 저장된 장소만 보여 드려요.',
+  error: '장소 검색이 잠시 안 돼요. 지금은 저장된 장소만 보여 드려요.',
+}
+export const usePlaceNotice = create<{ notice: string }>(() => ({ notice: '' }))
 
 /* 지도 서버 API (backend/openapi.yaml "지도" 태그). VITE_USE_MOCK=false 일 때만 씀 */
 
@@ -27,12 +39,23 @@ export const mapApi = {
   categories: async () => (await apiClient.get<Array<{ id: string; name: string; icon: string }>>('/places/categories')).data,
   /** category · q 가 있고 서버에 카카오 키가 있으면 카카오에서 지도 중심(lat · lon) 근처를 찾아 줌. 둘 다 없으면 DB 에 있는 동네 장소.
    * wide: 검색창 검색 — 근처 + 거리 제한 없는 정확도 검색을 합쳐 이름이 맞는 곳부터 (예: 롯데월드, 경복궁) */
-  places: async (regionId: string, opts: { category?: string; q?: string; lat?: number; lon?: number; wide?: boolean } = {}) =>
-    (await apiClient.get<ServerPlace[]>('/places', { params: { regionId, ...opts } })).data.map(toPlaceItem),
+  places: async (regionId: string, opts: { category?: string; q?: string; lat?: number; lon?: number; wide?: boolean } = {}) => {
+    const res = await apiClient.get<ServerPlace[]>('/places', { params: { regionId, ...opts } })
+    // 카카오를 부르는 요청(종류 · 검색어)만 안내를 바꿈. 한도에 걸리면 서버가 DB 장소로 대신하고 이유를 헤더로 알려 줘요
+    if (opts.category || opts.q) {
+      const code = res.headers['x-place-notice'] as string | undefined
+      usePlaceNotice.setState({ notice: code ? (PLACE_NOTICES[code] ?? PLACE_NOTICES.error) : '' })
+    }
+    return res.data.map(toPlaceItem)
+  },
   aiSearch: async (q: string, regionId: string) =>
     (await apiClient.post<Array<{ place: ServerPlace; reasons: string[] }>>('/places/ai-search', { q, regionId })).data.map((r) => ({ p: toPlaceItem(r.place), why: r.reasons })),
   favorites: async () => (await apiClient.get<string[]>('/me/place-favorites')).data,
-  addFavorite: (placeId: string) => apiClient.put(`/me/place-favorites/${encodeURIComponent(placeId)}`),
+  /** 카카오 장소는 { name, category } 를 같이 보냄 (서버는 id · 이름만 저장) */
+  addFavorite: (placeId: string, meta?: { n: string; cat: string }) =>
+    apiClient.put(`/me/place-favorites/${encodeURIComponent(placeId)}`, meta ? { name: meta.n, category: meta.cat } : undefined),
+  kakaoFavorites: async () =>
+    Object.fromEntries((await apiClient.get<Array<{ id: string; name: string; category: string }>>('/me/place-favorites/kakao')).data.map((f) => [f.id, { n: f.name, cat: f.category }])),
   removeFavorite: (placeId: string) => apiClient.delete(`/me/place-favorites/${encodeURIComponent(placeId)}`),
   settings: async () => (await apiClient.get<MapSettings>('/me/map-settings')).data,
   saveSettings: async (settings: MapSettings) => (await apiClient.put<MapSettings>('/me/map-settings', settings)).data,

@@ -166,11 +166,12 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 | GET `/api/places/categories` | `place_categories` 15개를 `sort_order` 순서로 |
 | GET `/api/places?regionId=&category=&q=&filter=` | 동네 장소. `category`는 종류 이름, `q`는 이름·설명·종류에 포함된 글자(최대 40자), `filter`는 `24h`·`cheap`·`quiet`. 가까운 순 |
 | POST `/api/places/ai-search` | 프론트 `features/map/aiFind.ts`와 같은 키워드 규칙으로 최대 5곳 + `reasons` (실제 AI 미연결) |
-| GET · PUT · DELETE `/api/me/place-favorites` | `place_favorites`. 없는 장소는 404, 두 번 저장해도 204 |
+| GET · PUT · DELETE `/api/me/place-favorites` | `place_favorites`. 없는 장소는 404, 두 번 저장해도 204. 카카오 장소(`kakao:id`)는 PUT 본문 `{ name, category }`로 `kakao_place_favorites`에 id · 이름 · 종류만 저장(주소 · 좌표 없음, 한 사람당 200곳, 이름 60자 · 없는 종류는 400) |
+| GET `/api/me/place-favorites/kakao` | 저장한 카카오 장소 `[{ id, name, category }]` (저장 목록용) |
 | GET · PUT `/api/me/map-settings` | `user_settings.map_categories · map_keywords`. NULL이면 정렬 순서 앞 4종류 · 빈 검색어. 없는 종류, 종류와 같은 검색어(12자 이내)는 400 |
 | GET · POST `/api/places/{id}/reviews` | `place_reviews`. 한 사람당 한 장소 하나(두 번이면 409), 저장 후 `places.rating_avg · review_count` 갱신 |
 
-- **카카오 로컬 API**: `KAKAO_REST_KEY`(application-local.properties, Git 제외)가 있으면 `GET /api/places`의 `category` · `q` 검색을 카카오에서 지도 중심(`lat` · `lon`, 없으면 집) 반경 1km로 찾아 `places`에 upsert(`source=KAKAO`, `uk_places_source_source_id`)해요. 키가 없거나 카카오 오류면 DB 장소로 대신하고 경고 로그만 남겨요. 기존 DB는 `db/migrations/20261108_places_kakao.sql`을 한 번 적용해야 해요.
+- **카카오 로컬 API**: `KAKAO_REST_KEY`(application-local.properties, Git 제외)가 있으면 `GET /api/places`의 `category` · `q` 검색을 카카오에서 지도 중심(`lat` · `lon`, 없으면 집) 반경 1km로 찾아 **DB에 저장하지 않고 그대로** 줘요(id는 `kakao:카카오장소id`). 카카오 운영 정책이 장소명 · 주소 · 좌표의 장기 저장을 제한하기 때문이에요. 즐겨찾기는 위 표처럼 id · 이름만 따로 저장하고(`db/migrations/20261115_kakao_place_favorites.sql`), 리뷰는 안 돼요(400). 무료 쿼터를 지키려고 `KakaoQuota`가 같은 검색(약 100m 안)을 10분 메모리 캐시하고, 한 사람당 1분 `KAKAO_PER_USER_PER_MINUTE`(기본 30)번 · 서버 전체 하루 `KAKAO_DAILY_LIMIT`(기본 30000, 한국 시간 자정 초기화)번까지만 불러요. 카카오가 429를 주면 그날은 멈춰요. 키가 없거나 한도 · 오류면 DB 장소로 대신하고 응답 헤더 `X-Place-Notice: user-limit | daily-limit | error`로 이유를 알려요. 카카오 콘솔에서 카카오맵(로컬) 사용 설정을 켜야 하고, 유료 추가 사용은 켜지 않아요. 예전 코드가 저장한 카카오 장소(`places.source='KAKAO'`)는 정리 대상이에요. 기존 DB는 `db/migrations/20261108_places_kakao.sql`을 한 번 적용해야 해요.
 - **walkMin**: `users.home_lat · home_lon`이 있으면 직선 거리 ÷ 분당 67m(올림, 최소 1분), 없으면 설명의 "도보 약 N분", 둘 다 없으면 99.
 - **조건 칩**(cheap · quiet)은 아직 표에 근거 칸이 없어 설명 글자로 걸러요. 프론트와 같은 방식이며 태그 칸을 만들면 바꿔야 합니다.
 - **테스트 데이터**: `db/seeds/map_places_demo.sql`이 프론트 예시와 같은 31곳(서울 마포구)을 넣어요. 다시 실행해도 중복되지 않습니다. 실제 장소 출처(공공데이터 · 카카오 로컬 등)는 미정입니다.

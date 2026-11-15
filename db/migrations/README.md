@@ -4,6 +4,10 @@
 
 ## 적용 순서
 
+### 2026-11-15 카카오 장소 즐겨찾기
+
+20261108까지 적용된 DB에 `20261115_kakao_place_favorites.sql`을 한 번 실행합니다. `kakao_place_favorites` 표 하나를 추가합니다(카카오 장소 id · 이름만, 주소 · 좌표 없음). 다시 실행해도 안전합니다. 새 DB는 최신 schema.sql만 실행합니다. 위 표 수 · 컬럼 수 감사 기준에는 아직 반영하지 않았습니다(+1표 · 5컬럼).
+
 ### 2026-11-08 지도 카카오 출처
 
 20261107까지 적용된 DB에 `20261108_places_kakao.sql`을 한 번 실행합니다. `places.source`에 `KAKAO`를 추가하고 `(source, source_id)` UNIQUE를 만듭니다. 파일 안의 사전 확인 SQL이 0줄인지 먼저 봅니다. 새 DB는 최신 schema.sql만 실행합니다.

@@ -42,12 +42,25 @@
   font-size: 14px;
 }
 
-/* 바탕 지도를 네이버 지도처럼 차분하게 (핀은 그대로) */
-.map :global(.leaflet-tile-pane) {
-  filter: saturate(0.55) brightness(1.04) contrast(0.95);
+/* 바탕 지도를 홈 화면 톤(밝은 회색 · 파랑)으로: 색을 빼고 밝게 한 뒤 아주 옅은 파랑을 덮음 (핀 · 말풍선은 그대로) */
+.map {
+  background: var(--color-bg);
 }
 
-/* 장소 핀 (Leaflet divIcon) */
+.map :global(.leaflet-tile-pane) {
+  filter: grayscale(0.7) brightness(1.08) contrast(0.88);
+}
+
+.map::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 250; /* 바탕 지도(200) 위, 내 위치 점(400) · 핀(600) 아래 */
+  background: rgba(47, 128, 237, 0.07); /* --color-primary */
+  pointer-events: none;
+}
+
+/* 장소 핀 (Leaflet divIcon): 흰 카드 + 파란 테두리, 고르면 파랗게 */
 .map :global(.zip-pin) {
   display: grid;
   place-items: center;
@@ -58,36 +71,64 @@
   place-items: center;
   width: 100%;
   height: 100%;
-  border: 2px solid #fff;
+  border: 2px solid var(--color-primary);
   border-radius: 50%;
-  background: #ff6f8f;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  background: var(--color-card);
+  box-shadow: 0 2px 8px rgba(31, 36, 48, 0.18);
   font-size: 15px;
-  transition: transform 0.15s;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .map :global(.zip-pin:hover span) {
   transform: scale(1.12);
+  box-shadow: 0 4px 12px rgba(47, 128, 237, 0.3);
 }
 
 .map :global(.zip-pin.on span) {
-  border-width: 3px;
+  border: 3px solid var(--color-card);
   background: var(--color-primary);
+  color: #fff !important; /* 종류 색(인라인) 대신 흰 아이콘 */
+  box-shadow: 0 0 0 5px rgba(47, 128, 237, 0.22), 0 4px 12px rgba(31, 36, 48, 0.2);
   font-size: 19px;
 }
 
 .map :global(.zip-pin b) {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   left: 50%;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text);
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
   transform: translateX(-50%);
+}
+
+/* "내 위치" 말풍선 */
+.map :global(.leaflet-tooltip) {
+  padding: 3px 9px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(47, 128, 237, 0.3);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.map :global(.leaflet-tooltip-top::before) {
+  border-top-color: var(--color-primary);
+}
+
+.map :global(.leaflet-control-attribution) {
+  border-radius: var(--radius-sm) 0 0 0;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--color-muted);
+  font-size: 10px;
 }
 
 .map :global(.zip-home span) {
@@ -105,9 +146,9 @@
 .map :global(.leaflet-control-zoom) {
   margin: 0 16px 16px 0;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-card);
 }
 
 .map :global(.leaflet-control-zoom a) {
@@ -139,24 +180,191 @@
   display: none;
 }
 
+/* 칩 줄이 넘칠 때: 끝을 흐리게 + PC 에서는 ‹ › 버튼 (마우스 휠로도 옆으로 움직임) */
+.chipsWrap {
+  position: relative;
+  pointer-events: none;
+}
+
+.chipsWrap .chips {
+  scroll-behavior: smooth;
+}
+
+.fadeLeft .chips {
+  mask-image: linear-gradient(to right, transparent, #000 40px);
+}
+
+.fadeRight .chips {
+  mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+}
+
+.fadeLeft.fadeRight .chips {
+  mask-image: linear-gradient(to right, transparent, #000 40px, #000 calc(100% - 40px), transparent);
+}
+
+.chipArrow {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-line);
+  border-radius: 50%;
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-text);
+  transform: translateY(-50%);
+  pointer-events: auto;
+}
+
+.chipArrow:hover {
+  color: var(--color-primary);
+}
+
+.chipArrowLeft {
+  left: -4px;
+}
+
+.chipArrowRight {
+  right: -4px;
+}
+
+@media (max-width: 900px) {
+  .chipArrow {
+    display: none; /* 모바일은 손가락으로 밀기 */
+  }
+}
+
 .chip {
+  display: inline-flex;
   flex: none;
+  align-items: center;
+  gap: 6px;
   padding: 9px 15px;
+  border: 1px solid var(--color-line);
   border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
   font-size: 14px;
   font-weight: 700;
   color: var(--color-text);
+  transition: border-color 0.15s, color 0.15s;
 }
 
+/* 아이콘은 종류 색 (--chip: Chip 이 넣음) */
+.chip svg {
+  color: var(--chip, var(--color-primary));
+}
+
+/* 고른 칩: 흰 바탕 그대로, 테두리 · 글자를 종류 색으로 */
 .chipOn {
-  background: var(--color-text);
-  color: #fff;
+  border: 1.5px solid var(--chip, var(--color-primary));
+  color: var(--chip, var(--color-primary));
 }
 
-.chipEdit {
+/* 칩 줄 + ⋯ 버튼 한 줄 */
+.chipBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chipBar .chipsWrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.moreWrap {
+  position: relative;
+  flex: none;
+  pointer-events: auto;
+}
+
+.moreBtn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-line);
+  border-radius: 50%;
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-primary);
+}
+
+.moreBtnOn {
+  border-color: var(--color-primary);
+}
+
+/* ⋯ 전체 종류 창: 2열 목록 */
+.morePanel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  width: min(320px, calc(100vw - 32px));
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  box-shadow: var(--shadow-modal);
+}
+
+.moreGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+}
+
+.moreItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--color-line);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: left;
+}
+
+.moreItem:nth-child(odd) {
+  border-right: 1px solid var(--color-line);
+}
+
+.moreItem:hover {
+  background: var(--color-bg);
+}
+
+.moreItemOn {
+  background: #f3f8ff;
+  color: var(--color-primary);
+}
+
+.moreItem span {
+  display: grid;
+  place-items: center;
+}
+
+.moreEdit {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--color-muted);
+}
+
+.moreEdit:hover {
+  color: var(--color-primary);
 }
 
 /* 오른쪽 둥근 버튼 */
@@ -174,9 +382,10 @@
   place-items: center;
   width: 46px;
   height: 46px;
+  border: 1px solid var(--color-line);
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
   font-size: 20px;
   color: var(--color-primary);
 }
@@ -230,7 +439,9 @@
 }
 
 .searchPin {
-  font-size: 18px;
+  display: grid;
+  place-items: center;
+  color: var(--color-primary);
 }
 
 .search input {
@@ -317,17 +528,29 @@
   color: var(--color-purple);
 }
 
+/* PC: 칸이 좁으면 다음 줄로 넘김 (마우스로는 가로 스크롤을 할 수 없어서)
+ * 모바일: 한 줄로 두고 손가락으로 밀기. 오른쪽 끝을 흐리게 해서 더 있다는 걸 보여 줌 */
 .filters,
 .examples {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 
-.filters::-webkit-scrollbar,
-.examples::-webkit-scrollbar {
-  display: none;
+@media (max-width: 900px) {
+  .filters,
+  .examples {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-right: 24px;
+    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
+
+  .filters::-webkit-scrollbar,
+  .examples::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .filter {
@@ -380,6 +603,17 @@
 
 .row:hover .rowName b {
   text-decoration: underline;
+}
+
+/* 저장 탭의 카카오 장소: 줄 전체가 카카오맵 링크 (★ 버튼은 링크 밖) */
+.rowLink {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
 }
 
 .thumb {
@@ -536,9 +770,37 @@
   font-size: 20px;
 }
 
-.action b {
-  font-size: 20px;
+/* 버튼 아이콘 (MapView ActionIcon): 선 굵기 · 둥근 끝을 오른쪽 위치 버튼과 같게 */
+.actionIcon {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.action {
   color: var(--color-primary);
+}
+
+.action:hover,
+.starBig:hover {
+  border-color: var(--color-primary);
+  background: #f3f8ff;
+}
+
+.star {
+  display: grid;
+  place-items: center;
+}
+
+.starBig {
+  color: #b8bec9;
+}
+
+.starBig.starOn {
+  color: #ffb400;
 }
 
 .action span,

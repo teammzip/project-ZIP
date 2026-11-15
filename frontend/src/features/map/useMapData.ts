@@ -29,7 +29,8 @@ export function useMapData(center?: { lat: number; lon: number } | null): MapDat
   const point = center ? { lat: Number(center.lat.toFixed(5)), lon: Number(center.lon.toFixed(5)) } : {}
   const kinds = useQuery({ queryKey: ['map', 'categories'], queryFn: mapApi.categories, enabled: !isMockApi, staleTime: Infinity })
   const stored = useQuery({ queryKey: ['map', 'places', regionId], queryFn: () => mapApi.places(regionId!), enabled, staleTime: 60_000 })
-  const searches = [...on.map((category) => ({ category })), ...custom.map((q) => ({ q }))]
+  // 종류 칩은 근처 1km. 직접 추가한 검색어 칩은 검색창처럼 넓게 (근처 5km + 거리 제한 없는 이름 검색 — "롯데월드" 같은 먼 곳도)
+  const searches = [...on.map((category) => ({ category })), ...custom.map((q) => ({ q, wide: true }))]
   const nearby = useQueries({
     queries: searches.map((search) => ({
       queryKey: ['map', 'places', regionId, search, point],
@@ -63,11 +64,11 @@ export function useMapServerSync() {
     let ready = false
     let alive = true
     const pull = () =>
-      Promise.all([mapApi.settings(), mapApi.favorites()])
-        .then(([settings, favs]) => {
+      Promise.all([mapApi.settings(), mapApi.favorites(), mapApi.kakaoFavorites()])
+        .then(([settings, favs, favNames]) => {
           if (!alive) return
           ready = false
-          useMapStore.setState({ on: settings.categories, custom: settings.keywords, favs })
+          useMapStore.setState({ on: settings.categories, custom: settings.keywords, favs, favNames })
           ready = true
         })
         .catch(() => {
@@ -78,7 +79,7 @@ export function useMapServerSync() {
       if (!ready) return
       if (now.on !== before.on || now.custom !== before.custom) mapApi.saveSettings({ categories: now.on, keywords: now.custom }).catch(pull)
       if (now.favs !== before.favs) {
-        for (const id of now.favs) if (!before.favs.includes(id)) mapApi.addFavorite(id).catch(pull)
+        for (const id of now.favs) if (!before.favs.includes(id)) mapApi.addFavorite(id, now.favNames[id]).catch(pull)
         for (const id of before.favs) if (!now.favs.includes(id)) mapApi.removeFavorite(id).catch(pull)
       }
     })
