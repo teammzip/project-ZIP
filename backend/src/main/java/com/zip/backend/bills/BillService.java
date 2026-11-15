@@ -24,6 +24,13 @@ public class BillService {
     private YearMonth currentMonth() { return YearMonth.from(clock.instant().atZone(KOREA)); }
 
     @Transactional(readOnly = true)
+    public Map<String, Object> currentActive(long userId, long id) {
+        var month = currentMonth();
+        var row = repository.activeRow(userId, id, month);
+        return row == null ? null : response(row.item(), row.payment(), month);
+    }
+
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> list(long userId, YearMonth month) {
         YearMonth current = currentMonth();
         return repository.list(userId, month).stream()

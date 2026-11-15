@@ -50,7 +50,7 @@ export const realAuthApi: AuthApi = {
   },
 
   async startSocialLogin(provider) {
-    // 백엔드가 소셜 로그인 후 /oauth/callback?token=... 으로 돌려보내 주면 OAuthCallbackPage 가 마무리합니다.
+    // 백엔드가 소셜 로그인 후 /oauth/callback#token=... 으로 돌려보내 주면 OAuthCallbackPage 가 마무리합니다.
     const base = import.meta.env.VITE_API_BASE_URL || '/api'
     window.location.href = `${base}/oauth2/authorization/${provider}`
   },

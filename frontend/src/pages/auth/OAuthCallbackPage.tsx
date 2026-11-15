@@ -1,34 +1,42 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { authApi, useAuthStore } from '@/features/auth'
 import { getErrorMessage } from '@/lib/apiClient'
 import styles from './AuthPage.module.css'
+import { readOAuthCallback } from '@/features/auth/oauthCallback'
 
-/* 소셜 로그인 마무리: 백엔드가 /oauth/callback?token=... 으로 보내 주면
+/* 소셜 로그인 마무리: 백엔드가 /oauth/callback#token=... 으로 보내 주면
  * 토큰을 저장하고 내 정보(/auth/me)를 받아 로그인 상태로 만든 뒤 홈으로 이동. */
 export function OAuthCallbackPage() {
-  const [params] = useSearchParams()
+  const location = useLocation()
+  const [callback] = useState(() => readOAuthCallback(location.search, location.hash))
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
-  const token = params.get('token')
+  const token = callback.token
   const [requestError, setRequestError] = useState<string | null>(null)
   // 백엔드가 실패 이유를 ?error= 로 보내 주면 그대로 보여줌
-  const error = token ? requestError : (params.get('error') ?? '로그인 정보가 없어요. 다시 시도해 주세요.')
+  const error = token ? requestError : (callback.error ?? '로그인 정보가 없어요. 다시 시도해 주세요.')
   const started = useRef(false) // StrictMode 에서 두 번 실행되는 것 방지
 
   useEffect(() => {
     if (!token || started.current) return
     started.current = true
 
+    // URL의 토큰을 즉시 지우고, 이전 회원 상태와 새 토큰이 섞이지 않도록 비운다.
+    window.history.replaceState(window.history.state, '', window.location.pathname)
+    useAuthStore.getState().clearAuth()
+
     // me() 요청에 토큰이 실리도록 먼저 임시로 저장
     useAuthStore.setState({ token })
     authApi
       .me()
       .then((user) => {
+        if (useAuthStore.getState().token !== token) return
         setAuth(user, token, true)
         navigate('/', { replace: true })
       })
       .catch((e) => {
+        if (useAuthStore.getState().token !== token) return
         useAuthStore.getState().clearAuth()
         setRequestError(getErrorMessage(e))
       })
