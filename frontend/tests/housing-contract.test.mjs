@@ -55,6 +55,7 @@ function setup(kind) {
     if (name === '@/lib/apiClient') return { getErrorMessage: (cause) => cause.message }
     if (name === './interest') return interest
     if (name === './MyInfo') return info
+    if (name === './MonthlyFixedExpense') return { MonthlyFixedExpense: () => null }
     if (name === '../ledgerCategories') return { useLedgerCategories: () => [{ name: '공과금' }, { name: '관리비' }] }
     if (name === '../useCategoryDrag') return { useCategoryDrag: () => () => ({}) }
     if (name === './LedgerCategoryDialog') return { LedgerCategoryDialog: () => null }

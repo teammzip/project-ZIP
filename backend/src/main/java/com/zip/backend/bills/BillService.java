@@ -5,6 +5,7 @@ import com.zip.backend.common.ApiException;
 import java.time.Clock;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,35 @@ public class BillService {
     }
 
     private YearMonth currentMonth() { return YearMonth.from(clock.instant().atZone(KOREA)); }
+
+    /** 조회 범위와 월 전환은 요청한 지역 시간대로 계산하고 실제 시각은 서버 Clock을 사용한다. */
+    @Transactional(readOnly = true)
+    public Map<String, Object> monthly(long userId, YearMonth month, String timeZone) {
+        ZoneId zone;
+        try { zone = ZoneId.of(timeZone); }
+        catch (RuntimeException error) { throw BillInput.bad("올바른 지역 시간대를 보내 주세요."); }
+        Instant asOf = clock.instant();
+        YearMonth current = YearMonth.from(asOf.atZone(zone));
+        if (month.isAfter(current)) throw BillInput.bad("미래 월은 조회할 수 없어요.");
+        var start = month.atDay(1).atStartOfDay(zone).toInstant();
+        var through = month.equals(current) ? asOf : month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant().minusNanos(1);
+        var items = repository.list(userId, month).stream()
+            .filter(row -> !row.item().createdAt().isAfter(asOf))
+            .filter(row -> row.payment() != null || (row.item().active() && month.equals(current)
+                && !month.isBefore(YearMonth.from(row.item().createdAt().atZone(zone)))))
+            .map(row -> {
+                var payment = row.payment();
+                if (payment != null && payment.paidAt() != null && payment.paidAt().isAfter(asOf)) payment = new BillRepository.Payment(payment.amount(), null);
+                return response(row.item(), payment, month);
+            }).toList();
+        var result = new LinkedHashMap<String, Object>();
+        result.put("month", month.toString()); result.put("currentMonth", current.toString()); result.put("timeZone", zone.getId());
+        result.put("periodFrom", start.atZone(zone).toOffsetDateTime().toString());
+        result.put("periodThrough", through.atZone(zone).toOffsetDateTime().toString());
+        result.put("queriedAt", asOf.atZone(zone).toOffsetDateTime().toString());
+        result.put("items", items);
+        return result;
+    }
 
     @Transactional(readOnly = true)
     public Map<String, Object> currentActive(long userId, long id) {

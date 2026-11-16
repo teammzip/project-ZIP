@@ -17,9 +17,14 @@ import { useHousingSurveyStore } from '@/features/onboarding/store'
 import { useLedgerCategories } from '../ledgerCategories'
 import { LedgerCategoryDialog } from './LedgerCategoryDialog'
 import { useCategoryDrag } from '../useCategoryDrag'
+import { isMockApi } from '@/features/auth/api'
+import { MonthlyFixedExpense } from './MonthlyFixedExpense'
 
 /** 고정 지출 = 합계 카드 + 이번 달 납부 체크리스트 (월세와 공과금을 한 카드에 합침) */
 export function FixedExpense() {
+  return isMockApi ? <LocalFixedExpense /> : <MonthlyFixedExpense />
+}
+function LocalFixedExpense() {
   const { isJeonse } = useHousingContract()
   const [currentMonth, setCurrentMonth] = useState(() => monthKeyOf(new Date()))
   const [chosenMonth, setChosenMonth] = useState('')

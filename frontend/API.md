@@ -34,6 +34,8 @@ GET/PUT `/api/me/home-info` 구현 및 내 집 정보 폼 연결 완료. 계약 
 
 ## 0. 공통 규칙
 
+고정 지출 월별 조회: GET `/api/bills/monthly?month=YYYY-MM&timeZone=Asia%2FSeoul`. DB의 등록 집 주소(없으면 본인 설문·가입 주소) → 실제 현재 위치 → 기기 설정 순으로 결정한 시간대를 보내며 서버 시각으로 조회 범위를 제한한다. 현재 월은 미납·예정도 포함하고 과거 월은 저장된 기록만 반환한다. 상세 검증은 루트 MONTHLY_BILLS_VERIFICATION.md 참고.
+
 | 항목 | 약속 |
 |---|---|
 | 주소 | 모두 `/api`로 시작. 개발 중 프론트(`localhost:3000`)가 `/api` 요청을 `localhost:8080`(백엔드)으로 넘겨요 |

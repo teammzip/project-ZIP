@@ -1,5 +1,7 @@
 # ZIP backend
 
+고정 지출 지역별 월 조회 GET `/api/bills/monthly`를 추가했습니다. 요청 month와 timeZone으로 현재 월/과거 월 범위를 계산하며 실제 모드의 고정 지출 조회 화면에 연결했습니다. 등록·납부 변경의 서버 화면 연결은 후속 단계입니다. 상세 검증은 루트 MONTHLY_BILLS_VERIFICATION.md를 참고하세요.
+
 내 집 정보 GET/PUT `/api/me/home-info`가 구현되어 있습니다. 계약·설정·관리비·대출을 함께 저장하고 프론트 내 집 정보 폼에 연결했습니다. 기존 DB는 `db/migrations/20261115_home_contracts.sql`을 적용한 뒤 재시작하세요. 검증과 후속 범위는 프로젝트 루트 `HOME_INFO_VERIFICATION.md`를 참고하세요.
 
 Spring Boot + Spring Web MVC + JPA + MySQL 프로젝트입니다. 상위 project-ZIP Git 저장소에서 함께 관리합니다.

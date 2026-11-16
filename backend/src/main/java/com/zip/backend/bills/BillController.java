@@ -19,6 +19,11 @@ public class BillController {
     public List<Map<String, Object>> list(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String month) {
         return service.list(user(jwt), BillInput.month(month));
     }
+
+    @GetMapping("/monthly")
+    public Map<String, Object> monthly(@AuthenticationPrincipal Jwt jwt, @RequestParam String month, @RequestParam String timeZone) {
+        return service.monthly(user(jwt), BillInput.month(month), timeZone);
+    }
     @PostMapping
     public Map<String, Object> create(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, Object> body) {
         return service.create(user(jwt), session(jwt), body);
