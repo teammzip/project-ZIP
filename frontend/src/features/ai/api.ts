@@ -15,6 +15,7 @@ const toMsg = (m: ServerMessage): ChatMsg => ({
   role: m.role === 'USER' ? 'user' : 'bot',
   text: m.text,
   ...(m.card?.type === 'SPEND_SUMMARY' ? { card: m.card.data as SpendCard } : {}),
+  ...(m.card?.type === 'LINK' && (m.card.data as { to?: string })?.to === '/my/budget/expense' ? { billRegistered: true } : {}),
 })
 
 /** 새 대화방을 만들고 id 를 돌려줌 */

@@ -11,6 +11,7 @@ import { useChatStore, type ChatMsg, type SpendCard } from '../store'
 import { CHAT_TOPICS, SUMMARY_ASK, chatReply, type AiContext, type Topic } from '../topics'
 import styles from './Ai.module.css'
 import { TopicCards } from './TopicCards'
+import { BillPhotoQuestion } from './BillPhotoQuestion'
 
 /** 대화를 열 때 바로 보낼 첫 질문 (홈 카드의 칩·입력칸에서) */
 export type ChatOpening = { text: string; topic?: string } | null
@@ -165,6 +166,14 @@ export function ChatModal({ open, onClose, opening, ctx }: Props) {
         {busy && <div className={`${styles.msg} ${styles.bot} ${styles.typing}`}>답변을 쓰는 중…</div>}
       </div>
       <TopicCards className={styles.chatCards} disabled={busy} onPick={pick} />
+      <BillPhotoQuestion key={userId} entryPoint="HOME_MODAL" ensureConversation={async () => {
+        let id = useChatStore.getState().conversationId
+        if (!id) { id = await createConversation('HOME_MODAL'); useChatStore.getState().setConversationId(id) }
+        return id
+      }} onExchange={(question, answer) => {
+        useChatStore.getState().push({ role: 'user', text: question })
+        useChatStore.getState().push({ role: 'bot', text: answer, billRegistered: true })
+      }} />
       <form className={styles.chatForm} onSubmit={submit}>
         <input ref={input} value={text} onChange={(e) => setText(e.target.value)} maxLength={80} placeholder="궁금한 걸 입력하세요" aria-label="AI에게 보낼 메시지" autoComplete="off" />
         <Button type="submit" disabled={busy}>
@@ -180,6 +189,7 @@ function Bubble({ msg, onGoBudget }: { msg: ChatMsg; onGoBudget: () => void }) {
   return (
     <div className={`${styles.msg} ${msg.role === 'bot' ? styles.bot : styles.user} ${msg.card ? styles.hasCard : ''}`}>
       {msg.text}
+      {msg.billRegistered && <Button variant="line" onClick={() => { onGoBudget(); navigate('/my/budget/expense') }}>고정 지출에서 확인</Button>}
       {msg.card && (
         <SpendCardView
           card={msg.card}

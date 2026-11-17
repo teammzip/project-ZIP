@@ -395,3 +395,6 @@
     right: -14px;
   }
 }
+.billQuestion { padding: 10px 14px; border-top: 1px solid var(--color-line); max-height: 45vh; overflow: auto; }
+.billQuestion form { margin-top: 10px; }
+.billQuestion input { max-width: 100%; min-width: 0; }

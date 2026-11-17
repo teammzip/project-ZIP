@@ -34,6 +34,8 @@ GET/PUT `/api/me/home-info` 구현 및 내 집 정보 폼 연결 완료. 계약 
 
 ## 0. 공통 규칙
 
+고정 지출 월별 조회: GET `/api/bills/monthly?month=YYYY-MM&timeZone=Asia%2FSeoul`. DB의 등록 집 주소(없으면 본인 설문·가입 주소) → 실제 현재 위치 → 기기 설정 순으로 결정한 시간대를 보내며 서버 시각으로 조회 범위를 제한한다. 현재 월은 미납·예정도 포함하고 과거 월은 저장된 기록만 반환한다. 상세 검증은 루트 MONTHLY_BILLS_VERIFICATION.md 참고.
+
 | 항목 | 약속 |
 |---|---|
 | 주소 | 모두 `/api`로 시작. 개발 중 프론트(`localhost:3000`)가 `/api` 요청을 `localhost:8080`(백엔드)으로 넘겨요 |
@@ -683,3 +685,18 @@ DB 저장 공간은 다음과 같이 반영되어 있어요. 실제 API 구현�
 | `zip-profile` | 프로필 사진 · 캐릭터 · 배경 색 · 한 줄 소개 | `features/profile/store.ts` | 1번 (프로필 꾸미기) |
 | `zip-home-noti-closed` | 홈 알림 회전창에서 오늘 닫은 알림 | `features/life/components/HomePhotoCard.tsx` | (서버 필요 없음) |
 | `zipban-records` · `zipban-warn-seen` | 정지 · 경고 기록, 확인한 경고 횟수 (데이터 초기화로 안 지워지게 `zip-`로 시작하지 않음) | `features/moderation` | 11번 |
+# 월별 고정 지출 쓰기 API (2026-11-18)
+
+등록 API의 name은 선택이며 생략하면 분류명으로 저장합니다. 신규 납부 기한은 요청 timeZone의 오늘 이전이면 400입니다. 같은 월·분류·금액만으로 중복을 차단하지 않습니다. AI가 명확히 읽은 발행처·문서 식별번호·청구 월을 정규화한 해시가 같으면 409로 차단하며 식별 정보 원문은 DB에 저장하지 않습니다. 식별 정보가 불명확하면 재촬영 사진 간 중복 검사는 불가능하다는 안내와 함께 등록합니다. 동일 파일의 재업로드는 기존 해시로 계속 차단합니다.
+
+최신 변경: 사진 등록은 AI 대화의 POST `/api/ai/conversations/{id}/bill-photo`로 이동했습니다. multipart `photo`, `question`과 query `month`, `timeZone`을 받으며 `{bill, reply}`를 반환합니다. 소유한 대화에서만 호출 가능하고 AI 답변·청구·중복 방지 해시를 함께 저장합니다. 가계부는 사진 업로드를 제공하지 않습니다. 월별 등록/수정에 선택 `memo`(200자 이내)를 추가했고 조회 응답에도 반환합니다. 아래 초기 `/api/bills/monthly/photo` 설명은 더 이상 사용하지 않습니다.
+
+- `POST /api/bills/monthly?month=YYYY-MM&timeZone=IANA`: `{name,tag,amount,dueDate}`. 로그인 회원의 선택 월 청구를 등록한다. 같은 이름·분류의 활성 항목은 재사용하고 이미 등록된 월은 409.
+- `PATCH /api/bills/monthly/{id}?month=YYYY-MM&timeZone=IANA`: `{amount,dueDate}`. 선택 월에 청구 기록이 존재해야 수정 가능하다. 미등록/타인 항목 404. 기본 금액·다른 월·납부 상태는 보존한다.
+- `POST /api/bills/monthly/photo?month=YYYY-MM&timeZone=IANA`: multipart `photo` (JPG/PNG, 2MB). Gemini가 금액·납부 기한을 추출하고 검증 후 자동 등록한다. 사진은 보관하지 않고 중복 방지 해시를 DB에 저장한다. 실패 시 등록하지 않는다.
+- 응답은 기존 ServerBill에 `dueDate: YYYY-MM-DD | null` 추가. 월별 조회 응답의 `snapshot=true`는 등록된 월 기록, false는 미등록 예정액이다.
+- 미래 월/잘못된 입력 400, 미로그인 401, 중복 409, 불명확한 사진 422, AI 일일 제한 429, 제공자 실패 502, AI 설정 없음 503.
+- AI 사진은 사용자의 버튼 클릭 시 Google Gemini로 전송되며 기존 AI 대화와 일일 사용량을 공유한다. 등록 후 화면에서 수정 가능하다.
+- 실제 모드 월별 고정 지출 화면에 연결. 일반 AI 채팅·기타 지출은 이 기능 범위 밖이다.
+
+- DELETE /api/bills/monthly/{id}?month=YYYY-MM&timeZone=IANA: 등록된 선택 월 기록 삭제(204). 삭제 재요청 204, 미등록/타인 404. 다른 월 및 고지서 중복 인식 정보 보존.
