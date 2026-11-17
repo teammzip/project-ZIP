@@ -10,6 +10,30 @@ public final class BillInput {
     public static final long MAX_AMOUNT = 9_007_199_254_740_991L;
     private BillInput() {}
 
+    public static void monthly(Map<String, Object> body, boolean create) {
+        var keys = create ? Set.of("tag", "amount", "dueDate") : Set.of("amount", "dueDate");
+        var allowed = new java.util.HashSet<>(keys); allowed.add("memo");
+        if (create) allowed.add("name");
+        if (!body.keySet().containsAll(keys) || !allowed.containsAll(body.keySet())) throw bad("금액과 납부 기한을 입력해 주세요.");
+        if (body.containsKey("memo")) memo(body.get("memo"));
+        if (create) { if (body.containsKey("name")) text(body.get("name"), "이름", 30); text(body.get("tag"), "분류", 24); }
+        amount(body.get("amount")); dueDate(body.get("dueDate"));
+    }
+
+    public static String memo(Object raw) {
+        if (!(raw instanceof String value) || value.length()>200) throw bad("메모는 200자 이내로 입력해 주세요.");
+        return value.strip();
+    }
+
+    public static java.time.LocalDate dueDate(Object raw) {
+        try {
+            if (!(raw instanceof String value) || !value.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}")) throw new IllegalArgumentException();
+            var date = java.time.LocalDate.parse(value);
+            if (date.getYear() < 1) throw new IllegalArgumentException();
+            return date;
+        } catch (RuntimeException error) { throw bad("납부 기한은 YYYY-MM-DD 형식의 실제 날짜여야 해요."); }
+    }
+
     public static void item(Map<String, Object> body, boolean create) {
         if (body.isEmpty() || !Set.of("name", "amount", "tag").containsAll(body.keySet())
             || (create && !body.keySet().containsAll(Set.of("name", "amount", "tag")))) {

@@ -1,0 +1,98 @@
+import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { AmountInput, Button } from '@/components/ui'
+import { getErrorMessage } from '@/lib/apiClient'
+import { deleteMonthlyBill, registerMonthlyBill, updateMonthlyBill, type ServerBill } from '../billsApi'
+import { useLedgerCategories } from '../ledgerCategories'
+import { LedgerCategoryDialog } from './LedgerCategoryDialog'
+import { cx } from '@/lib/cx'
+import common from '@/styles/common.module.css'
+import styles from './life.module.css'
+
+function localDate(timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
+  return ['year', 'month', 'day'].map((part) => parts.find((value) => value.type === part)?.value).join('-')
+}
+
+type Props = { month: string; timeZone: string; bill?: ServerBill }
+export function MonthlyBillEditor({ month, timeZone, bill }: Props) {
+  const client = useQueryClient()
+  const [editing, setEditing] = useState(!bill)
+  const categories = useLedgerCategories('bill')
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [tag, setTag] = useState(bill?.tag ?? '공과금')
+  const [amount, setAmount] = useState(String(bill?.amount ?? ''))
+  const [dueDate, setDueDate] = useState(bill?.dueDate ?? '')
+  const [memo, setMemo] = useState(bill?.memo ?? '')
+  const [memoOpen, setMemoOpen] = useState(!!bill?.memo)
+  const [busy, setBusy] = useState(false)
+  const pending = useRef(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [today, setToday] = useState(() => localDate(timeZone))
+  useEffect(() => {
+    const refresh = () => setToday(localDate(timeZone))
+    const timer = setInterval(refresh, 60000)
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => { clearInterval(timer); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh) }
+  }, [timeZone])
+  const keepingDeadline = !!bill?.snapshot && dueDate === bill.dueDate
+  const run = async (task: () => Promise<ServerBill>) => {
+    if (pending.current) return
+    pending.current = true
+    setBusy(true); setError(''); setNotice('')
+    try {
+      const saved = await task()
+      setEditing(!bill)
+      if (!bill) { setAmount(''); setMemo(''); setDueDate('') }
+      setNotice(`${saved.name} · ${saved.amount.toLocaleString('ko-KR')}원 · 납부 기한 ${saved.dueDate} 저장 완료`)
+      await client.invalidateQueries({ queryKey: ['monthly-bills'] })
+    } catch (e) { setError(getErrorMessage(e, '저장하지 못했어요. 다시 시도해 주세요.')) }
+    finally { pending.current = false; setBusy(false) }
+  }
+  const save = () => {
+    if (dueDate && dueDate < localDate(timeZone) && !keepingDeadline) { setError('납부 기한은 오늘 이후로 입력해 주세요.'); return }
+    if (!/^\d+$/.test(amount) || !Number.isSafeInteger(Number(amount)) || !dueDate || (!bill && !tag.trim())) {
+      setError('분류·원 단위 정수 금액·납부 기한을 확인해 주세요.'); return
+    }
+    if (bill?.snapshot) void run(() => updateMonthlyBill(bill.id, month, timeZone, { amount: Number(amount), dueDate, memo }))
+    else void run(() => registerMonthlyBill(month, timeZone, { ...(bill ? { name: bill.name } : {}), tag: bill?.tag ?? tag, amount: Number(amount), dueDate, memo }))
+  }
+  const remove = async () => {
+    if (pending.current || !bill?.snapshot || !window.confirm(`${month} 고정 지출 기록을 삭제할까요? 다른 달의 기록은 유지됩니다.`)) return
+    pending.current = true
+    setBusy(true); setError(''); setNotice('')
+    try {
+      await deleteMonthlyBill(bill.id, month, timeZone)
+      await client.invalidateQueries({ queryKey: ['monthly-bills'] })
+    } catch (e) { setError(getErrorMessage(e, '삭제하지 못했어요. 다시 시도해 주세요.')) }
+    finally { pending.current = false; setBusy(false) }
+  }
+  const begin = () => {
+    setAmount(String(bill?.amount ?? '')); setDueDate(bill?.dueDate ?? '')
+    setMemo(bill?.memo ?? '')
+    setError(''); setNotice(''); setEditing(true)
+  }
+  return <div className={styles.monthlyEditor}>
+    {!editing && <Button variant="line" onClick={begin} disabled={busy}>{bill ? bill.snapshot ? '수정' : '등록' : '직접 등록'}</Button>}
+    {!editing && bill?.snapshot && <Button variant="line" disabled={busy} onClick={() => void remove()}>{busy ? '삭제 중' : '삭제'}</Button>}
+    {editing && <form className={cx(styles.quick, styles.quickPanel)} onSubmit={(e) => { e.preventDefault(); save() }} aria-label="고정 지출 기록하기">
+      {!bill && <label className={styles.quickAmount}><AmountInput value={amount} max={9007199254740991} onValueChange={setAmount} placeholder="0" aria-label="금액 (원)" disabled={busy} /><span>원</span></label>}
+      {!bill && <>
+        <div className={styles.quickCats} role="radiogroup" aria-label="고정 지출 분류">{categories.map((category) => <button key={category.name} type="button" role="radio" aria-checked={tag === category.name} className={cx(styles.quickCat, tag === category.name && styles.on)} disabled={busy} onClick={() => setTag(category.name)}>{category.name}</button>)}</div>
+        <Button variant="line" disabled={busy} onClick={() => setAddingCategory(true)}>＋ 카테고리 추가</Button>
+      </>}
+      {bill && <label className={styles.quickField}>금액(원)<input type="number" min="0" max="9007199254740991" step="1" required value={amount} disabled={busy} onChange={(e) => setAmount(e.target.value)} /></label>}
+      <div className={styles.quickFields}>
+        <label className={styles.quickField}><span>납부 기한</span><input className={styles.quickDate} type="date" min={keepingDeadline ? undefined : today} max="9999-12-31" required value={dueDate} disabled={busy} onChange={(e) => setDueDate(e.target.value)} /></label>
+        {memoOpen ? <label className={styles.quickField}><span>메모 (선택)</span><input value={memo} maxLength={200} disabled={busy} onChange={(e) => setMemo(e.target.value)} /></label> : <button className={styles.quickField} type="button" disabled={busy} onClick={() => setMemoOpen(true)}><span>메모 (선택)</span><b className={styles.quickAdd}>📝 메모 추가</b></button>}
+      </div>
+      <Button type="submit" block disabled={busy || !amount || !dueDate}>{busy ? '저장 중' : bill ? '저장' : '기록하기'}</Button>
+      {bill && <Button type="button" variant="line" disabled={busy} onClick={() => { setEditing(false); setError('') }}>취소</Button>}
+    </form>}
+    {addingCategory && <LedgerCategoryDialog scope="bill" onClose={() => setAddingCategory(false)} onAdded={setTag} />}
+    {error && <p role="alert" className={common.formError}>{error}</p>}
+    {notice && <p role="status">{notice}</p>}
+  </div>
+}

@@ -61,6 +61,12 @@
       "table": "bill_payments"
     },
     {
+      "table": "bill_photo_imports"
+    },
+    {
+      "table": "bill_document_keys"
+    },
+    {
       "table": "rent_payments"
     },
     {
@@ -128,6 +134,12 @@
     },
     {
       "table": "kakao_place_favorites"
+    },
+    {
+      "table": "place_lists"
+    },
+    {
+      "table": "place_list_items"
     },
     {
       "table": "place_reviews"
@@ -1876,9 +1888,99 @@
     },
     {
       "table": "bill_payments",
+      "column": "due_date",
+      "type": "date",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_payments",
+      "column": "memo",
+      "type": "varchar(200)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_payments",
+      "column": "deleted_at",
+      "type": "datetime",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_payments",
       "column": "paid_at",
       "type": "datetime",
       "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_photo_imports",
+      "column": "user_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_photo_imports",
+      "column": "image_hash",
+      "type": "char(64)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_photo_imports",
+      "column": "bill_item_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_document_keys",
+      "column": "user_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_document_keys",
+      "column": "document_hash",
+      "type": "char(64)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_document_keys",
+      "column": "bill_item_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
       "auto": 0,
       "generated": 0,
       "charset": "",
@@ -2395,6 +2497,26 @@
       "collation": ""
     },
     {
+      "table": "posts",
+      "column": "deleted_by",
+      "type": "bigint unsigned",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "posts",
+      "column": "delete_reason",
+      "type": "varchar(200)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
       "table": "post_likes",
       "column": "post_id",
       "type": "bigint unsigned",
@@ -2508,6 +2630,26 @@
       "table": "comments",
       "column": "deleted_at",
       "type": "datetime",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "comments",
+      "column": "deleted_by",
+      "type": "bigint unsigned",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "comments",
+      "column": "delete_reason",
+      "type": "varchar(200)",
       "nullable": "YES",
       "auto": 0,
       "generated": 0,
@@ -3595,6 +3737,96 @@
       "collation": ""
     },
     {
+      "table": "place_lists",
+      "column": "id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 1,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_lists",
+      "column": "user_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_lists",
+      "column": "name",
+      "type": "varchar(20)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_lists",
+      "column": "color",
+      "type": "char(7)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_lists",
+      "column": "sort_order",
+      "type": "int unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_lists",
+      "column": "created_at",
+      "type": "datetime",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_list_items",
+      "column": "list_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_list_items",
+      "column": "place_key",
+      "type": "varchar(60)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_list_items",
+      "column": "created_at",
+      "type": "datetime",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
       "table": "place_reviews",
       "column": "id",
       "type": "bigint unsigned",
@@ -3837,6 +4069,16 @@
       "columns": "bill_item_id,period_ym"
     },
     {
+      "table": "bill_photo_imports",
+      "name": "PRIMARY",
+      "columns": "user_id,image_hash"
+    },
+    {
+      "table": "bill_document_keys",
+      "name": "PRIMARY",
+      "columns": "user_id,document_hash"
+    },
+    {
       "table": "rent_payments",
       "name": "PRIMARY",
       "columns": "id"
@@ -3995,6 +4237,21 @@
       "table": "kakao_place_favorites",
       "name": "PRIMARY",
       "columns": "user_id,kakao_place_id"
+    },
+    {
+      "table": "place_lists",
+      "name": "PRIMARY",
+      "columns": "id"
+    },
+    {
+      "table": "place_lists",
+      "name": "uk_place_lists_user_name",
+      "columns": "user_id,name"
+    },
+    {
+      "table": "place_list_items",
+      "name": "PRIMARY",
+      "columns": "list_id,place_key"
     },
     {
       "table": "place_reviews",
@@ -4185,6 +4442,38 @@
       "delete_rule": "CASCADE"
     },
     {
+      "table": "bill_photo_imports",
+      "name": "fk_bill_photo_user",
+      "column": "user_id",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "table": "bill_photo_imports",
+      "name": "fk_bill_photo_item",
+      "column": "bill_item_id",
+      "target": "bill_items",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "table": "bill_document_keys",
+      "name": "fk_bill_document_user",
+      "column": "user_id",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "table": "bill_document_keys",
+      "name": "fk_bill_document_item",
+      "column": "bill_item_id",
+      "target": "bill_items",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
       "table": "rent_payments",
       "name": "fk_rent_payments_user_id",
       "column": "user_id",
@@ -4249,6 +4538,14 @@
       "delete_rule": "RESTRICT"
     },
     {
+      "table": "posts",
+      "name": "fk_posts_deleted_by",
+      "column": "deleted_by",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "SET NULL"
+    },
+    {
       "table": "post_likes",
       "name": "fk_post_likes_post_id",
       "column": "post_id",
@@ -4287,6 +4584,14 @@
       "target": "comments",
       "target_column": "id",
       "delete_rule": "CASCADE"
+    },
+    {
+      "table": "comments",
+      "name": "fk_comments_deleted_by",
+      "column": "deleted_by",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "SET NULL"
     },
     {
       "table": "reports",
@@ -4481,6 +4786,22 @@
       "delete_rule": "CASCADE"
     },
     {
+      "table": "place_lists",
+      "name": "fk_place_lists_user_id",
+      "column": "user_id",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "table": "place_list_items",
+      "name": "fk_place_list_items_list_id",
+      "column": "list_id",
+      "target": "place_lists",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
       "table": "place_reviews",
       "name": "fk_place_reviews_place_id",
       "column": "place_id",
@@ -4561,6 +4882,18 @@
     {
       "table": "kakao_place_favorites",
       "name": "chk_kakao_place_favorites_name"
+    },
+    {
+      "table": "place_lists",
+      "name": "chk_place_lists_name"
+    },
+    {
+      "table": "place_lists",
+      "name": "chk_place_lists_color"
+    },
+    {
+      "table": "place_list_items",
+      "name": "chk_place_list_items_key"
     },
     {
       "table": "place_reviews",

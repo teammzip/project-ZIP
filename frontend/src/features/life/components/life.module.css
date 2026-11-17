@@ -8,7 +8,8 @@
 .monthlyToolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
 .monthlyToolbar > span { margin-right: auto; color: var(--color-muted); font-size: 13px; }
 .monthlyList { list-style: none; padding: 0; margin: 16px 0 0; }
-.monthlyItem { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--color-line); }
+.monthlyItem { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--color-line); }
+.monthlyItem > .monthlyEditor { flex: 1 0 100%; }
 .monthlyItem > div { min-width: 0; }
 .monthlyItem strong { overflow-wrap: anywhere; }
 .monthlyItem small { display: block; color: var(--color-muted); font-size: 12px; margin-top: 4px; }
@@ -829,3 +830,11 @@
     display: none;
   }
 }
+.monthlyEditor { display: grid; gap: 10px; }
+.fixedExpenseList { list-style: none; padding: 0; margin: 0; }
+.fixedExpenseRow { flex-wrap: wrap; }
+.fixedExpenseRow > .monthlyEditor { margin-left: auto; }
+.fixedExpenseRow > .monthlyEditor:has(form) { flex: 1 0 100%; }
+.fixedExpenseDetails { margin-top: 14px; color: var(--color-muted); font-size: 12px; }
+.fixedExpenseDetails > summary { cursor: pointer; }
+.monthlyEditor .quickCat { --c: var(--color-primary); }

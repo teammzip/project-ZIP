@@ -84,3 +84,15 @@ MySQL DDL은 암묵 커밋됩니다. 중간 실패 시 백업과 실제 스키�
 # 2026-11-01 기념일 칸 (실행하지 않음)
 
 기념일 칸의 정식 이름은 `is_anniversary` · `repeat_yearly`이고, `20261031_02_event_anniversaries.sql`이 추가합니다. `20261101_event_anniversary.sql`(`is_anniv` · `is_yearly`)은 이름이 다른 중복 경로라 **DEPRECATED**입니다. 위쪽 안내대로 실행하지 마세요.
+# 2026-11-18 월별 고정 지출 납부 기한·사진 등록
+
+고지서 내용 식별 중복 차단에는 `20261118_03_bill_document_keys.sql`도 적용합니다. 기존 데이터를 변경하지 않고 회원별 문서 식별 해시·항목 연결 테이블을 추가합니다. 발행처·식별번호·청구 월 원문은 저장하지 않습니다.
+
+이어 `20261118_02_bill_monthly_memo.sql`을 적용하면 고정 지출 양식의 선택 메모를 저장합니다. 현재 로컬 DB에는 적용했습니다. 신규 DB는 schema.sql에 포함되어 있습니다.
+
+기존 `bill_items`·`bill_payments`가 있는 DB에서 `20261118_01_bill_monthly_registration.sql`을 한 번 실행합니다.
+`bill_payments.due_date DATE NULL`과 사진 중복 방지용 `bill_photo_imports`를 추가합니다. 기존 금액·납부 상태는 변경하지 않습니다.
+신규 DB는 최신 schema.sql을 사용합니다. 현재 작업에서 연결된 로컬 DB에는 적용했습니다. 같은 DB에 ALTER를 재실행하지 마세요.
+검증/다른 개발자 적용은 루트 MONTHLY_BILLS_WRITE_VERIFICATION.md를 따릅니다. 사진 원본은 저장하지 않고 회원별 SHA-256을 저장합니다.
+
+- 20261118_04_bill_monthly_delete.sql: 선택 월 삭제 시각 및 삭제 기록 제외 지출 집계 뷰. 자동 검증은 FIXED_EXPENSE_DELETE_VERIFICATION.md 참고.

@@ -167,6 +167,8 @@ public class AiService {
         });
     }
 
+    public void requireConversation(long userId, long conversationId) { owned(userId, conversationId); checkRoom(conversationId); }
+
     private AiRepository.Conversation owned(long userId, long conversationId) {
         return repository.find(conversationId, userId).orElseThrow(() -> new ApiException(404, "대화를 찾을 수 없어요."));
     }
@@ -225,7 +227,7 @@ public class AiService {
         return out;
     }
 
-    private boolean takeQuestion(long userId, LocalDate date) {
+    public boolean takeQuestion(long userId, LocalDate date) {
         for (int attempt = 0; attempt < 2; attempt++) {
             if (jdbc.update("UPDATE ai_usage_daily SET question_count = question_count + 1 WHERE user_id = ? AND usage_date = ? AND question_count < ?",
                 userId, date, dailyLimit) == 1) return true;
@@ -241,7 +243,7 @@ public class AiService {
         return false;
     }
 
-    private void giveBack(long userId, LocalDate date) {
+    public void giveBack(long userId, LocalDate date) {
         jdbc.update("UPDATE ai_usage_daily SET question_count = question_count - 1 WHERE user_id = ? AND usage_date = ? AND question_count > 0", userId, date);
     }
 }

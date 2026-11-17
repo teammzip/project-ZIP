@@ -45,8 +45,13 @@ CREATE TABLE bill_items (
 );
 CREATE TABLE bill_payments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, bill_item_id BIGINT NOT NULL,
-    period_ym CHAR(7) NOT NULL, amount BIGINT NOT NULL, paid_at TIMESTAMP,
+    period_ym CHAR(7) NOT NULL, amount BIGINT NOT NULL, paid_at TIMESTAMP, due_date DATE, memo VARCHAR(200), deleted_at TIMESTAMP,
     UNIQUE (bill_item_id, period_ym), FOREIGN KEY (bill_item_id) REFERENCES bill_items(id)
+);
+CREATE TABLE bill_photo_imports (user_id BIGINT NOT NULL REFERENCES users(id), image_hash CHAR(64) NOT NULL, bill_item_id BIGINT NOT NULL REFERENCES bill_items(id), PRIMARY KEY(user_id,image_hash));
+CREATE TABLE bill_document_keys (
+    user_id BIGINT NOT NULL REFERENCES users(id), document_hash CHAR(64) NOT NULL,
+    bill_item_id BIGINT NOT NULL REFERENCES bill_items(id), PRIMARY KEY(user_id,document_hash)
 );
 CREATE TABLE user_sanctions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL,

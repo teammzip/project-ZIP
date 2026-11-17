@@ -39,3 +39,12 @@ if (-not (Test-Path application-local.properties)) {
 # 복사한 파일에 실제 접속 정보를 입력한 뒤 실행
 .\gradlew.bat bootRun
 ```
+# 월별 고정 지출 등록·수정 / 고지서 사진 (2026-11-18)
+
+최신 수정: 사진 API는 POST `/api/ai/conversations/{id}/bill-photo`로 이동했습니다. AI 대화 답변과 가계부 등록을 함께 저장합니다. 가계부 화면에는 수동 기록·수정만 표시합니다. 메모 저장용 `20261118_02_bill_monthly_memo.sql`도 적용해야 합니다(현재 로컬 DB 적용 완료). 아래 초기 사진 API 경로는 사용하지 않습니다.
+
+기존 DB에 `db/migrations/20261118_01_bill_monthly_registration.sql`을 한 번 적용한 후 서버를 재시작합니다. `bill_payments.due_date`와 `bill_photo_imports`가 필요합니다.
+직접 등록/수정은 POST `/api/bills/monthly`, PATCH `/api/bills/monthly/{id}`이며 공통으로 month/timeZone을 받습니다. 수정은 존재하는 월 기록만 허용합니다.
+사진 자동 등록은 POST `/api/bills/monthly/photo` multipart photo(JPG/PNG 2MB)입니다. 기존 서버 `GEMINI_API_KEY`/`GEMINI_MODEL` 설정을 사용합니다. 금액·납부 기한이 불명확하면 저장하지 않으며 동일 사진 중복 등록을 차단합니다.
+테스트 → 실제 MySQL → 프론트 수동 확인과 Git 가이드는 루트 `MONTHLY_BILLS_WRITE_VERIFICATION.md`를 참고하세요.
+실제 MySQL 재검증: `./gradlew.bat -I verify-monthly-mysql.init.gradle verifyMonthlyMysql` (backend에서 실행; 임시 데이터 롤백).

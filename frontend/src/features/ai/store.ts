@@ -36,7 +36,7 @@ export type SpendCard = {
   top: [string, number] | null
 }
 
-export type ChatMsg = { role: 'bot' | 'user'; text: string; card?: SpendCard }
+export type ChatMsg = { role: 'bot' | 'user'; text: string; card?: SpendCard; billRegistered?: boolean }
 
 export const GREETING = '안녕하세요! 자취하면서 궁금한 걸 편하게 물어보세요. 😊\n분리배출, 냉장고 요리, 곰팡이, 보증금·계약, 공과금, 이번 달 지출 요약까지 도와드려요.'
 const MAX = 40

@@ -24,6 +24,19 @@ public class BillController {
     public Map<String, Object> monthly(@AuthenticationPrincipal Jwt jwt, @RequestParam String month, @RequestParam String timeZone) {
         return service.monthly(user(jwt), BillInput.month(month), timeZone);
     }
+    @PostMapping("/monthly")
+    public Map<String, Object> registerMonthly(@AuthenticationPrincipal Jwt jwt, @RequestParam String month, @RequestParam String timeZone, @RequestBody Map<String, Object> body) {
+        return service.registerMonthly(user(jwt), session(jwt), month, timeZone, body);
+    }
+    @PatchMapping("/monthly/{id}")
+    public Map<String, Object> updateMonthly(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestParam String month, @RequestParam String timeZone, @RequestBody Map<String, Object> body) {
+        return service.updateMonthly(user(jwt), session(jwt), BillInput.id(id), month, timeZone, body);
+    }
+    @DeleteMapping("/monthly/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteMonthly(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestParam String month, @RequestParam String timeZone) {
+        service.deleteMonthly(user(jwt), session(jwt), BillInput.id(id), month, timeZone);
+    }
     @PostMapping
     public Map<String, Object> create(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, Object> body) {
         return service.create(user(jwt), session(jwt), body);

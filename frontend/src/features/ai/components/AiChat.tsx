@@ -6,6 +6,8 @@ import { askAi, createConversation, recordExchange } from '../api'
 import { usePhotoStore } from '../store'
 import { PHOTO_NOTE, keywordReply, topicById, type Topic, type TopicAction } from '../topics'
 import styles from './AiChat.module.css'
+import { BillPhotoQuestion } from './BillPhotoQuestion'
+import { useAuthStore } from '@/features/auth'
 
 type Props = {
   region: string
@@ -17,6 +19,7 @@ type Msg = { role: 'user' | 'bot'; text: string; photo?: string; action?: TopicA
 /** AI 화면 (채팅 모양, PC·모바일 같음): 위는 대화, 아래에 분야 카드 → 입력줄(＋ 로 카메라·사진 고르기).
  * 분야 카드를 누르면 그 분야의 질문 초안이 입력줄에 채워지고, 보내면 정해진 답변(데모)이 나옵니다. */
 export function AiChat({ region, name }: Props) {
+  const accountId = useAuthStore((s) => s.user?.id)
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const photoUrl = usePhotoStore((s) => s.photoUrl)
@@ -168,6 +171,10 @@ export function AiChat({ region, name }: Props) {
 
       {/* 분야 카드: 둥근 직사각형, 2줄로 놓고 옆으로 밀거나 끌어서 고름 (홈 대화 모달과 같은 카드) */}
       <TopicCards activeId={topic?.id} suggestPhoto={!!photoUrl} onPick={pickTopic} />
+      <BillPhotoQuestion key={accountId} entryPoint="AI_PAGE" ensureConversation={async () => {
+        if (!conversation.current) conversation.current = await createConversation('AI_PAGE')
+        return conversation.current
+      }} onExchange={(question, answer) => setMsgs((m) => [...m, { role: 'user', text: question }, { role: 'bot', text: answer, action: { kind: 'link', to: '/my/budget/expense', label: '고정 지출에서 확인' } }])} />
 
       {topic && (
         <div className={styles.fields}>

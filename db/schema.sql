@@ -340,11 +340,32 @@ CREATE TABLE IF NOT EXISTS `bill_payments` (
   `bill_item_id` BIGINT UNSIGNED NOT NULL COMMENT '공과금 항목 아이디',
   `period_ym` CHAR(7) NOT NULL COMMENT '대상 연월 — 예: 2026-10',
   `amount` BIGINT UNSIGNED NOT NULL COMMENT '그 달 금액 — 원 단위',
+  `due_date` DATE NULL COMMENT '월별 납부 기한',
+  `memo` VARCHAR(200) NULL COMMENT '월별 고정 지출 메모',
+  `deleted_at` DATETIME NULL COMMENT '선택 월 기록 삭제 시각',
   `paid_at` DATETIME NULL COMMENT '납부 일시 — 비어 있으면 미납',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_bill_payments_bill_item_id_period_ym` (`bill_item_id`, `period_ym`),
   CONSTRAINT `fk_bill_payments_bill_item_id` FOREIGN KEY (`bill_item_id`) REFERENCES `bill_items` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='공과금 납부: 공과금 항목별 월별 청구·납부 기록.';
+
+CREATE TABLE IF NOT EXISTS `bill_photo_imports` (
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `image_hash` CHAR(64) NOT NULL,
+  `bill_item_id` BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (`user_id`, `image_hash`),
+  CONSTRAINT `fk_bill_photo_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_bill_photo_item` FOREIGN KEY (`bill_item_id`) REFERENCES `bill_items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `bill_document_keys` (
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `document_hash` CHAR(64) NOT NULL,
+  `bill_item_id` BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (`user_id`, `document_hash`),
+  CONSTRAINT `fk_bill_document_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_bill_document_item` FOREIGN KEY (`bill_item_id`) REFERENCES `bill_items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 월세 납부: 월별 월세 납부 기록. 월세 상세 화면의 최근 6개월 체크 목록, 홈 월세 D-day 카드, 가계부 고정 지출이 이 표를 씁니다. paid_at 이 비어 있으면 미납입니다.
 CREATE TABLE IF NOT EXISTS `rent_payments` (
@@ -767,6 +788,7 @@ FROM rent_payments r
 UNION ALL
 SELECT b.user_id, p.period_ym, '공과금' AS label, SUM(p.amount) AS amount
 FROM bill_payments p JOIN bill_items b ON b.id = p.bill_item_id
+WHERE p.deleted_at IS NULL
 GROUP BY b.user_id, p.period_ym
 UNION ALL
 SELECT e.user_id, DATE_FORMAT(e.expense_date, '%Y-%m') AS period_ym, c.name AS label, SUM(e.amount) AS amount

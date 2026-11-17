@@ -1,0 +1,14 @@
+allprojects {
+    afterEvaluate { p ->
+        if (p.plugins.hasPlugin('java')) {
+            p.tasks.register('verifyMonthlyMysql', Exec) {
+                dependsOn p.tasks.named('classes')
+                doFirst {
+                    def command = ['java', '-cp', p.sourceSets.main.runtimeClasspath.asPath, 'scripts/MonthlyBillsMysqlVerify.java']
+                    if (p.hasProperty('applyMonthlyMigration')) command.add('--apply-migration')
+                    commandLine command
+                }
+            }
+        }
+    }
+}
