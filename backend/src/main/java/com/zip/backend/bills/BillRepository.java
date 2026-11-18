@@ -15,8 +15,8 @@ public class BillRepository {
     private final JdbcTemplate jdbc;
     public BillRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
-    public record Item(long id, String name, long defaultAmount, String tag, boolean active, Instant createdAt, String homeContractKind) {
-        public Item(long id,String name,long defaultAmount,String tag,boolean active,Instant createdAt) { this(id,name,defaultAmount,tag,active,createdAt,null); }
+    public record Item(long id, String name, long defaultAmount, String tag, boolean active, Instant createdAt, String homeContractKind, java.time.LocalDate terminationDate) {
+        public Item(long id,String name,long defaultAmount,String tag,boolean active,Instant createdAt) { this(id,name,defaultAmount,tag,active,createdAt,null,null); }
     }
     public record Payment(long amount, Instant paidAt, java.time.LocalDate dueDate, String memo, Instant deletedAt) {
         public Payment(long amount, Instant paidAt, java.time.LocalDate dueDate, String memo) { this(amount, paidAt, dueDate, memo, null); }
@@ -26,7 +26,7 @@ public class BillRepository {
 
     private Item item(ResultSet rs) throws SQLException {
         return new Item(rs.getLong("id"), rs.getString("name"), rs.getLong("default_amount"),
-            rs.getString("tag"), rs.getBoolean("is_active"), rs.getTimestamp("created_at").toInstant(),rs.getString("home_contract_kind"));
+            rs.getString("tag"), rs.getBoolean("is_active"), rs.getTimestamp("created_at").toInstant(),rs.getString("home_contract_kind"),rs.getDate("termination_date")==null?null:rs.getDate("termination_date").toLocalDate());
     }
 
     private Payment payment(ResultSet rs) throws SQLException {

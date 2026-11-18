@@ -60,7 +60,7 @@ export function MonthlyBillEditor({ month, timeZone, bill }: Props) {
     else void run(() => registerMonthlyBill(month, timeZone, { ...(bill ? { name: bill.name } : {}), tag: bill?.tag ?? tag, amount: Number(amount), dueDate, memo }))
   }
   const remove = async () => {
-    if (pending.current || !bill?.snapshot || !window.confirm(`${month} 고정 지출 기록을 삭제할까요? 다른 달의 기록은 유지됩니다.`)) return
+    if (pending.current || !bill?.snapshot || bill.paid || !window.confirm(`${month} 기록만 삭제할까요? 다른 달의 기록과 정기 지출은 유지됩니다. 반복 지출을 중단하려면 정기 지출 해지를 이용해 주세요.`)) return
     pending.current = true
     setBusy(true); setError(''); setNotice('')
     try {
@@ -76,7 +76,7 @@ export function MonthlyBillEditor({ month, timeZone, bill }: Props) {
   }
   return <div className={styles.monthlyEditor}>
     {!editing && <Button variant="line" onClick={begin} disabled={busy}>{bill ? bill.snapshot ? '수정' : '등록' : '직접 등록'}</Button>}
-    {!editing && bill?.snapshot && <Button variant="line" disabled={busy} onClick={() => void remove()}>{busy ? '삭제 중' : '삭제'}</Button>}
+    {!editing && bill?.snapshot && !bill.paid && <Button variant="line" disabled={busy} onClick={() => void remove()}>{busy ? '삭제 중' : '이번 달 기록 삭제'}</Button>}
     {editing && <form className={cx(styles.quick, styles.quickPanel)} onSubmit={(e) => { e.preventDefault(); save() }} aria-label="고정 지출 기록하기">
       {!bill && <label className={styles.quickAmount}><AmountInput value={amount} max={9007199254740991} onValueChange={setAmount} placeholder="0" aria-label="금액 (원)" disabled={busy} /><span>원</span></label>}
       {!bill && <>

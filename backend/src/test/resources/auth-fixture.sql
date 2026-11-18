@@ -54,6 +54,7 @@ CREATE TABLE bill_items (
     default_amount BIGINT DEFAULT 0 NOT NULL, is_active BOOLEAN DEFAULT TRUE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, tag VARCHAR(24) DEFAULT '공과금' NOT NULL,
     home_contract_kind VARCHAR(10),
+    termination_date DATE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE TABLE bill_payments (

@@ -6,6 +6,7 @@ const path = require('node:path')
 const cp = require('node:child_process')
 const { randomUUID } = require('node:crypto')
 const assert = require('node:assert/strict')
+const { incrementalMigrations } = require('./migration-path.cjs')
 
 const basedir = 'C:/Program Files/MySQL/MySQL Server 9.6'
 const serverExe = path.join(basedir, 'bin/mysqld.exe')
@@ -168,9 +169,10 @@ async function main() {
   const violations = cleanPreflight.trim().split(/\r?\n/).slice(-8)
   assert.equal(violations.length,8)
   for (const row of violations) assert(row.endsWith('\t0'), `preflight: ${row}`)
-  successful('incremental hardening', read('db/migrations/20261102_requirements_hardening.sql')
-    .replace('USE `zip`;','USE `zip_incremental_test`;'), 0)
-  successful('life category upgrade', read('db/migrations/20261107_life_categories.sql').replace('USE `zip`;', 'USE `zip_incremental_test`;'), 0)
+  for (const name of incrementalMigrations) {
+    const migration = read(`db/migrations/${name}`).replaceAll('USE `zip`;', 'USE `zip_incremental_test`;')
+    successful(name, 'USE `zip_incremental_test`;\n' + migration, 0)
+  }
   successful('incremental structure audit', read('db/tests/15_schema_audit.sql')
     .replace('USE zip_test;','USE zip_incremental_test;'), 7)
   successful('duplicate upgrade legacy fixture',oldSchema.replaceAll('zip_incremental_test','zip_dirty_upgrade_test'),0)

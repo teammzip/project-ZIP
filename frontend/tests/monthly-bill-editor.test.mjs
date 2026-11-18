@@ -116,7 +116,7 @@ test('신규 등록은 해당 시간대의 오늘 이전 납부 기한을 전송
 
 test('등록된 월 기록 삭제는 확인 후 선택 월과 시간대로 요청하고 갱신한다', async () => {
   const ui = editor(bill)
-  ui.button('삭제').props.onClick()
+  ui.button('이번 달 기록 삭제').props.onClick()
   await new Promise(setImmediate)
   assert.equal(ui.calls[0].kind, 'delete')
   assert.deepEqual(Array.from(ui.calls[0].args), ['42', '2026-11', 'America/New_York'])
@@ -124,22 +124,23 @@ test('등록된 월 기록 삭제는 확인 후 선택 월과 시간대로 요�
 })
 test('삭제 취소 및 미등록 기록은 삭제 요청을 보내지 않는다', () => {
   const ui = editor(bill, false, false)
-  ui.button('삭제').props.onClick()
+  ui.button('이번 달 기록 삭제').props.onClick()
   assert.equal(ui.calls.length, 0)
-  assert.equal(editor({ ...bill, snapshot: false }).button('삭제'), undefined)
+  assert.equal(editor({ ...bill, snapshot: false }).button('이번 달 기록 삭제'), undefined)
+  assert.equal(editor({ ...bill, paid: true }).button('이번 달 기록 삭제'), undefined)
 })
 test('삭제 실패는 오류를 표시하고 목록을 유지한다', async () => {
   const ui = editor(bill, true)
-  ui.button('삭제').props.onClick()
+  ui.button('이번 달 기록 삭제').props.onClick()
   await new Promise(setImmediate)
   assert.equal(ui.invalidations(), 0)
   assert.ok(ui.nodes().some(n => n.props?.role === 'alert'))
-  assert.ok(ui.button('삭제'))
+  assert.ok(ui.button('이번 달 기록 삭제'))
 })
 
 test('삭제 연속 클릭은 요청을 한 번만 보낸다', async () => {
   const ui = editor(bill)
-  const click = ui.button('삭제').props.onClick
+  const click = ui.button('이번 달 기록 삭제').props.onClick
   click(); click()
   await new Promise(setImmediate)
   assert.equal(ui.calls.length, 1)

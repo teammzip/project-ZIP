@@ -40,6 +40,7 @@ public class BillService {
         boolean outside=housing!=null && ((housing.moveIn()!=null && month.isBefore(YearMonth.parse(housing.moveIn())))
             || (housing.end()!=null && month.isAfter(YearMonth.parse(housing.end()))));
         var items = repository.list(userId, month).stream()
+            .filter(row -> row.payment()!=null || row.item().terminationDate()==null || asOf.atZone(zone).toLocalDate().isBefore(row.item().terminationDate()))
             .filter(row -> row.item().homeContractKind()==null || (housing!=null && row.item().homeContractKind().equals(housing.kind())))
             .filter(row -> row.payment()!=null || housing==null || housing.managementId()==null || row.item().id()!=housing.managementId()
                 || effective==null || !repository.managementDue(userId,month,housing).isBefore(effective))
@@ -52,6 +53,7 @@ public class BillService {
                 var payment = row.payment();
                 if (payment != null && payment.paidAt() != null && payment.paidAt().isAfter(asOf)) payment = new BillRepository.Payment(payment.amount(), null, payment.dueDate(), payment.memo());
                 var entry=response(row.item(), payment, month);
+                entry.put("active", row.item().active() && (row.item().terminationDate()==null || asOf.atZone(zone).toLocalDate().isBefore(row.item().terminationDate())));
                 entry.put("homeManaged", row.item().homeContractKind()!=null || (housing!=null && housing.managementId()!=null && row.item().id()==housing.managementId()));
                 return entry;
             }).toList();
@@ -124,6 +126,7 @@ public class BillService {
         YearMonth current = currentMonth();
         var home=repository.housing(userId);
         return repository.list(userId, month).stream()
+            .filter(row -> row.payment()!=null || row.item().terminationDate()==null || month.atEndOfMonth().isBefore(row.item().terminationDate()))
             .filter(row -> row.item().homeContractKind()==null || (home!=null && row.item().homeContractKind().equals(home.kind())))
             .filter(row -> row.payment() != null || (row.item().active() && !month.isBefore(current)
                 && !month.isBefore(YearMonth.from(row.item().createdAt().atZone(KOREA)))))
@@ -193,6 +196,7 @@ public class BillService {
         Long id = repository.matchingUnregistered(userId, name, tag, month);
         if (id != null) requireManual(userId,id);
         if (id == null) id = repository.create(userId, name, amount, tag, clock.instant());
+        requireBeforeTermination(repository.find(userId,id),BillInput.dueDate(body.get("dueDate")));
         if (repository.payment(id, month) != null) throw new ApiException(409, "이 월에 이미 등록된 항목이에요. 수정 버튼을 이용해 주세요.");
         repository.insertPayment(id, month, amount, null);
         repository.monthlyDetails(id, month, amount, BillInput.dueDate(body.get("dueDate")));
@@ -206,6 +210,7 @@ public class BillService {
         BillInput.monthly(body, false); lock(userId, sessionId);
         var item = repository.find(userId, id);
         requireManual(userId,id);
+        requireBeforeTermination(item,BillInput.dueDate(body.get("dueDate")));
         var existing=repository.payment(id,month);
         if (existing == null || existing.deletedAt() != null) throw new ApiException(404, "선택한 월에 등록한 후 수정해 주세요.");
         if(existing.paidAt()!=null) throw new ApiException(409,"납부 완료 기록은 변경할 수 없어요.");
@@ -231,6 +236,7 @@ public class BillService {
         requireManual(userId,id);
         var payment = repository.payment(id, month);
         if (payment == null) throw new ApiException(404, "선택한 월에 등록된 기록이 없어요.");
+        if (payment.paidAt() != null) throw new ApiException(409, "납부 완료 기록은 삭제할 수 없어요. 납부 취소 후 이번 달 기록을 삭제해 주세요.");
         if (payment.deletedAt() == null) repository.deleteMonthly(id, month, clock.instant());
     }
 
@@ -321,6 +327,8 @@ public class BillService {
         if(payment!=null && payment.paidAt()!=null && body.containsKey("amount") && BillInput.amount(body.get("amount"))!=payment.amount())
             throw new ApiException(409,"납부 완료 기록의 금액은 변경할 수 없어요.");
         if (payment == null && !item.active()) throw new ApiException(404, "해지된 항목에 새 청구를 만들 수 없어요.");
+        if(payment==null && item.terminationDate()!=null && !month.atEndOfMonth().isBefore(item.terminationDate()))
+            throw BillInput.bad("해지 적용일 이후에는 새 납부 기록을 만들 수 없어요.");
         if (payment == null && month.isBefore(current) && !body.containsKey("amount")) {
             throw BillInput.bad("기록이 없는 과거 월은 당시 금액 amount를 함께 입력해 주세요.");
         }
@@ -363,6 +371,9 @@ public class BillService {
         if (!item.active()) throw new ApiException(404, "해지된 항목은 수정할 수 없어요.");
         return item;
     }
+    private void requireBeforeTermination(BillRepository.Item item,java.time.LocalDate due) {
+        if(item.terminationDate()!=null && !due.isBefore(item.terminationDate())) throw new ApiException(409,"해지 적용일 이후에는 고정 지출을 등록·수정할 수 없어요.");
+    }
 
     private Map<String, Object> response(BillRepository.Item item, BillRepository.Payment payment, YearMonth month) {
         var result = new LinkedHashMap<String, Object>();
@@ -372,6 +383,7 @@ public class BillService {
         result.put("paidAt", payment == null || payment.paidAt() == null ? null : payment.paidAt().toString());
         result.put("month", month.toString()); result.put("defaultAmount", item.defaultAmount());
         result.put("active", item.active()); result.put("snapshot", payment != null);
+        result.put("terminationDate",item.terminationDate()==null?null:item.terminationDate().toString());
         result.put("dueDate", payment == null || payment.dueDate() == null ? null : payment.dueDate().toString());
         result.put("memo", payment == null || payment.memo() == null ? "" : payment.memo());
         return result;

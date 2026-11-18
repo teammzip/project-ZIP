@@ -11,7 +11,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/bills")
 public class BillController {
     private final BillService service;
-    public BillController(BillService service) { this.service = service; }
+    private final BillSettlementService settlement;
+    public BillController(BillService service,BillSettlementService settlement) { this.service = service; this.settlement=settlement; }
     private long user(Jwt jwt) { return Long.parseLong(jwt.getSubject()); }
     private long session(Jwt jwt) { return Long.parseLong(jwt.getClaimAsString("sid")); }
 
@@ -36,6 +37,16 @@ public class BillController {
     @PatchMapping("/monthly/{id}")
     public Map<String, Object> updateMonthly(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestParam String month, @RequestParam String timeZone, @RequestBody Map<String, Object> body) {
         return service.updateMonthly(user(jwt), session(jwt), BillInput.id(id), month, timeZone, body);
+    }
+    @PutMapping("/monthly/{id}/payment")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void payment(@AuthenticationPrincipal Jwt jwt,@PathVariable String id,@RequestParam String month,@RequestParam String timeZone,@RequestBody Map<String,Object> body) {
+        settlement.payment(user(jwt),session(jwt),id,month,timeZone,body);
+    }
+    @PostMapping("/monthly/{id}/termination")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void terminate(@AuthenticationPrincipal Jwt jwt,@PathVariable String id,@RequestParam String timeZone,@RequestBody Map<String,Object> body) {
+        settlement.terminate(user(jwt),session(jwt),BillInput.id(id),timeZone,body);
     }
     @DeleteMapping("/monthly/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

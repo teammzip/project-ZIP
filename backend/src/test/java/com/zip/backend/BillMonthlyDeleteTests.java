@@ -41,7 +41,6 @@ class BillMonthlyDeleteTests {
     @Test void deletionHidesRecordAndPreservesHistoryAndIdentity() throws Exception {
         var previous=YearMonth.parse(month).minusMonths(1).toString();
         jdbc.update("INSERT INTO bill_payments(bill_item_id,period_ym,amount) VALUES (?,?,30000)",id,previous);
-        jdbc.update("UPDATE bill_payments SET paid_at=CURRENT_TIMESTAMP WHERE bill_item_id=? AND period_ym=?",id,month);
         for(int i=0;i<2;i++) mvc.perform(delete("/api/bills/monthly/"+id).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token)).andExpect(status().isNoContent());
         mvc.perform(get("/api/bills/monthly").param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token)).andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty());
         assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM bill_payments WHERE bill_item_id=? AND period_ym=?",java.sql.Timestamp.class,id,month));
@@ -50,6 +49,17 @@ class BillMonthlyDeleteTests {
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_photo_imports WHERE user_id=?",Integer.class,user));
         assertEquals(404,assertThrows(ApiException.class,()->service.updateMonthly(user,session,id,month,"UTC",Map.of("amount",1,"dueDate",LocalDate.now(ZoneOffset.UTC).toString()))).status());
         assertEquals(404,assertThrows(ApiException.class,()->service.pay(user,session,id,YearMonth.parse(month),Map.of("paid",true))).status());
+    }
+    @Test void paidRecordCannotBeDeletedUntilPaymentIsCancelled() throws Exception {
+        jdbc.update("UPDATE bill_payments SET paid_at=CURRENT_TIMESTAMP WHERE bill_item_id=? AND period_ym=?",id,month);
+        var paidAt=jdbc.queryForObject("SELECT paid_at FROM bill_payments WHERE bill_item_id=? AND period_ym=?",java.sql.Timestamp.class,id,month);
+        mvc.perform(delete("/api/bills/monthly/"+id).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token)).andExpect(status().isConflict());
+        assertEquals(paidAt,jdbc.queryForObject("SELECT paid_at FROM bill_payments WHERE bill_item_id=? AND period_ym=?",java.sql.Timestamp.class,id,month));
+        assertNull(jdbc.queryForObject("SELECT deleted_at FROM bill_payments WHERE bill_item_id=? AND period_ym=?",java.sql.Timestamp.class,id,month));
+        assertEquals(40000L,jdbc.queryForObject("SELECT amount FROM bill_payments WHERE bill_item_id=? AND period_ym=?",Long.class,id,month));
+        mvc.perform(put("/api/bills/monthly/"+id+"/payment").param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content("{\"paid\":false}")).andExpect(status().isNoContent());
+        mvc.perform(delete("/api/bills/monthly/"+id).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token)).andExpect(status().isNoContent());
+        assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM bill_payments WHERE bill_item_id=? AND period_ym=?",java.sql.Timestamp.class,id,month));
     }
     @Test void unregisteredFutureAndUnauthorizedRequestsAreRejected() throws Exception {
         mvc.perform(delete("/api/bills/monthly/"+id).param("month",month).param("timeZone","UTC")).andExpect(status().isUnauthorized());

@@ -728,3 +728,6 @@ POST /api/bills/monthly/auto-register?timeZone=IANA: 현재 월 월세·별도 �
 고정 지출 monthly 응답의 housingItems는 현재 contractKind에 해당하는 주거비만 반환합니다. monthly이면 월세, jeonse이면 전세 대출 이자를 반환하며 과거 조회 월에도 동일합니다. 반대 유형의 기존 기록은 조회에서 제외하고 DB에는 보존합니다. 공통 items(관리비·공과금)는 이 유형 필터로 제외하지 않습니다. 가계부 및 같은 응답을 사용하는 홈 합계에 동일하게 반영됩니다.
 
 내 집 정보 저장은 입력 계약 기간에 현재 월이 포함되지 않으면 400입니다. 고정 지출 등록·수정도 선택 월뿐 아니라 현재 월이 계약 기간 안이어야 합니다. monthly 응답 contractPeriod.currentOutside는 현재 월의 기간 이탈 여부이며 outside는 선택 월의 이탈 여부입니다. 계약 유형 저장 시 오늘 이후 미납인 반대 유형의 월세/이자 예정분을 정리합니다. 과거 및 납부 완료 기록은 보존합니다. 상세 검증은 CONTRACT_KIND_FIX_VERIFICATION.md를 따릅니다.
+# 고정 지출 납부·해지 (2026-11-19)
+
+PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{paid: true|false}`를 보내 등록된 월별 납부 상태만 변경합니다(204). id는 숫자 항목 ID 또는 monthly 응답의 `rent:YYYY-MM`, `interest:{loanId}:YYYY-MM`입니다. 반복 납부는 paid_at을 유지하고 취소는 NULL로 복원합니다. 미등록·삭제 건은 404, 미래 월과 잘못된 body는 400입니다. 일반 지출 해지는 POST `/api/bills/monthly/{id}/termination?timeZone=...`에 `{effectiveDate: 'YYYY-MM-DD'}`를 보냅니다(204). 적용일 이후 미납·예정 건을 취소 표시하고 납부 완료와 적용일 이전 기록은 보존합니다. 현재·미래 해지일을 사용자가 입력합니다. 월세·이자·계약 관리비 조건 종료는 내 집 정보에서 관리합니다. monthly 응답의 terminationDate는 해지 적용일입니다. 기존 DB에 20261119_01_bill_termination.sql 적용 필요.
