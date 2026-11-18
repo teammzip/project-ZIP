@@ -4,7 +4,7 @@ import { Button } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { todayStr } from '@/lib/date'
 import { readJSON, writeJSON } from '@/lib/storage'
-import { useNotis } from '../derive'
+import { useNotis } from '../notifications'
 import { useLifeStore } from '../store'
 import styles from './HomePhotoCard.module.css'
 

@@ -70,6 +70,7 @@ function setup(kind) {
     if (name === './data/catalog') return { TRASH: [], trashIco: () => '🗑️' }
     if (name === './regionVerification') return { VERIFY_DAYS: 30 }
     if (name === '../derive') return derivatives
+    if (name === '../notifications') return { useNotis: () => ({ notis: [], notiRead: {}, unread: 0, showDot: false }) }
     if (name === '@/features/loan') return {
       ...interest,
       useLoanInterest: () => loan,

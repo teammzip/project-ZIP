@@ -1,9 +1,9 @@
 import { useRef, useState, type PointerEvent, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button, Card, Modal, Segmented } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
-import { useNotis } from '../derive'
+import { useNotiActions, useNotis } from '../notifications'
 import { useLifeStore } from '../store'
 import styles from './life.module.css'
 
@@ -12,8 +12,14 @@ import styles from './life.module.css'
 export function NotiCenter() {
   const { notis, notiRead, unread } = useNotis()
   const notiOn = useLifeStore((s) => s.settings.notiOn)
-  const markRead = useLifeStore((s) => s.markRead)
-  const deleteNotis = useLifeStore((s) => s.deleteNotis)
+  const { markRead, deleteNotis } = useNotiActions()
+  const navigate = useNavigate()
+  const [failed, setFailed] = useState('')
+  /** 서버 알림은 저장이 실패할 수 있어서 안내 */
+  const run = (work: Promise<void>) => {
+    setFailed('')
+    work.catch(() => setFailed('알림을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.'))
+  }
   const [mode, setMode] = useState<'unread' | 'read'>('unread')
   const [dragging, setDragging] = useState(false) // 끄는 동안 '읽음' 칸을 강조
   const [overRead, setOverRead] = useState(false)
@@ -21,7 +27,7 @@ export function NotiCenter() {
   const readList = notis.filter((n) => notiRead[n.id])
   const items = mode === 'unread' ? notis.filter((n) => !notiRead[n.id]) : readList
   const clearRead = () => {
-    deleteNotis(readList.map((n) => n.id))
+    run(deleteNotis(readList.map((n) => n.id)))
     setConfirmDelete(false)
   }
 
@@ -46,7 +52,7 @@ export function NotiCenter() {
             />
           </div>
           {mode === 'unread' ? (
-            <Button variant="line" onClick={() => markRead(notis.map((n) => n.id))} disabled={unread === 0}>
+            <Button variant="line" onClick={() => run(markRead(notis.filter((n) => !notiRead[n.id]).map((n) => n.id)))} disabled={unread === 0}>
               모두 읽음
             </Button>
           ) : (
@@ -57,6 +63,7 @@ export function NotiCenter() {
         </div>
       }
     >
+      {failed && <p className={common.formError} role="alert">{failed}</p>}
       {!notiOn && (
         <p className={common.notice}>
           알림이 꺼져 있어요. <Link to="/my/settings">내 정보</Link>에서 켤 수 있어요.
@@ -68,7 +75,11 @@ export function NotiCenter() {
           <NotiItem
             key={n.id}
             unread={isUnread}
-            onRead={() => markRead([n.id])}
+            onRead={() => isUnread && run(markRead([n.id]))}
+            onOpen={() => {
+              if (isUnread) run(markRead([n.id]))
+              if (n.to) navigate(n.to) // 서버 알림: 누르면 그 글 · 문의로 (끌어다 놓을 때는 읽음만)
+            }}
             onDragState={(d, over) => {
               setDragging(d)
               setOverRead(over)
@@ -106,14 +117,17 @@ export function NotiCenter() {
 
 type ItemProps = {
   unread: boolean
+  /** '읽음' 칸으로 끌어다 놓았을 때: 읽음만 */
   onRead: () => void
+  /** 눌렀을 때: 읽음 + (서버 알림이면) 그 화면으로 */
+  onOpen: () => void
   /** 끄는 중인지, '읽음' 칸 위인지 알림 (위쪽 '읽음' 칸 강조용) */
   onDragState: (dragging: boolean, overRead: boolean) => void
   children: ReactNode
 }
 
 /** 알림 한 줄: 누르면 읽음. 안 읽은 알림을 위쪽 '읽음' 칸으로 끌어다 놓아도 읽음 (마우스는 그냥 끌기, 터치는 꾹 눌렀다가 끌기) */
-function NotiItem({ unread, onRead, onDragState, children }: ItemProps) {
+function NotiItem({ unread, onRead, onOpen, onDragState, children }: ItemProps) {
   const el = useRef<HTMLButtonElement>(null)
   const st = useRef({ timer: 0, active: false, sx: 0, sy: 0, pid: 0, over: false, justDragged: false })
   const block = (e: Event) => e.preventDefault() // 끄는 동안 터치 화면이 스크롤되지 않게
@@ -204,7 +218,7 @@ function NotiItem({ unread, onRead, onDragState, children }: ItemProps) {
       onPointerUp={up}
       onPointerCancel={up}
       onContextMenu={(e) => st.current.active && e.preventDefault()}
-      onClick={() => !st.current.justDragged && onRead()}
+      onClick={() => !st.current.justDragged && onOpen()}
     >
       {children}
     </button>

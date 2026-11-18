@@ -206,6 +206,52 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 - 정지 시작 시각은 초 단위로 내림해서 저장해요 (MySQL DATETIME 이 초 아래를 반올림해 "아직 시작 전"으로 보이는 것을 막음).
 - **검증**: `ModerationIntegrationTests` 7개 + 격리 MySQL 에서 실제 백엔드로 경고 · 정지 · 즉시 차단 · 해제 · 영구 정지 확인.
 
+## 알림
+
+`com.zip.backend.notification` (NotificationController · NotificationService · NotificationRepository). 표는 `notifications` (DB 변경 없음). 규칙은 `frontend/API.md` 6장과 같아요.
+
+| API | 현재 동작 |
+|---|---|
+| GET `/api/notifications?status=all|unread|read` | `{ items, unreadCount }`, 새 것부터 최대 100개. 지운 알림 · 알릴 시각이 아직 안 된 알림은 빼요 |
+| PATCH `/api/notifications/read` | `{ ids }` 읽음 (빈 배열이면 전부). 내 알림만 바뀌어요 |
+| DELETE `/api/notifications?ids=1,2` | 읽은 알림만 지워요(`deleted_at`, 다시 안 보임). 안 읽은 알림은 그대로 |
+
+- 알림을 만드는 곳 (`NotificationService.send`): 댓글(글쓴이) · 답글(답글을 받은 댓글 작성자, 글쓴이와 같으면 하나만) · 운영자 댓글 → `COMMUNITY`. 운영자가 지운 글 · 댓글(사유 포함) · 신고 처리로 숨긴 글 · 댓글 · 경고 · 문의 답변 → `SYSTEM`.
+- 받는 사람이 한 사람(내가 내 글에 댓글)이면 만들지 않고, `user_settings.noti_on = 0` 이면 만들지 않아요. 미리보기는 줄바꿈을 빼고 40자.
+- 알릴 시각은 초 단위로 내림해서 저장해요 (MySQL DATETIME 반올림으로 "미래 알림"처럼 숨지 않게).
+- **검증**: `NotificationIntegrationTests` 4개 + 격리 MySQL 에서 실제 백엔드로 댓글 · 문의 답변 알림 · 읽음 · 지우기 확인.
+
+## 메모
+
+`com.zip.backend.memo` (MemoController · MemoService · MemoRepository). 표는 `memos` · `user_settings.home_memo_ids` (DB 변경 없음). 규칙은 `frontend/API.md` 12장과 같아요.
+
+| API | 현재 동작 |
+|---|---|
+| GET `/api/memos?q=` | 내 메모: 고정 먼저, 그다음 최근 수정 순. `q` 는 제목 · 글에서 찾아요 |
+| POST `/api/memos` | `{ title, body, color, pinned, checklist, items }` (전부 선택) → 201. 회원당 1,000개까지 |
+| PATCH `/api/memos/{id}` | 보낸 칸만 바꿈 (`items` 는 통째로). 남의 메모 · 없는 메모 404 |
+| DELETE `/api/memos/{id}` | 204 |
+| GET · PUT `/api/me/home-memos` | `{ ids: ["5","9"] }` 홈 위젯 메모 · 순서, `{ ids: null }` = 자동. 최대 3개 · 중복 안 됨 · 내 메모만(400). 지운 메모는 GET 에서 빠져요 |
+
+- 길이: 제목 60자 한 줄, 글 5,000자, 체크 항목 한 줄 100자 · 200개. 색: 노랑 · 분홍 · 하늘 · 초록 · 보라 · 흰색.
+- `items` · `home_memo_ids` 는 JSON 글자로 저장하고 읽어요 (따옴표 · 역슬래시 포함 확인).
+- **검증**: `MemoIntegrationTests` 3개 + 격리 MySQL 에서 실제 백엔드로 JSON 칸 · CHECK · 홈 메모 순서 확인.
+
+## 고객센터
+
+`com.zip.backend.support` (SupportController · SupportService · SupportRepository). 표는 `support_inquiries` (schema.sql 에 이미 있어서 DB 변경 없음). 규칙은 `frontend/API.md` 13장과 같아요.
+
+| API | 현재 동작 |
+|---|---|
+| GET `/api/support/inquiries` | 내 문의 (최근 것부터, 답변 포함) |
+| POST `/api/support/inquiries` | `{ category, title, content }` → 201 문의. 유형 5가지(이용 문의 · 오류 신고 · 개선 제안 · 계정 문의 · 기타), 제목 100자 한 줄, 내용 3,000자. 하루 20개까지(넘으면 429) |
+| GET `/api/admin/support/inquiries` | 관리자: 전체 문의 (답변 대기부터, 최대 500개) |
+| POST `/api/admin/support/inquiries/{id}/answer` | 관리자: `{ content }` 답변(3,000자). 문의당 하나라 이미 답변이 있으면 409, 없는 문의 404 |
+
+- 응답 모양: `{ id, userId, nickname, category, title, content, createdAt, answer: { content, createdAt } | null }` (화면의 `Inquiry` 와 같음).
+- 답변은 `answered_at IS NULL` 일 때만 저장해서, 두 관리자가 동시에 답해도 먼저 단 답변을 덮어쓰지 않아요. `answered_by` 에 답변한 관리자가 남아요.
+- **검증**: `SupportIntegrationTests` 4개 + 격리 MySQL 에서 실제 백엔드로 한글 유형(ENUM) 5개 저장 · 권한 · 답변 한 번만 확인.
+
 ## 지도
 
 `com.zip.backend.map` (MapController · MapService · MapRepository · PlaceFinder). 모두 로그인 후 요청이며 응답 모양은 `openapi.yaml`의 "지도" 태그와 같습니다.

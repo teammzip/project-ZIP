@@ -2,10 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { Button, Card } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
-import { useSupportStore, type Inquiry } from './store'
+import { useSupportActions } from './api'
+import type { Inquiry } from './store'
 import styles from './Support.module.css'
-
-export const SUPPORT_NOTICE = '현재 문의는 이 브라우저에만 저장되며 운영자에게 전송되지 않아요. 같은 브라우저의 관리자 화면에서 확인·답변할 수 있어요.'
 const dateText = (value: string) => new Date(value).toLocaleString('ko-KR')
 
 export function InquiryStatus({ inquiry }: { inquiry: Inquiry }) {
@@ -36,20 +35,25 @@ export function InquiryDetail({ inquiry, admin = false }: { inquiry: Inquiry; ad
 function ReplyForm({ id }: { id: string }) {
   const [content, setContent] = useState('')
   const [error, setError] = useState('')
-  const reply = useSupportStore((s) => s.reply)
-  const submit = (event: FormEvent) => {
+  const [saving, setSaving] = useState(false)
+  const { reply } = useSupportActions()
+  const submit = async (event: FormEvent) => {
     event.preventDefault()
+    setSaving(true)
+    setError('')
     try {
-      reply(id, content)
+      await reply(id, content)
     } catch (e) {
       setError(e instanceof Error ? e.message : '답변을 저장하지 못했어요.')
+    } finally {
+      setSaving(false)
     }
   }
   return (
     <form className={common.form} onSubmit={submit}>
       <label>답변 내용<textarea required maxLength={3000} rows={6} value={content} onChange={(e) => setContent(e.target.value)} placeholder="문의에 대한 답변을 작성해 주세요." /></label>
       {error && <p className={common.formError} role="alert">{error}</p>}
-      <div className={styles.actions}><Button type="submit" disabled={!content.trim()}>답변 등록</Button></div>
+      <div className={styles.actions}><Button type="submit" disabled={!content.trim() || saving}>{saving ? '등록 중…' : '답변 등록'}</Button></div>
     </form>
   )
 }

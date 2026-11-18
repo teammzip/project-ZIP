@@ -7,7 +7,7 @@ import { useCommunityStore, useReportStore } from '@/features/community'
 import { LegalLinks } from '@/features/legal'
 import { BudgetSummaryCard, LifeInfoForm, LifeStats, NotiSwitch, RegionVerifyDialog, useLifeStore, useLifeSummary, useRegionVerify } from '@/features/life'
 import { useMapStore } from '@/features/map'
-import { useMemoStore } from '@/features/memo'
+import { useMemoStore, withoutMemoSync } from '@/features/memo'
 import { SanctionHistoryDialog, useMySanctions } from '@/features/moderation'
 import { useLoanStore } from '@/features/loan'
 import { useHousingSurveyStore } from '@/features/onboarding'
@@ -29,7 +29,7 @@ function resetAppData() {
   useReportStore.getState().reset()
   useChatStore.getState().reset()
   void deleteAllConversations()
-  useMemoStore.getState().reset()
+  withoutMemoSync(() => useMemoStore.getState().reset()) // 이 기기 사본만 비움 (서버 메모는 지우지 않고 다시 받음)
   useProfileStore.getState().reset()
   useMapStore.getState().resetAll()
 }

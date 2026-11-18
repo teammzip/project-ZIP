@@ -94,7 +94,7 @@ function submitForm(patch = {}, kind = 'monthly', savedRent = 50, serverSave = n
         useLoanStore: (selector) => selector({ stopPlan: () => writes.push('loan'), savePlan: () => writes.push('loan') }),
       }
       if (name === '@/components/ui') return { AmountInput: 'input', Button: 'button' }
-      if (['../derive', '../payments', '@/lib/date', '@/lib/useToday'].includes(name)) return {}
+      if (['../derive', '../notifications', '../payments', '@/lib/date', '@/lib/useToday'].includes(name)) return {}
       return require(name)
     },
   })

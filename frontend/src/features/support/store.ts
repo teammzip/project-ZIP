@@ -14,10 +14,10 @@ export type Inquiry = {
   createdAt: string
   answer: { content: string; createdAt: string } | null
 }
-type Draft = Pick<Inquiry, 'category' | 'title' | 'content'>
+export type InquiryDraft = Pick<Inquiry, 'category' | 'title' | 'content'>
 type SupportState = {
   inquiries: Inquiry[]
-  add: (draft: Draft) => string
+  add: (draft: InquiryDraft) => string
   reply: (id: string, content: string) => void
 }
 

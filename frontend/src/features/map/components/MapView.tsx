@@ -6,7 +6,7 @@ import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
 import { aiFind } from '../aiFind'
 import { isKakaoPlace, mapApi, usePlaceNotice } from '../api'
-import { DEFAULT_CATS, walkMin, type PlaceItem } from '../data/places'
+import { walkMin, type PlaceItem } from '../data/places'
 import { placeColors } from '../placeIcons'
 import { PlaceIcon } from './PlaceIcon'
 import { SaveSheet } from './SaveSheet'
@@ -20,6 +20,7 @@ import styles from './MapView.module.css'
 const LeafletMap = lazy(() => import('./LeafletMap').then((m) => ({ default: m.LeafletMap })))
 
 const CUSTOM = 'c:' // 직접 추가한 검색어 칩 앞머리 ("c:카페")
+const ALL = '' // 종류를 고르지 않음 = 주변 장소 전체 (처음 들어왔을 때)
 const AI_EXAMPLES = ['24시간 편의점', '조용한 카페', '혼밥 저렴한 식당', '이불 빨래할 곳']
 
 /** 목록 위 조건 칩 (장소 설명에 그 말이 있으면 남김) */
@@ -59,7 +60,8 @@ type Found = { q: string; items: Array<{ p: PlaceItem; why: string[] }>; named?:
  * - 모바일: 화면 가득 지도 + 위에 검색창 · 종류 칩, 오른쪽 둥근 버튼(저장 · 내 위치), 아래 끌어올리는 시트(동네 · 저장 탭, 장소 목록)
  * - PC: 왼쪽 목록 칸(검색 · 탭 · 목록 · 상세) + 오른쪽 넓은 지도(위에 종류 칩)
  * - 검색은 장소 이름 + AI 장소 찾기("밤에 갈 수 있는 약국" → 가까운 순 추천 + 이유, 시연용)
- * - ★ 저장(즐겨찾기), 종류 편집(켜기 · 끄기 · 직접 검색어), ?cat=세탁방 으로 열면 그 종류부터 */
+ * - 처음엔 종류를 고르지 않은 "전체"(주변 장소 모두), ?cat=세탁방 으로 열면 그 종류부터
+ * - ★ 저장(즐겨찾기), 종류 편집(켜기 · 끄기 · 직접 검색어) */
 export function MapView() {
   const { on, custom, favs, favNames, lists, ensureCat, toggleCat } = useMapStore()
   const position = useNeighborhoodPosition()
@@ -95,7 +97,8 @@ export function MapView() {
   const mapPoint = position.point
   const locationKey = `${region}|${position.source}|${mapPoint?.lat}|${mapPoint?.lon}|${position.verifiedAt}`
   const asked = params.get('cat')
-  const [cat, setCat] = useState(() => (asked && data.kinds.includes(asked) ? asked : (on[0] ?? DEFAULT_CATS[0])))
+  // 서버 모드는 종류 목록을 받기 전이라 비어 있을 수 있어서, 그때는 주소의 종류를 그대로 믿음 (아래에서 칩에도 켬)
+  const [cat, setCat] = useState(() => (asked && (data.kinds.includes(asked) || !data.kinds.length) ? asked : ALL))
   const [tab, setTab] = useState<'near' | 'fav'>('near')
   const [filter, setFilter] = useState('near')
   const [selId, setSelId] = useState<string | null>(null)
@@ -116,6 +119,7 @@ export function MapView() {
   const base = (() => {
     if (found) return found.items.map((r) => r.p)
     if (tab === 'fav') return places.filter((p) => favs.includes(p.id))
+    if (cat === ALL) return places
     if (cat.startsWith(CUSTOM)) {
       const kw = cat.slice(CUSTOM.length)
       return places.filter((p) => (p.n + p.d + p.cat).includes(kw))
@@ -247,6 +251,9 @@ export function MapView() {
             </button>
           )}
           <div ref={chipsRef} className={styles.chips} role="radiogroup" aria-label="장소 종류">
+            <Chip color={placeColors('기타').fg} on={!found && tab === 'near' && cat === ALL} onClick={() => pickCat(ALL)}>
+              전체
+            </Chip>
             {on.map((c) => (
               <Chip key={c} color={placeColors(c).fg} on={!found && tab === 'near' && cat === c} onClick={() => pickCat(c)}>
                 <PlaceIcon cat={c} /> {c}
@@ -394,7 +401,7 @@ export function MapView() {
                 ) : tab === 'fav' ? (
                   '내가 저장한 곳'
                 ) : (
-                  <>이 주변 {cat.startsWith(CUSTOM) ? cat.slice(CUSTOM.length) : cat}</>
+                  <>이 주변 {cat === ALL ? '장소' : cat.startsWith(CUSTOM) ? cat.slice(CUSTOM.length) : cat}</>
                 )}
                 <small>{list.length + savedKakao.length}곳</small>
               </h2>
@@ -725,7 +732,7 @@ function CategoryEditor({ kinds, places, current, onCurrentGone, onAdded }: { ki
               aria-pressed={isOn}
               onClick={() => {
                 toggleCat(c)
-                if (isOn && current === c) onCurrentGone(on.find((x) => x !== c) ?? DEFAULT_CATS[0])
+                if (isOn && current === c) onCurrentGone(ALL)
               }}
             >
               {isOn && '✓ '}
@@ -758,7 +765,7 @@ function CategoryEditor({ kinds, places, current, onCurrentGone, onAdded }: { ki
               title="이 검색어 칩 지우기"
               onClick={() => {
                 removeCustom(k)
-                if (current === CUSTOM + k) onCurrentGone(on[0] ?? DEFAULT_CATS[0])
+                if (current === CUSTOM + k) onCurrentGone(ALL)
               }}
             >
               🔎 {k} ✕
@@ -770,7 +777,7 @@ function CategoryEditor({ kinds, places, current, onCurrentGone, onAdded }: { ki
         variant="line"
         onClick={() => {
           resetCats()
-          onCurrentGone(DEFAULT_CATS[0])
+          onCurrentGone(ALL)
         }}
       >
         기본(세탁방·편의점·약국·마트)으로 되돌리기

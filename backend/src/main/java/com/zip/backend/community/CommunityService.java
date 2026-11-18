@@ -2,6 +2,7 @@ package com.zip.backend.community;
 
 import com.zip.backend.common.ApiException;
 import com.zip.backend.files.ProfileFileService;
+import com.zip.backend.notification.NotificationService;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -38,13 +39,15 @@ public class CommunityService {
     private final CommunityRepository repository;
     private final ProfileFileService files;
     private final com.zip.backend.region.RegionVerifyService regionVerify;
+    private final NotificationService notifications;
     private final Clock clock;
 
     public CommunityService(CommunityRepository repository, ProfileFileService files,
-        com.zip.backend.region.RegionVerifyService regionVerify, Clock clock) {
+        com.zip.backend.region.RegionVerifyService regionVerify, NotificationService notifications, Clock clock) {
         this.repository = repository;
         this.files = files;
         this.regionVerify = regionVerify;
+        this.notifications = notifications;
         this.clock = clock;
     }
 
@@ -127,9 +130,12 @@ public class CommunityService {
         long id = id(postId, "글");
         requireRegion(userId);
         var body = validComment(input);
-        repository.lockVisiblePostOwner(id).orElseThrow(() -> notFound("글"));
-        long commentId = repository.insertComment(id, userId, body, replyParent(id, input));
-        return comment(repository.visibleComment(userId, commentId).orElseThrow(), userId);
+        long owner = repository.lockVisiblePostOwner(id).orElseThrow(() -> notFound("글"));
+        var reply = replyTo(id, input);
+        long commentId = repository.insertComment(id, userId, body, reply.parentId());
+        var saved = repository.visibleComment(userId, commentId).orElseThrow();
+        notifyComment(id, owner, reply, saved);
+        return comment(saved, userId);
     }
 
     @Transactional
@@ -198,8 +204,11 @@ public class CommunityService {
         long id = id(postId, "글");
         var why = deleteReason(reason);
         repository.lockVisiblePostOwner(id).orElseThrow(() -> notFound("글"));
+        var target = repository.reportTarget("POST", id).orElseThrow(() -> notFound("글"));
         var now = clock.instant();
         repository.deletePost(id, now, adminId, why);
+        notifications.send(target.authorId(), adminId, NotificationService.SYSTEM, "운영 정책에 따라 내 글이 삭제됐어요",
+            withReason("「" + NotificationService.preview(target.text(), 40) + "」", why), null, null);
         repository.resolveReports("POST", id, "HIDDEN", adminId, now);
         repository.resolveCommentReportsOfPost(id, "HIDDEN", adminId, now);
     }
@@ -209,8 +218,11 @@ public class CommunityService {
         long id = id(commentId, "댓글");
         var why = deleteReason(reason);
         var lock = repository.lockVisibleComment(id).orElseThrow(() -> notFound("댓글"));
+        var target = repository.reportTarget("COMMENT", id).orElseThrow(() -> notFound("댓글"));
         var now = clock.instant();
         repository.deleteComment(id, lock.postId(), now, adminId, why);
+        notifications.send(lock.ownerId(), adminId, NotificationService.SYSTEM, "운영 정책에 따라 내 댓글이 삭제됐어요",
+            withReason("「" + NotificationService.preview(target.text(), 40) + "」", why), "community", lock.postId());
         repository.resolveReports("COMMENT", id, "HIDDEN", adminId, now);
     }
 
@@ -219,9 +231,12 @@ public class CommunityService {
     public Map<String, Object> adminComment(long adminId, String postId, CommunityRequests.CommentInput input) {
         long id = id(postId, "글");
         var body = validComment(input);
-        repository.lockVisiblePostOwner(id).orElseThrow(() -> notFound("글"));
-        long commentId = repository.insertComment(id, adminId, body, replyParent(id, input));
-        return comment(repository.visibleComment(adminId, commentId).orElseThrow(), adminId);
+        long owner = repository.lockVisiblePostOwner(id).orElseThrow(() -> notFound("글"));
+        var reply = replyTo(id, input);
+        long commentId = repository.insertComment(id, adminId, body, reply.parentId());
+        var saved = repository.visibleComment(adminId, commentId).orElseThrow();
+        notifyComment(id, owner, reply, saved);
+        return comment(saved, adminId);
     }
 
     /** 홈 "자취 꿀팁"에 보이기 · 빼기 */
@@ -272,7 +287,13 @@ public class CommunityService {
 
     private void resolve(long adminId, CommunityRepository.TargetRef target, String status) {
         if (status == null || !RESOLUTIONS.contains(status)) throw new ApiException(400, "status 는 HIDDEN 또는 DISMISSED 예요.");
-        if (status.equals("HIDDEN")) repository.hideTarget(target.type(), target.id(), adminId, "신고 처리로 숨김");
+        if (status.equals("HIDDEN")) {
+            // 아직 보이는 대상이면 쓴 사람에게 알리고 숨김
+            repository.reportTarget(target.type(), target.id()).ifPresent(t -> notifications.send(t.authorId(), adminId, NotificationService.SYSTEM,
+                "신고가 확인돼 내 " + (target.type().equals("POST") ? "글이" : "댓글이") + " 숨겨졌어요",
+                "「" + NotificationService.preview(t.text(), 40) + "」", null, null));
+            repository.hideTarget(target.type(), target.id(), adminId, "신고 처리로 숨김");
+        }
         repository.resolveReports(target.type(), target.id(), status, adminId, clock.instant());
     }
 
@@ -328,13 +349,33 @@ public class CommunityService {
         return why;
     }
 
-    /** 답글이면 부모 댓글 번호. 같은 글의 보이는 댓글이어야 하고, 답글에 단 답글은 그 묶음의 맨 위 댓글로 (한 단계만) */
-    private Long replyParent(long postId, CommunityRequests.CommentInput input) {
-        if (input == null || input.parentId() == null || input.parentId().isBlank()) return null;
+    /** 답글이면 붙일 부모 댓글 번호와 답글을 받은 댓글의 작성자 (새 댓글이면 둘 다 null) */
+    private record ReplyTo(Long parentId, Long repliedAuthorId) {}
+
+    private static final ReplyTo NEW_COMMENT = new ReplyTo(null, null);
+
+    /** 같은 글의 보이는 댓글이어야 하고, 답글에 단 답글은 그 묶음의 맨 위 댓글로 (한 단계만) */
+    private ReplyTo replyTo(long postId, CommunityRequests.CommentInput input) {
+        if (input == null || input.parentId() == null || input.parentId().isBlank()) return NEW_COMMENT;
         long parentId = id(input.parentId(), "답글을 달 댓글");
         var target = repository.replyTarget(parentId).orElseThrow(() -> notFound("답글을 달 댓글"));
         if (target.postId() != postId) throw new ApiException(400, "같은 글의 댓글에만 답글을 달 수 있어요.");
-        return target.parentId() == null ? parentId : target.parentId();
+        return new ReplyTo(target.parentId() == null ? parentId : target.parentId(), target.authorId());
+    }
+
+    /** 댓글 알림: 답글이면 답글을 받은 댓글 작성자에게, 그리고 글쓴이에게 (같은 사람이면 답글 알림 하나만, 내가 쓴 건 안 알림) */
+    private void notifyComment(long postId, long postOwner, ReplyTo reply, CommunityRepository.CommentRow c) {
+        var text = (c.staff() ? "운영자" : c.nickname()) + ": " + NotificationService.preview(c.body(), 40);
+        if (reply.repliedAuthorId() != null) {
+            notifications.send(reply.repliedAuthorId(), c.userId(), NotificationService.COMMUNITY, "내 댓글에 답글이 달렸어요", text, "community", postId);
+            if (reply.repliedAuthorId() == postOwner) return;
+        }
+        notifications.send(postOwner, c.userId(), NotificationService.COMMUNITY,
+            c.staff() ? "운영자가 내 글에 댓글을 남겼어요" : "내 글에 댓글이 달렸어요", text, "community", postId);
+    }
+
+    private static String withReason(String text, String reason) {
+        return reason == null ? text : text + " · 사유: " + reason;
     }
 
     private static String validComment(CommunityRequests.CommentInput input) {

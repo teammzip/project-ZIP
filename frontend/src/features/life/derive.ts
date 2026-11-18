@@ -95,7 +95,8 @@ export const ddayText = (diff: number) => (diff === 0 ? 'D-Day' : `D-${diff}`)
 /** 그 날짜가 속한 달의 월세를 냈는지 */
 export const monthKeyRentPaid = (rentPaid: Record<string, boolean>, d: Date) => !!rentPaid[monthKeyOf(d)]
 
-export type Noti = { id: string; ico: string; t: string; s: string; time: string }
+/** to: 누르면 열 화면 (서버 알림만) */
+export type Noti = { id: string; ico: string; t: string; s: string; time: string; to?: string }
 
 /** 알림 목록: 3일 안의 일정(끝낸 건 빼고) · 쓰레기 배출(배출표가 있을 때) + 월세(월세 금액을 입력했을 때만). 예시 알림은 넣지 않아요 */
 export function buildNotis(events: CalEvent[], settings: LifeSettings, contractKind: ContractKind = 'monthly'): Noti[] {
@@ -118,15 +119,7 @@ export function buildNotis(events: CalEvent[], settings: LifeSettings, contractK
   return list
 }
 
-/** 알림 목록 + 안 읽은 개수 (알림을 끄면 빨간 점은 안 보이게 showDot=false) */
-export function useNotis() {
-  const { kind } = useHousingContract()
-  const { events, settings, notiRead, notiDeleted } = useLifeStore(useShallow((s) => ({ events: s.events, settings: s.settings, notiRead: s.notiRead, notiDeleted: s.notiDeleted })))
-  const notis = buildNotis(events, settings, kind).filter((n) => !notiDeleted?.[n.id]) // 저장된 예전 데이터엔 notiDeleted 가 없을 수 있음
-  const unread = notis.filter((n) => !notiRead[n.id]).length
-  return { notis, notiRead, unread, showDot: settings.notiOn && unread > 0 }
-}
-
+// 알림 목록 훅(useNotis)은 서버 알림까지 합쳐서 ./notifications.ts 에 있어요
 /** 내 정보 "생활 정보" 줄 아래 작은 글씨: 동네 · 월세 · 납부일 */
 export function useLifeSummary() {
   const { isJeonse, survey } = useHousingContract()
