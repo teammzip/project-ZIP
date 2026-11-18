@@ -48,3 +48,8 @@ if (-not (Test-Path application-local.properties)) {
 사진 자동 등록은 POST `/api/bills/monthly/photo` multipart photo(JPG/PNG 2MB)입니다. 기존 서버 `GEMINI_API_KEY`/`GEMINI_MODEL` 설정을 사용합니다. 금액·납부 기한이 불명확하면 저장하지 않으며 동일 사진 중복 등록을 차단합니다.
 테스트 → 실제 MySQL → 프론트 수동 확인과 Git 가이드는 루트 `MONTHLY_BILLS_WRITE_VERIFICATION.md`를 참고하세요.
 실제 MySQL 재검증: `./gradlew.bat -I verify-monthly-mysql.init.gradle verifyMonthlyMysql` (backend에서 실행; 임시 데이터 롤백).
+
+## 계약별 고정 지출 조회 연결
+GET /api/bills/monthly는 DB 계약 형태별 월세·전세 이자를 housingItems로 반환합니다. 목록·차트·합계 연결과 직접 실행할 테스트→DB→프론트 가이드는 루트 CONTRACT_FIXED_EXPENSE_VERIFICATION.md를 참고하세요. 이번 변경의 테스트/실제 DB 검증은 미실행입니다.
+
+계약별 자동 등록: 20261118_05_contract_auto_register.sql 적용 필요. 서버는 저장된 시간대별 월을 1분 간격으로 확인합니다. 최초 가계부 진입 시 자동 등록 POST로 시간대를 확정합니다. 검증 가이드는 CONTRACT_AUTO_REGISTER_VERIFICATION.md 참고. 테스트와 실제 DB 적용은 미실행입니다.

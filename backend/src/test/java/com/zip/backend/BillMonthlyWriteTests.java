@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties="zip.ai.daily-limit=2")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Sql("/auth-fixture.sql")
+@Sql({"/auth-fixture.sql","/home-info-fixture.sql"})
 class BillMonthlyWriteTests {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
@@ -41,7 +41,7 @@ class BillMonthlyWriteTests {
         token=auth.socialLogin("GOOGLE","monthly-write","write@example.com","월별등록");
         var jwt=decoder.decode(token); user=Long.parseLong(jwt.getSubject()); session=Long.parseLong(jwt.getClaimAsString("sid"));
         month=YearMonth.now(ZoneOffset.UTC).toString();
-        conversationId=Long.parseLong((String)ai.create(user,"AI_PAGE",null).get("id"));
+        conversationId=Long.parseLong((String)ai.create(user,"AI_PAGE","bill").get("id"));
         when(gemini.enabled()).thenReturn(true);
     }
     Map<String,Object> input(long amount) { return Map.of("name","전기","tag","공과금","amount",amount,"dueDate","2026-12-05"); }
@@ -56,10 +56,13 @@ class BillMonthlyWriteTests {
         var previous=YearMonth.parse(month).minusMonths(1);
         jdbc.update("INSERT INTO bill_payments(bill_item_id,period_ym,amount) VALUES (?,?,?)",id,previous.toString(),30000);
         jdbc.update("UPDATE bill_payments SET paid_at=CURRENT_TIMESTAMP WHERE bill_item_id=? AND period_ym=?",id,month);
+        assertEquals(409,assertThrows(ApiException.class,()->service.updateMonthly(user,session,id,month,"UTC",Map.of("amount",45000,"dueDate","2026-12-10"))).status());
+        assertEquals(40000L,jdbc.queryForObject("SELECT amount FROM bill_payments WHERE bill_item_id=? AND period_ym=?",Long.class,id,month));
+        jdbc.update("UPDATE bill_payments SET paid_at=NULL WHERE bill_item_id=? AND period_ym=?",id,month);
         var edited=service.updateMonthly(user,session,id,month,"UTC",Map.of("amount",45000,"dueDate","2026-12-10"));
-        assertEquals(45000L,edited.get("amount")); assertEquals("2026-12-10",edited.get("dueDate")); assertEquals(true,edited.get("paid"));
+        assertEquals(45000L,edited.get("amount")); assertEquals("2026-12-10",edited.get("dueDate")); assertEquals(false,edited.get("paid"));
         assertEquals(30000L,jdbc.queryForObject("SELECT amount FROM bill_payments WHERE bill_item_id=? AND period_ym=?",Long.class,id,previous.toString()));
-        assertEquals(40000L,jdbc.queryForObject("SELECT default_amount FROM bill_items WHERE id=?",Long.class,id));
+        assertEquals(45000L,jdbc.queryForObject("SELECT default_amount FROM bill_items WHERE id=?",Long.class,id));
         var separate=service.registerMonthly(user,session,month,"UTC",input(50000));
         assertNotEquals(created.get("id"),separate.get("id")); // category/name alone cannot identify a bill
     }
@@ -88,15 +91,45 @@ class BillMonthlyWriteTests {
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_items",Integer.class));
     }
     MockMultipartFile photo() { return new MockMultipartFile("photo","bill.png","image/png",new byte[]{(byte)137,80,78,71,13,10,26,10,0}); }
-    @Test void photoAutomaticallyRegistersAndRetryDoesNotDuplicate() throws Exception {
+    String analyze(MockMultipartFile file) throws Exception {
+        String response=mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(file).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.preview.amount").value(42000)).andReturn().getResponse().getContentAsString();
+        return tools.jackson.databind.json.JsonMapper.builder().build().readTree(response).path("draftId").asText();
+    }
+    org.springframework.test.web.servlet.ResultActions decide(String id,boolean register) throws Exception {
+        return mvc.perform(post("/api/ai/conversations/"+conversationId+"/bill-photo/"+id+"/decision")
+            .header("Authorization","Bearer "+token).contentType("application/json").content("{\"register\":"+register+"}"));
+    }
+    @Test void photoRequiresConsentAndRetryDoesNotDuplicate() throws Exception {
         when(gemini.billImage(any(),anyString(),anyString(),anyString())).thenReturn("{\"readable\":true,\"name\":\"사진전기\",\"tag\":\"공과금\",\"amount\":42000,\"dueDate\":\"2026-12-05\"}");
-        mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(photo()).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.bill.amount").value(42000)).andExpect(jsonPath("$.bill.dueDate").value("2026-12-05"));
-        mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(photo()).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token)).andExpect(status().isConflict());
+        var id=analyze(photo());
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
+        assertEquals("PENDING",jdbc.queryForObject("SELECT state FROM bill_photo_drafts WHERE id=?",String.class,id));
+        decide(id,true).andExpect(status().isOk()).andExpect(jsonPath("$.registered").value(true));
+        decide(id,true).andExpect(status().isConflict());
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
+        mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(photo()).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token)).andExpect(status().isConflict());
         verify(gemini,times(1)).billImage(any(),anyString(),anyString(),anyString());
-        assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM ai_messages WHERE conversation_id=?",Integer.class,conversationId));
-        assertEquals("LINK",jdbc.queryForObject("SELECT card_type FROM ai_messages WHERE conversation_id=? AND role='ASSISTANT'",String.class,conversationId));
+    }
+    @Test void cancellationExpiryAndWrongTopicDoNotRegister() throws Exception {
+        when(gemini.billImage(any(),anyString(),anyString(),anyString())).thenReturn("{\"readable\":true,\"name\":\"전기\",\"tag\":\"공과금\",\"amount\":42000,\"dueDate\":\"2026-12-05\"}");
+        var cancelled=analyze(photo());
+        decide(cancelled,false).andExpect(status().isOk()).andExpect(jsonPath("$.registered").value(false));
+        decide(cancelled,true).andExpect(status().isConflict());
+        var expired=analyze(photo());
+        jdbc.update("UPDATE bill_photo_drafts SET expires_at=? WHERE id=?",java.sql.Timestamp.from(Instant.now().minusSeconds(1)),expired);
+        decide(expired,true).andExpect(status().isGone());
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
+        conversationId=Long.parseLong((String)ai.create(user,"AI_PAGE","qna").get("id"));
+        mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(photo()).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token)).andExpect(status().isForbidden());
+    }
+    @Test void anotherOwnerCannotConfirmDraft() throws Exception {
+        when(gemini.billImage(any(),anyString(),anyString(),anyString())).thenReturn("{\"readable\":true,\"name\":\"전기\",\"tag\":\"공과금\",\"amount\":42000,\"dueDate\":\"2026-12-05\"}");
+        var id=analyze(photo());
+        String other=auth.socialLogin("GOOGLE","draft-other","draft-other@example.com","다른회원");
+        mvc.perform(post("/api/ai/conversations/"+conversationId+"/bill-photo/"+id+"/decision").header("Authorization","Bearer "+other)
+            .contentType("application/json").content("{\"register\":true}")).andExpect(status().isNotFound());
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
     }
     @Test void unreadablePhotoAndAiFailureDoNotSaveOrConsumeQuota() throws Exception {
         when(gemini.billImage(any(),anyString(),anyString(),anyString())).thenReturn("{\"readable\":false}").thenThrow(new IllegalStateException("provider failure"));
@@ -145,14 +178,16 @@ class BillMonthlyWriteTests {
     }
     @Test void sameRecognizedDocumentFromAnotherPhotoIsBlockedButDifferentBillIsAllowed() throws Exception {
         String document="{\"readable\":true,\"name\":\"전기\",\"tag\":\"공과금\",\"amount\":42000,\"dueDate\":\"2026-12-05\",\"issuer\":\"한국전력\",\"billReference\":\"INV-123\",\"billingMonth\":\"2026-11\"}";
+        jdbc.update("UPDATE ai_usage_daily SET question_count=0 WHERE user_id=?",user);
         when(gemini.billImage(any(),anyString(),anyString(),anyString())).thenReturn(document);
-        mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(photo()).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token)).andExpect(status().isOk());
+        decide(analyze(photo()),true).andExpect(status().isOk());
         var otherPhoto=new MockMultipartFile("photo","retaken.png","image/png",new byte[]{(byte)137,80,78,71,13,10,26,10,1});
         when(gemini.billImage(any(),anyString(),anyString(),anyString())).thenReturn(document.replace("INV-123","ＩＮＶ １２３").replace("한국전력","한국 전력"));
-        mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(otherPhoto).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token)).andExpect(status().isConflict());
+        decide(analyze(otherPhoto),true).andExpect(status().isConflict());
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
+        jdbc.update("UPDATE ai_usage_daily SET question_count=0 WHERE user_id=?",user);
         when(gemini.billImage(any(),anyString(),anyString(),anyString())).thenReturn(document.replace("INV-123","INV-999"));
-        mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(otherPhoto).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token)).andExpect(status().isOk());
+        decide(analyze(otherPhoto),true).andExpect(status().isOk());
         assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM bill_document_keys",Integer.class));
         assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
     }

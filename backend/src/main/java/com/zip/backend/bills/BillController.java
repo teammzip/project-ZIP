@@ -20,6 +20,11 @@ public class BillController {
         return service.list(user(jwt), BillInput.month(month));
     }
 
+    @PostMapping("/monthly/auto-register")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void autoRegister(@AuthenticationPrincipal Jwt jwt,@RequestParam String timeZone) {
+        service.autoRegister(user(jwt),session(jwt),timeZone);
+    }
     @GetMapping("/monthly")
     public Map<String, Object> monthly(@AuthenticationPrincipal Jwt jwt, @RequestParam String month, @RequestParam String timeZone) {
         return service.monthly(user(jwt), BillInput.month(month), timeZone);

@@ -81,6 +81,7 @@ function submitForm(patch = {}, kind = 'monthly', savedRent = 50, serverSave = n
       } }
       if (name.endsWith('.css')) return { default: {} }
       if (name === '../validateLifeInfo') return exports
+      if (name === '@tanstack/react-query') return { useQueryClient: () => ({ invalidateQueries: async () => {} }) }
       if (name === '@/features/auth/api') return { isMockApi: !serverSave }
       if (name === '../homeApi') return { saveHomeInfo: async (input) => { writes.push('server'); return serverSave(input) } }
       if (name === '@/lib/apiClient') return { getErrorMessage: (cause) => cause.message }

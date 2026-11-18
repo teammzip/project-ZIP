@@ -53,6 +53,7 @@ CREATE TABLE bill_items (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL, name VARCHAR(30) NOT NULL,
     default_amount BIGINT DEFAULT 0 NOT NULL, is_active BOOLEAN DEFAULT TRUE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, tag VARCHAR(24) DEFAULT '공과금' NOT NULL,
+    home_contract_kind VARCHAR(10),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE TABLE bill_payments (
@@ -96,7 +97,7 @@ CREATE TABLE ai_usage_daily (
     PRIMARY KEY (user_id, usage_date), FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE TABLE ai_topics (id BIGINT AUTO_INCREMENT PRIMARY KEY, code VARCHAR(20) NOT NULL UNIQUE, name VARCHAR(30) NOT NULL, is_active TINYINT DEFAULT 1 NOT NULL);
-INSERT INTO ai_topics (code, name) VALUES ('qna', '자유 질문'), ('trash', '분리배출'), ('summary', '이번 달 지출 요약');
+INSERT INTO ai_topics (code, name) VALUES ('qna', '자유 질문'), ('trash', '분리배출'), ('summary', '이번 달 지출 요약'), ('bill', '공과금·생활비');
 CREATE TABLE ai_conversations (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL, topic_id BIGINT, entry_point VARCHAR(20) NOT NULL, title VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,

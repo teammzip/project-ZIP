@@ -30,7 +30,9 @@ export function MonthlyFixedExpense() {
     refetchOnWindowFocus: 'always', retry: false,
   })
   const data = ready ? query.data : undefined
-  const items = data?.items ?? []
+  const contractBlocked = !!(data?.contractPeriod?.outside || data?.contractPeriod?.currentOutside)
+  const items = [...(data?.housingItems ?? []), ...(data?.items ?? [])]
+  const housingIds = new Set(data?.housingItems?.map((item) => item.id) ?? [])
   const total = items.reduce((sum, b) => sum + b.amount, 0)
   const paid = items.filter((b) => b.paid).reduce((sum, b) => sum + b.amount, 0)
   const palette = ['#6485df', '#68b6a0', '#d884aa', '#ef9b66', '#a28ad6', '#91a2b5']
@@ -54,11 +56,16 @@ export function MonthlyFixedExpense() {
       {!token || !userId ? <p>로그인 후 조회해 주세요.</p> : !ready ? <p role="status">등록 주소와 현재 위치의 시간대를 확인하고 있어요.</p> : query.isPending ? <p role="status">선택한 월을 불러오는 중이에요.</p> : null}
       {ready && query.isError && <div role="alert"><p className={common.formError}>{getErrorMessage(query.error, '월별 내역을 불러오지 못했어요.')}</p><Button variant="line" onClick={() => void query.refetch()}>다시 조회</Button></div>}
       {data && <>
+        <p className={common.note}>{data.contractKind === 'monthly' ? '월세 계약 · 월세와 공통 고정 지출' : data.contractKind === 'jeonse' ? '전세 계약 · 대출 이자와 공통 고정 지출' : '계약 미등록 · 공통 고정 지출'} · <a href="/my/settings">내 집 정보 확인</a></p>
         <div className={common.sumRow}>
           <div><small>고정 지출 합계</small><b>{won(total)}</b></div>
           <div><small>납부 완료</small><b>{won(paid)}</b></div>
           <div><small>미납·예정</small><b>{won(total - paid)}</b></div>
         </div>
+        {data.contractPeriod?.outside && <p className={common.note} role="status">
+          선택한 {month}은 등록된 계약 기간({data.contractPeriod.from ?? '시작 미정'} ~ {data.contractPeriod.through ?? '종료 미정'}) 밖이므로 계약 비용의 자동 등록 대상에서 제외돼요. 월세·대출 이자의 예정 금액도 생성하지 않으며, 이미 저장된 내역은 표시해요. 계약 기간은 <a href="/my/settings" className={common.link}>내 집 정보</a>에서 확인해 주세요.
+        </p>}
+        {data.contractPeriod?.currentOutside && <p className={common.formError} role="status">현재 날짜가 계약 기간 밖이므로 등록·수정할 수 없어요. 내 집 정보의 계약 기간을 확인해 주세요.</p>}
         {total > 0 && <div className={styles.moneyDonutWrap}>
           <div className={styles.moneyDonut} style={{ background: `conic-gradient(${stops.join(', ')})` }} role="img" aria-label={`고정 지출 합계 ${won(total)}`}>
             <div className={styles.moneyDonutCenter}><small>총 지출</small><b>{won(total)}</b></div>
@@ -75,11 +82,11 @@ export function MonthlyFixedExpense() {
               {bill.paidAt && <small>납부: {formatLocalTime(bill.paidAt, data.timeZone)}</small>}
             </div>
             <div className={styles.moneyAmt}>{won(bill.amount)}</div>
-            <MonthlyBillEditor key={`${userId}:${token}:${timeZone}:${month}:${bill.id}`} month={month} timeZone={timeZone} bill={bill} />
+            {housingIds.has(bill.id) || bill.homeManaged ? <a href="/my/settings" className={common.link}>내 집 정보에서 확인</a> : contractBlocked ? <span>계약 기간 밖 · 수정 불가</span> : bill.paid ? <span>납부 완료 · 수정 불가</span> : <MonthlyBillEditor key={`${userId}:${token}:${timeZone}:${month}:${bill.id}`} month={month} timeZone={timeZone} bill={bill} />}
           </li>)}
         </ul> : <p className={common.empty}>이 달에는 고정 지출 기록이 없어요. 첫 고정 지출을 기록해 보세요.</p>}
         <details className={styles.fixedExpenseDetails}><summary>조회 정보</summary>
-          <p className={common.note}>공과금·통신·구독·별도 관리비 기준이에요. 현재 월에는 미납·예정 금액도 포함돼요.</p>
+          <p className={common.note}>계약에 따른 월세 또는 전세 대출 이자와 공통 고정 지출을 합산해요. 현재 월에는 예정 금액도 포함하며, 이자 계산 기록은 납부 완료를 뜻하지 않아요.</p>
           <p className={common.note}>{choice?.source === 'address' ? '등록 주소' : choice?.source === 'location' ? '현재 위치' : '기기 설정'} · {timeZone} 기준</p>
           <p className={common.note}>청구 기간: {formatLocalTime(data.periodFrom, data.timeZone)} ~ {formatLocalTime(data.periodThrough, data.timeZone)}</p>
           <p className={common.note}>조회 시각: {formatLocalTime(data.queriedAt, data.timeZone)}{query.isFetching ? ' · 갱신 중' : ''}</p>
@@ -88,7 +95,7 @@ export function MonthlyFixedExpense() {
       </>}
     </Card>
     <Card title="고정 지출 기록하기">
-      {data && !!token && !!userId && !query.isError ? <MonthlyBillEditor key={`${userId}:${token}:${timeZone}:${month}`} month={month} timeZone={timeZone} /> : <p className={common.note}>고정 지출을 불러온 후 기록할 수 있어요.</p>}
+      {data && !!token && !!userId && !query.isError && !contractBlocked ? <MonthlyBillEditor key={`${userId}:${token}:${timeZone}:${month}`} month={month} timeZone={timeZone} /> : <p className={common.note}>현재 날짜와 조회 월이 모두 계약 기간 안이어야 기록할 수 있어요.</p>}
       <p className={common.note}>선택한 달의 고정 지출을 기록해요. 등록된 기록만 수정할 수 있어요.</p>
     </Card>
   </div>

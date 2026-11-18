@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
@@ -88,6 +89,7 @@ function ServerLifeInfoForm(props: LifeInfoProps) {
   return <LifeInfoFields {...props} />
 }
 export function LifeInfoFields({ onSaved, showHomeAddress = true }: LifeInfoProps) {
+  const queryClient = useQueryClient()
   const { kind: savedKind, survey } = useHousingContract()
   const user = useAuthStore((s) => s.user)
   const saveSurvey = useHousingSurveyStore((s) => s.save)
@@ -138,6 +140,7 @@ export function LifeInfoFields({ onSaved, showHomeAddress = true }: LifeInfoProp
           rentDay: monthly ? Number(form.rentDay) : settings.rentDay, mgmtIncluded: monthly && mgmtIncluded, mgmtFee,
           contractFee: monthly ? 0 : Number(form.contractFee), ...months,
           ...(showHomeAddress ? { homeAddress: form.homeAddress.trim() } : {}), loan: terms ?? null })
+        await queryClient.invalidateQueries({ queryKey: ['monthly-bills'] })
         onSaved?.()
         return
       }
@@ -187,7 +190,7 @@ export function LifeInfoFields({ onSaved, showHomeAddress = true }: LifeInfoProp
           <option value="jeonse">전세</option>
         </select>
       </label>
-      <p className={common.note}>선택한 계약 유형에 맞는 항목만 표시돼요. 저장하면 가계부와 알림에도 반영돼요. 금액은 원 단위예요.</p>
+      <p className={common.note}>선택한 계약 유형에 맞는 항목만 표시돼요. 금액은 원 단위예요. 매월 납부일은 오늘 이전 날짜여도 저장할 수 있어요. 새 내역은 저장한 날 이후의 납부 건부터 생성해요. 오늘 이후 미납·예정 건에는 저장한 금액을 반영하고, 변경할 납부일이 이미 지났다면 해당 건의 기존 기한을 유지해요. 과거·납부 완료 기록은 유지하며 관리비는 계약 유형별로 구분해요.</p>
       {showHomeAddress && <label>내 집 주소<input value={form.homeAddress} onChange={(e) => change('homeAddress', e.target.value)} maxLength={200} autoComplete="street-address" placeholder="도로명 주소와 상세주소를 입력해 주세요" /></label>}
       {monthly ? <>
         <label>보증금 (원)<AmountInput value={form.deposit} onValueChange={(value) => change('deposit', value)} max={9999990000} required /></label>

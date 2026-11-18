@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Sql("/auth-fixture.sql")
+@Sql({"/auth-fixture.sql","/home-info-fixture.sql"})
 class BillIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
@@ -78,15 +78,31 @@ class BillIntegrationTests {
         assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM bill_items", Integer.class));
     }
 
-    @Test void repeatedPaymentIsIdempotentAndAmountOnlyEditPreservesPaidTime() throws Exception {
+    @Test void repeatedPaymentIsIdempotentAndPaidAmountCannotBeChanged() throws Exception {
         String id = create();
         String body = payment(id, current, "{\"paid\":true}").andExpect(status().isOk())
             .andExpect(jsonPath("$.paid").value(true)).andReturn().getResponse().getContentAsString();
         String at = com.jayway.jsonpath.JsonPath.read(body, "$.paidAt");
         payment(id, current, "{\"paid\":true}").andExpect(status().isOk()).andExpect(jsonPath("$.paidAt").value(at));
-        payment(id, current, "{\"amount\":45000}").andExpect(status().isOk())
-            .andExpect(jsonPath("$.amount").value(45000)).andExpect(jsonPath("$.paidAt").value(at));
+        payment(id, current, "{\"amount\":45000}").andExpect(status().isConflict())
+            .andExpect(jsonPath("$.message").value("납부 완료 기록의 금액은 변경할 수 없어요."));
+        payment(id, current, "{\"amount\":45000,\"paid\":false}").andExpect(status().isConflict());
+        mvc.perform(get("/api/bills").param("month", current.toString()).header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].amount").value(50000))
+            .andExpect(jsonPath("$[0].paid").value(true)).andExpect(jsonPath("$[0].paidAt").value(at));
+        assertEquals(50000L,jdbc.queryForObject("SELECT amount FROM bill_payments WHERE bill_item_id=? AND period_ym=?",Long.class,Long.valueOf(id),current.toString()));
+        var paidAt=jdbc.queryForObject("SELECT paid_at FROM bill_payments WHERE bill_item_id=? AND period_ym=?",java.sql.Timestamp.class,Long.valueOf(id),current.toString());
+        assertNotNull(paidAt);
+        assertEquals(java.time.Instant.parse(at),paidAt.toInstant());
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments", Integer.class));
+    }
+
+    @Test void unpaidAmountCanBeEditedAfterExplicitPaymentCancellation() throws Exception {
+        String id=create();
+        payment(id,current,"{\"paid\":true}").andExpect(status().isOk());
         payment(id, current, "{\"paid\":false}").andExpect(status().isOk())
+            .andExpect(jsonPath("$.paidAt").isEmpty()).andExpect(jsonPath("$.amount").value(50000));
+        payment(id,current,"{\"amount\":45000}").andExpect(status().isOk())
             .andExpect(jsonPath("$.paidAt").isEmpty()).andExpect(jsonPath("$.amount").value(45000));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments", Integer.class));
     }
