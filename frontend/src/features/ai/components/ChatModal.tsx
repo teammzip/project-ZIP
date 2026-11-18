@@ -53,6 +53,7 @@ export function ChatModal({ open, onClose, opening, ctx }: Props) {
   const { push, reset, load, setConversationId, msgs } = useChatStore()
   const [busy, setBusy] = useState(false)
   const [text, setText] = useState('')
+  const [photoTopic, setPhotoTopic] = useState<string | null>(null)
   const body = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const sentOpening = useRef<ChatOpening>(null)
@@ -98,12 +99,14 @@ export function ChatModal({ open, onClose, opening, ctx }: Props) {
 
   /** 새 대화: 빈 대화방을 새로 만들어 두면 다음에 열어도 이 새 대화가 보임 */
   const newChat = () => {
+    setPhotoTopic(null)
     reset()
     void createConversation('HOME_MODAL').then((id) => id && setConversationId(id))
   }
 
   // 카드: 정해진 질문이 있으면 바로 보내고, 없으면(자유 질문) 입력칸으로
   const pick = (tp: Topic) => {
+    setPhotoTopic(tp.id)
     const ask = CHAT_TOPICS.find((c) => c.id === tp.id)?.ask ?? EXTRA_ASK[tp.id]
     if (ask) send(ask, tp.id)
     else input.current?.focus()
@@ -166,14 +169,10 @@ export function ChatModal({ open, onClose, opening, ctx }: Props) {
         {busy && <div className={`${styles.msg} ${styles.bot} ${styles.typing}`}>답변을 쓰는 중…</div>}
       </div>
       <TopicCards className={styles.chatCards} disabled={busy} onPick={pick} />
-      <BillPhotoQuestion key={userId} entryPoint="HOME_MODAL" ensureConversation={async () => {
-        let id = useChatStore.getState().conversationId
-        if (!id) { id = await createConversation('HOME_MODAL'); useChatStore.getState().setConversationId(id) }
-        return id
-      }} onExchange={(question, answer) => {
+      {photoTopic === 'bill' && <BillPhotoQuestion key={userId} entryPoint="HOME_MODAL" onExchange={(question, answer, registered) => {
         useChatStore.getState().push({ role: 'user', text: question })
-        useChatStore.getState().push({ role: 'bot', text: answer, billRegistered: true })
-      }} />
+        useChatStore.getState().push({ role: 'bot', text: answer, billRegistered: registered })
+      }} />}
       <form className={styles.chatForm} onSubmit={submit}>
         <input ref={input} value={text} onChange={(e) => setText(e.target.value)} maxLength={80} placeholder="궁금한 걸 입력하세요" aria-label="AI에게 보낼 메시지" autoComplete="off" />
         <Button type="submit" disabled={busy}>

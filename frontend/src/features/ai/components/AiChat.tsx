@@ -171,10 +171,9 @@ export function AiChat({ region, name }: Props) {
 
       {/* 분야 카드: 둥근 직사각형, 2줄로 놓고 옆으로 밀거나 끌어서 고름 (홈 대화 모달과 같은 카드) */}
       <TopicCards activeId={topic?.id} suggestPhoto={!!photoUrl} onPick={pickTopic} />
-      <BillPhotoQuestion key={accountId} entryPoint="AI_PAGE" ensureConversation={async () => {
-        if (!conversation.current) conversation.current = await createConversation('AI_PAGE')
-        return conversation.current
-      }} onExchange={(question, answer) => setMsgs((m) => [...m, { role: 'user', text: question }, { role: 'bot', text: answer, action: { kind: 'link', to: '/my/budget/expense', label: '고정 지출에서 확인' } }])} />
+      {topic?.id === 'bill' && <BillPhotoQuestion key={accountId} entryPoint="AI_PAGE"
+        onExchange={(question, answer, registered) => setMsgs((m) => [...m, { role: 'user', text: question }, { role: 'bot', text: answer,
+          action: registered ? { kind: 'link', to: '/my/budget/expense', label: '고정 지출에서 확인' } : null }])} />}
 
       {topic && (
         <div className={styles.fields}>

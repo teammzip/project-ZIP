@@ -96,3 +96,13 @@ MySQL DDL은 암묵 커밋됩니다. 중간 실패 시 백업과 실제 스키�
 검증/다른 개발자 적용은 루트 MONTHLY_BILLS_WRITE_VERIFICATION.md를 따릅니다. 사진 원본은 저장하지 않고 회원별 SHA-256을 저장합니다.
 
 - 20261118_04_bill_monthly_delete.sql: 선택 월 삭제 시각 및 삭제 기록 제외 지출 집계 뷰. 자동 검증은 FIXED_EXPENSE_DELETE_VERIFICATION.md 참고.
+
+- 20261118_05_contract_auto_register.sql: 계약 자동 등록용 확정 시간대. 기존 home_contracts에 한 번 적용 후 서버 재시작.
+
+- 20261118_06_bill_photo_drafts.sql: 고지서 사진·QR 인식 후 사용자 동의를 기다리는 임시 결과 테이블. AI 고지서 기능 사용 전 실제 연결 DB에 적용합니다. 30분 후 만료되며 사진 원본·QR 원문은 저장하지 않습니다.
+
+- 20261118_07_contract_payment_changes.sql: 월세 due_date, 이자 paid_at 추가. 금액·납부일 변경 시 오늘 이후 미납·예정 기록 갱신에 필요합니다. 과거 월세에 없던 납부일은 현재 user_settings.rent_day로 보완하므로 과거 실제 납부일을 복원하는 것은 아닙니다. 기존 이자는 납부 완료 증빙이 없어 paid_at=NULL로 유지합니다.
+
+  1175(Safe Update) 또는 1060(중복 컬럼)으로 중단했다면 수정된 07 파일 전체를 대상 DB가 선택된 동일 연결에서 다시 실행합니다. 이미 존재하는 컬럼은 건너뛰고, 납부일이 NULL인 월세만 보완합니다. 보완 UPDATE 동안 해당 세션의 SQL_SAFE_UPDATES만 해제한 후 원래 값으로 복원합니다. UPDATE 중 다른 오류로 중단되면 마지막 복원문을 별도 실행하거나 연결을 종료합니다. Workbench 전역 설정 변경이나 기존 컬럼 삭제는 필요하지 않습니다. 컬럼 존재 확인은 타입까지 검증하지 않으므로 적용 후 SHOW COLUMNS로 due_date=DATE, paid_at=DATETIME인지 확인합니다.
+- 20261118_08_contract_payment_effective_from.sql: 내 집 정보 저장일을 신규 계약 납부 내역의 반영 시작일로 기록합니다. 이미 지난 월세·관리비·이자를 조회/스케줄러가 새로 만드는 것을 막습니다. 기존 기록은 변경하지 않으며 컬럼이 있으면 건너뜁니다. 적용 후 백엔드를 재시작합니다. 검증은 RECURRING_PAYMENT_DAY_VERIFICATION.md 참고.
+- 20261118_09_management_contract_kind.sql: bill_items.home_contract_kind를 추가하고 현재 내 집 정보와 연결된 관리비의 유형을 기록합니다. 월세·전세 전환 후 각 유형의 관리비만 조회합니다. 기존 컬럼은 건너뛰며 UPDATE 동안 해당 세션의 Safe Update만 해제·복원합니다. 기존에 하나의 관리비 항목으로 여러 계약 유형 기록을 섞어 저장한 경우 과거 각 행의 유형은 복원할 수 없습니다. 상세 검증은 MANAGEMENT_CONTRACT_FIX_VERIFICATION.md 참고.

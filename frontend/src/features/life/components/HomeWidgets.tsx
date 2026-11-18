@@ -1,3 +1,10 @@
+import { useQuery } from '@tanstack/react-query'
+import { isMockApi } from '@/features/auth/api'
+import { useAuthStore } from '@/features/auth'
+import { getErrorMessage } from '@/lib/apiClient'
+import { getMonthlyBills } from '../billsApi'
+import { useBillingTimeZone } from '../useBillingTimeZone'
+import { useLocalMonth } from '../useLocalMonth'
 import { lazy, Suspense, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
@@ -146,11 +153,54 @@ export function IncomeChart() {
 
 /** 이번 달(지난 달) 지출 구성 도넛: 월세 + 공과금 + 기타 지출 분류별 */
 export function SpendDonut() {
+  return isMockApi ? <LocalSpendDonut /> : <ServerSpendDonut />
+}
+
+function ServerSpendDonut() {
+  const userId = useAuthStore((s) => s.user?.id)
+  const token = useAuthStore((s) => s.token)
+  const spends = useLifeStore((s) => s.spends)
+  const { choice, resolving } = useBillingTimeZone()
+  const preferred = choice?.source === 'device' ? undefined : choice?.timeZone
+  const { timeZone, currentMonth } = useLocalMonth(preferred)
+  const ready = !resolving && (!preferred || preferred === timeZone)
+  const [back, setBack] = useState(0)
+  const [year, number] = currentMonth.split('-').map(Number)
+  const month = back ? monthKeyOf(new Date(year, number - 2, 1)) : currentMonth
+  const query = useQuery({
+    queryKey: ['monthly-bills', userId, token, timeZone, month],
+    queryFn: ({ signal }) => getMonthlyBills(month, timeZone, signal),
+    enabled: !!userId && !!token && ready,
+    gcTime: 0, staleTime: 0, refetchInterval: 60000,
+    refetchOnWindowFocus: 'always', retry: false,
+  })
+  if (!userId || !token) return <Card title="이번 달 지출 구성"><p>로그인 후 조회해 주세요.</p></Card>
+  if (!ready || query.isPending) return <Card title="이번 달 지출 구성"><p role="status">지출 내역을 불러오는 중이에요.</p></Card>
+  if (query.isError) return <Card title="이번 달 지출 구성"><p role="alert">{getErrorMessage(query.error, '지출 내역을 불러오지 못했어요.')}</p><button onClick={() => void query.refetch()}>다시 조회</button></Card>
+  const sums = new Map<string, number>()
+  for (const bill of [...(query.data?.housingItems ?? []), ...(query.data?.items ?? [])]) {
+    sums.set(bill.tag, (sums.get(bill.tag) ?? 0) + bill.amount)
+  }
+  for (const spend of spends) {
+    if (spend.date.slice(0, 7) === month) sums.set(spend.cat, (sums.get(spend.cat) ?? 0) + spend.amount)
+  }
+  return <SpendDonutView rows={[...sums].sort((a, b) => b[1] - a[1])} back={back} setBack={setBack}
+    note="고정 지출은 가계부 서버 내역의 미납·예정 금액을 포함해요. 기타 지출은 현재 기기에 저장된 기록이에요." />
+}
+
+function LocalSpendDonut() {
   const { kind, isJeonse } = useHousingContract()
   const { charges } = useLoanInterest()
   const { spends, bills, settings } = useLifeStore(useShallow((s) => ({ spends: s.spends, bills: s.bills, settings: s.settings })))
   const [back, setBack] = useState(0)
-  let rows = spendBreakdown(back, spends, bills, settings, charges, kind).rows
+  const rows = spendBreakdown(back, spends, bills, settings, charges, kind).rows
+  return <SpendDonutView rows={rows} back={back} setBack={setBack} note={back === 1 ? (isJeonse ? '지난 달 공과금은 이번 달과 같은 금액으로 계산해요.' : '지난 달은 월세·공과금을 이번 달과 같은 금액으로 계산해요.') : undefined} />
+}
+
+function SpendDonutView({ rows: sourceRows, back, setBack, note }: {
+  rows: [string, number][]; back: number; setBack: (value: number) => void; note?: string
+}) {
+  let rows = sourceRows
   if (rows.length > 5) {
     // 많으면 상위 4개 + 나머지는 "그 외"로 묶음
     const rest = rows.slice(4).reduce((t, r) => t + r[1], 0)
@@ -202,7 +252,7 @@ export function SpendDonut() {
           ))}
         </ul>
       </div>
-      {back === 1 && <p className={common.note}>{isJeonse ? '지난 달 공과금은 이번 달과 같은 금액으로 계산해요.' : '지난 달은 월세·공과금을 이번 달과 같은 금액으로 계산해요.'}</p>}
+      {note && <p className={common.note}>{note}</p>}
     </Card>
   )
 }

@@ -50,7 +50,8 @@ function setup(kind) {
     if (name === '@/lib/cssVar') return cssVars
     if (name === '../payments') return payments
     if (name === '../validateLifeInfo') return lifeValidation
-    if (name === '@/features/auth/api') return { isMockApi: true }
+    if (name === '@tanstack/react-query') return { useQueryClient: () => ({ invalidateQueries: async () => {} }) }
+      if (name === '@/features/auth/api') return { isMockApi: true }
     if (name === '../homeApi') return {}
     if (name === '@/lib/apiClient') return { getErrorMessage: (cause) => cause.message }
     if (name === './interest') return interest

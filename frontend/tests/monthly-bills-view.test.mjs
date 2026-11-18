@@ -89,3 +89,44 @@ test('우선순위 시간대가 확정되고 월 계산이 맞춰지기 전에�
   assert.equal(s.options().enabled, true)
   assert.ok(s.html().includes('선택한 월을 불러오는 중'))
 })
+
+
+test('서버 계약 항목을 합계에 포함하고 계약 형태와 내 집 정보 안내를 표시한다', () => {
+  const s = setup()
+  s.result({ data: { contractKind: 'monthly', month: '2026-05', timeZone: 'Asia/Seoul', periodFrom: '2026-05-01T00:00:00+09:00', periodThrough: '2026-05-18T00:00:00+09:00', queriedAt: '2026-05-18T00:00:00+09:00', items: [], housingItems: [{ id: 'rent:2026-05', name: '월세', tag: '월세', amount: 550000, paid: false, active: true, snapshot: false, dueDate: '2026-05-31', memo: '계약 기준 예정 금액', source: 'rent' }] } })
+  assert.ok(s.html().includes('월세 계약'))
+  assert.ok(s.html().includes('550,000원'))
+  assert.ok(s.html().includes('내 집 정보에서 확인'))
+  s.result({ data: { contractKind: 'jeonse', timeZone: 'Asia/Seoul', periodFrom: '2026-05-01T00:00:00+09:00', periodThrough: '2026-05-18T00:00:00+09:00', queriedAt: '2026-05-18T00:00:00+09:00', items: [], housingItems: [] } })
+  assert.ok(s.html().includes('전세 계약'))
+  assert.ok(!s.html().includes('550,000원'))
+})
+
+test('계약 기간 밖이면 제외 사유와 실제 계약 기간을 표시한다', () => {
+  const s = setup()
+  const data = { contractKind: 'monthly', contractPeriod: { from: '2026-01', through: '2026-04', outside: true }, items: [], housingItems: [], timeZone: 'Asia/Seoul', periodFrom: '2026-05-01T00:00:00+09:00', periodThrough: '2026-05-18T00:00:00+09:00', queriedAt: '2026-05-18T00:00:00+09:00' }
+  s.result({ data })
+  assert.ok(s.html().includes('자동 등록 대상에서 제외'))
+  assert.ok(s.html().includes('2026-01'))
+  assert.ok(s.html().includes('2026-04'))
+  s.result({ data: { ...data, contractPeriod: { ...data.contractPeriod, outside: false } } })
+  assert.ok(!s.html().includes('자동 등록 대상에서 제외'))
+})
+
+test('계약 기간 밖이면 직접 등록을 제공하지 않고 납부 완료는 수정하지 않는다', () => {
+  const s = setup()
+  const data = { contractPeriod: { from: '2026-01', through: '2026-04', outside: true }, items: [], housingItems: [], timeZone: 'Asia/Seoul', periodFrom: '2026-05-01T00:00:00+09:00', periodThrough: '2026-05-18T00:00:00+09:00', queriedAt: '2026-05-18T00:00:00+09:00' }
+  s.result({ data })
+  assert.ok(s.html().includes('현재 날짜와 조회 월이 모두 계약 기간 안이어야'))
+  s.result({ data: { ...data, contractPeriod: { ...data.contractPeriod, outside: false }, items: [{ id: 'paid', name: '납부통신', tag: '통신', amount: 30000, paid: true, paidAt: null, snapshot: true, active: true }] } })
+  assert.ok(s.html().includes('납부 완료 · 수정 불가'))
+})
+
+test('조회 월이 계약 안이어도 현재 날짜가 계약 밖이면 등록과 수정을 차단한다', () => {
+  const s = setup()
+  s.result({ data: { contractPeriod: { from: '2026-01', through: '2026-04', outside: false, currentOutside: true },
+    items: [{ id: 'unpaid', name: '전기', tag: '공과금', amount: 30000, paid: false, snapshot: true, active: true }], housingItems: [],
+    timeZone: 'Asia/Seoul', periodFrom: '2026-04-01T00:00:00+09:00', periodThrough: '2026-04-30T23:59:59+09:00', queriedAt: '2026-05-18T00:00:00+09:00' } })
+  assert.ok(s.html().includes('현재 날짜가 계약 기간 밖이므로 등록·수정할 수 없어요'))
+  assert.ok(s.html().includes('계약 기간 밖 · 수정 불가'))
+})

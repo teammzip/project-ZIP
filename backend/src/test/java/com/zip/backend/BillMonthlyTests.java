@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Sql("/auth-fixture.sql")
+@Sql({"/auth-fixture.sql","/home-info-fixture.sql"})
 class BillMonthlyTests {
     @Autowired JdbcTemplate jdbc;
     @Autowired BillRepository repository;
