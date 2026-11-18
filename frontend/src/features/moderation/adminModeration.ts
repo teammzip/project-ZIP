@@ -12,6 +12,8 @@ type ServerMember = {
   id: string
   nickname: string
   username: string | null
+  /** 가입 방식. 소셜 가입은 username 이 없어서 화면이 이 값으로 어디로 가입했는지 보여 줘요 */
+  provider: string
   joinedAt: string | null
   posts: number
   comments: number
@@ -40,6 +42,7 @@ async function allMembers() {
 const toRecord = (m: ServerMember, history: SanctionEntry[]): BanRecord => ({
   nick: m.nickname,
   uid: m.username ?? '',
+  provider: m.provider,
   count: m.bans,
   warns: m.warns,
   perm: m.status === 'SUSPENDED' && m.permanent,

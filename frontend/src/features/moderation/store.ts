@@ -19,6 +19,8 @@ export type BanRecord = {
   nick: string
   /** 아이디는 알면 같이 저장 */
   uid?: string
+  /** 가입 방식 (EMAIL · KAKAO · GOOGLE · NAVER). 서버 모드에서만 와요 */
+  provider?: string
   /** 정지 횟수 */
   count: number
   /** 경고 횟수 */

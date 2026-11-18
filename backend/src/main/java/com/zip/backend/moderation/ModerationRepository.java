@@ -19,7 +19,8 @@ public class ModerationRepository {
     public ModerationRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     /** 회원 한 줄: 글 · 댓글 수(보이는 것), 경고 · 정지 횟수(해제 · 만료돼도 남음), 지금 정지 중인지 */
-    public record MemberRow(long id, String nickname, String username, Instant joinedAt, int posts, int comments, int warns, int bans,
+    // provider: 가입 방식(EMAIL/KAKAO/GOOGLE/NAVER). 소셜 가입은 아이디(username)가 없어서, 관리자 화면이 어디로 가입했는지 보여 주려고 추가했다.
+    public record MemberRow(long id, String nickname, String username, String provider, Instant joinedAt, int posts, int comments, int warns, int bans,
         boolean suspended, Instant until, boolean permanent) {}
 
     public record SanctionRow(long id, String type, String reason, Instant startsAt, Instant endsAt, Instant createdAt,
@@ -31,7 +32,7 @@ public class ModerationRepository {
     /** 경고 · 정지 횟수와 지금 정지 상태는 user_sanctions 를 한 번만 훑어 회원별로 모아요 (? = 지금, 여섯 번 → nowArgs) */
     private static final String MEMBER_SQL = """
         SELECT * FROM (
-          SELECT u.id, u.nickname, u.login_id, u.created_at,
+          SELECT u.id, u.nickname, u.login_id, u.signup_provider, u.created_at,
             (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id AND p.status = 'VISIBLE') AS post_count,
             (SELECT COUNT(*) FROM comments c WHERE c.user_id = u.id AND c.status = 'VISIBLE') AS comment_count,
             COALESCE(t.warn_count, 0) AS warn_count, COALESCE(t.ban_count, 0) AS ban_count,
@@ -61,7 +62,7 @@ public class ModerationRepository {
         boolean permanent = rs.getInt("perm_count") > 0;
         Timestamp until = rs.getTimestamp("active_until");
         Timestamp joined = rs.getTimestamp("created_at");
-        return new MemberRow(rs.getLong("id"), rs.getString("nickname"), rs.getString("login_id"), joined == null ? null : joined.toInstant(),
+        return new MemberRow(rs.getLong("id"), rs.getString("nickname"), rs.getString("login_id"), rs.getString("signup_provider"), joined == null ? null : joined.toInstant(),
             rs.getInt("post_count"), rs.getInt("comment_count"), rs.getInt("warn_count"), rs.getInt("ban_count"),
             rs.getInt("active_count") > 0, permanent || until == null ? null : until.toInstant(), permanent);
     }

@@ -32,6 +32,16 @@ public class AiService {
     private static final int MAX_MESSAGES = 400;
     private static final int MAX_CARD_JSON = 4000;
 
+    // 법률·세금·의료·금융은 틀리면 피해가 크다. AI가 지시문의 "전문가 확인" 안내를 빼먹어도 되도록,
+    // 이런 질문·답변에는 서버가 면책 문구를 항상 직접 덧붙인다(AI에게 맡기지 않는다).
+    private static final String DISCLAIMER = "※ 참고용 안내예요. 법률·세금·의료·금융처럼 중요한 결정은 꼭 전문가나 관할 기관에 확인해 주세요.";
+    // 면책이 필요한지 가르는 단어 목록. "법", "약"처럼 너무 흔한 한 글자는 일부러 뺐다(방법, 약속 등에 반응하지 않도록).
+    private static final List<String> SENSITIVE_WORDS = List.of(
+        "법률", "법적", "소송", "고소", "변호사", "내용증명", "임대차", "확정일자", "전입신고", "손해배상",
+        "세금", "세무", "소득세", "부가세", "연말정산", "종합소득", "양도세", "취득세",
+        "증상", "진료", "병원", "처방", "복용", "약국", "치료", "질환", "진단",
+        "대출", "투자", "주식", "보험", "펀드", "금리", "이자율");
+
     private static final String SYSTEM = """
         너는 혼자 사는 사람(자취생)의 생활을 돕는 한국어 도우미 "ZIP AI"야.
         분리배출, 냉장고 재료로 요리, 곰팡이·청소, 월세·보증금·계약, 공과금과 생활비 절약, 집주인에게 보낼 연락 문구 등을 도와줘.
@@ -112,6 +122,7 @@ public class AiService {
             String system = code == null ? SYSTEM : SYSTEM + "\n지금 대화 주제 코드: " + code;
             answer = plain(gemini.chat(system, merge(turns)));
             if (answer.isEmpty()) throw new IllegalStateException("empty answer");
+            answer = withDisclaimer(question, answer); // 빈 답변 검사 뒤에 붙인다(빈 답변이 문구만 남아 성공처럼 보이지 않게)
         } catch (RuntimeException error) {
             giveBack(userId, date);
             log.warn("Gemini call failed: {}", error.toString());
@@ -199,6 +210,19 @@ public class AiService {
             out.put("card", Map.of("type", m.cardType(), "data", json.readTree(m.cardData())));
         }
         return out;
+    }
+
+    /**
+     * 질문이나 답변에 법률·세금·의료·금융 단어가 있으면 답변 끝에 면책 문구를 붙인다. 이미 붙어 있으면 또 붙이지 않는다.
+     * 이 서버 코드가 붙이므로 AI가 지시문을 무시해도 항상 들어간다.
+     */
+    public static String withDisclaimer(String question, String answer) {
+        if (answer == null || answer.isEmpty() || answer.contains(DISCLAIMER)) return answer;
+        String all = (question == null ? "" : question) + "\n" + answer;
+        for (String word : SENSITIVE_WORDS) {
+            if (all.contains(word)) return answer + "\n\n" + DISCLAIMER;
+        }
+        return answer;
     }
 
     /** The chat shows plain text, so markdown marks the model still adds are removed (**bold**, # headings, `code`, "* " bullets). */

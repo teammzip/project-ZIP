@@ -175,6 +175,7 @@ public class ModerationService {
         result.put("id", Long.toString(m.id()));
         result.put("nickname", m.nickname());
         result.put("username", m.username());
+        result.put("provider", m.provider()); // 가입 방식. 소셜 가입(아이디 없음)이면 화면이 "카카오 로그인" 등으로 표시한다.
         result.put("joinedAt", m.joinedAt() == null ? null : m.joinedAt().toString().substring(0, 10));
         result.put("posts", m.posts());
         result.put("comments", m.comments());
