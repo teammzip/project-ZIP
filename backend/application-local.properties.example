@@ -30,5 +30,14 @@ NAVER_CLIENT_SECRET=
 KAKAO_LOGIN_CLIENT_ID=
 KAKAO_LOGIN_CLIENT_SECRET=
 
+# Email verification (optional). Gmail: turn on 2-step verification, then create an "app password" and use it as MAIL_PASSWORD.
+# Without MAIL_USERNAME/MAIL_PASSWORD sending fails (503). For development without a mail account set MAIL_LOG_ONLY=true:
+# the 6-digit code is then printed in the server log instead. Never use it in production.
+MAIL_LOG_ONLY=false
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=
+MAIL_PASSWORD=
+
 # AI chat (Google AI Studio / Gemini API key). Or put it in secrets/gemini.properties
 GEMINI_API_KEY=

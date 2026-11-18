@@ -57,7 +57,7 @@ GET/PUT `/api/me/home-info` 구현 및 내 집 정보 폼 연결 완료. 계약 
 
 현재 백엔드의 PATCH `/api/auth/me`는 닉네임·한 줄 소개·캐릭터·배경색·프로필 사진 연결, 그리고 소셜 첫 가입의 주소·약관 동의(`address`, `agreeTerms`, `agreePrivacy`, `agreePolicy`, `ageOver14`, `termsVersion`; 한 번만 가능)를 지원해요. 사용자 ID·권한 등 지원하지 않는 키를 보내면 400이에요.
 
-> **서버 구현 현황(2026-11):** 로그인·로그아웃·내 정보·비밀번호 변경·프로필·회원 탈퇴·구글/네이버/카카오 소셜 로그인은 구현됨. **회원가입(`POST /auth/signup`), 이메일 인증, 아이디 찾기, 비밀번호 재설정, 토큰 재발급(`/auth/refresh`)은 아직 서버에 없어요.**
+> **서버 구현 현황(2026-11):** 로그인·로그아웃·내 정보·비밀번호 변경·프로필·회원 탈퇴·구글/네이버/카카오 소셜 로그인은 구현됨. **회원가입(`POST /auth/signup`), 이메일 인증(`/auth/email/send`·`verify`), 아이디 찾기, 비밀번호 재설정도 구현됨**(메일은 Gmail SMTP, `MAIL_USERNAME`·`MAIL_PASSWORD`가 없으면 503, 개발 중 `MAIL_LOG_ONLY=true`를 켜면 메일 대신 서버 로그에 인증번호를 찍어요). 토큰 재발급(`/auth/refresh`)은 아직 서버에 없어요.
 
 ✅는 아래 기본 인증 요청 경로가 realAuthApi에 있다는 뜻이에요. 프로필은 연동되어 있지만 제재·위치 확장 필드와 refresh 제안까지 구현되어 있다는 뜻은 아니에요.
 
