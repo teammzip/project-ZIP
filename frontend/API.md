@@ -17,14 +17,14 @@
 | [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | 📝 | `events`(기념일·매년 반복 포함) `event_categories` `event_presets` `trash_schedules` |
 | [월세 · 고정 지출·대출](#4-월세--고정-지출-) | 📝 | `rent_payments` `bill_items` `bill_payments` `housing_loans` `loan_interest_charges` |
 | [가계부](#5-가계부-수입--기타-지출-) | 📝 | `ledger_categories` `incomes` `expenses` + VIEW 2개 |
-| [알림](#6-알림-) | 📝 | `notifications` (읽음 · 삭제) |
+| [알림](#6-알림-) | ✅ | `notifications` (읽음 · 삭제) |
 | [커뮤니티 · 첨부 · 신고](#7-커뮤니티--첨부--신고-) | 📝 | `posts` `post_likes` `comments` `uploaded_files` `post_attachments` `reports` |
 | [AI](#8-ai-) | 📝 | `ai_topics`(`guide` 포함) `ai_conversations` `ai_messages` `ai_usage_daily` |
 | [지도](#9-지도-) | 📝 | `places` `place_categories` `place_reviews` · `place_favorites` · `users.home_lat/home_lon` |
 | [약관](#10-약관-) | 📝 | `terms_documents` |
 | [관리자 · 이용 정지 · 경고](#11-관리자--이용-정지-) | 📝 | `user_sanctions`(`seen_at` 포함) `users.status` `reports` |
-| [메모](#12-메모-) | 📝 | `memos` |
-| [고객센터](#13-고객센터-) | 📝 | `support_inquiries` |
+| [메모](#12-메모-) | ✅ | `memos` |
+| [고객센터](#13-고객센터-) | ✅ | `support_inquiries` |
 
 ---
 
@@ -373,7 +373,9 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 ---
 
-## 6. 알림 📝
+## 6. 알림 ✅
+
+> **2026-11-19 백엔드 구현 · 프론트 연결**: 아래 API가 모두 있어요. 서버가 아는 일이 생기면 알림을 만들어요 — **내 글 댓글 · 내 댓글 답글 · 운영자 댓글**(`COMMUNITY`, `link: community` · `refId` = 글 번호), **운영자가 지운 · 신고로 숨긴 내 글 · 댓글 · 경고 · 문의 답변**(`SYSTEM`, 문의는 `link: support`). 내가 한 일은 알리지 않고, 알림을 끈 회원(`user_settings.noti_on = 0`)에게는 만들지 않아요. 일정 · 쓰레기 · 월세 알림은 일정이 아직 서버에 없어서 지금처럼 프론트가 계산하고, 화면은 두 가지를 합쳐 보여 줘요 (`features/life/notifications.ts`, 서버 알림을 누르면 그 글 · 문의로 이동). 자세한 서버 규칙은 [backend/IMPLEMENTATION.md](../backend/IMPLEMENTATION.md#알림).
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
@@ -389,7 +391,7 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 - `read`는 `read_at`이 있으면 `true`. `unreadCount`가 메뉴·종의 빨간 점이 돼요.
 - 알림 화면은 **안 읽음 / 읽음**으로 나눠 보고(`status`), "모두 읽음"은 `ids: []`, 읽은 알림은 골라서 **삭제**해요. 지운 알림은 다시 안 나와야 해요 (줄을 지우거나 `deleted_at`을 두고 목록에서 빼기).
 - 설정에서 알림을 끄면(`notiOn: false`) 만들지 않거나 빈 목록을 주세요.
-- 지금 프론트는 일정·쓰레기·월세로 알림을 직접 계산하고(`features/life/derive.ts`의 `buildNotis`), 읽음은 `zip-life`의 `notiRead`, 지운 것은 `notiDeleted`(알림 id → true)에 저장해요. 서버가 알림을 만들기 시작하면 이 API로 바꿀게요.
+- 일정·쓰레기·월세 알림은 아직 프론트가 직접 계산하고(`features/life/derive.ts`의 `buildNotis`), 그 읽음은 `zip-life`의 `notiRead`, 지운 것은 `notiDeleted`에 저장해요. 서버 알림(id 앞에 `s`)의 읽음 · 지우기는 이 API를 써요. 일정이 서버로 옮겨지면 일정 알림도 서버가 만들게 바꿀 수 있어요.
 - **홈 알림 칸**: 메모 옆에 알림이 세로로 쌓여요(넓은 화면 4개 · 좁은 화면 3개, 나머지는 "+N개 더 있어요"). "닫기"는 **그날 하루만 숨김**이라 브라우저에만 저장해요(`zip-home-noti-closed`, "닫은 알림 다시 보기"로 되살림). 읽음 처리와는 달라서 서버 API는 필요 없어요.
 
 ---
@@ -588,7 +590,9 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 ---
 
-## 12. 메모 📝
+## 12. 메모 ✅
+
+> **2026-11-19 백엔드 구현 · 프론트 연결**: 아래 API와 홈 메모 순서 API가 모두 있어요. 서버 모드에서는 `features/memo/sync.ts`가 들어올 때 서버 메모를 받고, 고친 것을 0.5초 모았다가 저장해요(화면은 그대로 `useMemoStore`). 자세한 서버 규칙은 [backend/IMPLEMENTATION.md](../backend/IMPLEMENTATION.md#메모).
 
 마이페이지 **"메모" 탭(`/my/memo`, 메모장)**과 **홈 메모 위젯**이 써요. React 화면이 다 있고(`features/memo`), 지금은 브라우저(`zip-memos`)에 저장해요.
 
@@ -618,21 +622,24 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 ---
 
-## 13. 고객센터 📝
+## 13. 고객센터 ✅
 
 마이페이지 > 내 정보 > 고객센터(`/my/settings/support`): 자주 묻는 질문 · 1대1 문의 · 내 문의 내역. 관리자는 `/admin`에서 문의에 답변해요.
 
+> **2026-11-19 백엔드 구현 · 프론트 연결**: 아래 API가 모두 있어요. 서버 모드(`VITE_USE_MOCK=false`)에서 고객센터 화면과 관리자 "문의 관리" 탭이 서버를 써요 (`features/support/api.ts`). 자세한 서버 규칙은 [backend/IMPLEMENTATION.md](../backend/IMPLEMENTATION.md#고객센터).
+
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
-| GET | `/api/support/inquiries` | — | `[inquiry]` (내 문의, 관리자는 전체) |
-| POST | `/api/support/inquiries` | `{ category, title, content }` | `inquiry` |
-| POST | `/api/admin/support/inquiries/{id}/answer` | `{ content }` | `inquiry` (관리자만, 문의당 답변 하나) |
+| GET | `/api/support/inquiries` | — | `[inquiry]` (내 문의, 최근 것부터) |
+| POST | `/api/support/inquiries` | `{ category, title, content }` | 201 `inquiry` (하루 20개까지, 넘으면 429) |
+| GET | `/api/admin/support/inquiries` | — | `[inquiry]` (관리자만, 전체 · 답변 대기부터) |
+| POST | `/api/admin/support/inquiries/{id}/answer` | `{ content }` | `inquiry` (관리자만, 문의당 답변 하나 — 이미 있으면 409) |
 
 ```json
 { "id": "5", "userId": "2", "nickname": "지은", "category": "이용 문의", "title": "일정이 안 보여요", "content": "…", "createdAt": "2026-10-31T09:00:00Z", "answer": { "content": "…", "createdAt": "2026-10-31T11:00:00Z" } }
 ```
 - `category`: 이용 문의 · 오류 신고 · 개선 제안 · 계정 문의 · 기타. 제목 100자, 내용 · 답변 3,000자 이내.
-- 내 문의만 보이게 하고 답변은 관리자만 쓰게 **서버에서 권한을 확인**해 주세요 (지금은 브라우저 `zip-support`에 저장).
+- 내 문의만 보이고 답변은 관리자만 쓸 수 있게 **서버에서 권한을 확인**해요. 가짜 API 모드는 지금처럼 브라우저 `zip-support`에 저장해요.
 - DB: `support_inquiries` (`answer_content` · `answered_by` · `answered_at`, 답변 대기 = `answered_at IS NULL`).
 - 프론트 대응: `Inquiry` (`features/support/store.ts`)
 

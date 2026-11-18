@@ -3,7 +3,8 @@ import { persist } from 'zustand/middleware'
 import { createAccountStorage } from '@/lib/accountStorage'
 import type { Memo } from './types'
 
-/* 메모장 (회원별 localStorage 'zip-memos:user:<id>'). 처음에는 비어 있고, 쓰는 대로 바로 저장. 데이터 초기화 · 회원 탈퇴 때 reset */
+/* 메모장 (회원별 localStorage 'zip-memos:user:<id>'). 처음에는 비어 있고, 쓰는 대로 바로 저장. 데이터 초기화 · 회원 탈퇴 때 reset.
+ * 서버 모드에서는 sync.ts 가 서버의 메모를 받아 넣고, 바뀐 것을 서버에 저장해요 (이 저장소는 화면 상태 + 이 기기 사본) */
 export const HOME_MAX = 3
 type MemoState = {
   memos: Memo[]

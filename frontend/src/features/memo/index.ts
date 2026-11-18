@@ -2,3 +2,4 @@
 export { MemoBoard } from './components/MemoBoard'
 export { MemoWidget } from './components/MemoWidget'
 export { useMemoStore } from './store'
+export { useMemoServerSync, withoutMemoSync } from './sync'

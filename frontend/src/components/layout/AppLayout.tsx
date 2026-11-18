@@ -5,6 +5,7 @@ import logo from '@/assets/images/logo-zip.png'
 import { Button } from '@/components/ui'
 import { useAuthStore, useLogout } from '@/features/auth'
 import { useNotis } from '@/features/life'
+import { useMemoServerSync } from '@/features/memo'
 import { WarnNotice } from '@/features/moderation'
 import { Avatar } from '@/features/profile'
 import { cx } from '@/lib/cx'
@@ -26,6 +27,7 @@ export function AppLayout() {
   const [profileOpen, setProfileOpen] = useState(false)
   const toggleProfile = () => setProfileOpen((v) => !v)
   const showFab = pathname !== '/ai' && pathname !== '/map' // AI 버튼은 AI · 동네 화면에선 안 나옴
+  useMemoServerSync() // 서버 모드: 메모장 · 홈 메모 위젯을 서버와 맞춤 (어느 화면에 있든 한 번만)
 
   // 화면을 옮기면 ☰ 메뉴는 닫힘 (렌더 중에 이전 주소와 비교 — effect 안에서 setState 하지 않으려고)
   const [lastPath, setLastPath] = useState(pathname)

@@ -144,12 +144,12 @@ public class CommunityRepository {
             CommunityRepository::comment, viewerId, commentId).stream().findFirst();
     }
 
-    /** 답글을 달 댓글: 보이는 댓글이면 그 글 번호와 그 댓글의 부모(없으면 null) */
-    public record ReplyTarget(long postId, Long parentId) {}
+    /** 답글을 달 댓글: 보이는 댓글이면 그 글 번호, 그 댓글의 부모(없으면 null), 그 댓글을 쓴 사람 */
+    public record ReplyTarget(long postId, Long parentId, long authorId) {}
 
     public Optional<ReplyTarget> replyTarget(long commentId) {
-        return jdbc.query("SELECT post_id, parent_id FROM comments WHERE id = ? AND status = 'VISIBLE'",
-            (rs, row) -> new ReplyTarget(rs.getLong("post_id"), parentId(rs)), commentId).stream().findFirst();
+        return jdbc.query("SELECT post_id, parent_id, user_id FROM comments WHERE id = ? AND status = 'VISIBLE'",
+            (rs, row) -> new ReplyTarget(rs.getLong("post_id"), parentId(rs), rs.getLong("user_id")), commentId).stream().findFirst();
     }
 
     /** 여러 글의 첨부를 한 번에 (글 번호 → 붙인 순서대로) */

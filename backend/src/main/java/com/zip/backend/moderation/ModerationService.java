@@ -1,6 +1,7 @@
 package com.zip.backend.moderation;
 
 import com.zip.backend.common.ApiException;
+import com.zip.backend.notification.NotificationService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -29,10 +30,12 @@ public class ModerationService {
     private static final Pattern CONTROL = Pattern.compile("\\p{Cntrl}");
 
     private final ModerationRepository repository;
+    private final NotificationService notifications;
     private final Clock clock;
 
-    public ModerationService(ModerationRepository repository, Clock clock) {
+    public ModerationService(ModerationRepository repository, NotificationService notifications, Clock clock) {
         this.repository = repository;
+        this.notifications = notifications;
         this.clock = clock;
     }
 
@@ -157,6 +160,8 @@ public class ModerationService {
         var ends = valid.days() == null ? null : now.plus(Duration.ofDays(valid.days()));
         repository.insertSanction(userId, valid.type(), valid.reason(), now, ends, adminId);
         if (!valid.type().equals("WARNING")) repository.setStatus(userId, "SUSPENDED");
+        // 경고는 알림에도 남김 (정지는 로그인 자체가 막히고 로그인 화면에서 안내)
+        else notifications.send(userId, adminId, NotificationService.SYSTEM, "운영 정책 경고를 받았어요", "사유: " + valid.reason(), null, null);
     }
 
     /** 기간 정지의 날 수 (경고 · 영구 정지는 null) */

@@ -1,4 +1,4 @@
-/* 메모 모양 (서버가 생기면 DB memos 표 — frontend/API.md 12번) */
+/* 메모 모양 (서버 모드는 DB memos 표 — frontend/API.md 12번, features/memo/sync.ts) */
 export type MemoItem = { text: string; done: boolean }
 
 export type Memo = {
