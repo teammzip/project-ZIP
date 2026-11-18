@@ -29,7 +29,10 @@ type DialogState = {
   onOk: (action: Action, reason: string, deleteReason?: string) => void
 }
 
-type Member = { nick: string; uid: string; posts: number; cmts: number; count: number; warns: number; rec: BanRecord | null; active: boolean; joined?: string }
+/** 아이디가 없는 소셜 가입 회원에게 보여 줄 가입 방식 이름 */
+const PROVIDER_LABEL: Record<string, string> = { KAKAO: '카카오 로그인', GOOGLE: '구글 로그인', NAVER: '네이버 로그인' }
+
+type Member = { nick: string; uid: string; provider?: string; posts: number; cmts: number; count: number; warns: number; rec: BanRecord | null; active: boolean; joined?: string }
 
 /** 시안이라 가입 기록이 없어서 닉네임으로 정한 예시 가입일 (실제로는 users.created_at) */
 function joinedAt(nick: string) {
@@ -89,7 +92,7 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
     const rec = records[m.nick] ?? null
     const counted = server?.counts[m.nick]
     return {
-      ...m, rec, uid: rec?.uid ?? '', count: rec?.count ?? 0, warns: rec?.warns ?? 0, active: isActive(rec),
+      ...m, rec, uid: rec?.uid ?? '', provider: rec?.provider, count: rec?.count ?? 0, warns: rec?.warns ?? 0, active: isActive(rec),
       ...(counted ? { posts: counted.posts, cmts: counted.cmts, joined: counted.joinedAt } : {}),
     }
   })
@@ -354,7 +357,7 @@ function MemberRow({ m, checked, onCheck, histOpen, onHist, onWarn, onBan }: Row
           <input type="checkbox" checked={checked} onChange={(e) => onCheck(e.target.checked)} aria-label={`${m.nick} 선택`} />
         </td>
         <td>{m.nick}</td>
-        <td>{m.uid || '-'}</td>
+        <td>{m.uid || (m.provider && PROVIDER_LABEL[m.provider]) || '-'}</td>
         <td>{m.joined ?? joinedAt(m.nick)}</td>
         <td>{m.posts}</td>
         <td>{m.cmts}</td>
