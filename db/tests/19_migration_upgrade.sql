@@ -563,9 +563,21 @@ CREATE TABLE IF NOT EXISTS `kakao_place_favorites` (
   CONSTRAINT `chk_kakao_place_favorites_name` CHECK (CHAR_LENGTH(TRIM(`name`)) > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='카카오 검색 장소 즐겨찾기 (id · 이름만, 주소 · 좌표 없음)';
 
--- 2026-11-15 휴대전화 인증을 이메일 인증으로 교체 (db/migrations/20261115_02_email_verification.sql 사본, 사전 확인 SQL 제외)
+-- 2026-11-15 휴대전화 인증을 이메일 인증으로 교체
+-- 바뀌는 것
+--   users                : email 비어도 됨(NULL 허용), email_verified_at 추가, phone · phone_verified_at · uk_users_phone 삭제
+--   phone_verifications  : 삭제 → email_verifications 새로 만듦 (phone 자리에 email)
+--   password_resets      : method 에서 PHONE 값 삭제 (EMAIL 만 남김)
+--   banned_identities    : 재가입 차단을 하지 않기로 해서 표 삭제
+-- 20261115_kakao_place_favorites.sql 까지 적용된 DB 에 한 번만 실행합니다. 새 DB 는 최신 schema.sql 만 실행합니다.
+-- ALTER · DROP 은 다시 실행하면 실패하므로 부분 실행 뒤에 파일 전체를 재실행하지 않습니다. DDL 은 암묵 커밋되며 롤백 파일은 제공하지 않습니다.
 USE `zip_migration_test`;
 
+-- 사전 확인: 아래 두 값이 모두 0 이어야 합니다. 0 이 아니면 먼저 해당 회원 · 기록을 정리하고 진행합니다.
+SELECT COUNT(*) AS password_resets_by_phone FROM `password_resets` WHERE `method` = 'PHONE';
+SELECT COUNT(*) AS pending_phone_verifications FROM `phone_verifications` WHERE `consumed_at` IS NULL AND `expires_at` > NOW();
+
+-- 1. users: 휴대전화 컬럼 삭제, 이메일 NULL 허용 유지, 이메일 인증 일시 추가
 ALTER TABLE `users`
   DROP INDEX `uk_users_phone`,
   DROP COLUMN `phone`,
@@ -573,6 +585,7 @@ ALTER TABLE `users`
   MODIFY COLUMN `email` VARCHAR(100) NULL COMMENT '이메일 — 가입 화면에서는 인증을 거쳐 필수로 받음. 소셜 로그인은 제공 안 할 수 있어 비어 있을 수 있음. 아이디·비밀번호 찾기의 본인 확인에 씀',
   ADD COLUMN `email_verified_at` DATETIME NULL COMMENT '이메일 인증 일시 — 인증번호로 이메일을 확인한 시각 (인증 전은 비어 있음)' AFTER `email`;
 
+-- 2. phone_verifications 삭제, email_verifications 새로 만들기
 DROP TABLE IF EXISTS `phone_verifications`;
 
 CREATE TABLE IF NOT EXISTS `email_verifications` (
@@ -593,10 +606,11 @@ CREATE TABLE IF NOT EXISTS `email_verifications` (
   CONSTRAINT `fk_email_verifications_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='이메일 인증: 메일로 보낸 인증번호 기록.';
 
-
+-- 3. password_resets: method 에서 PHONE 삭제
 ALTER TABLE `password_resets`
   MODIFY COLUMN `method` ENUM('EMAIL') NOT NULL DEFAULT 'EMAIL' COMMENT '본인 확인 방법 — 이메일 인증';
 
+-- 4. banned_identities 삭제 (재가입 차단 없음)
 DROP TABLE IF EXISTS `banned_identities`;
 
 SELECT 'U14 이메일 인증 전환 구조' AS test,
@@ -606,3 +620,221 @@ SELECT 'U14 이메일 인증 전환 구조' AS test,
  AND (SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('phone_verifications','banned_identities'))=0
  AND (SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='email_verifications')=1
  AND (SELECT COUNT(*) FROM user_sanctions WHERE id=@mig_sanction)=1,'PASS','FAIL') AS result;
+
+-- 2026-11-15 저장 리스트 (내가 만든 장소 묶음: "내 장소" · "맛집" · "제주" …)
+-- ★ 저장 창에서 리스트를 골라 저장합니다. 한 장소를 여러 리스트에 넣을 수 있고, 어느 리스트에도 없으면 저장이 풀립니다.
+-- place_key 는 DB 장소면 places.id 문자열("12"), 카카오 장소면 "kakao:카카오장소id" (카카오 장소 이름 · 종류는 kakao_place_favorites 에).
+-- 20261115_02_email_verification.sql 다음에 한 번 실행합니다 (kakao_place_favorites 까지 적용된 DB 면 순서 상관없음). 새 DB 는 최신 schema.sql 만 실행합니다. 다시 실행해도 안전합니다.
+USE `zip_migration_test`;
+
+CREATE TABLE IF NOT EXISTS `place_lists` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '리스트 아이디 — 자동 증가',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '리스트 주인',
+  `name` VARCHAR(20) NOT NULL COMMENT '리스트 이름 — 회원 안에서 중복 불가',
+  `color` CHAR(7) NOT NULL COMMENT '리스트 색 (#RRGGBB)',
+  `sort_order` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '표시 순서',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '만든 일시',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_place_lists_user_name` (`user_id`, `name`),
+  CONSTRAINT `fk_place_lists_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_place_lists_name` CHECK (CHAR_LENGTH(TRIM(`name`)) > 0),
+  CONSTRAINT `chk_place_lists_color` CHECK (`color` REGEXP '^#[0-9a-fA-F]{6}$')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='저장 리스트: 회원이 만든 장소 묶음';
+
+CREATE TABLE IF NOT EXISTS `place_list_items` (
+  `list_id` BIGINT UNSIGNED NOT NULL COMMENT '리스트 아이디',
+  `place_key` VARCHAR(60) NOT NULL COMMENT '장소 — DB 장소 번호 또는 "kakao:카카오장소id"',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '넣은 일시',
+  PRIMARY KEY (`list_id`, `place_key`),
+  CONSTRAINT `fk_place_list_items_list_id` FOREIGN KEY (`list_id`) REFERENCES `place_lists` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_place_list_items_key` CHECK (`place_key` REGEXP '^([1-9][0-9]{0,18}|kakao:[0-9]{1,50})$')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='저장 리스트에 넣은 장소';
+
+-- 2026-11-15 커뮤니티 운영
+-- 1) 글 · 댓글 삭제 기록: 누가 지웠는지(deleted_by) · 운영자가 지운 사유(delete_reason)
+--    작성자 본인이 지우면 deleted_by = 본인, 사유는 비움. 운영자가 지우면 deleted_by = 운영자, 사유는 관리자 화면에서 받은 값.
+-- 2) 목록 속도 키: 전체 동네 글 목록(보이는 글, 새 글부터) · 관리자 신고 목록(새 신고부터)
+-- 20261115_kakao_place_favorites.sql 까지 적용된 DB 에 한 번 실행합니다. 새 DB 는 최신 schema.sql 만 실행합니다.
+-- 이미 적용했으면 다시 실행하지 않습니다 (ALTER 는 다시 실행하면 실패). 기존 데이터는 그대로이고 새 칸은 비어 있어요.
+USE `zip_migration_test`;
+
+-- 사전 확인: 셋 다 0 이어야 합니다 (이미 적용됐으면 2 · 2 · 2)
+SELECT COUNT(*) AS posts_columns_already FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'posts' AND COLUMN_NAME IN ('deleted_by', 'delete_reason');
+SELECT COUNT(*) AS comments_columns_already FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'comments' AND COLUMN_NAME IN ('deleted_by', 'delete_reason');
+SELECT COUNT(DISTINCT INDEX_NAME) AS keys_already FROM information_schema.STATISTICS
+WHERE TABLE_SCHEMA = DATABASE() AND INDEX_NAME IN ('idx_posts_status_created_at', 'idx_reports_created_at');
+
+ALTER TABLE `posts`
+  ADD COLUMN `deleted_by` BIGINT UNSIGNED NULL COMMENT '지운 사람 — 작성자 본인 또는 운영자 (20261115_04)' AFTER `deleted_at`,
+  ADD COLUMN `delete_reason` VARCHAR(200) NULL COMMENT '운영자가 지운 사유 — 작성자 본인 삭제는 비움' AFTER `deleted_by`,
+  ADD CONSTRAINT `fk_posts_deleted_by` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD KEY `idx_posts_status_created_at` (`status`, `created_at`, `id`);
+
+ALTER TABLE `comments`
+  ADD COLUMN `deleted_by` BIGINT UNSIGNED NULL COMMENT '지운 사람 — 작성자 본인 또는 운영자 (20261115_04)' AFTER `deleted_at`,
+  ADD COLUMN `delete_reason` VARCHAR(200) NULL COMMENT '운영자가 지운 사유 — 작성자 본인 삭제는 비움' AFTER `deleted_by`,
+  ADD CONSTRAINT `fk_comments_deleted_by` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+ALTER TABLE `reports`
+  ADD KEY `idx_reports_created_at` (`created_at`, `id`);
+
+-- 연결된 DB에서 실행. 이름은 기존 users.nickname, 생년월일은 개인 정보로 별도 저장한다.
+-- 기존 주거 설문은 보존하며 개인 정보 행이 없는 회원만 조회 시 설문 생년월일을 참고한다.
+CREATE TABLE IF NOT EXISTS `user_personal_info` (
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `birth_date` DATE NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_user_personal_info_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='회원 개인 정보: 주거 계약과 분리';
+
+-- 현재 연결된 DB에서 실행. 기존 설문과 개인 정보는 변경하지 않는다.
+CREATE TABLE IF NOT EXISTS `home_contracts` (
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `contract_kind` VARCHAR(10) NOT NULL,
+  `deposit` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `management_included` TINYINT(1) NOT NULL DEFAULT 0,
+  `management_fee` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `contract_fee` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `management_bill_id` BIGINT UNSIGNED NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_home_contract_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_home_contract_bill` FOREIGN KEY (`management_bill_id`) REFERENCES `bill_items` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `ck_home_contract_kind` CHECK (contract_kind IN ('monthly','jeonse'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Apply once before starting the updated backend. Existing amounts and payment states are preserved.
+ALTER TABLE `bill_payments` ADD COLUMN `due_date` DATE NULL COMMENT '월별 납부 기한';
+CREATE TABLE IF NOT EXISTS `bill_photo_imports` (
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `image_hash` CHAR(64) NOT NULL,
+  `bill_item_id` BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (`user_id`, `image_hash`),
+  CONSTRAINT `fk_bill_photo_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_bill_photo_item` FOREIGN KEY (`bill_item_id`) REFERENCES `bill_items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Apply once after 20261118_01_bill_monthly_registration.sql.
+ALTER TABLE `bill_payments` ADD COLUMN `memo` VARCHAR(200) NULL COMMENT '월별 고정 지출 메모';
+
+CREATE TABLE IF NOT EXISTS `bill_document_keys` (
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `document_hash` CHAR(64) NOT NULL,
+  `bill_item_id` BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (`user_id`, `document_hash`),
+  CONSTRAINT `fk_bill_document_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_bill_document_item` FOREIGN KEY (`bill_item_id`) REFERENCES `bill_items` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE bill_payments ADD COLUMN deleted_at DATETIME NULL COMMENT '선택 월 기록 삭제 시각';
+
+CREATE OR REPLACE VIEW `v_monthly_spend_breakdown` AS
+SELECT r.user_id, r.period_ym, '월세' AS label, r.amount AS amount
+FROM rent_payments r
+UNION ALL
+SELECT b.user_id, p.period_ym, '공과금' AS label, SUM(p.amount) AS amount
+FROM bill_payments p JOIN bill_items b ON b.id = p.bill_item_id
+WHERE p.deleted_at IS NULL
+GROUP BY b.user_id, p.period_ym
+UNION ALL
+SELECT e.user_id, DATE_FORMAT(e.expense_date, '%Y-%m') AS period_ym, c.name AS label, SUM(e.amount) AS amount
+FROM expenses e JOIN ledger_categories c ON c.id = e.category_id
+GROUP BY e.user_id, DATE_FORMAT(e.expense_date, '%Y-%m'), c.name
+UNION ALL
+SELECT l.user_id, DATE_FORMAT(c.charge_date, '%Y-%m') AS period_ym, '전세 대출 이자' AS label, SUM(c.amount) AS amount
+FROM loan_interest_charges c JOIN housing_loans l ON l.id = c.loan_id
+GROUP BY l.user_id, DATE_FORMAT(c.charge_date, '%Y-%m');
+
+ALTER TABLE home_contracts ADD COLUMN billing_time_zone VARCHAR(64) NULL COMMENT '주소/위치/기기 우선순위로 확정한 자동 등록 시간대';
+
+CREATE TABLE IF NOT EXISTS `bill_photo_drafts` (
+  `id` CHAR(36) NOT NULL,
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `conversation_id` BIGINT UNSIGNED NOT NULL,
+  `period_ym` CHAR(7) NOT NULL,
+  `time_zone` VARCHAR(64) NOT NULL,
+  `photo_hash` CHAR(64) NOT NULL,
+  `document_hash` CHAR(64) NULL,
+  `input_json` TEXT NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `state` VARCHAR(12) NOT NULL DEFAULT 'PENDING',
+  PRIMARY KEY (`id`),
+  CONSTRAINT `bill_photo_drafts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `bill_photo_drafts_ibfk_2` FOREIGN KEY (`conversation_id`) REFERENCES `ai_conversations` (`id`) ON DELETE CASCADE,
+  KEY `ix_bill_photo_drafts_owner` (`user_id`, `conversation_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 대상 DB를 선택한 연결에서 파일 전체를 실행한다. 중간 실패 후 재실행 가능하다.
+-- MySQL DDL은 자동 커밋되므로 앞서 성공한 컬럼 추가는 오류가 나도 유지된다.
+SET @contract_payment_ddl = IF(
+  EXISTS (SELECT 1 FROM information_schema.columns
+          WHERE table_schema=DATABASE() AND table_name='rent_payments' AND column_name='due_date'),
+  'SELECT ''rent_payments.due_date already exists'' AS migration_info',
+  'ALTER TABLE rent_payments ADD COLUMN due_date DATE NULL COMMENT ''월별 계약 납부 기한 스냅샷'''
+);
+PREPARE contract_payment_stmt FROM @contract_payment_ddl;
+EXECUTE contract_payment_stmt;
+DEALLOCATE PREPARE contract_payment_stmt;
+
+SET @contract_payment_ddl = IF(
+  EXISTS (SELECT 1 FROM information_schema.columns
+          WHERE table_schema=DATABASE() AND table_name='loan_interest_charges' AND column_name='paid_at'),
+  'SELECT ''loan_interest_charges.paid_at already exists'' AS migration_info',
+  'ALTER TABLE loan_interest_charges ADD COLUMN paid_at DATETIME NULL COMMENT ''실제 납부 완료 시각, NULL은 미납·예정'''
+);
+PREPARE contract_payment_stmt FROM @contract_payment_ddl;
+EXECUTE contract_payment_stmt;
+DEALLOCATE PREPARE contract_payment_stmt;
+
+-- 과거 날짜가 없던 월세 기록은 현재 저장된 납부일로 보완한다.
+-- 이 연결에서만 Safe Update를 잠시 해제하고 기존 설정으로 복원한다.
+SET @contract_payment_previous_safe_updates = @@SESSION.SQL_SAFE_UPDATES;
+SET SESSION SQL_SAFE_UPDATES = 0;
+UPDATE rent_payments r JOIN user_settings s ON s.user_id=r.user_id
+SET r.due_date=STR_TO_DATE(CONCAT(r.period_ym,'-',LPAD(LEAST(COALESCE(s.rent_day,15),DAY(LAST_DAY(CONCAT(r.period_ym,'-01')))),2,'0')),'%Y-%m-%d')
+WHERE r.due_date IS NULL;
+SET SESSION SQL_SAFE_UPDATES = @contract_payment_previous_safe_updates;
+-- UPDATE 자체가 실패해 실행이 중단되면 위 복원문을 별도로 실행하거나 연결을 종료한다.
+
+-- 대상 DB를 선택하고 전체 실행. 기존 컬럼은 유지한다.
+SET @contract_effective_ddl = IF(
+  EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE()
+          AND table_name='home_contracts' AND column_name='payment_effective_from'),
+  'SELECT ''home_contracts.payment_effective_from already exists'' AS migration_info',
+  'ALTER TABLE home_contracts ADD COLUMN payment_effective_from DATE NULL COMMENT ''계약 납부 조건의 신규 가계부 반영 시작일'''
+);
+PREPARE contract_effective_stmt FROM @contract_effective_ddl;
+EXECUTE contract_effective_stmt;
+DEALLOCATE PREPARE contract_effective_stmt;
+-- 기존 데이터는 변경하지 않는다. 내 집 정보 저장 시 서버가 지역 기준 오늘을 기록한다.
+
+-- 대상 DB를 선택하고 전체 실행. 기존 컬럼은 유지한다.
+SET @management_kind_ddl = IF(
+ EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE()
+         AND table_name='bill_items' AND column_name='home_contract_kind'),
+ 'SELECT ''bill_items.home_contract_kind already exists'' AS migration_info',
+ 'ALTER TABLE bill_items ADD COLUMN home_contract_kind VARCHAR(10) NULL COMMENT ''내 집 관리비 계약 유형, 일반 지출은 NULL'''
+);
+PREPARE management_kind_stmt FROM @management_kind_ddl;
+EXECUTE management_kind_stmt;
+DEALLOCATE PREPARE management_kind_stmt;
+
+-- 현재 내 집 정보와 연결된 관리비만 유형을 확정한다. 연결되지 않은 과거 항목은 추정하지 않는다.
+SET @management_kind_safe_updates = @@SESSION.SQL_SAFE_UPDATES;
+SET SESSION SQL_SAFE_UPDATES=0;
+UPDATE bill_items b JOIN home_contracts c ON c.management_bill_id=b.id AND c.user_id=b.user_id
+SET b.home_contract_kind=c.contract_kind WHERE b.home_contract_kind IS NULL;
+SET SESSION SQL_SAFE_UPDATES=@management_kind_safe_updates;
+-- UPDATE 실패로 중단되면 위 복원문을 별도 실행하거나 연결을 종료한다.
+
+-- 등록된 항목의 사용자 지정 해지 적용일. 기존 납부 기록은 변경하지 않는다.
+SET @bill_termination_ddl = IF(
+ EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE()
+         AND table_name='bill_items' AND column_name='termination_date'),
+ 'SELECT ''bill_items.termination_date already exists'' AS migration_info',
+ 'ALTER TABLE bill_items ADD COLUMN termination_date DATE NULL COMMENT ''사용자 지정 해지 적용일'''
+);
+PREPARE bill_termination_stmt FROM @bill_termination_ddl;
+EXECUTE bill_termination_stmt;
+DEALLOCATE PREPARE bill_termination_stmt;

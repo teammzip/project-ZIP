@@ -143,6 +143,15 @@
     },
     {
       "table": "place_reviews"
+    },
+    {
+      "table": "user_personal_info"
+    },
+    {
+      "table": "home_contracts"
+    },
+    {
+      "table": "bill_photo_drafts"
     }
   ],
   "columns": [
@@ -1318,6 +1327,16 @@
     },
     {
       "table": "loan_interest_charges",
+      "column": "paid_at",
+      "type": "datetime",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "loan_interest_charges",
       "column": "loan_id",
       "type": "char(36)",
       "nullable": "NO",
@@ -1847,6 +1866,26 @@
       "collation": ""
     },
     {
+      "table": "bill_items",
+      "column": "home_contract_kind",
+      "type": "varchar(10)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_items",
+      "column": "termination_date",
+      "type": "date",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
       "table": "bill_payments",
       "column": "id",
       "type": "bigint unsigned",
@@ -1981,6 +2020,16 @@
       "column": "bill_item_id",
       "type": "bigint unsigned",
       "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "rent_payments",
+      "column": "due_date",
+      "type": "date",
+      "nullable": "YES",
       "auto": 0,
       "generated": 0,
       "charset": "",
@@ -3885,6 +3934,216 @@
       "generated": 0,
       "charset": "",
       "collation": ""
+    },
+    {
+      "table": "user_personal_info",
+      "column": "user_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "user_personal_info",
+      "column": "birth_date",
+      "type": "date",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "home_contracts",
+      "column": "user_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "home_contracts",
+      "column": "contract_kind",
+      "type": "varchar(10)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "home_contracts",
+      "column": "billing_time_zone",
+      "type": "varchar(64)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "home_contracts",
+      "column": "payment_effective_from",
+      "type": "date",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "home_contracts",
+      "column": "deposit",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "home_contracts",
+      "column": "management_included",
+      "type": "tinyint(1)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "home_contracts",
+      "column": "management_fee",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "home_contracts",
+      "column": "contract_fee",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "home_contracts",
+      "column": "management_bill_id",
+      "type": "bigint unsigned",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_photo_drafts",
+      "column": "id",
+      "type": "char(36)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_photo_drafts",
+      "column": "user_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_photo_drafts",
+      "column": "conversation_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_photo_drafts",
+      "column": "period_ym",
+      "type": "char(7)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_photo_drafts",
+      "column": "time_zone",
+      "type": "varchar(64)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_photo_drafts",
+      "column": "photo_hash",
+      "type": "char(64)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_photo_drafts",
+      "column": "document_hash",
+      "type": "char(64)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_photo_drafts",
+      "column": "input_json",
+      "type": "text",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_photo_drafts",
+      "column": "expires_at",
+      "type": "datetime",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "bill_photo_drafts",
+      "column": "state",
+      "type": "varchar(12)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
     }
   ],
   "keys": [
@@ -4262,6 +4521,21 @@
       "table": "place_reviews",
       "name": "uk_place_reviews_place_id_user_id",
       "columns": "place_id,user_id"
+    },
+    {
+      "table": "user_personal_info",
+      "name": "PRIMARY",
+      "columns": "user_id"
+    },
+    {
+      "table": "home_contracts",
+      "name": "PRIMARY",
+      "columns": "user_id"
+    },
+    {
+      "table": "bill_photo_drafts",
+      "name": "PRIMARY",
+      "columns": "id"
     }
   ],
   "fks": [
@@ -4816,6 +5090,46 @@
       "target": "users",
       "target_column": "id",
       "delete_rule": "CASCADE"
+    },
+    {
+      "table": "user_personal_info",
+      "name": "fk_user_personal_info_user",
+      "column": "user_id",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "table": "home_contracts",
+      "name": "fk_home_contract_user",
+      "column": "user_id",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "table": "home_contracts",
+      "name": "fk_home_contract_bill",
+      "column": "management_bill_id",
+      "target": "bill_items",
+      "target_column": "id",
+      "delete_rule": "SET NULL"
+    },
+    {
+      "table": "bill_photo_drafts",
+      "name": "bill_photo_drafts_ibfk_1",
+      "column": "user_id",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "table": "bill_photo_drafts",
+      "name": "bill_photo_drafts_ibfk_2",
+      "column": "conversation_id",
+      "target": "ai_conversations",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
     }
   ],
   "checks": [
@@ -4898,6 +5212,10 @@
     {
       "table": "place_reviews",
       "name": "ck_place_review_rating"
+    },
+    {
+      "table": "home_contracts",
+      "name": "ck_home_contract_kind"
     }
   ],
   "views": [

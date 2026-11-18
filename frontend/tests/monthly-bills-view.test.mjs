@@ -27,6 +27,7 @@ function setup() {
     if (name === '../monthlyPeriod') return period
     if (name === '../billsApi') return { getMonthlyBills: () => {} }
     if (name === './MonthlyBillEditor') return { MonthlyBillEditor: () => null }
+    if (name === './MonthlyBillActions') return { MonthlyBillActions: () => null }
     if (name === '@/components/ui') return { Card: card, Button: ({ children, ...props }) => React.createElement('button', props, children) }
     if (name === '@/lib/apiClient') return { getErrorMessage: () => '조회 실패' }
     if (name === '@/lib/date') return { won: (amount) => amount.toLocaleString('ko-KR') + '원' }

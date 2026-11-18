@@ -11,6 +11,7 @@ import { useBillingTimeZone } from '../useBillingTimeZone'
 import { formatLocalTime, selectedMonth, validSelectableMonth } from '../monthlyPeriod'
 import styles from './life.module.css'
 import { MonthlyBillEditor } from './MonthlyBillEditor'
+import { MonthlyBillActions } from './MonthlyBillActions'
 
 export function MonthlyFixedExpense() {
   const userId = useAuthStore((s) => s.user?.id)
@@ -82,7 +83,18 @@ export function MonthlyFixedExpense() {
               {bill.paidAt && <small>납부: {formatLocalTime(bill.paidAt, data.timeZone)}</small>}
             </div>
             <div className={styles.moneyAmt}>{won(bill.amount)}</div>
+            <details className={styles.fixedExpenseActions} key={`menu:${userId}:${token}:${timeZone}:${month}:${bill.id}`}>
+              <summary aria-label={`${bill.name} 고정 지출 설정`} title="고정 지출 설정">
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m9.5 3-.5 2a8 8 0 0 0-1.6.9l-2-.6-2.5 4.4 1.5 1.4a8 8 0 0 0 0 1.8l-1.5 1.4 2.5 4.4 2-.6A8 8 0 0 0 9 19l.5 2h5l.5-2a8 8 0 0 0 1.6-.9l2 .6 2.5-4.4-1.5-1.4a8 8 0 0 0 0-1.8l1.5-1.4-2.5-4.4-2 .6A8 8 0 0 0 15 5l-.5-2z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </summary>
+              <div className={styles.fixedExpenseActionList}>
+            <MonthlyBillActions key={`actions:${userId}:${token}:${timeZone}:${month}:${bill.id}`} bill={bill} month={month} timeZone={timeZone} housing={housingIds.has(bill.id)} />
             {housingIds.has(bill.id) || bill.homeManaged ? <a href="/my/settings" className={common.link}>내 집 정보에서 확인</a> : contractBlocked ? <span>계약 기간 밖 · 수정 불가</span> : bill.paid ? <span>납부 완료 · 수정 불가</span> : <MonthlyBillEditor key={`${userId}:${token}:${timeZone}:${month}:${bill.id}`} month={month} timeZone={timeZone} bill={bill} />}
+              </div>
+            </details>
           </li>)}
         </ul> : <p className={common.empty}>이 달에는 고정 지출 기록이 없어요. 첫 고정 지출을 기록해 보세요.</p>}
         <details className={styles.fixedExpenseDetails}><summary>조회 정보</summary>

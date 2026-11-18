@@ -4,6 +4,7 @@ export type ServerBill = {
   id: string; name: string; tag: string; month: string
   amount: number; defaultAmount: number; paid: boolean; paidAt: string | null
   homeManaged?: boolean; active: boolean; snapshot: boolean; dueDate: string | null; memo: string
+  terminationDate?: string | null
 }
 export type MonthlyBillInput = { name?: string; tag: string; amount: number; dueDate: string; memo?: string }
 export async function registerMonthlyBill(month: string, timeZone: string, input: MonthlyBillInput) {
@@ -28,4 +29,10 @@ export async function getMonthlyBills(month: string, timeZone: string, signal?: 
 
 export async function deleteMonthlyBill(id: string, month: string, timeZone: string) {
   await apiClient.delete(`/bills/monthly/${id}`, { params: { month, timeZone } })
+}
+export async function setMonthlyBillPaid(id: string, month: string, timeZone: string, paid: boolean) {
+  await apiClient.put(`/bills/monthly/${encodeURIComponent(id)}/payment`, { paid }, { params: { month, timeZone } })
+}
+export async function terminateMonthlyBill(id: string, timeZone: string, effectiveDate: string) {
+  await apiClient.post(`/bills/monthly/${encodeURIComponent(id)}/termination`, { effectiveDate }, { params: { timeZone } })
 }

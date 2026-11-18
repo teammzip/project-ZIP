@@ -332,6 +332,7 @@ CREATE TABLE IF NOT EXISTS `bill_items` (
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록 일시',
   `tag` VARCHAR(24) NOT NULL DEFAULT '공과금' COMMENT '회원별 고정 지출 카테고리 이름',
   `home_contract_kind` VARCHAR(10) NULL COMMENT '내 집 관리비 계약 유형, 일반 지출은 NULL',
+  `termination_date` DATE NULL COMMENT '사용자 지정 해지 적용일',
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_bill_items_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='공과금 항목: 내가 관리하는 공과금 종류(가스·전기·수도 등)와 평소 금액.';
@@ -1020,39 +1021,42 @@ INSERT IGNORE INTO `ledger_categories` (`kind`, `name`, `color`, `sort_order`) V
 INSERT IGNORE INTO `ai_topics` (`code`,`name`,`description`,`photo_supported`,`sort_order`) VALUES
   ('guide','사용 방법','기능이 어디 있는지 알려드려요',0,10);
 
-CREATE TABLE IF NOT EXISTS user_personal_info (
-  user_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
-  birth_date DATE NULL,
-  CONSTRAINT fk_user_personal_info_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS `user_personal_info` (
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `birth_date` DATE NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_user_personal_info_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='회원 개인 정보: 주거 계약과 분리';
 
-CREATE TABLE IF NOT EXISTS home_contracts (
- user_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
- contract_kind VARCHAR(10) NOT NULL,
- billing_time_zone VARCHAR(64) NULL COMMENT '주소/위치/기기 우선순위로 확정한 자동 등록 시간대',
- payment_effective_from DATE NULL COMMENT '계약 납부 조건의 신규 가계부 반영 시작일',
- deposit BIGINT UNSIGNED NOT NULL DEFAULT 0,
- management_included BOOLEAN NOT NULL DEFAULT FALSE,
- management_fee BIGINT UNSIGNED NOT NULL DEFAULT 0,
- contract_fee BIGINT UNSIGNED NOT NULL DEFAULT 0,
- management_bill_id BIGINT UNSIGNED NULL,
- CONSTRAINT fk_home_contract_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
- CONSTRAINT fk_home_contract_bill FOREIGN KEY (management_bill_id) REFERENCES bill_items(id) ON DELETE SET NULL,
- CONSTRAINT ck_home_contract_kind CHECK (contract_kind IN ('monthly','jeonse'))
+CREATE TABLE IF NOT EXISTS `home_contracts` (
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `contract_kind` VARCHAR(10) NOT NULL,
+  `billing_time_zone` VARCHAR(64) NULL COMMENT '주소/위치/기기 우선순위로 확정한 자동 등록 시간대',
+  `payment_effective_from` DATE NULL COMMENT '계약 납부 조건의 신규 가계부 반영 시작일',
+  `deposit` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `management_included` TINYINT(1) NOT NULL DEFAULT 0,
+  `management_fee` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `contract_fee` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `management_bill_id` BIGINT UNSIGNED NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_home_contract_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_home_contract_bill` FOREIGN KEY (`management_bill_id`) REFERENCES `bill_items` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `ck_home_contract_kind` CHECK (contract_kind IN ('monthly','jeonse'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS bill_photo_drafts (
- id CHAR(36) NOT NULL PRIMARY KEY,
- user_id BIGINT UNSIGNED NOT NULL,
- conversation_id BIGINT UNSIGNED NOT NULL,
- period_ym CHAR(7) NOT NULL,
- time_zone VARCHAR(64) NOT NULL,
- photo_hash CHAR(64) NOT NULL,
- document_hash CHAR(64) NULL,
- input_json TEXT NOT NULL,
- expires_at DATETIME NOT NULL,
- state VARCHAR(12) NOT NULL DEFAULT 'PENDING',
- FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
- FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE,
- INDEX ix_bill_photo_drafts_owner(user_id, conversation_id)
+CREATE TABLE IF NOT EXISTS `bill_photo_drafts` (
+  `id` CHAR(36) NOT NULL,
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `conversation_id` BIGINT UNSIGNED NOT NULL,
+  `period_ym` CHAR(7) NOT NULL,
+  `time_zone` VARCHAR(64) NOT NULL,
+  `photo_hash` CHAR(64) NOT NULL,
+  `document_hash` CHAR(64) NULL,
+  `input_json` TEXT NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `state` VARCHAR(12) NOT NULL DEFAULT 'PENDING',
+  PRIMARY KEY (`id`),
+  CONSTRAINT `bill_photo_drafts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `bill_photo_drafts_ibfk_2` FOREIGN KEY (`conversation_id`) REFERENCES `ai_conversations` (`id`) ON DELETE CASCADE,
+  KEY `ix_bill_photo_drafts_owner` (`user_id`, `conversation_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

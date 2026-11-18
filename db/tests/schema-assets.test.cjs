@@ -1,6 +1,7 @@
 const fs = require('node:fs')
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const { legacyMigrations, incrementalMigrations } = require('./migration-path.cjs')
 
 const read = path => fs.readFileSync(path, 'utf8')
 function tables(sql) {
@@ -17,11 +18,8 @@ function definitions(body) {
 }
 const schema = read('db/schema.sql')
 const current = tables(schema)
-const migrations = [
-  '20261031_current_project.sql', '20261031_02_event_anniversaries.sql',
-  '20261101_housing_and_loan.sql', '20261102_requirements_hardening.sql', '20261107_life_categories.sql',
-  '20261108_places_kakao.sql',
-].map(name => [`db/migrations/${name}`, read(`db/migrations/${name}`)])
+const migrations = [...legacyMigrations, ...incrementalMigrations]
+  .map(name => [`db/migrations/${name}`, read(`db/migrations/${name}`)])
 
 test('foreign keys reference existing compatible columns and SET NULL allows NULL', () => {
   const seen = new Set()
@@ -47,15 +45,23 @@ test('all migrations produce the same columns, named keys and constraints as fre
       assert(!state.has(name), `duplicate new table ${name}`)
       state.set(name, { columns: columns(body), definitions: definitions(body) })
     }
-    for (const alter of migration.matchAll(/ALTER TABLE `([^`]+)`\s+([\s\S]*?);/g)) {
+    // Include DDL guarded by an information_schema check and executed with PREPARE.
+    const ddl = migration.replace(/^\s*'(ALTER TABLE .+)'$/gm, (_, alter) =>
+      alter.replace(/''/g, "'") + ';')
+    for (const alter of ddl.matchAll(/ALTER TABLE `?(\w+)`?\s+([\s\S]*?);/g)) {
       const table = state.get(alter[1])
       assert(table, `unknown table ${alter[1]}`)
-      for (const column of alter[2].matchAll(/(?:ADD|MODIFY)(?: COLUMN)? `([^`]+)` (.+)$/gm)) {
-        table.columns.set(column[1], normalize(column[2]))
+      for (const [, quoted, unquoted, definition] of alter[2].matchAll(
+        /^\s*(?:ADD|MODIFY) (?:(?:COLUMN )?`(\w+)`|COLUMN (\w+)) (.+)$/gm
+      )) {
+        table.columns.set(quoted || unquoted, normalize(definition))
       }
+      for (const [, column] of alter[2].matchAll(/DROP COLUMN `(\w+)`/g)) table.columns.delete(column)
+      for (const [, index] of alter[2].matchAll(/DROP INDEX `(\w+)`/g)) table.definitions.delete(index)
       const added = alter[2].replace(/^\s*ADD (CONSTRAINT|UNIQUE KEY|KEY) /gm, '$1 ')
       for (const [name, definition] of definitions(added)) table.definitions.set(name, definition)
     }
+    for (const [, table] of migration.matchAll(/^DROP TABLE IF EXISTS `(\w+)`;/gm)) state.delete(table)
     if (migration.includes('RENAME TABLE todos TO todos_legacy_20261031')) state.delete('todos')
   }
   assert.equal(state.size, current.size)

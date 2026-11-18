@@ -27,6 +27,7 @@ public class MonthlyBillsMysqlVerify {
         boolean hasInterestPaid=jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='loan_interest_charges' AND COLUMN_NAME='paid_at'",Integer.class)>0;
         boolean hasEffective=jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='home_contracts' AND COLUMN_NAME='payment_effective_from'",Integer.class)>0;
         boolean hasManagementKind=jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bill_items' AND COLUMN_NAME='home_contract_kind'",Integer.class)>0;
+        boolean hasTermination=jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='bill_items' AND COLUMN_NAME='termination_date'",Integer.class)>0;
         if (Arrays.asList(args).contains("--apply-migration")) {
             var sql=Files.readString(Path.of("../db/migrations/20261118_01_bill_monthly_registration.sql"));
             if (!hasDue) jdbc.execute("ALTER TABLE bill_payments ADD COLUMN due_date DATE NULL COMMENT '월별 납부 기한'");
@@ -41,9 +42,10 @@ public class MonthlyBillsMysqlVerify {
             if (!hasInterestPaid) jdbc.execute("ALTER TABLE loan_interest_charges ADD COLUMN paid_at DATETIME NULL");
             if (!hasEffective) jdbc.execute("ALTER TABLE home_contracts ADD COLUMN payment_effective_from DATE NULL");
             if (!hasManagementKind) jdbc.execute("ALTER TABLE bill_items ADD COLUMN home_contract_kind VARCHAR(10) NULL");
+            if (!hasTermination) jdbc.execute("ALTER TABLE bill_items ADD COLUMN termination_date DATE NULL");
             if (!hasRentDue) jdbc.execute("UPDATE rent_payments r JOIN user_settings s ON s.user_id=r.user_id SET r.due_date=STR_TO_DATE(CONCAT(r.period_ym,'-',LPAD(LEAST(COALESCE(s.rent_day,15),DAY(LAST_DAY(CONCAT(r.period_ym,'-01')))),2,'0')),'%Y-%m-%d') WHERE r.due_date IS NULL");
             System.out.println("Monthly migration applied (existing data preserved).");
-        } else if (!hasDue || !hasImports || !hasMemo || !hasDocuments || !hasDeleted || !hasAutoZone || !hasRentDue || !hasInterestPaid || !hasEffective || !hasManagementKind) throw new IllegalStateException("Apply monthly migrations 20261118_01 through 05 and 07 through 09 first.");
+        } else if (!hasDue || !hasImports || !hasMemo || !hasDocuments || !hasDeleted || !hasAutoZone || !hasRentDue || !hasInterestPaid || !hasEffective || !hasManagementKind || !hasTermination) throw new IllegalStateException("Apply monthly migrations 20261118_01 through 05, 07 through 09, and 20261119_01 first.");
         new TransactionTemplate(new DataSourceTransactionManager(ds)).execute(status->{
             try {
                 jdbc.update("INSERT INTO users(nickname) VALUES ('월별저장검증')");

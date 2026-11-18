@@ -107,6 +107,20 @@ class BillIntegrationTests {
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments", Integer.class));
     }
 
+    @Test void monthlyPaymentAndChosenTerminationRoutesPersistToDatabase() throws Exception {
+        String id=create();
+        mvc.perform(put("/api/bills/monthly/"+id+"/payment").param("month",current.toString()).param("timeZone","Asia/Seoul")
+            .header("Authorization","Bearer "+token).contentType("application/json").content("{\"paid\":true}"))
+            .andExpect(status().isNoContent());
+        assertNotNull(jdbc.queryForObject("SELECT paid_at FROM bill_payments WHERE bill_item_id=?",java.sql.Timestamp.class,Long.valueOf(id)));
+        String effective=java.time.LocalDate.now(ZoneId.of("Asia/Seoul")).plusDays(1).toString();
+        mvc.perform(post("/api/bills/monthly/"+id+"/termination").param("timeZone","Asia/Seoul")
+            .header("Authorization","Bearer "+token).contentType("application/json").content(json.writeValueAsString(Map.of("effectiveDate",effective))))
+            .andExpect(status().isNoContent());
+        assertEquals(effective,jdbc.queryForObject("SELECT termination_date FROM bill_items WHERE id=?",java.sql.Date.class,Long.valueOf(id)).toString());
+        assertNull(jdbc.queryForObject("SELECT deleted_at FROM bill_payments WHERE bill_item_id=?",java.sql.Timestamp.class,Long.valueOf(id)));
+    }
+
     @Test void defaultChangesPreserveCurrentAndPastSnapshots() throws Exception {
         String id = create();
         payment(id, current.minusMonths(1), "{\"amount\":41000,\"paid\":true}").andExpect(status().isOk());
