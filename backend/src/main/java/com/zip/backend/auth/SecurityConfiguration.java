@@ -66,7 +66,8 @@ public class SecurityConfiguration {
             // IF_REQUIRED: a short-lived session holds only the OAuth "state" during social login (dropped afterwards).
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup", "/api/auth/email/send",
+                    "/api/auth/email/verify", "/api/auth/find-id", "/api/auth/password-reset/verify", "/api/auth/password-reset").permitAll()
                 .requestMatchers("/api/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/terms").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/files/content/*").permitAll()

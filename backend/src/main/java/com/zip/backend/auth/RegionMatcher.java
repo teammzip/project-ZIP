@@ -11,8 +11,8 @@ import java.util.stream.Collectors;
  * A district name alone decides when it is unique; names shared by several cities (중구, 동구 …)
  * also need the 시·도 in the address ("서울시", "서울특별시", "서울" all match 서울특별시).
  */
-final class RegionMatcher {
-    record District(String id, String name, String parentName) {}
+public final class RegionMatcher {
+    public record District(String id, String name, String parentName) {}
 
     private static final List<String> SIDO_SUFFIXES = List.of("특별자치시", "특별자치도", "특별시", "광역시", "시", "도");
     private static final Map<String, String> SIDO_SHORT = Map.of(
@@ -20,7 +20,7 @@ final class RegionMatcher {
 
     private RegionMatcher() {}
 
-    static Optional<String> match(String address, List<District> districts) {
+    public static Optional<String> match(String address, List<District> districts) {
         if (address == null || address.isBlank()) return Optional.empty();
         Set<String> tokens = Set.of(address.strip().split("[\\s,]+"));
         var byName = districts.stream().filter(d -> tokens.contains(d.name())).toList();
