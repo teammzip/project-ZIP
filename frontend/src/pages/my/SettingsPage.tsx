@@ -5,14 +5,12 @@ import { deleteAllConversations, useChatStore } from '@/features/ai'
 import { LoginBadge, LoginMethod, PasswordChangeForm, useAuthStore, useLogout, useUpdateMe, useWithdraw } from '@/features/auth'
 import { useCommunityStore, useReportStore } from '@/features/community'
 import { LegalLinks } from '@/features/legal'
-import { BudgetSummaryCard, LifeInfoForm, LifeStats, NotiSwitch, RegionVerifyDialog, useLifeStore, useLifeSummary, useRegionVerify } from '@/features/life'
+import { BudgetSummaryCard, LifeInfoForm, LifeStats, NotiSwitch, PersonalInfoCard, RegionVerifyDialog, SalaryInfo, useLifeStore, useLifeSummary, useRegionVerify } from '@/features/life'
 import { useMapStore } from '@/features/map'
 import { useMemoStore, withoutMemoSync } from '@/features/memo'
 import { SanctionHistoryDialog, useMySanctions } from '@/features/moderation'
 import { useLoanStore } from '@/features/loan'
-import { useHousingSurveyStore } from '@/features/onboarding'
 import { useHousingContract } from '@/features/onboarding/useHousingContract'
-import { useAge } from '@/lib/useAge'
 import { createProfilePatch, ProfileEditor, ProfileHero, useProfileStore } from '@/features/profile'
 import { canStore } from '@/features/profile/store'
 import { isMockApi } from '@/features/auth/api'
@@ -41,7 +39,7 @@ const TILES = [
   { to: '/community', ico: '💬', label: '동네 이야기' },
 ]
 
-type Sheet = 'profile' | 'life' | 'verify' | 'password' | 'sanctions' | 'reset' | 'withdraw' | null
+type Sheet = 'profile' | 'personal' | 'salary' | 'life' | 'verify' | 'password' | 'sanctions' | 'reset' | 'withdraw' | null
 
 /* 내 정보
  * - PC(1100px 이상): 왼쪽 = 프로필 · 수입·지출 카드 / 오른쪽 = 이번 달 요약 · 바로 가기 · 계정·설정
@@ -50,9 +48,6 @@ type Sheet = 'profile' | 'life' | 'verify' | 'password' | 'sanctions' | 'reset' 
 export function SettingsPage() {
   const { isMonthly } = useHousingContract()
   const user = useAuthStore((s) => s.user)
-  const survey = useHousingSurveyStore((s) => s.survey)
-  const birth = user?.birth !== undefined ? user.birth ?? '' : survey?.userId === user?.id ? survey?.birth ?? '' : ''
-  const { age } = useAge(birth)
   const { region, verified, left } = useRegionVerify()
   const postCount = useCommunityStore((s) => s.posts.filter((p) => !!user?.id && p.ownerId === user.id).length)
   const lifeSummary = useLifeSummary()
@@ -64,6 +59,8 @@ export function SettingsPage() {
   // 받은 경고 · 정지가 있으면 계정 · 설정에 내역 줄을 보여 줌
   const sanctions = useMySanctions(user?.nickname)
   const close = () => setSheet(null)
+  const openHome = () => setSheet('life')
+  const closeHome = close
   const notify = (text: string) => {
     setToast(text)
     setTimeout(() => setToast((t) => (t === text ? '' : t)), 1800)
@@ -92,12 +89,6 @@ export function SettingsPage() {
 
         <Card title="계정 · 설정">
           <ul className={styles.list}>
-            {age !== null && <li>
-              <div className={styles.row}>
-                <span className={styles.ico}>🎂</span>
-                <span className={styles.grow}>만 {age}세<small>생년월일 {birth} · 생일에 자동 갱신</small></span>
-              </div>
-            </li>}
             <li>
               <LoginMethod />
             </li>
@@ -111,20 +102,34 @@ export function SettingsPage() {
               </li>
             )}
             <li>
-              <button type="button" className={styles.row} onClick={() => setSheet('verify')}>
-                <span className={styles.ico}>📍</span>
+              <button type="button" className={styles.row} onClick={() => setSheet('personal')}>
+                <span className={styles.ico}>👤</span>
                 <span className={styles.grow}>
-                  동네 인증<small>{verified ? `${region} · ${left}일 남음` : region ? `${region} · 인증하면 동네생활에 글을 쓸 수 있어요` : '우리 동네를 먼저 정해 주세요'}</small>
+                  내 정보<small>이름 · 생년월일 · 나이 · 계정 정보</small>
                 </span>
-                {verified ? <span className={styles.okTag}>인증 완료</span> : <span className={styles.needTag}>인증하기</span>}
+                <i className={styles.chev} aria-hidden="true" />
               </button>
             </li>
             <li>
-              <button type="button" className={styles.row} onClick={() => setSheet('life')}>
+              <button type="button" className={styles.row} onClick={() => openHome()}>
                 <span className={styles.ico}>🏠</span>
                 <span className={styles.grow}>
                   내 집 정보<small>{lifeSummary}</small>
                 </span>
+                <i className={styles.chev} aria-hidden="true" />
+              </button>
+            </li>
+            <li>
+              <button type="button" className={styles.row} onClick={() => setSheet('verify')}>
+                <span className={styles.ico}>📍</span>
+                <span className={styles.grow}>동네 인증<small>{region || '우리 동네를 먼저 정해 주세요'} · {verified ? `인증 유효기간 ${left}일 남음` : '인증하면 동네생활에 글을 쓸 수 있어요'}</small></span>
+                {verified ? <span className={styles.okTag}>인증 완료</span> : <span className={styles.needTag}>인증하기</span>}
+              </button>
+            </li>
+            <li>
+              <button type="button" className={styles.row} onClick={() => setSheet('salary')}>
+                <span className={styles.ico}>💵</span>
+                <span className={styles.grow}>수입 정보<small>월 수입 · 연 수입 · 매월 받는 날짜</small></span>
                 <i className={styles.chev} aria-hidden="true" />
               </button>
             </li>
@@ -190,11 +195,19 @@ export function SettingsPage() {
         }
       }} onSaved={() => notify('프로필을 바꿨어요.')} />
 
-      <Modal open={sheet === 'life'} onClose={close} title="내 집 정보">
+      <Modal open={sheet === 'personal'} onClose={close} title="내 정보">
+        {sheet === 'personal' && <PersonalInfoCard />}
+      </Modal>
+
+      <Modal open={sheet === 'salary'} onClose={close} title="수입 정보">
+        {sheet === 'salary' && <SalaryInfo />}
+      </Modal>
+
+      <Modal open={sheet === 'life'} onClose={closeHome} title="내 집 정보">
         <h3 className={styles.sheetTitle}>내 집 정보</h3>
         <LifeInfoForm
           onSaved={() => {
-            close()
+            closeHome()
             notify('저장됐어요.')
           }}
         />

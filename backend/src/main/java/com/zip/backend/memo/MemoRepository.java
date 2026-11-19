@@ -17,14 +17,16 @@ public class MemoRepository {
 
     /** items: JSON 배열 글자 */
     public record MemoRow(long id, String title, String body, String color, boolean pinned, boolean checklist, String items,
-        Instant createdAt, Instant updatedAt) {}
+        Instant createdAt, Instant updatedAt, String ledgerContext) {
+        public MemoRow(long id,String title,String body,String color,boolean pinned,boolean checklist,String items,Instant createdAt,Instant updatedAt) { this(id,title,body,color,pinned,checklist,items,createdAt,updatedAt,null); }
+    }
 
-    private static final String SELECT = "SELECT id, title, body, color, is_pinned, is_checklist, items, created_at, updated_at FROM memos";
+    private static final String SELECT = "SELECT id, title, body, color, is_pinned, is_checklist, items, created_at, updated_at, ledger_label FROM memos";
 
     private static MemoRow row(java.sql.ResultSet rs, int row) throws java.sql.SQLException {
         return new MemoRow(rs.getLong("id"), rs.getString("title"), rs.getString("body"), rs.getString("color"),
             rs.getBoolean("is_pinned"), rs.getBoolean("is_checklist"), rs.getString("items"),
-            rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant());
+            rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(),rs.getString("ledger_label"));
     }
 
     /** 내 메모: 고정 먼저, 그다음 최근 수정 순. keyword 가 있으면 제목 · 글에서 찾음 */

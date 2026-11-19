@@ -25,6 +25,7 @@ function setup() {
     if (name === '../useLocalMonth') return { useLocalMonth: () => ({ currentMonth, timeZone: clockZone }) }
     if (name === '../useBillingTimeZone') return { useBillingTimeZone: () => resolution }
     if (name === '../monthlyPeriod') return period
+    if (name === '../ledgerMemoNavigation') return { returnedMemoDraft: () => undefined }
     if (name === '../billsApi') return { getMonthlyBills: () => {} }
     if (name === './MonthlyBillEditor') return { MonthlyBillEditor: () => null }
     if (name === './MonthlyBillActions') return { MonthlyBillActions: () => null }

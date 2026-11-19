@@ -79,6 +79,12 @@
       "table": "incomes"
     },
     {
+      "table": "salary_settings"
+    },
+    {
+      "table": "salary_records"
+    },
+    {
       "table": "expenses"
     },
     {
@@ -1737,6 +1743,36 @@
     },
     {
       "table": "memos",
+      "column": "ledger_source",
+      "type": "varchar(10)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "memos",
+      "column": "ledger_key",
+      "type": "varchar(40)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "memos",
+      "column": "ledger_label",
+      "type": "varchar(120)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "memos",
       "column": "color",
       "type": "enum('노랑','분홍','하늘','초록','보라','흰색')",
       "nullable": "NO",
@@ -2329,6 +2365,86 @@
       "table": "incomes",
       "column": "income_type",
       "type": "enum('fixed','other')",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "salary_settings",
+      "column": "user_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "salary_settings",
+      "column": "amount",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "salary_settings",
+      "column": "income_period",
+      "type": "enum('monthly','annual')",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "salary_settings",
+      "column": "payment_day",
+      "type": "tinyint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "salary_settings",
+      "column": "start_month",
+      "type": "char(7)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "salary_records",
+      "column": "user_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "salary_records",
+      "column": "period_ym",
+      "type": "char(7)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "salary_records",
+      "column": "income_id",
+      "type": "bigint unsigned",
       "nullable": "NO",
       "auto": 0,
       "generated": 0,
@@ -4313,6 +4429,11 @@
       "columns": "id"
     },
     {
+      "table": "memos",
+      "name": "uk_memos_ledger_source",
+      "columns": "user_id,ledger_source,ledger_key"
+    },
+    {
       "table": "bill_items",
       "name": "PRIMARY",
       "columns": "id"
@@ -4366,6 +4487,21 @@
       "table": "incomes",
       "name": "PRIMARY",
       "columns": "id"
+    },
+    {
+      "table": "salary_settings",
+      "name": "PRIMARY",
+      "columns": "user_id"
+    },
+    {
+      "table": "salary_records",
+      "name": "PRIMARY",
+      "columns": "user_id,period_ym"
+    },
+    {
+      "table": "salary_records",
+      "name": "uk_salary_records_income",
+      "columns": "income_id"
     },
     {
       "table": "expenses",
@@ -4780,6 +4916,30 @@
       "delete_rule": "RESTRICT"
     },
     {
+      "table": "salary_settings",
+      "name": "fk_salary_settings_user",
+      "column": "user_id",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "table": "salary_records",
+      "name": "fk_salary_records_user",
+      "column": "user_id",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "table": "salary_records",
+      "name": "fk_salary_records_income",
+      "column": "income_id",
+      "target": "incomes",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
       "table": "expenses",
       "name": "fk_expenses_user_id",
       "column": "user_id",
@@ -5180,6 +5340,14 @@
     {
       "table": "memos",
       "name": "ck_memos_items_array"
+    },
+    {
+      "table": "salary_settings",
+      "name": "chk_salary_settings_amount"
+    },
+    {
+      "table": "salary_settings",
+      "name": "chk_salary_settings_day"
     },
     {
       "table": "trash_schedules",

@@ -17,7 +17,7 @@ export function previewLines(m: Memo, mark: (done: boolean) => string = () => ''
   return (m.title.trim() ? all : all.slice(1)).filter((l) => l.trim())
 }
 
-export const searchText = (m: Memo) => `${m.title}\n${lines(m, () => '').join('\n')}`.toLowerCase()
+export const searchText = (m: Memo) => `${m.title}\n${lines(m, () => '').join('\n')}\n${m.ledgerContext ?? ''}`.toLowerCase()
 
 /** 방금 · N분 전 · 오늘이면 시:분 · 그 전이면 M월 D일 */
 export function whenText(t: number, now = Date.now()) {

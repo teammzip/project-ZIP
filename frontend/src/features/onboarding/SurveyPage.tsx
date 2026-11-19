@@ -12,6 +12,12 @@ import { useHousingSurveyStore, type ContractKind, type HousingSurvey, type Inco
 import styles from './SurveyPage.module.css'
 import { AddressSearch } from './AddressSearch'
 import type { AddressOption } from './addressResult'
+import { saveSalary } from '@/features/life/salaryApi'
+import { resolveBillingTimeZone } from '@/features/life/billingTimeZone'
+import { addressTimeZone, locationTimeZone } from '@/features/life/billingTimeZoneApi'
+import { deviceTimeZone } from '@/features/life/monthlyPeriod'
+import { isMockApi } from '@/lib/apiMode'
+import { apiClient } from '@/lib/apiClient'
 
 const num = (v: string) => Math.max(0, Number(v) || 0)
 
@@ -43,7 +49,7 @@ export function SurveyPage() {
   const [incomePeriod, setIncomePeriod] = useState<IncomePeriod>('monthly')
   const [mgmtIncluded, setMgmtIncluded] = useState(true)
   const [hasLoan, setHasLoan] = useState(false)
-  const [f, setF] = useState({ birth: '', deposit: '', rent: '', mgmtFee: '', contractFee: '', loanAmount: '', income: '', loanAnnualRate: '', loanPaymentDay: '25', loanStartDate: loanToday() })
+  const [f, setF] = useState({ birth: '', deposit: '', rent: '', mgmtFee: '', contractFee: '', loanAmount: '', income: '', incomePaymentDay: '25', loanAnnualRate: '', loanPaymentDay: '25', loanStartDate: loanToday() })
   const { age, today } = useAge(f.birth)
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }))
 
@@ -53,6 +59,9 @@ export function SurveyPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (saving) return
+    if (!Number.isSafeInteger(Number(f.income)) || Number(f.income) < 0 || Number(f.income) > (incomePeriod === 'annual' ? 11999999988 : 999999999) || (incomePeriod === 'annual' && Number(f.income) > 0 && Number(f.income) < 12) || !Number.isInteger(Number(f.incomePaymentDay)) || Number(f.incomePaymentDay) < 1 || Number(f.incomePaymentDay) > 31) {
+      setError('월·연 수입 금액과 매월 받는 날짜(1~31일)를 확인해 주세요.'); return
+    }
     if (age === null) {
       setError('올바른 생년월일을 입력해 주세요.')
       return
@@ -93,12 +102,21 @@ export function SurveyPage() {
       loanStartDate: loan?.startDate,
       income: num(f.income),
       incomePeriod,
+      incomePaymentDay: Number(f.incomePaymentDay),
       answeredAt: new Date().toISOString(),
     }
     try {
       const savedUser = await authApi.updateMe({ address: answers.address })
       if (useAuthStore.getState().user?.id !== user.id) return
       updateUser({ ...savedUser, firstLogin: user.firstLogin })
+      if (!isMockApi) {
+        await apiClient.patch('/me/profile-info', { nickname: savedUser.nickname, birth: answers.birth })
+        if (useAuthStore.getState().user?.id !== user.id) return
+        updateUser({ ...savedUser, birth: answers.birth, firstLogin: user.firstLogin })
+        const zone = await resolveBillingTimeZone({ address: { label: selectedAddress, point: selectedPoint ?? undefined }, deviceZone: deviceTimeZone(), signal: new AbortController().signal, addressZone: addressTimeZone, locationZone: locationTimeZone })
+        if (useAuthStore.getState().user?.id !== user.id) return
+        await saveSalary({ amount: answers.income, incomePeriod, paymentDay: Number(f.incomePaymentDay) }, zone.timeZone)
+      }
       saveSurvey(answers)
       // 생활 설정의 월세는 기존 만원 단위를 유지하므로 경계에서 변환한다.
       saveSettings({ ...settings, region: answers.address, regionLocation: { userId: user.id, region: answers.address, source: 'survey', point: selectedPoint ?? undefined }, rent: answers.rent / 10000 })
@@ -264,8 +282,10 @@ export function SurveyPage() {
               </div>
               <label>
                 {incomePeriod === 'monthly' ? '월 수입 (원)' : '연 수입 (원)'}
-                <AmountInput value={f.income} onValueChange={(value) => set('income', value)} max={incomePeriod === 'monthly' ? 999990000 : 11999880000} placeholder={incomePeriod === 'monthly' ? '예) 2,500,000' : '예) 30,000,000'} required />
+                <AmountInput value={f.income} onValueChange={(value) => set('income', value)} max={incomePeriod === 'monthly' ? 999999999 : 11999999988} placeholder={incomePeriod === 'monthly' ? '예) 2,500,000' : '예) 30,000,000'} required />
               </label>
+              <label>매월 월급 받는 날짜<input type="number" min="1" max="31" step="1" value={f.incomePaymentDay} onChange={(e) => set('incomePaymentDay', e.target.value)} required />일</label>
+              <p>월·연 수입 금액을 월급으로 사용해요. 연 수입은 12로 나누고 남는 원 단위 금액은 12월에 더해요. 서버 연결 시 수령일이 된 월급을 고정 수입에 자동 등록하며, 짧은 달에는 말일로 처리해요.</p>
             </section>
 
             {error && <p role="alert">{error}</p>}

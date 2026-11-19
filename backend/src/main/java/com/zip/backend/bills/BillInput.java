@@ -12,7 +12,8 @@ public final class BillInput {
 
     public static void monthly(Map<String, Object> body, boolean create) {
         var keys = create ? Set.of("tag", "amount", "dueDate") : Set.of("amount", "dueDate");
-        var allowed = new java.util.HashSet<>(keys); allowed.add("memo");
+        var allowed = new java.util.HashSet<>(keys); allowed.add("memo"); allowed.add("memoId");
+        if(body.containsKey("memoId")) id(java.util.Objects.toString(body.get("memoId"),""));
         if (create) allowed.add("name");
         if (!body.keySet().containsAll(keys) || !allowed.containsAll(body.keySet())) throw bad("금액과 납부 기한을 입력해 주세요.");
         if (body.containsKey("memo")) memo(body.get("memo"));

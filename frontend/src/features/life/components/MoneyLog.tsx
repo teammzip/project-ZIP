@@ -3,16 +3,21 @@ import { useShallow } from 'zustand/react/shallow'
 import { AmountInput, Button, Card } from '@/components/ui'
 import { cssVar } from '@/lib/cssVar'
 import { cx } from '@/lib/cx'
-import { DOW, monthKeyOf, monthLabel, todayStr, won } from '@/lib/date'
+import { monthKeyOf, monthLabel, todayStr, won } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
 import common from '@/styles/common.module.css'
-import { FIXED_INCOME_CATS, type Category } from '../data/catalog'
+import { FIXED_INCOME_CATS } from '../data/catalog'
 import { useLedgerCategories } from '../ledgerCategories'
 import { LedgerCategoryDialog } from './LedgerCategoryDialog'
 import { useCategoryDrag } from '../useCategoryDrag'
 import { useLifeStore } from '../store'
 import type { IncomeType, MoneyRecord } from '../types'
 import styles from './life.module.css'
+import { isMockApi } from '@/features/auth/api'
+import { ServerMoneyLog } from './ServerMoneyLog'
+import { useAuthStore } from '@/features/auth'
+import { returnedMemoDraft, openLedgerMemo, clearMemoDraft } from '../ledgerMemoNavigation'
+import { useMemoStore } from '@/features/memo'
 
 type Kind = 'income' | 'spend'
 
@@ -41,12 +46,16 @@ const TEXT: Record<Kind, { title: string; topLabel: string; formTitle: string; q
   },
 }
 
-const colorOf = (cats: Category[], name: string) => cats.find((c) => c.name === name)?.color ?? 'var(--color-muted)'
-
 /** 수입 · 기타 지출 기록: 월별 보기, 분류별 합계, 기록 추가 · 삭제 (두 화면이 모양이 같아서 하나로 씀)
  * - PC: 왼쪽 목록 · 그래프, 오른쪽 기록하기 폼
  * - 모바일: 합계 · 그래프 아래 "+ ○○ 기록하기" → 누르면 그 자리에 빠른 기록(금액 크게 · 종류 칩 · 날짜 · 메모는 작게) → 아래 목록 */
 export function MoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeType?: IncomeType }) {
+  return isMockApi ? <LocalMoneyLog kind={kind} incomeType={incomeType} /> : <ServerMoneyLog key={`${kind}:${incomeType}`} kind={kind} incomeType={incomeType} />
+}
+function LocalMoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeType?: IncomeType }) {
+  const owner = useAuthStore((state) => state.user?.id)
+  const [resume, setResume] = useState(() => returnedMemoDraft(owner, kind, kind === 'income' ? incomeType : undefined))
+  const memos = useMemoStore((state) => state.memos)
   const incomeTitle = incomeType === 'fixed' ? '고정 수입' : '기타 수입'
   const t = kind === 'income' ? {
     ...TEXT.income,
@@ -72,9 +81,8 @@ export function MoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeTyp
     (r.incomeType ?? (FIXED_INCOME_CATS.some((c) => c.name === r.cat) ? 'fixed' : 'other')) === incomeType,
   ) : records
   const thisMonth = monthKeyOf(useToday())
-  const [monthKey, setMonthKey] = useState(thisMonth)
-  const [form, setForm] = useState({ date: todayStr(), cat: cats[0].name, amount: '', memo: '' })
-  const [memoOpen, setMemoOpen] = useState(false)
+  const [monthKey, setMonthKey] = useState(resume?.month ?? thisMonth)
+  const [form, setForm] = useState({ date: resume?.values.date ?? todayStr(), cat: resume?.values.cat ?? cats[0].name, amount: resume?.values.amount ?? '', memo: '' })
   const [quickOpen, setQuickOpen] = useState(false)
   const [saved, setSaved] = useState('')
 
@@ -98,12 +106,13 @@ export function MoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeTyp
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
+    if (kind === 'income' && incomeType === 'fixed' && form.cat === '월급') { setSaved('월급은 계정·설정의 수입 정보에서 관리해 주세요.'); return }
     const amount = Math.round(Number(form.amount))
     if (!form.date || !(amount > 0)) return
-    add({ date: form.date, cat: form.cat, amount, memo: form.memo.trim(), ...(kind === 'income' ? { incomeType } : {}) })
+    add({ date: form.date, cat: form.cat, amount, memo: form.memo.trim(), ...(resume?.memoId ? { memoId: resume.memoId, memoTitle: resume.memoTitle } : {}), ...(kind === 'income' ? { incomeType } : {}) })
+    clearMemoDraft(resume); setResume(undefined)
     setMonthKey(form.date.slice(0, 7)) // 기록한 날짜의 달로 이동해서 바로 보이게
     setForm((f) => ({ ...f, amount: '', memo: '' }))
-    setMemoOpen(false)
     setQuickOpen(false)
     setSaved(`✅ ${form.cat} ${won(amount)} 기록했어요`)
   }
@@ -165,17 +174,13 @@ export function MoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeTyp
             aria-label="날짜"
           />
         </label>
-        {memoOpen ? (
-          <label className={styles.quickField}>
-            <span>메모</span>
-            <input value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} maxLength={30} placeholder={t.memoPh.replace('예) ', '')} aria-label="메모" autoFocus />
-          </label>
-        ) : (
-          <button type="button" className={styles.quickField} onClick={() => setMemoOpen(true)}>
+          <button type="button" className={styles.quickField} onClick={() => {
+            if (!owner) return
+            openLedgerMemo({ key: resume?.key, owner, kind, incomeType: kind === 'income' ? incomeType : undefined, month: form.date.slice(0, 7), label: `${t.title} · ${form.date} · ${form.cat}`, values: { amount: form.amount, date: form.date, cat: form.cat }, memoId: resume?.memoId, memoTitle: resume?.memoTitle })
+          }}>
             <span>메모 (선택)</span>
-            <b className={styles.quickAdd}>📝 메모 추가</b>
+            <b className={styles.quickAdd}>{resume?.memoId ? resume.memoTitle || '제목 없는 메모' : '메모 작성'}</b>
           </button>
-        )}
       </div>
       <Button type="submit" block disabled={!(Number(form.amount) > 0)}>
         기록하기
@@ -203,9 +208,10 @@ export function MoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeTyp
           </select>
         }
       >
+        <p className={common.note}>{kind === 'income' ? '선택한 달에 실제로 받은 수입' : '선택한 달에 기록한 기타 지출'} · 분류별 합계와 기록 확인</p>
         <div className={common.sumRow}>
           <div>
-            <small>합계</small>
+            <small>{t.title} 합계</small>
             <b>{won(total)}</b>
           </div>
           <div>
@@ -257,31 +263,28 @@ export function MoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeTyp
           </>
         )}
 
-        {rows.map((r) => {
-          const d = new Date(`${r.date}T00:00:00`)
-          const name = r.memo || r.cat
+        <ul className={styles.fixedExpenseList} aria-label={`선택 월 ${t.title}`}>{rows.map((r) => {
+          const name = (r.memoId ? memos.find((memo) => String(memo.id) === r.memoId)?.title || r.memoTitle : undefined) || r.memo || r.cat
           return (
-            <div key={r.id} className={styles.moneyRow}>
+            <li key={r.id} className={`${styles.moneyRow} ${styles.fixedExpenseRow}`}>
               <div className={styles.moneyDate}>
-                <b>{d.getDate()}</b>
-                <small>{DOW[d.getDay()]}</small>
+                <b>{Number(r.date.slice(8))}</b>
+                <small>{Number(r.date.slice(5, 7))}월</small>
               </div>
               <div className={styles.moneyInfo}>
-                <b>{name}</b>
-                <span className={cx(common.dotChip, common.dotChipSmall)} style={cssVar({ '--c': colorOf(cats, r.cat) })}>
-                  {r.cat}
-                </span>
+                <span className={`${common.dotChip} ${common.dotChipSmall}`} style={cssVar({ '--c': cats.find((category) => category.name === r.cat)?.color ?? 'var(--color-muted)' })}>{r.cat}</span>
+                <small>{kind === 'income' ? '수입일' : '지출일'}: {r.date}</small>
               </div>
-              <div className={cx(styles.moneyAmt, kind === 'income' && styles.plus)}>
-                {kind === 'income' ? '+' : ''}
+              <div className={styles.moneyAmt}>
                 {won(r.amount)}
               </div>
-              <button type="button" className={common.del} onClick={() => remove(r.id)} aria-label={`${name} 기록 삭제`} title="삭제">
-                ×
-              </button>
-            </div>
+              <details className={styles.fixedExpenseActions}>
+                <summary aria-label={`${r.cat} 기록 설정`} title="기록 설정"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 7h16M4 17h16" /><circle cx="9" cy="7" r="3" /><circle cx="15" cy="17" r="3" /></svg></summary>
+                <div className={styles.fixedExpenseActionList}><Button variant="line" onClick={() => { if (window.confirm('이 기록을 삭제할까요?')) remove(r.id) }} aria-label={`${name} 기록 삭제`}>삭제</Button></div>
+              </details>
+            </li>
           )
-        })}
+        })}</ul>
         {!rows.length && <p className={common.empty}>{t.empty}</p>}
       </Card>
 

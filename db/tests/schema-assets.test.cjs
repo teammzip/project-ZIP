@@ -3,7 +3,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const { legacyMigrations, incrementalMigrations } = require('./migration-path.cjs')
 
-const read = path => fs.readFileSync(path, 'utf8')
+const read = path => fs.readFileSync(path, 'utf8').replace(/\r\n/g, '\n')
 function tables(sql) {
   return new Map([...sql.matchAll(/CREATE TABLE IF NOT EXISTS `([^`]+)` \(([\s\S]*?)\) ENGINE=/g)]
     .map(match => [match[1], match[2]]))

@@ -200,7 +200,8 @@ public class BillService {
         if (repository.payment(id, month) != null) throw new ApiException(409, "이 월에 이미 등록된 항목이에요. 수정 버튼을 이용해 주세요.");
         repository.insertPayment(id, month, amount, null);
         repository.monthlyDetails(id, month, amount, BillInput.dueDate(body.get("dueDate")));
-        if (body.containsKey("memo")) repository.monthlyMemo(id,month,BillInput.memo(body.get("memo")));
+        if (body.containsKey("memoId")) repository.attachMemo(userId,id,month,body.get("memoId").toString());
+        else if (body.containsKey("memo")) repository.monthlyMemo(id,month,BillInput.memo(body.get("memo")));
         return response(repository.find(userId, id), repository.payment(id, month), month);
     }
 
@@ -218,7 +219,8 @@ public class BillService {
         requireContractMonth(userId,YearMonth.from(BillInput.dueDate(body.get("dueDate"))));
         if (!BillInput.dueDate(body.get("dueDate")).equals(existing.dueDate())) requireDueDate(body,timeZone);
         repository.monthlyDetails(id, month, BillInput.amount(body.get("amount")), BillInput.dueDate(body.get("dueDate")));
-        if (body.containsKey("memo")) repository.monthlyMemo(id,month,BillInput.memo(body.get("memo")));
+        if (body.containsKey("memoId")) repository.attachMemo(userId,id,month,body.get("memoId").toString());
+        else if (body.containsKey("memo")) repository.monthlyMemo(id,month,BillInput.memo(body.get("memo")));
         if(existing.amount()!=BillInput.amount(body.get("amount")) || !java.util.Objects.equals(existing.dueDate(),BillInput.dueDate(body.get("dueDate")))) {
             repository.propagateMonthly(userId,id,month,BillInput.amount(body.get("amount")),BillInput.dueDate(body.get("dueDate")),
                 java.time.LocalDate.ofInstant(clock.instant(),ZoneId.of(timeZone)),existing.amount()!=BillInput.amount(body.get("amount")),
@@ -386,6 +388,7 @@ public class BillService {
         result.put("terminationDate",item.terminationDate()==null?null:item.terminationDate().toString());
         result.put("dueDate", payment == null || payment.dueDate() == null ? null : payment.dueDate().toString());
         result.put("memo", payment == null || payment.memo() == null ? "" : payment.memo());
+        result.putAll(repository.memoReference(item.id(),month));
         return result;
     }
 }

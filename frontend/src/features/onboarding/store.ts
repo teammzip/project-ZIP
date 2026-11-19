@@ -35,6 +35,7 @@ export type HousingSurvey = {
   /** 4. 선택한 기간의 수입 (원) */
   income: number
   incomePeriod: IncomePeriod
+  incomePaymentDay?: number
   /** 설문을 끝낸 시각 (ISO) */
   answeredAt: string
 }

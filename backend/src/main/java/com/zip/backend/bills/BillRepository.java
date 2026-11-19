@@ -13,7 +13,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class BillRepository {
     private final JdbcTemplate jdbc;
-    public BillRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final com.zip.backend.memo.LedgerMemoWriter memos;
+    public BillRepository(JdbcTemplate jdbc) { this(jdbc,new com.zip.backend.memo.LedgerMemoWriter(jdbc,java.time.Clock.systemUTC())); }
+    @org.springframework.beans.factory.annotation.Autowired
+    public BillRepository(JdbcTemplate jdbc,com.zip.backend.memo.LedgerMemoWriter memos) { this.jdbc = jdbc; this.memos=memos; }
 
     public record Item(long id, String name, long defaultAmount, String tag, boolean active, Instant createdAt, String homeContractKind, java.time.LocalDate terminationDate) {
         public Item(long id,String name,long defaultAmount,String tag,boolean active,Instant createdAt) { this(id,name,defaultAmount,tag,active,createdAt,null,null); }
@@ -121,7 +124,19 @@ public class BillRepository {
         jdbc.update("UPDATE bill_payments SET amount=?, due_date=? WHERE bill_item_id=? AND period_ym=?", amount, java.sql.Date.valueOf(dueDate), id, month.toString());
     }
     public void monthlyMemo(long id, YearMonth month, String memo) {
+        String before=jdbc.queryForObject("SELECT memo FROM bill_payments WHERE bill_item_id=? AND period_ym=?",String.class,id,month.toString());
         jdbc.update("UPDATE bill_payments SET memo=? WHERE bill_item_id=? AND period_ym=?",memo,id,month.toString());
+        if(java.util.Objects.equals(before,memo)) return;
+        var item=jdbc.queryForMap("SELECT user_id,name FROM bill_items WHERE id=?",id);
+        memos.save(((Number)item.get("user_id")).longValue(),"bill",id+":"+month,"고정 지출 · "+month+" · "+item.get("name"),memo);
+    }
+    public void attachMemo(long user,long id,YearMonth month,String memoId) {
+        var linked=memos.attach(user,"bill",id+":"+month,memoId,"고정 지출 · "+month+" · "+find(user,id).name());
+        jdbc.update("UPDATE bill_payments SET memo=? WHERE bill_item_id=? AND period_ym=?",linked.body().substring(0,Math.min(200,linked.body().length())),id,month.toString());
+    }
+    public java.util.Map<String,Object> memoReference(long id,YearMonth month) {
+        var rows=jdbc.queryForList("SELECT m.id,m.title FROM memos m JOIN bill_items b ON b.user_id=m.user_id WHERE b.id=? AND m.ledger_source='bill' AND m.ledger_key=?",id,id+":"+month);
+        return rows.isEmpty()?java.util.Map.of():java.util.Map.of("memoId",rows.get(0).get("id").toString(),"memoTitle",java.util.Objects.toString(rows.get(0).get("title"),""));
     }
 
     public void propagateMonthly(long user,long id,YearMonth editedMonth,long amount,java.time.LocalDate due,java.time.LocalDate today,boolean changeAmount,boolean changeDue) {

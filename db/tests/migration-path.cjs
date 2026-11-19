@@ -24,6 +24,8 @@ const incrementalMigrations = [
   '20261118_08_contract_payment_effective_from.sql',
   '20261118_09_management_contract_kind.sql',
   '20261119_01_bill_termination.sql',
+  '20261119_02_ledger_memos.sql',
+  '20261119_03_salary_income.sql',
 ]
 
 module.exports = { legacyMigrations, incrementalMigrations }

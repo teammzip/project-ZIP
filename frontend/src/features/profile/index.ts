@@ -2,5 +2,6 @@
 export { Avatar } from './components/Avatar'
 export { ProfileEditor } from './components/ProfileEditor'
 export { ProfileHero } from './components/ProfileHero'
+export { ProfilePersonalInfo } from './components/ProfilePersonalInfo'
 export { useProfileStore } from './store'
 export { createProfilePatch } from './api'

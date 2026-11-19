@@ -4,6 +4,7 @@ import { useAuthStore } from '@/features/auth'
 import { authApi, isMockApi } from '@/features/auth/api'
 import { useHousingSurveyStore } from '@/features/onboarding/store'
 import { apiClient, getErrorMessage } from '@/lib/apiClient'
+import { useAge } from '@/lib/useAge'
 import common from '@/styles/common.module.css'
 import styles from './Profile.module.css'
 
@@ -34,6 +35,7 @@ export function ProfilePersonalInfo({ onNicknameSaved }: { onNicknameSaved?: (na
     birth: user?.birth !== undefined ? user.birth : user?.id && survey?.userId === user.id ? survey.birth : null,
     nickname: user?.nickname, email: user?.email, username: user?.username,
   } : query.data
+  const { age } = useAge(editing ? birth : info?.birth ?? '')
   const save = async () => {
     if (pending || !user || !token) return
     const name = nickname.trim()
@@ -69,6 +71,7 @@ export function ProfilePersonalInfo({ onNicknameSaved }: { onNicknameSaved?: (na
       <dd>{editing ? <input id="personal-nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} disabled={pending} autoFocus /> : info.nickname || '미등록'}</dd>
       <dt><label htmlFor="personal-birth">생년월일</label></dt>
       <dd>{editing ? <input id="personal-birth" type="date" value={birth} onChange={(e) => setBirth(e.target.value)} min="0001-01-01" max={today} disabled={pending} /> : info.birth || '미등록'}</dd>
+      <dt>나이</dt><dd>{age === null ? '생년월일 미등록 또는 확인 필요' : `만 ${age}세`}</dd>
       <dt>이메일</dt><dd>{info.email || '미등록'}</dd>
       <dt>아이디</dt><dd>{info.username || '소셜 로그인 계정'}</dd>
     </dl>}

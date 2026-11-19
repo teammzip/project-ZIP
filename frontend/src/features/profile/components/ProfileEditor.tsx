@@ -9,7 +9,6 @@ import { getErrorMessage } from '@/lib/apiClient'
 import type { ProfileLook } from '../types'
 import { Avatar } from './Avatar'
 import styles from './Profile.module.css'
-import { ProfilePersonalInfo } from './ProfilePersonalInfo'
 
 type Props = {
   open: boolean
@@ -32,7 +31,7 @@ export function ProfileEditor({ open, onClose, ...rest }: Props) {
 function EditorBody({ onClose, name, onSaveProfile, onSaved }: Omit<Props, 'open'>) {
   const saved = useProfileStore()
   const [draft, setDraft] = useState<ProfileLook>({ avatarImg: saved.avatarImg, avatarEmoji: saved.avatarEmoji, avatarColor: saved.avatarColor, bio: saved.bio })
-  const [nick, setNick] = useState(name)
+  const nick = name
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -72,7 +71,6 @@ function EditorBody({ onClose, name, onSaveProfile, onSaved }: Omit<Props, 'open
   return (
     <>
       <h3 className={styles.sheetTitle}>프로필 편집</h3>
-      <ProfilePersonalInfo onNicknameSaved={setNick} />
     <form className={cx(common.form, styles.editor)} onSubmit={submit}>
       <div className={styles.pick}>
         <Avatar name={nick || name} size={96} look={draft} />

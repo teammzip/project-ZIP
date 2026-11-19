@@ -12,6 +12,7 @@ import { formatLocalTime, selectedMonth, validSelectableMonth } from '../monthly
 import styles from './life.module.css'
 import { MonthlyBillEditor } from './MonthlyBillEditor'
 import { MonthlyBillActions } from './MonthlyBillActions'
+import { returnedMemoDraft } from '../ledgerMemoNavigation'
 
 export function MonthlyFixedExpense() {
   const userId = useAuthStore((s) => s.user?.id)
@@ -20,7 +21,7 @@ export function MonthlyFixedExpense() {
   const preferred = choice?.source === 'device' ? undefined : choice?.timeZone
   const { timeZone, currentMonth } = useLocalMonth(preferred)
   const ready = !resolving && (!preferred || preferred === timeZone)
-  const [selection, setSelection] = useState<string | null>(null)
+  const [selection, setSelection] = useState<string | null>(() => returnedMemoDraft(userId, 'bill')?.month ?? null)
   const month = selectedMonth(selection, currentMonth)
   const query = useQuery({
     queryKey: ['monthly-bills', userId, token, timeZone, month],
@@ -79,15 +80,15 @@ export function MonthlyFixedExpense() {
             <div className={styles.moneyInfo}><b>{bill.name}</b>
               <span className={`${common.dotChip} ${common.dotChipSmall}`} style={{ '--c': categories.find((category) => category.name === bill.tag)?.color } as CSSProperties}>{bill.tag}</span>
               <small>{bill.paid ? '납부 완료' : bill.snapshot ? '미납' : '미납·예정'}{!bill.active ? ' · 해지' : ''} · 납부 기한: {bill.dueDate ?? '미등록'}</small>
-              {bill.memo && <small>{bill.memo}</small>}
               {bill.paidAt && <small>납부: {formatLocalTime(bill.paidAt, data.timeZone)}</small>}
             </div>
             <div className={styles.moneyAmt}>{won(bill.amount)}</div>
             <details className={styles.fixedExpenseActions} key={`menu:${userId}:${token}:${timeZone}:${month}:${bill.id}`}>
               <summary aria-label={`${bill.name} 고정 지출 설정`} title="고정 지출 설정">
-                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m9.5 3-.5 2a8 8 0 0 0-1.6.9l-2-.6-2.5 4.4 1.5 1.4a8 8 0 0 0 0 1.8l-1.5 1.4 2.5 4.4 2-.6A8 8 0 0 0 9 19l.5 2h5l.5-2a8 8 0 0 0 1.6-.9l2 .6 2.5-4.4-1.5-1.4a8 8 0 0 0 0-1.8l1.5-1.4-2.5-4.4-2 .6A8 8 0 0 0 15 5l-.5-2z" />
-                  <circle cx="12" cy="12" r="3" />
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 7h16M4 17h16" />
+                  <circle cx="9" cy="7" r="3" />
+                  <circle cx="15" cy="17" r="3" />
                 </svg>
               </summary>
               <div className={styles.fixedExpenseActionList}>

@@ -1,10 +1,7 @@
 import type { ComponentType } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
-import { AppLayout } from '@/components/layout/AppLayout'
 import { AccountLayout } from '@/components/layout/AccountLayout'
 import { AuthLayout } from '@/components/layout/AuthLayout'
-import { HomePage } from '@/pages/home/HomePage'
-import { MyLayout } from '@/pages/my/MyLayout'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { GuestRoute, ProtectedRoute } from './guards'
 
@@ -14,7 +11,7 @@ const page =
   async () => ({ Component: (await load())[name] })
 
 /* 화면 주소 한눈에 보기. 새 화면을 만들면 여기에 한 줄 추가하세요.
- * 홈 · 화면 틀은 바로 받고, 나머지 화면은 page(() => import(…), '이름') 으로 나눠 받아요. */
+ * 홈 · 로그인 후 화면 틀도 page(() => import(…), '이름') 으로 나눠 받아요. */
 export const router = createBrowserRouter([
   {
     // 첫 화면 코드를 받는 동안: 앱 배경색만 (깜빡임 없이)
@@ -56,9 +53,9 @@ export const router = createBrowserRouter([
           { path: '/onboarding', lazy: page(() => import('@/pages/onboarding/OnboardingPage'), 'OnboardingPage') },
           { element: <AuthLayout />, children: [{ path: '/welcome', lazy: page(() => import('@/pages/auth/WelcomePage'), 'WelcomePage') }] },
           {
-            element: <AppLayout />,
+            lazy: page(() => import('@/components/layout/AppLayout'), 'AppLayout'),
             children: [
-              { path: '/', element: <HomePage /> },
+              { path: '/', lazy: page(() => import('@/pages/home/HomePage'), 'HomePage') },
               // 예전 '사진' 메뉴는 AI 화면(＋ 로 카메라·사진)에 합쳐짐
               { path: '/photo', element: <Navigate to="/ai" replace /> },
               { path: '/ai', lazy: page(() => import('@/pages/ai/AiPage'), 'AiPage') },
@@ -66,7 +63,7 @@ export const router = createBrowserRouter([
               { path: '/community', lazy: page(() => import('@/pages/community/CommunityPage'), 'CommunityPage') },
               {
                 path: '/my',
-                element: <MyLayout />,
+                lazy: page(() => import('@/pages/my/MyLayout'), 'MyLayout'),
                 children: [
                   { index: true, element: <Navigate to="calendar" replace /> },
                   // 할 일 · 쓰레기 배출은 일정으로 합쳐짐 (예전 주소로 와도 일정으로)

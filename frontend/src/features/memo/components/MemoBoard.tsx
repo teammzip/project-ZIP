@@ -1,9 +1,11 @@
-import { useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button, Modal } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { useToday } from '@/lib/useToday'
+import { apiClient, getErrorMessage } from '@/lib/apiClient'
+import { isMockApi } from '@/lib/apiMode'
 import { MEMO_COLORS } from '../constants'
 import { colorOf, previewLines, searchText, sortMemos, titleOf, whenText } from '../lib'
 import { useMemoStore } from '../store'
@@ -12,19 +14,32 @@ import styles from './Memo.module.css'
 
 /** 메모장: PC 는 왼쪽 목록 | 오른쪽 쓰기, 모바일은 목록 → 누르면 쓰기 화면.
  * 열린 메모는 주소의 ?id= 로 정해서 홈 위젯에서 바로 열 수 있음. 쓰는 대로 자동 저장 */
-export function MemoBoard() {
+export function MemoBoard({ editableLedgerMemoId, saveAction }: { editableLedgerMemoId?: string; saveAction?: ReactNode } = {}) {
   const memos = useMemoStore((s) => s.memos)
   const add = useMemoStore((s) => s.add)
   const [params, setParams] = useSearchParams()
   const [query, setQuery] = useState('')
+  const composing = useRef(false)
+  useEffect(() => {
+    if (params.get('compose') !== '1' || composing.current) return
+    composing.current = true
+    const id = add()
+    setParams({ id: String(id) }, { replace: true })
+  }, [params, setParams, add])
   const isMobile = useMediaQuery('(max-width: 900px)')
   const now = useToday().getTime()
 
   const sorted = sortMemos(memos)
   const asked = Number(params.get('id')) || null
   // PC 는 고른 메모가 없으면 맨 위 메모를 바로 보여 줌, 모바일은 목록부터
-  const current = memos.find((m) => m.id === asked) ?? (isMobile ? undefined : sorted[0])
-  const open = (id: number | null) => setParams(id ? { id: String(id) } : {}, { replace: true })
+  const current = editableLedgerMemoId
+    ? memos.find((m) => String(m.id) === editableLedgerMemoId)
+    : memos.find((m) => m.id === asked) ?? (isMobile ? undefined : sorted[0])
+  const open = (id: number | null) => {
+    const next = new URLSearchParams(params)
+    if (id) next.set('id', String(id)); else next.delete('id')
+    setParams(next, { replace: true })
+  }
 
   const q = query.trim().toLowerCase()
   const list = q ? sorted.filter((m) => searchText(m).includes(q)) : sorted
@@ -67,6 +82,7 @@ export function MemoBoard() {
                   <time>{whenText(m.updatedAt, now)}</time>
                 </span>
                 {preview && <small>{preview}</small>}
+                {m.ledgerContext && <small>가계부 · {m.ledgerContext}</small>}
                 {m.checklist && m.items.length > 0 && (
                   <span className={styles.progress}>
                     {m.items.filter((i) => i.done).length} / {m.items.length} 완료
@@ -79,8 +95,9 @@ export function MemoBoard() {
       </aside>
 
       <section className={styles.editor} style={current ? ({ '--memo-bg': colorOf(current.color).bg } as CSSProperties) : undefined} aria-label="메모 쓰기">
+        {current?.ledgerContext && !editableLedgerMemoId && <p>가계부 · {current.ledgerContext}</p>}
         {current ? (
-          <MemoEditor key={current.id} memo={current} onBack={() => open(null)} onDeleted={() => open(null)} />
+          <MemoEditor key={current.id} memo={current} onBack={() => open(null)} onDeleted={() => open(null)} saveAction={saveAction} />
         ) : (
           <div className={styles.empty}>
             <span aria-hidden="true">📝</span>
@@ -93,13 +110,26 @@ export function MemoBoard() {
   )
 }
 
-function MemoEditor({ memo, onBack, onDeleted }: { memo: Memo; onBack: () => void; onDeleted: () => void }) {
+function MemoEditor({ memo, onBack, onDeleted, saveAction }: { memo: Memo; onBack: () => void; onDeleted: () => void; saveAction?: ReactNode }) {
   const update = useMemoStore((s) => s.update)
   const remove = useMemoStore((s) => s.remove)
   const [confirmDel, setConfirmDel] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [saved, setSaved] = useState(false)
+  const pendingSave = useRef(false)
   const itemRefs = useRef<Array<HTMLInputElement | null>>([])
   const now = useToday().getTime()
-  const set = (patch: Partial<Memo>) => update(memo.id, patch)
+  const set = (patch: Partial<Memo>) => { setSaved(false); update(memo.id, patch) }
+  const save = async () => {
+    if (pendingSave.current) return
+    pendingSave.current = true; setSaving(true); setSaveError(''); setSaved(false)
+    try {
+      if (!isMockApi) await apiClient.patch(`/memos/${memo.id}`, { title: memo.title, body: memo.body, color: memo.color, pinned: memo.pinned, checklist: memo.checklist, items: memo.items })
+      setSaved(true)
+    } catch (cause) { setSaveError(getErrorMessage(cause, '메모를 저장하지 못했어요.')) }
+    finally { pendingSave.current = false; setSaving(false) }
+  }
 
   // 항목을 더하거나 지운 뒤 그 줄에 커서를 옮김 (다시 그려진 다음에)
   const setItems = (items: Memo['items'], focus?: number) => {
@@ -148,7 +178,10 @@ function MemoEditor({ memo, onBack, onDeleted }: { memo: Memo; onBack: () => voi
         <button type="button" className={cx(styles.tool, styles.danger)} onClick={() => setConfirmDel(true)} title="메모 삭제">
           🗑️ <span>삭제</span>
         </button>
+        {saveAction ?? (memo.ledgerContext ? <Button disabled={saving} onClick={() => void save()}>{saving ? '저장 중' : '저장'}</Button> : null)}
       </div>
+      {saveError && <p role="alert">{saveError}</p>}
+      {saved && <p role="status">저장했어요.</p>}
 
       <input className={styles.title} value={memo.title} onChange={(e) => set({ title: e.target.value })} maxLength={60} placeholder="제목" aria-label="메모 제목" />
 

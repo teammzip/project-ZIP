@@ -310,6 +310,9 @@ CREATE TABLE IF NOT EXISTS `memos` (
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '소유 사용자 번호',
   `title` VARCHAR(60) NOT NULL DEFAULT '' COMMENT '메모 제목 — 빈 제목 허용',
   `body` TEXT NOT NULL COMMENT '글 메모 내용 — API에서 생략 시 빈 문자열, 최대 5000자',
+  `ledger_source` VARCHAR(10) NULL COMMENT '가계부 원본 종류 income/spend/bill',
+  `ledger_key` VARCHAR(40) NULL COMMENT '가계부 원본 ID 또는 고정 지출 ID:월',
+  `ledger_label` VARCHAR(120) NULL COMMENT '가계부 수입/지출 종류 및 날짜·분류',
   `color` ENUM('노랑','분홍','하늘','초록','보라','흰색') NOT NULL DEFAULT '노랑' COMMENT '메모 색',
   `is_pinned` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '목록 상단 고정 여부',
   `is_checklist` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '체크리스트 여부',
@@ -318,6 +321,7 @@ CREATE TABLE IF NOT EXISTS `memos` (
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
   PRIMARY KEY (`id`),
   KEY `idx_memos_user_pinned_updated` (`user_id`, `is_pinned`, `updated_at`),
+  UNIQUE KEY `uk_memos_ledger_source` (`user_id`, `ledger_source`, `ledger_key`),
   CONSTRAINT `fk_memos_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `ck_memos_items_array` CHECK (JSON_TYPE(`items`) = 'ARRAY')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='글 메모 및 체크리스트';
@@ -432,6 +436,28 @@ CREATE TABLE IF NOT EXISTS `incomes` (
   CONSTRAINT `fk_incomes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_incomes_category_id` FOREIGN KEY (`category_id`) REFERENCES `ledger_categories` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='수입: 가계부 "수입" 탭에서 기록하는 수입 한 건.';
+
+CREATE TABLE IF NOT EXISTS `salary_settings` (
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `amount` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `income_period` ENUM('monthly','annual') NOT NULL DEFAULT 'monthly',
+  `payment_day` TINYINT UNSIGNED NOT NULL DEFAULT 25,
+  `start_month` CHAR(7) NOT NULL,
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `fk_salary_settings_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_salary_settings_amount` CHECK ((`income_period` = 'monthly' AND `amount` <= 999999999) OR (`income_period` = 'annual' AND `amount` <= 11999999988)),
+  CONSTRAINT `chk_salary_settings_day` CHECK (`payment_day` BETWEEN 1 AND 31)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='월급 자동 등록 설정: 월 금액과 수령일';
+
+CREATE TABLE IF NOT EXISTS `salary_records` (
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `period_ym` CHAR(7) NOT NULL,
+  `income_id` BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (`user_id`, `period_ym`),
+  UNIQUE KEY `uk_salary_records_income` (`income_id`),
+  CONSTRAINT `fk_salary_records_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_salary_records_income` FOREIGN KEY (`income_id`) REFERENCES `incomes` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자별 월급 월 1건 중복 방지 및 수입 원본 연결';
 
 -- 기타 지출: 가계부 "지출 → 기타 지출" 탭에서 기록하는 지출 한 건(식비·생활용품·교통 등). 월별 보기, 홈의 "이번 달 지출 구성" 도넛, AI "이번 달 지출 요약" 카드가 월세·공과금과 합쳐 계산합니다.
 CREATE TABLE IF NOT EXISTS `expenses` (
