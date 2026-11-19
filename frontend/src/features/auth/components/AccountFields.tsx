@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { getErrorMessage } from '@/lib/apiClient'
+import { isMockApi } from '@/lib/apiMode'
 import { cx } from '@/lib/cx'
 import { useEmailVerification } from '../hooks/useAuthMutations'
 import type { EmailPurpose } from '../types'
@@ -87,7 +88,7 @@ export function EmailVerify({ id, purpose, email, onEmailChange, token, onToken,
     : localError || serverError
       ? { ok: false, text: localError || serverError }
       : sent
-        ? { ok: true, text: '인증번호를 보냈어요. (가짜 API 모드에서는 아무 6자리나 입력하면 돼요)' }
+        ? { ok: true, text: isMockApi ? '인증번호를 보냈어요. (가짜 API 모드에서는 아무 6자리나 입력하면 돼요)' : '인증번호를 보냈어요. 메일함을 확인해 주세요.' } // 서버 모드에서는 "아무 6자리" 안내가 거짓이라 모드별로 나눔
         : { ok: false, text: error ?? '' }
 
   return (
