@@ -3,6 +3,7 @@ import { Button, Modal } from '@/components/ui'
 import { isPending, reasonLabel, type Post, type Report, useAdminCommunity } from '@/features/community'
 import { AdminInquiries } from '@/features/support'
 import { banLabel, fmtAt, isActive, useAdminModeration, type BanRecord } from '@/features/moderation'
+import { isMockApi } from '@/lib/apiMode'
 import { cx } from '@/lib/cx'
 import { relTime } from '@/lib/date'
 import { AdminReports } from './AdminReports'
@@ -339,7 +340,9 @@ function Members({ members, openDialog, act, unban, loadHistory }: MembersProps)
         </table>
       </div>
       <p className={styles.hint}>
-        서버가 없어서 회원 목록 대신 커뮤니티 글 · 댓글 작성자를 모아 보여 줘요 (나는 빼고). 가입일은 예시 값이에요. 정지 중인 회원은 앱에서 로그인 · 글쓰기 · 댓글 ·
+        {/* 서버 모드에서는 실제 회원 목록·가입일이라 "서버가 없어서 … 예시 값" 안내가 맞지 않아 모드별로 나눔 */}
+        {isMockApi ? '서버가 없어서 회원 목록 대신 커뮤니티 글 · 댓글 작성자를 모아 보여 줘요 (나는 빼고). 가입일은 예시 값이에요. ' : '가입한 회원 전체를 보여 줘요. '}
+        정지 중인 회원은 앱에서 로그인 · 글쓰기 · 댓글 ·
         좋아요 · 재가입이 막혀요. 기간이 끝나 풀리거나 해제해도 정지 횟수는 남아요.
       </p>
     </main>

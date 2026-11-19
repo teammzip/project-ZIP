@@ -37,6 +37,8 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // Windows 기본 인코딩(cp949)에서는 테스트용 SQL의 한글이 깨져 지역 조회 테스트가 실패한다. 테스트 JVM을 UTF-8로 고정해 PC 설정과 상관없이 같은 결과가 나오게 한다.
+    jvmArgs '-Dfile.encoding=UTF-8'
 }
 
 tasks.register('hashPassword', JavaExec) {
