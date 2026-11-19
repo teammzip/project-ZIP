@@ -170,6 +170,31 @@ class CommunityIntegrationTests {
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM post_attachments", Integer.class));
     }
 
+    @Test void ranksVisiblePostsFromTheViewersRegionByViews() throws Exception {
+        String mapo = login("mapo01"), yongsan = login("yongsan1"), nowhere = login("nowhere1");
+        String first = write(mapo, "FREE", "가장 많이 본 글", "내용");
+        String older = write(mapo, "TIP", "이전 글", "내용");
+        String newer = write(mapo, "QUESTION", "새 글", "내용");
+        write(mapo, "TOWN", "조회 없는 글", "내용");
+        String hidden = write(mapo, "TIP", "숨긴 글", "내용");
+        String other = write(yongsan, "TIP", "다른 동네 글", "내용");
+        jdbc.update("UPDATE posts SET view_count = 50 WHERE id IN (?, ?)", Long.parseLong(hidden), Long.parseLong(other));
+        jdbc.update("UPDATE posts SET created_at = '2026-01-01 00:00:00' WHERE id = ?", Long.parseLong(older));
+        call(mapo, delete("/api/posts/{id}", hidden), null).andExpect(status().isNoContent());
+
+        mvc.perform(post("/api/posts/{id}/views", first)).andExpect(status().isUnauthorized());
+        call(mapo, post("/api/posts/{id}/views", hidden), null).andExpect(status().isNotFound());
+        call(mapo, get("/api/posts/{id}", first), null).andExpect(jsonPath("$.views").value(0));
+        for (String id : new String[] {first, first, newer, older}) {
+            call(mapo, post("/api/posts/{id}/views", id), null).andExpect(status().isNoContent());
+        }
+        call(mapo, get("/api/posts/popular"), null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(3))
+            .andExpect(jsonPath("$[0].id").value(first)).andExpect(jsonPath("$[0].views").value(2))
+            .andExpect(jsonPath("$[1].id").value(newer)).andExpect(jsonPath("$[2].id").value(older));
+        call(nowhere, get("/api/posts/popular"), null).andExpect(jsonPath("$.length()").value(0));
+    }
+
     @Test void homeTipsShowOnlyMarkedVisiblePosts() throws Exception {
         String mapo = login("mapo01");
         String tip = write(mapo, "TIP", "홈에 보일 꿀팁", "내용");

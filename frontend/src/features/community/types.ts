@@ -37,6 +37,7 @@ export type Post = {
   ownerId?: string
   /** 작성 시각 (ms) */
   ts: number
+  views?: number
   likes: number
   liked: boolean
   comments: Comment[]

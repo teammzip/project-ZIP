@@ -2603,6 +2603,16 @@
     },
     {
       "table": "posts",
+      "column": "view_count",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "posts",
       "column": "comment_count",
       "type": "int unsigned",
       "nullable": "NO",

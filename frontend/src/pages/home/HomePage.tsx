@@ -1,4 +1,4 @@
-import { HomeTips } from '@/features/community'
+import { HomeCommunityPosts } from '@/features/community'
 import { HomeNotiCard, IncomeChart, LifeStatGrid, SpendDonut } from '@/features/life'
 import { HomeMapCard } from '@/features/map'
 import { MemoWidget } from '@/features/memo'
@@ -21,7 +21,7 @@ export function HomePage() {
       </section>
 
       <section className={styles.row}>
-        <HomeTips />
+        <HomeCommunityPosts />
         <HomeMapCard />
       </section>
     </div>

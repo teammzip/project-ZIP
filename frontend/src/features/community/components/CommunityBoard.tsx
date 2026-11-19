@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isMockApi } from '@/features/auth'
 import { useSearchParams } from 'react-router-dom'
 import { normRegion, RegionAccessGate, RegionVerifyDialog, useRegionVerify } from '@/features/life'
@@ -7,6 +7,7 @@ import { cx } from '@/lib/cx'
 import { relTime } from '@/lib/date'
 import { CAT_ICON, shortRegion } from '../data/display'
 import { CATEGORIES, NEARBY } from '../data/seed'
+import { communityApi } from '../server'
 import { useCommunityStore } from '../store'
 import { commentCountOf, type Post } from '../types'
 import { useCommunityActions, useServerPost, useServerPosts } from '../useCommunity'
@@ -45,7 +46,7 @@ export function CommunityBoard(props: Props) {
 }
 
 function VerifiedCommunityBoard({ region, author, uid }: Props) {
-  const { posts: localPosts } = useCommunityStore()
+  const { posts: localPosts, recordView } = useCommunityStore()
   const actions = useCommunityActions()
   const ban = useActiveBan(author, uid)
   const [params, setParams] = useSearchParams()
@@ -85,6 +86,16 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
     .slice(0, 5)
     .map((x) => x.p)
   const selected = selectedId ? (isMockApi ? localPosts.find((p) => p.id === selectedId) : serverPost.data) : undefined
+
+  const viewedId = selected?.id
+  const lastView = useRef<number | undefined>(undefined)
+  useEffect(() => {
+    if (viewedId && lastView.current !== viewedId) {
+      if (isMockApi) recordView(viewedId)
+      else void communityApi.recordView(viewedId).catch(() => undefined)
+    }
+    lastView.current = viewedId
+  }, [viewedId, recordView])
 
   const open = (id: number | null) => {
     setParams(id ? { post: String(id) } : {})

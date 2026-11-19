@@ -28,6 +28,7 @@ type State = {
   addPost: (p: PostDraft & Pick<Post, 'region' | 'author'>) => boolean
   updatePost: (id: number, draft: PostDraft) => boolean
   removePost: (id: number) => void
+  recordView: (id: number) => void
   toggleLike: (id: number) => void
   /** staff = 관리자 화면에서 운영자로 쓴 댓글 */
   /** replyTo: 답글이면 단 댓글의 순서 (답글의 답글은 같은 묶음의 맨 위 댓글로) */
@@ -57,6 +58,7 @@ export const useCommunityStore = create<State>()(
         addPost: (p) => tryChange([{ ...p, id: Date.now(), ownerId: useAuthStore.getState().user?.id, ts: Date.now(), likes: 0, liked: false, comments: [] }, ...get().posts]),
         updatePost: (id, draft) => tryChange(patch(get().posts, id, (p) => ({ ...p, ...draft }))),
         removePost: (id) => set((s) => ({ posts: s.posts.filter((p) => p.id !== id) })),
+        recordView: (id) => tryChange(patch(get().posts, id, (p) => ({ ...p, views: (p.views ?? 0) + 1 }))),
         toggleLike: (id) => set((s) => ({ posts: patch(s.posts, id, (p) => ({ ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) })) })),
         addComment: (id, author, text, staff, replyTo) =>
           set((s) => ({

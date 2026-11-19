@@ -137,6 +137,18 @@ class BillMonthlyWriteTests {
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_items",Integer.class));
         assertEquals(0,jdbc.queryForObject("SELECT question_count FROM ai_usage_daily WHERE user_id=?",Integer.class,user));
     }
+    @Test void providerTimeoutLeavesNoDraftOrBillAndAllowsRetry() throws Exception {
+        when(gemini.billImage(any(),anyString(),anyString(),anyString()))
+            .thenThrow(new org.springframework.web.client.ResourceAccessException("synthetic provider timeout"))
+            .thenReturn("{\"readable\":true,\"name\":\"합성전기요금\",\"tag\":\"공과금\",\"amount\":42000,\"dueDate\":\"2026-12-05\"}");
+        mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(photo()).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token))
+            .andExpect(status().isBadGateway());
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_photo_drafts",Integer.class));
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
+        assertEquals(0,jdbc.queryForObject("SELECT question_count FROM ai_usage_daily WHERE user_id=?",Integer.class,user));
+        decide(analyze(photo()),true).andExpect(status().isOk());
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
+    }
     @Test void disabledAiInvalidPhotoAndAnonymousRequestsAreRejected() throws Exception {
         mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(photo()).param("month",month).param("timeZone","UTC")).andExpect(status().isUnauthorized());
         mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(new MockMultipartFile("photo","fake.png","image/png",new byte[]{1,2,3})).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token)).andExpect(status().isBadRequest());

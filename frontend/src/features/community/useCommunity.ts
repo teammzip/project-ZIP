@@ -33,9 +33,12 @@ export function useServerPost(id: number | null) {
   })
 }
 
-/** 홈 "자취 꿀팁" (서버 모드: is_home_tip 글) */
-export function useServerHomeTips() {
-  return useQuery({ queryKey: [...KEY, 'home-tips'], queryFn: communityApi.homeTips, enabled: !isMockApi, staleTime: 60_000 })
+export function usePopularPosts(userId: string | undefined, region: string) {
+  return useQuery({
+    queryKey: [...KEY, 'popular-posts', userId, region],
+    queryFn: communityApi.popularPosts,
+    enabled: !isMockApi && !!userId,
+  })
 }
 
 /** 결과: 성공이면 null, 실패면 화면에 보일 문구 */
@@ -68,7 +71,6 @@ export function useCommunityActions() {
     client.setQueriesData<InfiniteData<PostPage>>({ queryKey: [...KEY, 'posts'] }, (data) =>
       data && { ...data, pages: data.pages.map((page) => ({ ...page, items: page.items.map(patch) })) },
     )
-    client.setQueryData<Post[]>([...KEY, 'home-tips'], (tips) => tips?.map(patch))
   }
 
   return {

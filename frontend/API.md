@@ -403,7 +403,9 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
 | GET | `/api/posts?scope=here\|near\|all&category=TIP&q=&page=0` | — | `{ items: [post], hasNext }` |
-| GET | `/api/posts/home-tips` | — | `[post]` (홈 "자취 꿀팁", `is_home_tip`) |
+| GET | `/api/posts/popular` | — | `[post]` (내 동네 공개 글, 조회 수순 최대 3개) |
+| POST | `/api/posts/{id}/views` | — | 204 (공개 글 상세를 열 때 조회 수 1 증가) |
+| GET | `/api/posts/home-tips` | — | `[post]` (기존 관리자 지정 글 API) |
 | GET | `/api/posts/{id}` | — | `post` (댓글 포함) |
 | POST | `/api/posts` | `{ category, title, body, attachmentIds }` | `post` |
 | PATCH | `/api/posts/{id}` | `{ category, title, body, attachmentIds }` | `post` (내 글만) |
@@ -419,7 +421,7 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 { "id": "10", "region": { "id": "2", "name": "마포구" }, "category": "TIP",
   "title": "곰팡이 제거 꿀팁", "body": "…", "author": { "id": "3", "nickname": "청소고수" }, "mine": false,
   "createdAt": "2026-10-20T21:10:00+09:00", "updatedAt": "2026-10-20T21:10:00+09:00",
-  "likes": 12, "liked": true, "commentCount": 1,
+  "likes": 12, "liked": true, "commentCount": 1, "views": 24,
   "attachments": [{ "id": "40", "name": "before.jpg", "type": "image/jpeg", "size": 183000, "url": "https://…" }],
   "comments": [{ "id": "8", "author": { "id": "1", "nickname": "지기" }, "body": "감사해요!", "mine": true, "createdAt": "…" }] }
 ```

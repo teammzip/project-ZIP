@@ -122,6 +122,7 @@ INSERT INTO terms_documents (doc_type, version, title, content, consent_kind, is
 CREATE TABLE region_neighbors (region_id BIGINT NOT NULL, neighbor_region_id BIGINT NOT NULL, PRIMARY KEY (region_id, neighbor_region_id));
 CREATE TABLE posts (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NULL, region_id BIGINT NOT NULL, category VARCHAR(10) NOT NULL,
     title VARCHAR(100) NOT NULL, body TEXT NOT NULL, like_count INT DEFAULT 0 NOT NULL, comment_count INT DEFAULT 0 NOT NULL,
+    view_count BIGINT DEFAULT 0 NOT NULL,
     is_home_tip BOOLEAN DEFAULT FALSE NOT NULL, status VARCHAR(10) DEFAULT 'VISIBLE' NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, deleted_at TIMESTAMP,
     deleted_by BIGINT, delete_reason VARCHAR(200),

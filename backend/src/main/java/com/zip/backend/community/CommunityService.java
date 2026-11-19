@@ -28,7 +28,7 @@ public class CommunityService {
     static final int KEYWORD_MAX = 40;
     static final int ATTACHMENT_MAX = 5;
     static final long ATTACHMENT_BYTES_MAX = 2L * 1024 * 1024;
-    static final int HOME_TIPS = 3;
+    static final int HOME_POST_LIMIT = 3;
 
     private static final Set<String> CATEGORIES = Set.of("FREE", "TIP", "QUESTION", "TOWN");
     private static final Set<String> SCOPES = Set.of("here", "near", "all");
@@ -71,7 +71,18 @@ public class CommunityService {
     }
 
     public List<Map<String, Object>> homeTips(long viewerId) {
-        return repository.homeTips(viewerId, HOME_TIPS).stream().map(p -> post(p, viewerId, null, null)).toList();
+        return repository.homeTips(viewerId, HOME_POST_LIMIT).stream().map(p -> post(p, viewerId, null, null)).toList();
+    }
+
+    public List<Map<String, Object>> popularPosts(long viewerId) {
+        var region = repository.userRegion(viewerId);
+        if (region.isEmpty()) return List.of();
+        return repository.popularPosts(viewerId, region.get(), HOME_POST_LIMIT).stream()
+            .map(p -> post(p, viewerId, null, null)).toList();
+    }
+
+    public void recordView(String postId) {
+        if (!repository.incrementViews(id(postId, "글"))) throw notFound("글");
     }
 
     public Map<String, Object> post(long viewerId, String postId) {
@@ -438,6 +449,7 @@ public class CommunityService {
         result.put("liked", p.liked());
         result.put("reported", p.reported());
         result.put("commentCount", p.comments());
+        result.put("views", p.views());
         result.put("homeTip", p.homeTip());
         if (attachments != null) {
             result.put("attachments", attachments.stream().map(a -> Map.<String, Object>of("id", Long.toString(a.fileId()),

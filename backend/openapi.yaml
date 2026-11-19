@@ -799,10 +799,24 @@ paths:
       responses:
         '200': { description: 쓴 글, content: { application/json: { schema: { $ref: '#/components/schemas/Post' } } } }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /api/posts/popular:
+    get:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 내 동네 공개 게시글 조회 수 순위 (최대 3개)
+      responses:
+        '200': { description: 조회 수 상위 게시글, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Post' } } } } }
+  /api/posts/{id}/views:
+    post:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 공개 게시글 조회 수 증가
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: 집계 완료 }
+        '404': { $ref: '#/components/responses/NotFound' }
   /api/posts/home-tips:
     get:
       tags: [커뮤니티 · 첨부 · 신고]
-      summary: 홈 '자취 꿀팁' 카드 (is_home_tip)
+      summary: 기존 관리자 지정 글 목록 (is_home_tip)
       responses:
         '200': { description: 꿀팁 글, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Post' } } } } }
   /api/posts/{id}:
@@ -1835,6 +1849,7 @@ components:
         likes: { type: integer }
         liked: { type: boolean }
         commentCount: { type: integer }
+        views: { type: integer, format: int64, minimum: 0 }
         reportCount: { type: integer, description: 관리자 화면에서만 }
         attachments: { type: array, items: { $ref: '#/components/schemas/Attachment' } }
         comments: { type: array, items: { $ref: '#/components/schemas/Comment' } }
