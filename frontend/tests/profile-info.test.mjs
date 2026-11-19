@@ -17,6 +17,7 @@ function render(query, mock = false, survey = null) {
     if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: { id: 'a', nickname: '데모이름', address: '로컬 주소' }, token: 'token' }) }
     if (name === '@/features/auth/api') return { isMockApi: mock }
     if (name === '@/features/onboarding/store') return { useHousingSurveyStore: (selector) => selector({ survey }) }
+    if (name === '@/lib/useAge') return { useAge: (birth) => ({ age: birth ? 26 : null }) }
     if (name === '@/lib/apiClient') return { getErrorMessage: () => '등록 정보 조회 실패' }
     if (name.endsWith('.css')) return { default: {} }
     return require(name)
@@ -25,7 +26,7 @@ function render(query, mock = false, survey = null) {
 }
 test('개인 정보만 표시하고 주소·계약 정보는 표시하지 않는다', () => {
   const html = render({ data: { nickname: '회원이름', birth: '2000-02-29', address: '서버 주소', email: 'me@example.com', username: 'member01', rent: 55, contractEnd: '2028-11' } })
-  for (const text of ['회원이름', '2000-02-29', 'me@example.com', 'member01', '내 개인 정보']) assert.ok(html.includes(text))
+  for (const text of ['회원이름', '2000-02-29', '만 26세', 'me@example.com', 'member01', '내 개인 정보']) assert.ok(html.includes(text))
   for (const text of ['등록 주소', '서버 주소', '월세', '계약', '2028-11', '내 집 정보']) assert.ok(!html.includes(text))
   assert.ok(!html.includes('로컬 주소'))
 })
@@ -63,6 +64,7 @@ function editor({ fail = false } = {}) {
     if (name === '@/features/auth') return { useAuthStore: authStore }
     if (name === '@/features/auth/api') return { isMockApi: false }
     if (name === '@/features/onboarding/store') return { useHousingSurveyStore: (selector) => selector({ survey: null }) }
+    if (name === '@/lib/useAge') return { useAge: (birth) => ({ age: birth ? 26 : null }) }
     if (name === '@/lib/apiClient') return {
       getErrorMessage: () => '저장 실패',
       apiClient: { patch: async (path, body) => {

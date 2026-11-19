@@ -177,6 +177,7 @@ public class MemoService {
         result.put("items", json.readValue(m.items() == null ? "[]" : m.items(), new TypeReference<List<Map<String, Object>>>() {}));
         result.put("createdAt", m.createdAt().toString());
         result.put("updatedAt", m.updatedAt().toString());
+        result.put("ledgerContext",m.ledgerContext());
         return result;
     }
 }

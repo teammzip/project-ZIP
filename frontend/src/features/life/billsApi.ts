@@ -5,12 +5,13 @@ export type ServerBill = {
   amount: number; defaultAmount: number; paid: boolean; paidAt: string | null
   homeManaged?: boolean; active: boolean; snapshot: boolean; dueDate: string | null; memo: string
   terminationDate?: string | null
+  memoId?: string; memoTitle?: string
 }
-export type MonthlyBillInput = { name?: string; tag: string; amount: number; dueDate: string; memo?: string }
+export type MonthlyBillInput = { name?: string; tag: string; amount: number; dueDate: string; memo?: string; memoId?: string }
 export async function registerMonthlyBill(month: string, timeZone: string, input: MonthlyBillInput) {
   return (await apiClient.post<ServerBill>('/bills/monthly', input, { params: { month, timeZone } })).data
 }
-export async function updateMonthlyBill(id: string, month: string, timeZone: string, input: Pick<MonthlyBillInput, 'amount' | 'dueDate' | 'memo'>) {
+export async function updateMonthlyBill(id: string, month: string, timeZone: string, input: Pick<MonthlyBillInput, 'amount' | 'dueDate' | 'memo' | 'memoId'>) {
   return (await apiClient.patch<ServerBill>(`/bills/monthly/${id}`, input, { params: { month, timeZone } })).data
 }
 export type MonthlyBills = {

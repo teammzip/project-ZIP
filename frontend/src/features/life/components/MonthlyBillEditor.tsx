@@ -8,6 +8,8 @@ import { LedgerCategoryDialog } from './LedgerCategoryDialog'
 import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
 import styles from './life.module.css'
+import { useAuthStore } from '@/features/auth'
+import { returnedMemoDraft, openLedgerMemo, clearMemoDraft } from '../ledgerMemoNavigation'
 
 function localDate(timeZone: string) {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
@@ -17,14 +19,19 @@ function localDate(timeZone: string) {
 type Props = { month: string; timeZone: string; bill?: ServerBill }
 export function MonthlyBillEditor({ month, timeZone, bill }: Props) {
   const client = useQueryClient()
-  const [editing, setEditing] = useState(!bill)
+  const owner = useAuthStore((state) => state.user?.id)
+  const [resume, setResume] = useState(() => {
+    const draft = returnedMemoDraft(owner, 'bill')
+    return draft?.recordId === bill?.id && draft?.month === month ? draft : undefined
+  })
+  const [editing, setEditing] = useState(!!resume || !bill)
   const categories = useLedgerCategories('bill')
   const [addingCategory, setAddingCategory] = useState(false)
-  const [tag, setTag] = useState(bill?.tag ?? '공과금')
-  const [amount, setAmount] = useState(String(bill?.amount ?? ''))
-  const [dueDate, setDueDate] = useState(bill?.dueDate ?? '')
+  const [tag, setTag] = useState(resume?.values.tag ?? bill?.tag ?? '공과금')
+  const [amount, setAmount] = useState(resume?.values.amount ?? String(bill?.amount ?? ''))
+  const [dueDate, setDueDate] = useState(resume?.values.dueDate ?? bill?.dueDate ?? '')
   const [memo, setMemo] = useState(bill?.memo ?? '')
-  const [memoOpen, setMemoOpen] = useState(!!bill?.memo)
+  const memoId = resume?.memoId ?? bill?.memoId, memoTitle = resume?.memoTitle ?? bill?.memoTitle
   const [busy, setBusy] = useState(false)
   const pending = useRef(false)
   const [error, setError] = useState('')
@@ -44,6 +51,8 @@ export function MonthlyBillEditor({ month, timeZone, bill }: Props) {
     setBusy(true); setError(''); setNotice('')
     try {
       const saved = await task()
+      clearMemoDraft(resume)
+      setResume(undefined)
       setEditing(!bill)
       if (!bill) { setAmount(''); setMemo(''); setDueDate('') }
       setNotice(`${saved.name} · ${saved.amount.toLocaleString('ko-KR')}원 · 납부 기한 ${saved.dueDate} 저장 완료`)
@@ -56,8 +65,8 @@ export function MonthlyBillEditor({ month, timeZone, bill }: Props) {
     if (!/^\d+$/.test(amount) || !Number.isSafeInteger(Number(amount)) || !dueDate || (!bill && !tag.trim())) {
       setError('분류·원 단위 정수 금액·납부 기한을 확인해 주세요.'); return
     }
-    if (bill?.snapshot) void run(() => updateMonthlyBill(bill.id, month, timeZone, { amount: Number(amount), dueDate, memo }))
-    else void run(() => registerMonthlyBill(month, timeZone, { ...(bill ? { name: bill.name } : {}), tag: bill?.tag ?? tag, amount: Number(amount), dueDate, memo }))
+    if (bill?.snapshot) void run(() => updateMonthlyBill(bill.id, month, timeZone, { amount: Number(amount), dueDate, memo, ...(memoId ? { memoId } : {}) }))
+    else void run(() => registerMonthlyBill(month, timeZone, { ...(bill ? { name: bill.name } : {}), tag: bill?.tag ?? tag, amount: Number(amount), dueDate, memo, ...(memoId ? { memoId } : {}) }))
   }
   const remove = async () => {
     if (pending.current || !bill?.snapshot || bill.paid || !window.confirm(`${month} 기록만 삭제할까요? 다른 달의 기록과 정기 지출은 유지됩니다. 반복 지출을 중단하려면 정기 지출 해지를 이용해 주세요.`)) return
@@ -86,7 +95,10 @@ export function MonthlyBillEditor({ month, timeZone, bill }: Props) {
       {bill && <label className={styles.quickField}>금액(원)<input type="number" min="0" max="9007199254740991" step="1" required value={amount} disabled={busy} onChange={(e) => setAmount(e.target.value)} /></label>}
       <div className={styles.quickFields}>
         <label className={styles.quickField}><span>납부 기한</span><input className={styles.quickDate} type="date" min={keepingDeadline ? undefined : today} max="9999-12-31" required value={dueDate} disabled={busy} onChange={(e) => setDueDate(e.target.value)} /></label>
-        {memoOpen ? <label className={styles.quickField}><span>메모 (선택)</span><input value={memo} maxLength={200} disabled={busy} onChange={(e) => setMemo(e.target.value)} /></label> : <button className={styles.quickField} type="button" disabled={busy} onClick={() => setMemoOpen(true)}><span>메모 (선택)</span><b className={styles.quickAdd}>📝 메모 추가</b></button>}
+        <button type="button" className={styles.quickField} disabled={busy} aria-label="메모 작성" onClick={() => {
+          if (!owner) return
+          openLedgerMemo({ key: resume?.key, owner, kind: 'bill', recordId: bill?.id, month, label: `고정 지출 · ${month} · ${bill?.name ?? tag}`, values: { amount, dueDate, tag }, memoId, memoTitle })
+        }}><span>메모 (선택)</span><b className={styles.quickAdd}>{memoId ? memoTitle?.trim() || '제목 없는 메모' : '메모 작성'}</b></button>
       </div>
       <Button type="submit" block disabled={busy || !amount || !dueDate}>{busy ? '저장 중' : bill ? '저장' : '기록하기'}</Button>
       {bill && <Button type="button" variant="line" disabled={busy} onClick={() => { setEditing(false); setError('') }}>취소</Button>}

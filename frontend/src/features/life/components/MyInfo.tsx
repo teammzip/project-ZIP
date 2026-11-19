@@ -142,6 +142,7 @@ export function LifeInfoFields({ onSaved, showHomeAddress = true }: LifeInfoProp
           contractFee: monthly ? 0 : Number(form.contractFee), ...months,
           ...(showHomeAddress ? { homeAddress: form.homeAddress.trim() } : {}), loan: terms ?? null })
         await queryClient.invalidateQueries({ queryKey: ['monthly-bills'] })
+        await queryClient.invalidateQueries({ queryKey: ['billing-address'] })
         onSaved?.()
         return
       }

@@ -6,7 +6,7 @@ import vm from 'node:vm'
 import ts from 'typescript'
 
 const require = createRequire(import.meta.url)
-function editor(bill, fail = false, confirm = true) {
+function editor(bill, fail = false, confirm = true, resume) {
   const values = [], calls = [], exports = {}
   let index = 0, invalidations = 0
   const save = (kind) => async (...args) => {
@@ -24,6 +24,8 @@ function editor(bill, fail = false, confirm = true) {
     } }
     if (name === '@tanstack/react-query') return { useQueryClient: () => ({ invalidateQueries: async () => { invalidations++ } }) }
     if (name === '../billsApi') return { registerMonthlyBill: save('create'), updateMonthlyBill: save('update'), deleteMonthlyBill: save('delete') }
+    if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: { id: '1' } }) }
+    if (name === '../ledgerMemoNavigation') return { returnedMemoDraft: () => resume, clearMemoDraft() {}, openLedgerMemo: (...args) => calls.push({ kind: 'memo', args }) }
     if (name === '../ledgerCategories') return { useLedgerCategories: () => [{ name: '공과금' }, { name: '통신' }] }
     if (name === './LedgerCategoryDialog') return { LedgerCategoryDialog: () => null }
     if (name === '@/lib/apiClient') return { getErrorMessage: (error) => error.message }
@@ -87,6 +89,10 @@ test('고정 지출 입력 폼은 바로 보이고 사진 업로드를 제공하
   const ui = editor()
   assert.ok(ui.button('기록하기'))
   assert.ok(ui.button('＋ 카테고리 추가'))
+  const memoButton = ui.nodes().find((node) => node.props?.['aria-label'] === '메모 작성')
+  assert.ok(memoButton)
+  assert.equal(memoButton.props.target, undefined)
+  assert.equal(ui.nodes().some((node) => node.type === 'input' && node.props.maxLength === 200), false)
   assert.equal(ui.nodes().some((node) => node.type === 'input' && node.props.type === 'file'), false)
   ui.nodes().find((node) => node.type === 'amount-input').props.onValueChange('42000')
   assert.equal(ui.nodes().some((node) => node.props?.children === '항목 이름'), false)
@@ -144,4 +150,18 @@ test('삭제 연속 클릭은 요청을 한 번만 보낸다', async () => {
   click(); click()
   await new Promise(setImmediate)
   assert.equal(ui.calls.length, 1)
+})
+
+test('메모 페이지로 입력을 전달하고 복귀 시 제목과 금액·날짜를 복원한다', async () => {
+  const ui = editor()
+  ui.nodes().find((node) => node.type === 'amount-input').props.onValueChange('42000')
+  ui.input('date').props.onChange({ target: { value: '2099-12-05' } })
+  ui.nodes().find((node) => node.props?.['aria-label'] === '메모 작성').props.onClick()
+  assert.equal(ui.calls[0].kind, 'memo')
+  assert.equal(ui.calls[0].args[0].values.amount, '42000')
+  const returned = editor(undefined, false, true, { kind: 'bill', month: '2026-11', memoId: '9', memoTitle: '전기요금 확인', values: { amount: '42000', dueDate: '2099-12-05', tag: '공과금' } })
+  assert.ok(returned.nodes().some((node) => node.props?.children === '전기요금 확인'))
+  assert.equal(returned.input('date').props.value, '2099-12-05')
+  await returned.submit()
+  assert.equal(returned.calls[0].args[2].memoId, '9')
 })

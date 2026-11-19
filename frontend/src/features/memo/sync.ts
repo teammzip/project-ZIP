@@ -19,6 +19,7 @@ type ServerMemo = Omit<Memo, 'id' | 'createdAt' | 'updatedAt'> & { id: string; i
 const toMemo = (m: ServerMemo): Memo => ({
   id: Number(m.id),
   title: m.title,
+  ledgerContext: m.ledgerContext,
   body: m.body,
   color: m.color,
   pinned: m.pinned,
@@ -300,6 +301,11 @@ export function startMemoSync(userId: string, setTimer: typeof setTimeout = setT
     }
   }
   const onHide = () => document.visibilityState === 'hidden' && flush()
+  const onRefresh = () => schedulePull(0)
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', onRefresh)
+    window.addEventListener('zip-memos-refresh', onRefresh)
+  }
   if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onHide)
   externalChange.after = () => {
     // 이 기기 기록만 지운 것: 남은 일을 잊고 서버 값을 다시 받음
@@ -317,6 +323,10 @@ export function startMemoSync(userId: string, setTimer: typeof setTimeout = setT
     unsubscribe()
     if (pullTimer) clearTimer(pullTimer)
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onHide)
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('focus', onRefresh)
+      window.removeEventListener('zip-memos-refresh', onRefresh)
+    }
     if (externalChange.after) externalChange = { mute: false, after: null }
   }
 }
