@@ -22,6 +22,7 @@ export type ServerPost = {
   mine: boolean
   createdAt: string
   updatedAt: string
+  views: number
   likes: number
   liked: boolean
   reported: boolean
@@ -42,6 +43,7 @@ export const toPost = (p: ServerPost): Post => ({
   author: p.author.nickname,
   ownerId: p.author.id,
   ts: Date.parse(p.createdAt),
+  views: p.views,
   likes: p.likes,
   liked: p.liked,
   reported: p.reported,
@@ -84,7 +86,8 @@ export const communityApi = {
     return { items: data.items.map(toPost), hasNext: data.hasNext }
   },
   post: async (id: number) => toPost((await apiClient.get<ServerPost>(`/posts/${id}`)).data),
-  homeTips: async () => (await apiClient.get<ServerPost[]>('/posts/home-tips')).data.map(toPost),
+  recordView: (id: number) => apiClient.post(`/posts/${id}/views`),
+  popularPosts: async () => (await apiClient.get<ServerPost[]>('/posts/popular')).data.map(toPost),
   create: async (draft: PostDraft) => toPost((await apiClient.post<ServerPost>('/posts', await postBody(draft))).data),
   update: async (id: number, draft: PostDraft) => toPost((await apiClient.patch<ServerPost>(`/posts/${id}`, await postBody(draft))).data),
   remove: (id: number) => apiClient.delete(`/posts/${id}`),

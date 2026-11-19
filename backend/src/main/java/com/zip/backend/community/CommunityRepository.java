@@ -24,7 +24,7 @@ public class CommunityRepository {
     public CommunityRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     public record PostRow(long id, long userId, long regionId, String regionName, String category, String title, String body,
-        int likes, int comments, boolean homeTip, String nickname, boolean liked, boolean reported, Instant createdAt, Instant updatedAt) {}
+        int likes, int comments, long views, boolean homeTip, String nickname, boolean liked, boolean reported, Instant createdAt, Instant updatedAt) {}
 
     public record CommentRow(long id, long postId, long userId, String nickname, String body, boolean reported, boolean staff, Long parentId, Instant createdAt) {}
 
@@ -52,7 +52,7 @@ public class CommunityRepository {
     /** 글 목록 · 상세 공통: 글쓴이 닉네임, 동네 이름("서울특별시 마포구"), 내가 공감했는지 · 신고했는지 */
     private static final String POST_SQL = """
         SELECT p.id, p.user_id, p.region_id, r.name AS region_name, pr.name AS parent_name, p.category, p.title, p.body,
-               p.like_count, p.comment_count, p.is_home_tip, p.created_at, p.updated_at, u.nickname,
+               p.like_count, p.comment_count, p.view_count, p.is_home_tip, p.created_at, p.updated_at, u.nickname,
                EXISTS (SELECT 1 FROM post_likes l WHERE l.post_id = p.id AND l.user_id = ?) AS liked,
                EXISTS (SELECT 1 FROM reports x WHERE x.target_type = 'POST' AND x.target_id = p.id AND x.reporter_id = ?) AS reported
         FROM posts p
@@ -66,7 +66,7 @@ public class CommunityRepository {
         String region = parent == null ? rs.getString("region_name") : parent + " " + rs.getString("region_name");
         return new PostRow(rs.getLong("id"), rs.getLong("user_id"), rs.getLong("region_id"), region, rs.getString("category"),
             rs.getString("title"), rs.getString("body"), rs.getInt("like_count"), rs.getInt("comment_count"),
-            rs.getBoolean("is_home_tip"), rs.getString("nickname"), rs.getBoolean("liked"), rs.getBoolean("reported"),
+            rs.getLong("view_count"), rs.getBoolean("is_home_tip"), rs.getString("nickname"), rs.getBoolean("liked"), rs.getBoolean("reported"),
             instant(rs, "created_at"), instant(rs, "updated_at"));
     }
 
@@ -116,6 +116,17 @@ public class CommunityRepository {
     public List<PostRow> homeTips(long viewerId, int limit) {
         return jdbc.query(POST_SQL + " WHERE p.status = 'VISIBLE' AND p.is_home_tip = 1 ORDER BY p.created_at DESC, p.id DESC LIMIT ?",
             CommunityRepository::post, viewerId, viewerId, limit);
+    }
+
+    public List<PostRow> popularPosts(long viewerId, long regionId, int limit) {
+        return jdbc.query(POST_SQL + """
+            WHERE p.region_id = ? AND p.status = 'VISIBLE'
+            ORDER BY p.view_count DESC, p.created_at DESC, p.id DESC LIMIT ?
+            """, CommunityRepository::post, viewerId, viewerId, regionId, limit);
+    }
+
+    public boolean incrementViews(long postId) {
+        return jdbc.update("UPDATE posts SET view_count = view_count + 1, updated_at = updated_at WHERE id = ? AND status = 'VISIBLE'", postId) > 0;
     }
 
     public Optional<PostRow> visiblePost(long viewerId, long postId) {

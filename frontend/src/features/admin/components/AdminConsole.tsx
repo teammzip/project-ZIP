@@ -167,7 +167,6 @@ export function AdminConsole({ me, onLogout, logoutPending }: { me: string; onLo
           removeComment={deleteComment}
           onAddComment={(id, text) => void admin.addStaffComment(id, text)}
           reports={reports}
-          onHomeTip={admin.setHomeTip && ((id, on) => void admin.setHomeTip!(id, on))}
         />
       )}
 
@@ -402,8 +401,6 @@ function MemberRow({ m, checked, onCheck, histOpen, onHist, onWarn, onBan }: Row
 type PostsProps = {
   posts: Post[]
   reports: Report[]
-  /** 홈 "자취 꿀팁" 지정 · 해제 (서버 모드만) */
-  onHomeTip?: (id: number, on: boolean) => void
   isBanned: (nick: string) => boolean
   onDelete: (title: string, msg: string, author: string, doDelete: (reason?: string) => void, staff?: boolean) => void
   /** 운영자로 댓글 쓰기 */
@@ -412,7 +409,7 @@ type PostsProps = {
   removeComment: (id: number, index: number, reason?: string) => void
 }
 
-function Posts({ posts, reports, onHomeTip, isBanned, onDelete, removePost, removeComment, onAddComment }: PostsProps) {
+function Posts({ posts, reports, isBanned, onDelete, removePost, removeComment, onAddComment }: PostsProps) {
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('')
   const [region, setRegion] = useState('')
@@ -480,7 +477,6 @@ function Posts({ posts, reports, onHomeTip, isBanned, onDelete, removePost, remo
                 onDeletePost={() => onDelete('글 삭제', `"${p.title}" 글을 삭제할까요? 댓글도 함께 사라지고 되돌릴 수 없어요.`, p.author, (reason) => removePost(p.id, reason))}
                 onDeleteComment={(i) => onDelete('댓글 삭제', `"${p.comments[i].text}" 댓글을 삭제할까요? 되돌릴 수 없어요.`, p.comments[i].author, (reason) => removeComment(p.id, i, reason), p.comments[i].staff)}
                 onAddComment={(text) => onAddComment(p.id, text)}
-                onHomeTip={onHomeTip && (() => onHomeTip(p.id, !p.homeTip))}
               />
             ))}
           </tbody>
@@ -500,10 +496,9 @@ type PostRowProps = {
   onDeletePost: () => void
   onDeleteComment: (index: number) => void
   onAddComment: (text: string) => void
-  onHomeTip?: () => void
 }
 
-function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteComment, onAddComment, onHomeTip }: PostRowProps) {
+function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteComment, onAddComment }: PostRowProps) {
   const [reply, setReply] = useState('')
   const idText = String(p.id).length > 6 ? `…${String(p.id).slice(-4)}` : String(p.id)
   return (
@@ -527,11 +522,6 @@ function PostRow({ p, reports, open, onToggle, banned, onDeletePost, onDeleteCom
         <td>{p.likes}</td>
         <td>{p.comments.length}</td>
         <td>
-          {onHomeTip && (
-            <Button variant="line" onClick={onHomeTip} aria-pressed={!!p.homeTip} title="홈 화면 '자취 꿀팁'에 보이기">
-              {p.homeTip ? '★ 홈 꿀팁 해제' : '☆ 홈 꿀팁'}
-            </Button>
-          )}{' '}
           <Button variant="danger" onClick={onDeletePost}>
             삭제
           </Button>

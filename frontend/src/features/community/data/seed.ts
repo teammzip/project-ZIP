@@ -1,4 +1,4 @@
-/* 커뮤니티: 홈 "자취 꿀팁" 카드가 여는 안내 글 3개와 동네 정보. 다른 회원의 예시 글은 넣지 않아요. */
+/* 가짜 API 모드의 안내 게시글과 주변 동네 정보 */
 import type { Post } from '../types'
 
 export const CATEGORIES = ['자유', '꿀팁', '질문', '동네'] as const
@@ -10,13 +10,6 @@ export const NEARBY: Record<string, string[]> = {
   '서울 용산구': ['서울 마포구', '서울 중구', '서울 성동구'],
   '서울 영등포구': ['서울 마포구', '서울 동작구', '서울 양천구'],
 }
-
-/** 홈 "자취 꿀팁 게시글" 카드에 보여줄 글 (누르면 커뮤니티 상세로) */
-export const HOME_TIPS = [
-  { id: 1001, emoji: '💡', bg: '#e9f7f2', title: '작은 방을 넓어 보이게 정리하는 법', sub: '수납장 위 3개만 남기고, 빛 반사되는 소품은 줄이기', tag: '꿀팁' },
-  { id: 1002, emoji: '🧴', bg: '#e3efff', title: '세제는 이렇게 놓으면 관리가 편해요', sub: '설거지용·청소용 분리 보관, 세면대 아래 행거 활용', tag: '실전' },
-  { id: 1003, emoji: '🥗', bg: '#f3efff', title: '1인 가구 냉장고 관리 루틴', sub: '채소는 물기 제거 후 반찬통, 소분된 간식은 눈높이 자석통에', tag: '생활' },
-]
 
 export function seedPosts(): Post[] {
   const now = Date.now()

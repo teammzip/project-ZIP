@@ -88,6 +88,20 @@ class SalaryIntegrationTests {
         service.sync(owner,"UTC");
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM incomes",Integer.class));
     }
+    @Test void freshServiceCatchesUpMissedMonthsAndKeepsRecordsAcrossYearAndZoneChanges() {
+        jdbc.update("INSERT INTO salary_settings(user_id,amount,income_period,payment_day,start_month) VALUES (?,1000000,'monthly',31,'2026-11')",owner);
+        at("2026-11-30T12:00:00Z").sync(owner,"UTC");
+        // A fresh service instance represents losing all process-local state after restart.
+        at("2027-02-28T12:00:00Z").sync(owner,"UTC");
+        assertEquals(4,jdbc.queryForObject("SELECT COUNT(*) FROM salary_records",Integer.class));
+        assertEquals(4000000L,jdbc.queryForObject("SELECT SUM(amount) FROM incomes",Long.class));
+        assertEquals("2027-02-28",jdbc.queryForObject("SELECT MAX(income_date) FROM incomes",java.sql.Date.class).toString());
+        at("2027-03-01T00:30:00Z").sync(owner,"America/Los_Angeles");
+        at("2027-03-01T00:30:00Z").sync(owner,"Asia/Seoul");
+        at("2027-03-01T00:30:00Z").sync(owner,"UTC");
+        assertEquals(4,jdbc.queryForObject("SELECT COUNT(*) FROM incomes",Integer.class));
+        assertEquals(4,jdbc.queryForObject("SELECT COUNT(*) FROM salary_records",Integer.class));
+    }
     @Test void invalidAmountsDaysPeriodsAndOtherUsersAreIsolated() throws Exception {
         for(String body:new String[]{"{\"amount\":12,\"incomePeriod\":\"annual\",\"paymentDay\":0}","{\"amount\":11,\"incomePeriod\":\"annual\",\"paymentDay\":25}","{\"amount\":-1,\"incomePeriod\":\"monthly\",\"paymentDay\":25}","{\"amount\":1.5,\"incomePeriod\":\"monthly\",\"paymentDay\":25}","{\"amount\":12,\"incomePeriod\":\"weekly\",\"paymentDay\":25}"})
             mvc.perform(put("/api/me/salary").param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content(body)).andExpect(status().isBadRequest());

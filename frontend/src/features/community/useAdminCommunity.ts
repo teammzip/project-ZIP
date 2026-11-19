@@ -113,12 +113,5 @@ export function useAdminCommunity(me: string) {
       await Promise.all([...targets.values()].map((t) => apiClient.patch('/admin/reports', { status }, { params: t })))
       await refresh()
     },
-    /** 홈 "자취 꿀팁"에 보이기 · 빼기 (서버 모드만) */
-    setHomeTip: isMockApi
-      ? undefined
-      : async (id: number, on: boolean) => {
-          await (on ? apiClient.put : apiClient.delete)(`/admin/posts/${id}/home-tip`)
-          await refresh()
-        },
   }
 }

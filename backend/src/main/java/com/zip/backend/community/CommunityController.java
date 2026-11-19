@@ -26,8 +26,15 @@ public class CommunityController {
     @GetMapping("/api/posts/home-tips")
     public List<Map<String, Object>> homeTips(@AuthenticationPrincipal Jwt jwt) { return community.homeTips(userId(jwt)); }
 
+    @GetMapping("/api/posts/popular")
+    public List<Map<String, Object>> popularPosts(@AuthenticationPrincipal Jwt jwt) { return community.popularPosts(userId(jwt)); }
+
     @GetMapping("/api/posts/{id}")
     public Map<String, Object> post(@AuthenticationPrincipal Jwt jwt, @PathVariable String id) { return community.post(userId(jwt), id); }
+
+    @PostMapping("/api/posts/{id}/views")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void recordView(@PathVariable String id) { community.recordView(id); }
 
     @PostMapping("/api/posts")
     @ResponseStatus(HttpStatus.CREATED)
