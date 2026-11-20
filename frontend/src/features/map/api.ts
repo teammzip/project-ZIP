@@ -40,8 +40,8 @@ export const mapApi = {
   categories: async () => (await apiClient.get<Array<{ id: string; name: string; icon: string }>>('/places/categories')).data,
   /** category · q 가 있고 서버에 카카오 키가 있으면 카카오에서 지도 중심(lat · lon) 근처를 찾아 줌. 둘 다 없으면 DB 에 있는 동네 장소.
    * wide: 검색창 검색 — 근처 + 거리 제한 없는 정확도 검색을 합쳐 이름이 맞는 곳부터 (예: 롯데월드, 경복궁) */
-  places: async (regionId: string, opts: { category?: string; q?: string; lat?: number; lon?: number; wide?: boolean } = {}) => {
-    const res = await apiClient.get<ServerPlace[]>('/places', { params: { regionId, ...opts } })
+  places: async (regionId: string, opts: { category?: string; q?: string; lat?: number; lon?: number; wide?: boolean } = {}, signal?: AbortSignal) => {
+    const res = await apiClient.get<ServerPlace[]>('/places', { params: { regionId, ...opts }, signal })
     // 카카오를 부르는 요청(종류 · 검색어)만 안내를 바꿈. 한도에 걸리면 서버가 DB 장소로 대신하고 이유를 헤더로 알려 줘요
     if (opts.category || opts.q) {
       const code = res.headers['x-place-notice'] as string | undefined
@@ -49,8 +49,8 @@ export const mapApi = {
     }
     return res.data.map(toPlaceItem)
   },
-  aiSearch: async (q: string, regionId: string) =>
-    (await apiClient.post<Array<{ place: ServerPlace; reasons: string[] }>>('/places/ai-search', { q, regionId })).data.map((r) => ({ p: toPlaceItem(r.place), why: r.reasons })),
+  aiSearch: async (q: string, regionId: string, signal?: AbortSignal) =>
+    (await apiClient.post<Array<{ place: ServerPlace; reasons: string[] }>>('/places/ai-search', { q, regionId }, { signal })).data.map((r) => ({ p: toPlaceItem(r.place), why: r.reasons })),
   favorites: async () => (await apiClient.get<string[]>('/me/place-favorites')).data,
   /** 카카오 장소는 { name, category } 를 같이 보냄 (서버는 id · 이름만 저장) */
   addFavorite: (placeId: string, meta?: { n: string; cat: string }) =>

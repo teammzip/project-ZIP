@@ -6,7 +6,7 @@ import { ALL_PLACES, PLACE_KINDS, walkMin, type PlaceItem } from './data/places'
 /** 말 → 찾을 장소 종류 */
 const SYN: Array<[RegExp, string[]]> = [
   [/빨래|세탁|이불|건조/, ['세탁방', '세탁소']],
-  [/편의점|야식|간식|담배|새벽/, ['편의점']],
+  [/편의점|야식|간식|담배/, ['편의점']],
   [/약|감기|두통|소화|밴드/, ['약국']],
   [/아파|아프|병원|진료|치과|내과|열|소아/, ['병원', '약국']],
   [/장보|식재료|마트|채소|과일/, ['마트', '반찬가게']],
@@ -36,27 +36,29 @@ export type FoundPlace = { p: PlaceItem; score: number; why: string[] }
 /** 말에 맞는 장소를 점수 순으로 최대 5곳 (가까울수록 조금 더 위) */
 export function aiFind(q: string): FoundPlace[] {
   const s = q.replace(/\s/g, '')
-  const wantCats: string[] = []
-  for (const [re, cats] of SYN) if (re.test(s)) for (const c of cats) if (!wantCats.includes(c)) wantCats.push(c)
-  for (const c of PLACE_KINDS) if (s.includes(c) && !wantCats.includes(c)) wantCats.push(c) // 종류 이름을 그대로 쓴 경우
+  const wantCats = new Set<string>(PLACE_KINDS.filter((c) => s.includes(c)))
+  if (wantCats.size === 0) {
+    for (const [re, cats] of SYN) if (re.test(s)) for (const c of cats) wantCats.add(c)
+  }
   const mods = MODS.filter((m) => m.re.test(s))
-  const tokens = q
+  const tokens = new Set(q
     .split(/[\s,]+/)
     .map((t) => t.replace(/(이나|에서|근처|주변|가까운|제일|있는|찾아줘|알려줘|어디|있어|싶어|해줘|좀)$/, ''))
-    .filter((t) => t.length >= 2)
+    .filter((t) => t.length >= 2))
 
   const res: FoundPlace[] = []
   for (const p of ALL_PLACES) {
+    if (wantCats.size > 0 && !wantCats.has(p.cat)) continue
     let score = 0
     const why: string[] = []
-    if (wantCats.includes(p.cat)) {
+    if (wantCats.has(p.cat)) {
       score += 5
       why.push(p.cat)
     }
     for (const t of tokens)
       if ((p.n + p.d).includes(t)) {
         score += 3
-        if (!why.includes(`"${t}" 포함`)) why.push(`"${t}" 포함`)
+        why.push(`"${t}" 포함`)
       }
     for (const m of mods)
       if (m.has.test(p.d)) {

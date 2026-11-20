@@ -20,7 +20,7 @@ final class PlaceFinder {
     /** 말 → 찾을 장소 종류 */
     private static final List<Map.Entry<Pattern, List<String>>> SYNONYMS = List.of(
         Map.entry(Pattern.compile("빨래|세탁|이불|건조"), List.of("세탁방", "세탁소")),
-        Map.entry(Pattern.compile("편의점|야식|간식|담배|새벽"), List.of("편의점")),
+        Map.entry(Pattern.compile("편의점|야식|간식|담배"), List.of("편의점")),
         Map.entry(Pattern.compile("약|감기|두통|소화|밴드"), List.of("약국")),
         Map.entry(Pattern.compile("아파|아프|병원|진료|치과|내과|열|소아"), List.of("병원", "약국")),
         Map.entry(Pattern.compile("장보|식재료|마트|채소|과일"), List.of("마트", "반찬가게")),
@@ -50,10 +50,12 @@ final class PlaceFinder {
         ToIntFunction<MapRepository.PlaceRow> walkMin) {
         var text = q.replaceAll("\\s", "");
         var wanted = new LinkedHashSet<String>();
-        for (var entry : SYNONYMS) if (entry.getKey().matcher(text).find()) wanted.addAll(entry.getValue());
         for (var kind : kinds) if (text.contains(kind)) wanted.add(kind); // 종류 이름을 그대로 쓴 경우
+        if (wanted.isEmpty()) {
+            for (var entry : SYNONYMS) if (entry.getKey().matcher(text).find()) wanted.addAll(entry.getValue());
+        }
         var modifiers = MODIFIERS.stream().filter(m -> m.asks().matcher(text).find()).toList();
-        var tokens = new ArrayList<String>();
+        var tokens = new LinkedHashSet<String>();
         for (var token : q.split("[\\s,]+")) {
             var trimmed = ENDINGS.matcher(token).replaceAll("");
             if (trimmed.length() >= 2) tokens.add(trimmed);
@@ -61,6 +63,7 @@ final class PlaceFinder {
 
         var found = new ArrayList<Found>();
         for (var place : places) {
+            if (!wanted.isEmpty() && !wanted.contains(place.category())) continue;
             var description = place.description() == null ? "" : place.description();
             int score = 0;
             var reasons = new ArrayList<String>();
@@ -71,8 +74,7 @@ final class PlaceFinder {
             for (var token : tokens) {
                 if ((place.name() + description).contains(token)) {
                     score += 3;
-                    var reason = "\"" + token + "\" 포함";
-                    if (!reasons.contains(reason)) reasons.add(reason);
+                    reasons.add("\"" + token + "\" 포함");
                 }
             }
             for (var modifier : modifiers) {
