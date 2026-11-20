@@ -2,7 +2,8 @@
 .section {
   position: relative;
   height: 260vh;
-  background: #fff;
+  /* 시작 화면 하늘색 바탕에 맞춤 (첫 화면 아래쪽 색과 이어짐) */
+  background: var(--b-sky, #fff);
 }
 
 .sticky {

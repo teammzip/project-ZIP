@@ -11,6 +11,7 @@ export function SignupPage() {
   return (
     <>
       <h1 className={styles.title}>회원가입</h1>
+      <p className={styles.lead}>이메일 인증만 하면 바로 시작할 수 있어요.</p>
       <SignupForm onSuccess={() => navigate(redirectTo, { replace: true })} />
       <p className={styles.foot}>
         계정을 잊으셨나요? <Link to="/find#id">아이디 찾기</Link> · <Link to="/find#pw">비밀번호 찾기</Link>

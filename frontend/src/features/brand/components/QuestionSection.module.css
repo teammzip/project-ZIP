@@ -1,0 +1,97 @@
+.section {
+  padding: 160px 72px;
+  background: radial-gradient(50% 60% at 25% 50%, #ffffff 0%, rgba(255, 255, 255, 0) 70%), var(--b-sky);
+}
+
+.inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 64px;
+  width: min(1296px, 100%);
+  margin: 0 auto;
+}
+
+.visual {
+  position: relative;
+  width: min(560px, 100%);
+  aspect-ratio: 1 / 0.86;
+}
+
+.house {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 72%;
+  mix-blend-mode: multiply;
+  /* 이미지의 흰 바탕 가장자리가 비치지 않게 테두리를 흐리게 */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 6%, #000 88%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 6%, #000 88%, transparent 100%);
+  mask-composite: intersect;
+  opacity: 0.95;
+}
+
+.robot {
+  position: absolute;
+  left: 6%;
+  bottom: 4%;
+  width: 40%;
+  filter: drop-shadow(0 26px 30px rgba(22, 35, 58, 0.18));
+}
+
+.ask0 {
+  left: 0;
+  top: 10%;
+}
+
+.ask1 {
+  left: 32%;
+  top: 28%;
+}
+
+.reply {
+  right: 0;
+  top: 2%;
+}
+
+@media (max-width: 1100px) {
+  .section {
+    padding: 140px 40px;
+  }
+}
+
+@media (max-width: 900px) {
+  .section {
+    padding: 72px 20px 88px;
+  }
+
+  .inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  .visual {
+    justify-self: center;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .ask0 {
+    left: 0;
+    top: 6%;
+  }
+
+  .ask1 {
+    left: auto;
+    right: 0;
+    top: 24%;
+  }
+
+  .reply {
+    left: 8%;
+    right: auto;
+    top: auto;
+    bottom: 50%;
+  }
+}

@@ -4,35 +4,108 @@
   z-index: 30;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 68px;
-  padding: 0 32px;
-  transition: background 0.3s ease, box-shadow 0.3s ease;
+  gap: 32px;
+  height: 76px;
+  padding: 0 40px;
+  transition: background 0.3s ease, box-shadow 0.3s ease, height 0.3s ease;
 }
 
 .scrolled {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 1px 0 var(--color-line);
+  height: 64px;
+  background: rgba(248, 250, 253, 0.82);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 1px 0 rgba(22, 35, 58, 0.06);
+}
+
+.logo {
+  margin-right: auto;
 }
 
 .logo img {
-  height: 40px;
+  height: 38px;
   width: auto;
+}
+
+.nav {
+  display: flex;
+  gap: 36px;
+}
+
+.nav a,
+.login {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--b-ink);
+  transition: color 0.2s ease;
+}
+
+.nav a:hover,
+.login:hover {
+  color: var(--b-blue);
 }
 
 .actions {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 20px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.signup {
+  height: 42px;
+  padding: 0 22px;
+  border-radius: 999px;
+  background: var(--b-ink);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  transition: background 0.2s ease;
+}
+
+.signup:hover {
+  background: var(--b-blue);
+}
+
+.header a:focus-visible,
+.header button:focus-visible {
+  outline: 3px solid var(--b-blue);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.hidden {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
 }
 
 @media (max-width: 900px) {
-  .header {
-    height: 56px;
-    padding: 0 16px;
+  .header,
+  .scrolled {
+    gap: 12px;
+    height: calc(56px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 16px 0;
   }
 
   .logo img {
-    height: 32px;
+    height: 30px;
+  }
+
+  .nav {
+    display: none;
+  }
+
+  .actions {
+    gap: 14px;
+  }
+
+  .login {
+    font-size: 14px;
+  }
+
+  .signup {
+    height: 36px;
+    padding: 0 16px;
+    font-size: 13px;
   }
 }

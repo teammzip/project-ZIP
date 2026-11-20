@@ -1,4 +1,29 @@
+/* 시작 화면 전용 글꼴: Pretendard Variable (앱의 --font-sans 는 "Pretendard" 이름만 있고 실제 글꼴 파일은 없어서
+ * 윈도우에선 맑은 고딕으로 보임). 이름이 "Pretendard Variable" 이라 시작 화면(.page) 밖에는 영향 없음 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+
+/* 시작 화면 공통 색 (섹션 CSS 에서 var(--b-…) 로 씀) — 호호컴퍼니처럼 연한 하늘색 바탕 + 진한 남색 글자 */
 .page {
-  background: #fff;
+  --b-ink: #16233a;
+  --b-sub: #5b6577;
+  --b-faint: #8a93a6;
+  --b-blue: #2f6fe4;
+  --b-sky: #eef4fd;
+  --b-sky-2: #e3edfb;
+  --b-line: #e4e9f2;
+  --b-sheet-radius: 40px;
+
+  background: var(--b-sky);
+  color: var(--b-ink);
+  font-family: 'Pretendard Variable', var(--font-sans);
   overflow-x: clip;
+  /* 한국어가 낱말 중간에서 끊기지 않게 (너무 긴 낱말만 예외로 끊음) */
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 900px) {
+  .page {
+    --b-sheet-radius: 28px;
+  }
 }

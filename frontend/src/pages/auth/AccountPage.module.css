@@ -1,24 +1,51 @@
+/* 로그인 · 회원가입 페이지 제목 (시작 화면과 같은 남색 굵은 제목) */
 .title {
-  margin: 34px 0 30px;
+  margin: 8px 0 10px;
   font-size: 32px;
-  font-weight: 500;
-  text-align: center;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--b-ink, var(--color-text));
+}
+
+.lead {
+  margin: 0 0 32px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--b-sub, var(--color-muted));
 }
 
 .foot {
   margin-top: 22px;
   font-size: 13px;
   text-align: center;
-  color: var(--color-muted);
+  color: var(--b-faint, var(--color-muted));
 }
 
 .foot a {
-  font-weight: 600;
-  color: var(--color-primary);
+  font-weight: 700;
+  color: var(--b-blue, var(--color-primary));
+}
+
+/* 가짜 API 모드 데모 계정 안내 (로그인 페이지) */
+.mockNote {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #f4f7fb;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+  color: var(--b-faint, var(--color-muted));
 }
 
 @media (max-width: 560px) {
   .title {
+    margin-top: 20px;
     font-size: 26px;
+  }
+
+  .lead {
+    margin-bottom: 24px;
+    font-size: 14px;
   }
 }

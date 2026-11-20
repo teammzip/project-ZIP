@@ -1,38 +1,20 @@
 import { motion } from 'motion/react'
-import { Reveal } from './Reveal'
-import { cx } from '@/lib/cx'
 import { STORIES, STORIES_HEAD, type BrandStory } from '../content'
-import { Lines } from './SectionHead'
+import { Phone } from './Phone'
+import { SectionHead } from './SectionHead'
 import styles from './StoriesSection.module.css'
 
-/** 자취 이야기 카드 모음: 크기가 다른 카드를 엇갈려 놓고 파란 동그라미로 포인트. 옆으로 밀어서 더 보기 */
+/** 자취 이야기: 큰 흰 판 위 2 x 2 카드. 카드마다 연한 판 위로 앱 화면 두 대가 올라오고, 아래 작은 글씨 · 제목 · 설명 (모바일 1줄) */
 export function StoriesSection() {
-  const [first, second, third, fourth, fifth] = STORIES
   return (
-    <section className={styles.section}>
-      <Reveal>
-        <h2 className={styles.title}>
-          <Lines text={STORIES_HEAD.title} />
-        </h2>
-      </Reveal>
-      <div className={styles.track}>
-        <Card story={first} index={0} />
-        <div className={styles.column}>
-          <motion.div
-            className={styles.circle}
-            aria-hidden="true"
-            initial={{ scale: 0.6, opacity: 0 }}
-            whileInView={{ scale: 1, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ type: 'spring', stiffness: 160, damping: 14, delay: 0.2 }}
-          >
-            +
-          </motion.div>
-          <Card story={second} index={1} />
+    <section className={styles.section} id="stories">
+      <div className={styles.sheet}>
+        <SectionHead {...STORIES_HEAD} align="split" />
+        <div className={styles.grid}>
+          {STORIES.map((s, i) => (
+            <Card key={s.id} story={s} index={i} />
+          ))}
         </div>
-        <Card story={third} index={2} />
-        <Card story={fourth} index={3} />
-        <Card story={fifth} index={4} />
       </div>
     </section>
   )
@@ -41,26 +23,19 @@ export function StoriesSection() {
 function Card({ story, index }: { story: BrandStory; index: number }) {
   return (
     <motion.article
-      className={cx(styles.card, styles[story.size])}
-      style={story.image ? { backgroundImage: `url(${story.image})` } : { background: story.gradient }}
-      initial={{ opacity: 0, y: 60 }}
+      className={styles.card}
+      initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.25 }}
-      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: index * 0.08 }}
-      whileHover={{ y: -8 }}
+      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: (index % 2) * 0.1 }}
     >
-      {!story.image && (
-        <span className={styles.emoji} aria-hidden="true">
-          {story.emoji}
-        </span>
-      )}
-      <div className={styles.overlay}>
-        <h3>
-          <Lines text={story.title} />
-        </h3>
-        <p>{story.author}</p>
-        <span className={styles.pill}>이야기 보기</span>
+      <div className={styles.panel}>
+        <Phone screen={story.screens[0]} className={styles.phone} />
+        <Phone screen={story.screens[1]} className={styles.phone} />
       </div>
+      <p className={styles.meta}>{story.meta}</p>
+      <h3 className={styles.title}>{story.title}</h3>
+      <p className={styles.body}>{story.body}</p>
     </motion.article>
   )
 }

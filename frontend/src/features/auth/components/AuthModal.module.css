@@ -1,24 +1,100 @@
-.logo {
-  height: 56px;
-  width: auto;
-  margin: 0 auto 18px;
+/* 시작 화면 로그인 모달 (시작 화면과 같은 하늘색 · 남색 톤. 모달은 시작 화면 바깥에 그려져서 색 · 글꼴을 여기서 다시 정함) */
+.dialog {
+  --b-ink: #16233a;
+  --b-sub: #5b6577;
+  --b-faint: #8a93a6;
+  --b-blue: #2f6fe4;
+
+  width: min(460px, 100%);
+  padding: 36px 36px 28px;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #f3f7fe 0, #ffffff 132px);
+  box-shadow: 0 30px 80px rgba(22, 35, 58, 0.22);
+  color: var(--b-ink);
+  font-family: 'Pretendard Variable', var(--font-sans);
+  word-break: keep-all;
+  animation: pop 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 위: 로봇 + 작은 글씨 + 굵은 제목 */
+.head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.robot {
+  flex: none;
+  width: 64px;
+  filter: drop-shadow(0 10px 14px rgba(22, 35, 58, 0.16));
+}
+
+.kicker {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--b-blue);
+}
+
+.title {
+  margin-top: 4px;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.04em;
+}
+
+.title span {
+  color: var(--b-blue);
 }
 
 .switch {
-  margin-top: 18px;
+  margin-top: 20px;
   font-size: 13px;
   text-align: center;
-  color: var(--color-muted);
+  color: var(--b-faint);
 }
 
 .switch a {
-  font-weight: 600;
-  color: var(--color-primary);
+  font-weight: 700;
+  color: var(--b-blue);
 }
 
 .demoNote {
-  margin-top: 10px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #f4f7fb;
   font-size: 12px;
+  line-height: 1.6;
   text-align: center;
-  color: #9aa0ae;
+  color: var(--b-faint);
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+}
+
+@media (max-width: 560px) {
+  .dialog {
+    padding: 28px 22px 22px;
+    border-radius: 24px;
+  }
+
+  .robot {
+    width: 52px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog {
+    animation: none;
+  }
 }

@@ -1,67 +1,133 @@
 .section {
-  padding: 140px 32px;
-  background: rgb(229, 255, 255);
-}
-
-.inner {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 40px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.copy {
-  display: grid;
-  gap: 20px;
-}
-
-.title {
-  font-size: clamp(36px, 6vw, 72px);
-  font-weight: 900;
-  line-height: 1.15;
-  letter-spacing: -0.04em;
-}
-
-.body {
-  font-size: 18px;
-  line-height: 1.7;
-  color: var(--color-muted);
+  justify-items: center;
+  padding: 160px 24px 0;
+  overflow: hidden;
+  background: radial-gradient(55% 45% at 50% 85%, #ffffff 0%, rgba(255, 255, 255, 0) 70%), linear-gradient(180deg, var(--b-sky) 0%, #e4eefc 100%);
 }
 
 .buttons {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  margin-top: 44px;
+}
+
+.primary {
+  display: inline-flex;
+  align-items: center;
   gap: 10px;
-  margin-top: 8px;
+  height: 64px;
+  padding: 0 36px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #3b7cf0, #2a62d9);
+  box-shadow: 0 16px 36px rgba(47, 111, 228, 0.32);
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(47, 111, 228, 0.38);
+}
+
+.secondary {
+  padding: 8px 12px;
+  font-size: 15px;
+  color: var(--b-sub);
+}
+
+.secondary b {
+  margin-left: 4px;
+  color: var(--b-blue);
+}
+
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 3px solid var(--b-blue);
+  outline-offset: 4px;
+}
+
+.visual {
+  position: relative;
+  width: min(640px, 100%);
+  aspect-ratio: 1 / 0.58;
+  margin-top: 24px;
 }
 
 .house {
-  justify-self: center;
-  width: min(360px, 100%);
-  margin: 0 auto;
+  position: absolute;
+  right: 4%;
+  bottom: -18%;
+  width: 62%;
+  mix-blend-mode: multiply;
+  /* 이미지의 흰 바탕 가장자리가 비치지 않게 테두리를 흐리게 */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 6%, #000 88%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 6%, #000 88%, transparent 100%);
+  mask-composite: intersect;
+}
+
+.robot {
+  position: absolute;
+  left: 12%;
+  bottom: 4%;
+  width: 30%;
+  filter: drop-shadow(0 24px 28px rgba(22, 35, 58, 0.18));
+  animation: bob 5s ease-in-out infinite;
+}
+
+.bubble {
+  left: 2%;
+  top: 6%;
+}
+
+@keyframes bob {
+  50% {
+    translate: 0 -10px;
+  }
 }
 
 @media (max-width: 900px) {
   .section {
-    padding: 88px 16px;
-  }
-
-  .inner {
-    grid-template-columns: minmax(0, 1fr);
-    text-align: center;
+    padding: 88px 20px 0;
   }
 
   .buttons {
+    width: 100%;
+    margin-top: 32px;
+  }
+
+  .primary {
     justify-content: center;
+    width: min(100%, 320px);
+    height: 56px;
+    font-size: 16px;
   }
 
-  .buttons > * {
-    flex: 1 1 100%;
+  .secondary {
+    font-size: 14px;
   }
 
-  .house {
-    width: min(200px, 60%);
+  .visual {
+    aspect-ratio: 1 / 0.7;
+  }
+
+  .robot {
+    left: 6%;
+    width: 36%;
+  }
+
+  .bubble {
+    left: 0;
+    top: 2%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .robot {
+    animation: none;
   }
 }

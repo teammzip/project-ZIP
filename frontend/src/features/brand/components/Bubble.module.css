@@ -1,0 +1,58 @@
+.bubble {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 10px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 30px rgba(22, 35, 58, 0.1);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--b-ink, var(--color-text));
+  white-space: nowrap;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #e7f0fe;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: var(--b-blue, var(--color-primary));
+}
+
+.blue {
+  background: linear-gradient(135deg, #3b7cf0, #2a62d9);
+  box-shadow: 0 12px 30px rgba(47, 111, 228, 0.32);
+  color: #fff;
+}
+
+.blue .icon {
+  background: rgba(255, 255, 255, 0.95);
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .bubble {
+    gap: 6px;
+    padding: 7px 12px 7px 7px;
+    font-size: 12px;
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+    font-size: 9px;
+  }
+
+  .blue .icon {
+    font-size: 11px;
+  }
+}
