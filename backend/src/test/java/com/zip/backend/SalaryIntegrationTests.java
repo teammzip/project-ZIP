@@ -31,7 +31,8 @@ class SalaryIntegrationTests {
         token=auth.socialLogin("GOOGLE","salary-user","salary@example.com","월급검증");
         owner=jdbc.queryForObject("SELECT user_id FROM auth_sessions ORDER BY id LIMIT 1",Long.class);
     }
-    SalaryService at(String instant) { return new SalaryService(jdbc,authRepository,Clock.fixed(Instant.parse(instant),ZoneOffset.UTC)); }
+    @Autowired tools.jackson.databind.json.JsonMapper json;
+    SalaryService at(String instant) { return new SalaryService(jdbc,authRepository,Clock.fixed(Instant.parse(instant),ZoneOffset.UTC),json); }
     @Test void manualSalaryCreateAndCategoryChangeAreRejected() throws Exception {
         String date=LocalDate.now(ZoneOffset.UTC).toString();
         String body="{\"amount\":1000,\"date\":\""+date+"\",\"cat\":\"월급\",\"memo\":\"\",\"incomeType\":\"fixed\"}";

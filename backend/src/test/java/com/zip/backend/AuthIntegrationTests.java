@@ -58,6 +58,12 @@ class AuthIntegrationTests {
             .andExpect(status().isOk()).andExpect(jsonPath("$.user.firstLogin").value(true));
         mvc.perform(post("/api/auth/login").contentType("application/json")
             .content("{\"loginId\":\"tester01\",\"password\":\"abcd123!\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.user.firstLogin").value(true));
+        mvc.perform(put("/api/me/housing-onboarding").header("Authorization", "Bearer " + login())
+            .contentType("application/json").content("{\"action\":\"skip\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.firstLogin").value(false));
+        mvc.perform(post("/api/auth/login").contentType("application/json")
+            .content("{\"loginId\":\"tester01\",\"password\":\"abcd123!\"}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.user.firstLogin").value(false));
     }
 

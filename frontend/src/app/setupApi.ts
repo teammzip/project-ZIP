@@ -57,11 +57,7 @@ if (!isMockApi && restoredSession.token) {
   void authApi.me().then((user) => {
     const current = useAuthStore.getState()
     if (current.token !== restoredSession.token || current.user !== restoredSession.user) return
-    current.updateUser({
-      ...user,
-      // firstLogin은 로그인 응답의 일회성 설문 표시값이다. me의 false로 진행 중인 설문을 닫지 않는다.
-      ...(restoredSession.user?.firstLogin !== undefined ? { firstLogin: restoredSession.user.firstLogin } : {}),
-    })
+    current.updateUser(user)
   }).catch(() => {
     // 401은 apiClient가 처리한다. 일시적인 네트워크 오류에는 기존 표시 정보를 유지한다.
   })

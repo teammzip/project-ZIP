@@ -27,15 +27,17 @@ function SalaryForm({ settings, timeZone, resolving }: { settings: SalarySetting
   const [amount, setAmount] = useState(String(settings.amount)), [period, setPeriod] = useState(settings.incomePeriod), [day, setDay] = useState(String(settings.paymentDay))
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('')
   const pending = useRef(false), client = useQueryClient()
+  const draft = settings.draft
   return <div className={common.stack}>
     {!editing ? <><dl className={styles.details}>
-      <div><dt>수입 기준</dt><dd>{settings.incomePeriod === 'annual' ? '연 수입' : '월 수입'}</dd></div>
-      <div><dt>{settings.incomePeriod === 'annual' ? '연 수입' : '월 수입'} (원)</dt><dd>{settings.startMonth ? won(settings.amount) : '미등록'}</dd></div>
+      <div><dt>수입 기준</dt><dd>{(draft?.incomePeriod ?? settings.incomePeriod) === 'annual' ? '연 수입' : '월 수입'}</dd></div>
+      <div><dt>수입 금액 (원)</dt><dd>{draft ? won(draft.amount) : settings.startMonth ? won(settings.amount) : '미등록'}</dd></div>
       <div className={styles.row}>
         <div><dt>받는 날짜 (매월)</dt><dd>{settings.startMonth ? `${settings.paymentDay}일` : '미등록'}</dd></div>
         {settings.incomePeriod === 'annual' && <div><dt>월 환산 금액 (원)</dt><dd>{settings.startMonth ? won(settings.monthlyAmount) : '미등록'}</dd></div>}
       </div>
-    </dl><div className={common.actions}><Button variant="line" onClick={() => { setAmount(String(settings.amount)); setPeriod(settings.incomePeriod); setDay(String(settings.paymentDay)); setError(''); setNotice(''); setEditing(true) }}>수정</Button></div></> : <form className={common.form} onSubmit={async (event) => {
+    </dl>{draft && <p className={common.note}>설문에서 입력한 금액이에요. 수령일을 설정하면 월급이 자동 등록돼요.</p>}
+    <div className={common.actions}><Button variant="line" onClick={() => { setAmount(String(draft?.amount ?? settings.amount)); setPeriod(draft?.incomePeriod ?? settings.incomePeriod); setDay(draft ? '' : String(settings.paymentDay)); setError(''); setNotice(''); setEditing(true) }}>수정</Button></div></> : <form className={common.form} onSubmit={async (event) => {
       event.preventDefault()
       if (pending.current || !timeZone || resolving) return
       pending.current = true; setBusy(true); setError(''); setNotice('')

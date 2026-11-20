@@ -11,7 +11,7 @@ public class SalaryController {
     private final SalaryService salary;
     public SalaryController(SalaryService salary) { this.salary=salary; }
     @GetMapping
-    public Map<String,Object> get(@AuthenticationPrincipal Jwt jwt) { return salary.get(Long.parseLong(jwt.getSubject())); }
+    public Map<String,Object> get(@AuthenticationPrincipal Jwt jwt) { return salary.getWithDraft(Long.parseLong(jwt.getSubject())); }
     @PutMapping
     public Map<String,Object> save(@AuthenticationPrincipal Jwt jwt,@RequestParam String timeZone,@RequestBody Map<String,Object> input) {
         return salary.save(Long.parseLong(jwt.getSubject()),Long.parseLong(jwt.getClaimAsString("sid")),timeZone,input);

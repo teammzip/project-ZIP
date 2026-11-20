@@ -57,7 +57,7 @@ public class AuthService {
         var expires = now.plus(Duration.ofSeconds(remember ? rememberSeconds : accessSeconds));
         long sessionId = repository.createSession(user.id(), tokens.sessionHash(), remember, now, expires);
         var response = Map.<String, Object>of("accessToken", tokens.issue(user.id(), sessionId, now, expires),
-            "user", userResponse(user, user.lastLoginAt() == null));
+            "user", userResponse(user));
         repository.recordLogin(user.id(), now);
         return response;
     }
@@ -98,7 +98,7 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> me(long userId) {
-        return userResponse(repository.findById(userId).orElseThrow(() -> new ApiException(401, "로그인 정보가 없어요.")), false);
+        return userResponse(repository.findById(userId).orElseThrow(() -> new ApiException(401, "로그인 정보가 없어요.")));
     }
 
     /**
@@ -154,7 +154,7 @@ public class AuthService {
             String regionId = RegionMatcher.match(request.address(), repository.districts()).orElse(null);
             if (!java.util.Objects.equals(regionId, user.regionId())) repository.updateRegion(userId, regionId);
         }
-        return userResponse(repository.findById(userId).orElseThrow(() -> new ApiException(401, "로그인 정보가 없어요.")), false);
+        return userResponse(repository.findById(userId).orElseThrow(() -> new ApiException(401, "로그인 정보가 없어요.")));
     }
 
     /** 로그인 거절: 언제 풀리는지 · 사유를 같이 알려 줌 (예: 이용이 정지된 계정이에요. (11월 20일 18:00 해제) 사유: 욕설) */
@@ -167,7 +167,7 @@ public class AuthService {
         return new ApiException(403, detail.toString(), "SUSPENDED");
     }
 
-    private Map<String, Object> userResponse(AuthRepository.Account user, boolean firstLogin) {
+    private Map<String, Object> userResponse(AuthRepository.Account user) {
         var result = new LinkedHashMap<String, Object>();
         result.put("id", Long.toString(user.id()));
         if (user.username() != null) result.put("username", user.username());
@@ -179,7 +179,7 @@ public class AuthService {
         result.put("provider", user.provider().toLowerCase(Locale.ROOT));
         result.put("role", user.role());
         result.put("status", user.status());
-        result.put("firstLogin", firstLogin);
+        result.put("firstLogin", "PENDING".equals(repository.housingSurveyStatus(user.id())));
         var agreedAt = repository.agreedAt(user.id());
         result.put("agreedAt", agreedAt == null ? null : agreedAt.toString());
         result.put("region", user.regionId() == null ? null : Map.of("id", user.regionId(), "name", user.regionName()));
