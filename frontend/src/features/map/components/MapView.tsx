@@ -54,7 +54,7 @@ const subscribeMobile = (cb: () => void) => {
 const useMobile = () => useSyncExternalStore(subscribeMobile, () => window.matchMedia(MOBILE).matches)
 
 /** named: 가게 이름 · 검색어로 찾은 결과가 있음 (카카오 키워드 검색) */
-type Found = { q: string; items: Array<{ p: PlaceItem; why: string[] }>; named?: boolean }
+type Found = { q: string; items: Array<{ p: PlaceItem; why: string[] }>; named: boolean; failed: boolean }
 
 /** 동네 지도 (네이버 지도처럼)
  * - 모바일: 화면 가득 지도 + 위에 검색창 · 종류 칩, 오른쪽 둥근 버튼(저장 · 내 위치), 아래 끌어올리는 시트(동네 · 저장 탭, 장소 목록)
@@ -105,11 +105,19 @@ export function MapView() {
   const [selectedLocationKey, setSelectedLocationKey] = useState('')
   const [query, setQuery] = useState('')
   const [found, setFound] = useState<Found | null>(null)
+  const [searching, setSearching] = useState(false)
+  const searchRequest = useRef<AbortController | null>(null)
   const [editing, setEditing] = useState(false)
   const [sheet, setSheet] = useState<'peek' | 'full'>('peek')
   const [focus, setFocus] = useState<{ lat: number; lon: number; n: number } | null>(null)
   const [centerRequest, setCenterRequest] = useState(0)
   const drag = useRef<number | null>(null)
+
+  useEffect(() => {
+    setFound(null)
+    setSearching(false)
+    return () => searchRequest.current?.abort()
+  }, [locationKey])
 
   // 주소로 받은 종류가 꺼져 있으면 칩에 켬
   useEffect(() => {
@@ -151,29 +159,52 @@ export function MapView() {
   const pickCat = (c: string) => {
     setCat(c)
     setTab('near')
-    setFound(null)
+    clearSearch()
     setSelId(null)
     setFocus(null)
   }
+  const clearSearch = () => {
+    searchRequest.current?.abort()
+    setSearching(false)
+    setFound(null)
+  }
   const search = async (q: string) => {
     const text = q.trim()
-    if (!text) return setFound(null)
-    // 서버 모드: 카카오 키워드 검색(가게 이름 · 검색어, 지도 중심 근처) + 서버 AI 장소 찾기. 이름이 맞는 곳을 먼저
-    // 예시 모드: 예시 데이터 안에서 AI 찾기 (둘 다 없으면 아래 글자 검색으로)
-    let items = aiFind(text).map((r) => ({ p: r.p, why: r.why }))
+    clearSearch()
+    if (!text) return
+    const request = new AbortController()
+    searchRequest.current = request
+    setSearching(true)
+    let items: Found['items'] = []
     let named = false
-    if (data.server) {
-      const regionId = data.regionId
+    let failed = false
+    if (data.server && data.regionId) {
       const center = mapPoint ? { lat: Number(mapPoint.lat.toFixed(5)), lon: Number(mapPoint.lon.toFixed(5)) } : {}
-      const [byName, ai] = regionId
-        ? await Promise.all([mapApi.places(regionId, { q: text, ...center, wide: true }).catch(() => []), mapApi.aiSearch(text, regionId).catch(() => [])])
-        : [[], []]
-      items = [...byName.map((p) => ({ p, why: [] as string[] })), ...ai.filter((r) => !byName.some((p) => p.id === r.p.id))]
-      named = byName.length > 0
+      const [keyword, recommendation] = await Promise.allSettled([
+        mapApi.places(data.regionId, { q: text, ...center, wide: true }, request.signal),
+        mapApi.aiSearch(text, data.regionId, request.signal),
+      ])
+      if (request.signal.aborted) return
+      const byName = keyword.status === 'fulfilled' ? keyword.value : []
+      const ai = recommendation.status === 'fulfilled' ? recommendation.value : []
+      const matches = new Map(ai.map((item) => [item.p.id, item]))
+      const namedItems = byName.map((p) => ({ p, why: matches.get(p.id)?.why ?? [] }))
+      const namedIds = new Set(byName.map((p) => p.id))
+      items = [...namedItems, ...ai.filter(({ p }) => !namedIds.has(p.id))]
+      named = namedItems.length > 0
+      failed = keyword.status === 'rejected' || recommendation.status === 'rejected'
+    } else if (!data.server) {
+      items = aiFind(text).map((r) => ({ p: r.p, why: r.why }))
+    } else {
+      failed = true
     }
-    if (!items.length) items = places.filter((p) => (p.n + p.d + p.cat).includes(text)).map((p) => ({ p, why: [`"${text}" 포함`] }))
+    if (!items.length) {
+      items = places.filter((p) => (p.n + p.d + p.cat).includes(text)).map((p) => ({ p, why: [`"${text}" 포함`] }))
+      named = items.length > 0
+    }
     setQuery(text)
-    setFound({ q: text, items, named })
+    setFound({ q: text, items, named, failed })
+    setSearching(false)
     setFilter('near')
     setSelId(null)
     setFocus(null)
@@ -204,14 +235,17 @@ export function MapView() {
       <span className={styles.searchPin} aria-hidden="true">
         <PlaceIcon cat="기타" size={20} />
       </span>
-      <input value={query} onChange={(e) => setQuery(e.target.value)} maxLength={40} placeholder="장소 검색 · AI에게 물어보기" aria-label="장소 검색 또는 AI에게 물어보기" type="search" />
-      {found && (
+      <input value={query} onChange={(e) => {
+        if (searching) clearSearch()
+        setQuery(e.target.value)
+      }} maxLength={40} placeholder="장소 검색 · AI에게 물어보기" aria-label="장소 검색 또는 AI에게 물어보기" type="search" />
+      {(found || searching) && (
         <button
           type="button"
           className={styles.searchX}
           onClick={() => {
             setQuery('')
-            setFound(null)
+            clearSearch()
           }}
           aria-label="검색 지우기"
         >
@@ -317,7 +351,7 @@ export function MapView() {
             type="button"
             className={cx(styles.fab, tab === 'fav' && !found && styles.fabOn)}
             onClick={() => {
-              setFound(null)
+              clearSearch()
               setTab(tab === 'fav' ? 'near' : 'fav')
             }}
             aria-pressed={tab === 'fav'}
@@ -373,7 +407,7 @@ export function MapView() {
                   aria-selected={tab === 'near' && !found}
                   className={cx(styles.tab, tab === 'near' && !found && styles.tabOn)}
                   onClick={() => {
-                    setFound(null)
+                    clearSearch()
                     setTab('near')
                   }}
                 >
@@ -385,7 +419,7 @@ export function MapView() {
                   aria-selected={tab === 'fav' && !found}
                   className={cx(styles.tab, tab === 'fav' && !found && styles.tabOn)}
                   onClick={() => {
-                    setFound(null)
+                    clearSearch()
                     setTab('fav')
                   }}
                 >
@@ -416,7 +450,9 @@ export function MapView() {
                 </div>
               )}
 
-              {found && !found.items.length && <p className={styles.empty}>&ldquo;{found.q}&rdquo;에 맞는 곳을 못 찾았어요. 다른 말로 물어보거나 ⚙ 편집에서 종류를 추가해 보세요.</p>}
+              {searching && <p className={styles.empty} role="status">장소를 찾고 있어요.</p>}
+              {found?.failed && <p className={styles.empty} role="status">{found.items.length ? '일부 검색 결과를 불러오지 못했어요.' : '장소 검색에 실패했어요. 잠시 후 다시 시도해 주세요.'}</p>}
+              {found && !found.failed && !found.items.length && <p className={styles.empty}>&ldquo;{found.q}&rdquo;에 맞는 곳을 못 찾았어요. 다른 말로 물어보거나 ⚙ 편집에서 종류를 추가해 보세요.</p>}
               {!found && tab === 'near' && (
                 <div ref={dragScroll} className={styles.examples}>
                   <span className={styles.examplesLabel}>✨ AI에게</span>

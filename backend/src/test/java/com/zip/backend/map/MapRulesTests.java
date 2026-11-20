@@ -36,7 +36,23 @@ class MapRulesTests {
             p -> MapService.walkMin(p, Optional.of(HOME)));
         assertEquals("약국 B (예시)", found.get(0).place().name());
         assertTrue(found.get(0).reasons().contains("24시간·심야 운영"));
-        assertTrue(found.size() <= 5);
+        assertEquals(List.of(4L, 3L), found.stream().map(result -> result.place().id()).toList());
+    }
+
+    @Test
+    void explicitCategoryTakesPriorityOverInferredCategory() {
+        var candidates = List.of(
+            place(6, "식당", "카페 거리 식당", "심야 운영 · 간식", 37.55, 126.92),
+            PLACES.get(4));
+        var found = PlaceFinder.find("간식 먹을 카페", candidates, List.of("카페", "식당"), p -> 5);
+        assertEquals(List.of(5L), found.stream().map(result -> result.place().id()).toList());
+    }
+
+    @Test
+    void repeatedWordsDoNotIncreaseScore() {
+        var single = PlaceFinder.find("콘센트", PLACES, List.of("카페"), p -> 5);
+        var repeated = PlaceFinder.find("콘센트 콘센트", PLACES, List.of("카페"), p -> 5);
+        assertEquals(single, repeated);
     }
 
     @Test
