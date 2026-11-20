@@ -22,6 +22,7 @@ function setup() {
     if (name === 'react') return { useState: () => [selection, (value) => { selection = value }] }
     if (name === '@tanstack/react-query') return { useQuery: (options) => { queryOptions = options; return { ...result, refetch: () => {} } } }
     if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: { id: 'a' }, token: 'test-session' }) }
+    if (name === '@/features/loan') return { LoanInterestCard: () => React.createElement('p', null, '전세 대출 이자 설정') }
     if (name === '../useLocalMonth') return { useLocalMonth: () => ({ currentMonth, timeZone: clockZone }) }
     if (name === '../useBillingTimeZone') return { useBillingTimeZone: () => resolution }
     if (name === '../monthlyPeriod') return period
@@ -97,10 +98,12 @@ test('서버 계약 항목을 합계에 포함하고 계약 형태와 내 집 �
   const s = setup()
   s.result({ data: { contractKind: 'monthly', month: '2026-05', timeZone: 'Asia/Seoul', periodFrom: '2026-05-01T00:00:00+09:00', periodThrough: '2026-05-18T00:00:00+09:00', queriedAt: '2026-05-18T00:00:00+09:00', items: [], housingItems: [{ id: 'rent:2026-05', name: '월세', tag: '월세', amount: 550000, paid: false, active: true, snapshot: false, dueDate: '2026-05-31', memo: '계약 기준 예정 금액', source: 'rent' }] } })
   assert.ok(s.html().includes('월세 계약'))
+  assert.ok(!s.html().includes('전세 대출 이자 설정'))
   assert.ok(s.html().includes('550,000원'))
   assert.ok(s.html().includes('내 집 정보에서 확인'))
   s.result({ data: { contractKind: 'jeonse', timeZone: 'Asia/Seoul', periodFrom: '2026-05-01T00:00:00+09:00', periodThrough: '2026-05-18T00:00:00+09:00', queriedAt: '2026-05-18T00:00:00+09:00', items: [], housingItems: [] } })
   assert.ok(s.html().includes('전세 계약'))
+  assert.ok(s.html().includes('전세 대출 이자 설정'))
   assert.ok(!s.html().includes('550,000원'))
 })
 

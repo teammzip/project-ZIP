@@ -46,7 +46,7 @@ class ContractPaymentChangesTests {
             jdbc.update("INSERT INTO rent_payments(user_id,period_ym,amount,due_date,paid_at) VALUES (1,?,550000,?,?)",month,month+"-25",month.equals("2026-12")?"2026-11-17 00:00:00":null);
             jdbc.update("INSERT INTO bill_payments(bill_item_id,period_ym,amount,due_date,paid_at) VALUES (20,?,50000,?,?)",month,month+"-25",month.equals("2026-12")?"2026-11-17 00:00:00":null);
         }
-        new ContractPaymentChanges(jdbc,clock).apply(1,input("monthly",31,600000,60000,null),settings.read(1),null,20L,50000,25);
+        new ContractPaymentChanges(jdbc,clock).apply(1,input("monthly",31,600000,60000,null),settings.read(1),null,20L,25);
         assertEquals(600000L,jdbc.queryForObject("SELECT amount FROM rent_payments WHERE period_ym='2026-11'",Long.class));
         assertEquals("2026-11-30",jdbc.queryForObject("SELECT due_date FROM rent_payments WHERE period_ym='2026-11'",java.sql.Date.class).toString());
         assertEquals("2027-02-28",jdbc.queryForObject("SELECT due_date FROM rent_payments WHERE period_ym='2027-02'",java.sql.Date.class).toString());
@@ -62,7 +62,7 @@ class ContractPaymentChangesTests {
             jdbc.update("INSERT INTO loan_interest_charges(loan_id,charge_date,principal,annual_rate,amount,paid_at) VALUES ('loan',?,100000000,3.6,300000,?)",month+"-25",month.equals("2026-12")?"2026-11-17 00:00:00":null);
         var old=Map.<String,Object>of("id","loan","principal",100000000L,"annualRate",new BigDecimal("3.6"),"paymentDay",25);
         var loan=new HomeInfoInput.Loan(100000000,new BigDecimal("4.8"),30,LocalDate.of(2026,1,1));
-        new ContractPaymentChanges(jdbc,clock).apply(1,input("jeonse",25,0,50000,loan),settings.read(1),old,20L,50000,25);
+        new ContractPaymentChanges(jdbc,clock).apply(1,input("jeonse",25,0,50000,loan),settings.read(1),old,20L,25);
         assertEquals(400000L,jdbc.queryForObject("SELECT amount FROM loan_interest_charges WHERE charge_date='2026-11-30'",Long.class));
         assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM loan_interest_charges WHERE amount=300000",Integer.class));
     }
@@ -83,7 +83,7 @@ class ContractPaymentChangesTests {
     @Test void recurringDayBeforeTodayDoesNotRejectOrMoveStoredRecordIntoPast() {
         jdbc.update("INSERT INTO rent_payments(user_id,period_ym,amount,due_date) VALUES (1,'2026-11',550000,'2026-11-25')");
         jdbc.update("INSERT INTO rent_payments(user_id,period_ym,amount,due_date) VALUES (1,'2026-12',550000,'2026-12-25')");
-        new ContractPaymentChanges(jdbc,clock).apply(1,input("monthly",1,600000,50000,null),settings.read(1),null,20L,50000,25);
+        new ContractPaymentChanges(jdbc,clock).apply(1,input("monthly",1,600000,50000,null),settings.read(1),null,20L,25);
         assertEquals(600000L,jdbc.queryForObject("SELECT amount FROM rent_payments WHERE period_ym='2026-11'",Long.class));
         assertEquals("2026-11-25",jdbc.queryForObject("SELECT due_date FROM rent_payments WHERE period_ym='2026-11'",java.sql.Date.class).toString());
         assertEquals(600000L,jdbc.queryForObject("SELECT amount FROM rent_payments WHERE period_ym='2026-12'",Long.class));
@@ -101,7 +101,7 @@ class ContractPaymentChangesTests {
     }
     @Test void savingUnchangedHomeRepairsStaleUpcomingRentSnapshot() {
         jdbc.update("INSERT INTO rent_payments(user_id,period_ym,amount,due_date) VALUES (1,'2026-11',400000,'2026-11-30')");
-        new ContractPaymentChanges(jdbc,clock).apply(1,input("monthly",25,550000,50000,null),settings.read(1),null,20L,50000,25);
+        new ContractPaymentChanges(jdbc,clock).apply(1,input("monthly",25,550000,50000,null),settings.read(1),null,20L,25);
         assertEquals(550000L,jdbc.queryForObject("SELECT amount FROM rent_payments",Long.class));
         assertEquals("2026-11-25",jdbc.queryForObject("SELECT due_date FROM rent_payments",java.sql.Date.class).toString());
     }

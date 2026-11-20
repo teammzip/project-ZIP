@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Card } from '@/components/ui'
 import { useAuthStore } from '@/features/auth'
+import { LoanInterestCard } from '@/features/loan'
 import { getErrorMessage } from '@/lib/apiClient'
 import { won } from '@/lib/date'
 import common from '@/styles/common.module.css'
@@ -107,6 +108,7 @@ export function MonthlyFixedExpense() {
         </details>
       </>}
     </Card>
+    {data?.contractKind === 'jeonse' && <LoanInterestCard key={token} />}
     <Card title="고정 지출 기록하기">
       {data && !!token && !!userId && !query.isError && !contractBlocked ? <MonthlyBillEditor key={`${userId}:${token}:${timeZone}:${month}`} month={month} timeZone={timeZone} /> : <p className={common.note}>현재 날짜와 조회 월이 모두 계약 기간 안이어야 기록할 수 있어요.</p>}
       <p className={common.note}>선택한 달의 고정 지출을 기록해요. 등록된 기록만 수정할 수 있어요.</p>

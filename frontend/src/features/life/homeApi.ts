@@ -17,6 +17,7 @@ type HomeResponse = {
 }
 let revision = 0
 let pendingLoad: { id: string; token: string; revision: number; promise: Promise<HomeResponse> } | null = null
+let pendingWrite: { token: string; promise: Promise<HomeResponse> } | null = null
 
 function session() {
   const { user, token } = useAuthStore.getState()
@@ -51,6 +52,7 @@ function apply(data: HomeResponse, owner: ReturnType<typeof session>, request: n
 
 export async function loadHomeInfo() {
   const owner = session()
+  if (pendingWrite?.token === owner.token) return pendingWrite.promise
   if (pendingLoad?.id === owner.id && pendingLoad.token === owner.token && pendingLoad.revision === revision) return pendingLoad.promise
   const request = ++revision
   const promise = apiClient.get<HomeResponse>('/me/home-info').then(({ data }) => {
@@ -60,9 +62,17 @@ export async function loadHomeInfo() {
   pendingLoad = { ...owner, revision: request, promise }
   return promise
 }
-export async function saveHomeInfo(input: HomeInput) {
-  const owner = session(), request = ++revision
-  const { data } = await apiClient.put<HomeResponse>('/me/home-info', input)
-  apply(data, owner, request)
-  return data
+async function writeHomeInfo(path: string, input: HomeInput | { loan: LoanTerms | null }) {
+  const owner = session()
+  if (pendingWrite?.token === owner.token) throw new Error('내 집 정보를 저장하고 있어요. 잠시 후 다시 시도해 주세요.')
+  const request = ++revision
+  const promise = apiClient.put<HomeResponse>(path, input).then(({ data }) => {
+    apply(data, owner, request)
+    return data
+  }).finally(() => { if (pendingWrite?.promise === promise) pendingWrite = null })
+  pendingWrite = { token: owner.token, promise }
+  return promise
 }
+
+export const saveHomeInfo = (input: HomeInput) => writeHomeInfo('/me/home-info', input)
+export const saveHomeLoan = (loan: LoanTerms | null) => writeHomeInfo('/me/home-info/loan', { loan })

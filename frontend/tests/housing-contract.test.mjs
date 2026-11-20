@@ -156,6 +156,8 @@ test('월세 계약은 이자 자동 기록을 실행하지 않고 전세 계약
       require: (name) => {
         if (name === 'react') return { useEffect: (fn) => effects.push(fn) }
         if (name === '@/features/onboarding/useHousingContract') return { useHousingContract: () => ({ isJeonse: kind === 'jeonse' }) }
+        if (name === '@/features/life/homeApi') return {}
+        if (name === '@/lib/apiMode') return { isMockApi: true }
         if (name === '@/features/auth/store/authStore') return { useAuthStore: (selector) => selector({ user: { id: 'member-a' }, token: 'test-token' }) }
         if (name === './store') return { useLoanStore: (selector) => selector(state) }
         return require(name)

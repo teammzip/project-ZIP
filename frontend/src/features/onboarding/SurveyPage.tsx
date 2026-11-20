@@ -2,6 +2,7 @@ import { useCallback, useState, type FormEvent } from 'react'
 import house from '@/assets/images/house-mobile.png'
 import logo from '@/assets/images/logo-zip.png'
 import { AmountInput, Button } from '@/components/ui'
+import { useQueryClient } from '@tanstack/react-query'
 import { authApi, useAuthStore } from '@/features/auth'
 import { useLifeStore } from '@/features/life'
 import { LoanFields, loanToday, useLoanStore, validateLoanTerms, type LoanTerms } from '@/features/loan'
@@ -17,7 +18,8 @@ import { resolveBillingTimeZone } from '@/features/life/billingTimeZone'
 import { addressTimeZone, locationTimeZone } from '@/features/life/billingTimeZoneApi'
 import { deviceTimeZone } from '@/features/life/monthlyPeriod'
 import { isMockApi } from '@/lib/apiMode'
-import { apiClient } from '@/lib/apiClient'
+import { apiClient, getErrorMessage } from '@/lib/apiClient'
+import { saveHomeInfo } from '@/features/life/homeApi'
 
 const num = (v: string) => Math.max(0, Number(v) || 0)
 
@@ -25,9 +27,9 @@ const num = (v: string) => Math.max(0, Number(v) || 0)
  * 끝내면 월세 · 관리비는 생활 설정 · 고정 지출에도 반영됨. "나중에 할게요"로 건너뛸 수도 있음 */
 export function SurveyPage() {
   const user = useAuthStore((s) => s.user)
+  const queryClient = useQueryClient()
   const updateUser = useAuthStore((s) => s.updateUser)
   const saveSurvey = useHousingSurveyStore((s) => s.save)
-  const settings = useLifeStore((s) => s.settings)
   const saveSettings = useLifeStore((s) => s.saveSettings)
   const addBill = useLifeStore((s) => s.addBill)
   const saveLoan = useLoanStore((s) => s.savePlan)
@@ -105,27 +107,47 @@ export function SurveyPage() {
       incomePaymentDay: Number(f.incomePaymentDay),
       answeredAt: new Date().toISOString(),
     }
+    const token = useAuthStore.getState().token
+    const sameSession = () => useAuthStore.getState().token === token && useAuthStore.getState().user?.id === user.id
     try {
       const savedUser = await authApi.updateMe({ address: answers.address })
-      if (useAuthStore.getState().user?.id !== user.id) return
+      if (!sameSession()) return
       updateUser({ ...savedUser, firstLogin: user.firstLogin })
       if (!isMockApi) {
         await apiClient.patch('/me/profile-info', { nickname: savedUser.nickname, birth: answers.birth })
-        if (useAuthStore.getState().user?.id !== user.id) return
+        if (!sameSession()) return
         updateUser({ ...savedUser, birth: answers.birth, firstLogin: user.firstLogin })
         const zone = await resolveBillingTimeZone({ address: { label: selectedAddress, point: selectedPoint ?? undefined }, deviceZone: deviceTimeZone(), signal: new AbortController().signal, addressZone: addressTimeZone, locationZone: locationTimeZone })
-        if (useAuthStore.getState().user?.id !== user.id) return
+        if (!sameSession()) return
         await saveSalary({ amount: answers.income, incomePeriod, paymentDay: Number(f.incomePaymentDay) }, zone.timeZone)
+        if (!sameSession()) return
+        await saveHomeInfo({
+          kind, deposit: answers.deposit, rent: answers.rent, rentDay: 15, moveIn: '', contractEnd: '',
+          mgmtIncluded: answers.mgmtIncluded, mgmtFee, contractFee: answers.contractFee,
+          homeAddress: answers.address, loan: loan ?? null,
+        })
+        if (!sameSession()) return
+        const savedSurvey = useHousingSurveyStore.getState().survey
+        if (savedSurvey?.userId === user.id) {
+          saveSurvey({ ...savedSurvey, birth: answers.birth, address: answers.address, addressPoint: answers.addressPoint,
+            income: answers.income, incomePeriod, incomePaymentDay: answers.incomePaymentDay, answeredAt: answers.answeredAt })
+        }
+        void queryClient.invalidateQueries({ queryKey: ['monthly-bills'] })
+        void queryClient.invalidateQueries({ queryKey: ['billing-address'] })
+        void queryClient.invalidateQueries({ queryKey: ['ledger'] })
       }
-      saveSurvey(answers)
-      // 생활 설정의 월세는 기존 만원 단위를 유지하므로 경계에서 변환한다.
-      saveSettings({ ...settings, region: answers.address, regionLocation: { userId: user.id, region: answers.address, source: 'survey', point: selectedPoint ?? undefined }, rent: answers.rent / 10000 })
-      if (mgmtFee > 0) addBill('관리비', mgmtFee, '관리비')
-      if (loan) saveLoan(loan)
-      else stopLoan()
+      const settings = useLifeStore.getState().settings
+      saveSettings({ ...settings, region: answers.address, regionLocation: { userId: user.id, region: answers.address, source: 'survey', point: selectedPoint ?? undefined },
+        ...(isMockApi ? { rent: answers.rent / 10000 } : {}) })
+      if (isMockApi) {
+        saveSurvey(answers)
+        if (mgmtFee > 0) addBill('관리비', mgmtFee, '관리비')
+        if (loan) saveLoan(loan)
+        else stopLoan()
+      }
       setDone(true)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '정보를 저장하지 못했어요. 다시 시도해 주세요.')
+      if (sameSession()) setError(getErrorMessage(cause, '정보를 저장하지 못했어요. 다시 시도해 주세요.'))
     } finally {
       setSaving(false)
     }

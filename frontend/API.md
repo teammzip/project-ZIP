@@ -30,7 +30,9 @@
 
 ## 내 집 정보 서버 연결 (2026-11-15)
 
-GET/PUT `/api/me/home-info` 구현 및 내 집 정보 폼 연결 완료. 계약 유형·보증금·월세·관리비·전세 계약금·입주/종료월·주소·대출 조건을 저장한다. 모든 입력 금액은 원이며 응답 settings.rent는 기존 설정과 동일한 만원 단위다. 회원 ID는 토큰에서 결정한다. 상세 검증·SQL·남은 범위는 루트 `HOME_INFO_VERIFICATION.md`를 참고한다. 아래 주거 설문 API 제안은 이 계약 API와 별도다.
+GET/PUT `/api/me/home-info`는 첫 주거 설문과 내 집 정보 폼에서 사용한다. 계약 유형·보증금·월세·관리비·전세 계약금·입주/종료월·주소·대출 조건을 저장한다. 모든 입력 금액은 원이며 응답 settings.rent는 기존 설정과 동일한 만원 단위다. 설문의 생년월일과 수입은 각각 `/api/me/profile-info`와 `/api/me/salary`에 저장한다.
+
+PUT `/api/me/home-info/loan`은 전세 대출 카드에서 사용한다. 본문은 `{"loan":{"principal":120000000,"annualRate":4,"paymentDay":25,"startDate":"2026-11-01"}}` 형식이며 `{"loan":null}`은 자동 기록을 중지한다. 응답 형식은 GET `/api/me/home-info`와 같다. 회원 ID는 토큰에서 결정한다.
 
 ## 0. 공통 규칙
 

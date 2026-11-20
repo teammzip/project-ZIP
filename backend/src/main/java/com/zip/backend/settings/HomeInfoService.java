@@ -50,13 +50,13 @@ public class HomeInfoService {
             throw new ApiException(400,"계약 종료 월을 확인해 주세요. 현재 월보다 이전인 계약 종료 월로는 저장할 수 없어요.");
         var previous=settings.read(user);
         var oldLoan=loan(user);
+        settle(user);
         var oldKinds=jdbc.query("SELECT contract_kind FROM home_contracts WHERE user_id=?",(rs,n)->rs.getString(1),user);
-        int oldManagementDay=!oldKinds.isEmpty() && "jeonse".equals(oldKinds.get(0))?(oldLoan==null?15:((Number)oldLoan.get("paymentDay")).intValue()):previous.day();
+        int oldManagementDay=!oldKinds.isEmpty() && "jeonse".equals(oldKinds.get(0))?(oldLoan==null || !Boolean.TRUE.equals(oldLoan.get("active"))?15:((Number)oldLoan.get("paymentDay")).intValue()):previous.day();
         var contracts=jdbc.query("SELECT management_bill_id FROM home_contracts WHERE user_id=?", (rs,row)->rs.getString(1),user);
         Long managed=contracts.isEmpty() || contracts.get(0)==null ? null : Long.valueOf(contracts.get(0));
         if (managed==null) managed=jdbc.query("SELECT id FROM bill_items WHERE user_id=? AND name='관리비' AND tag='관리비' AND is_active=1 ORDER BY id", (rs,row)->rs.getLong(1),user).stream().findFirst().orElse(null);
         if (managed!=null && jdbc.queryForObject("SELECT COUNT(*) FROM bill_items WHERE id=? AND user_id=? AND is_active=1",Long.class,managed,user)==0) managed=null;
-        long oldFee=managed==null?0:jdbc.queryForObject("SELECT default_amount FROM bill_items WHERE id=?",Long.class,managed);
         boolean kindChanged=!oldKinds.isEmpty() && !input.kind().equals(oldKinds.get(0));
         if(managed!=null && !oldKinds.isEmpty()) {
             jdbc.update("UPDATE bill_items SET home_contract_kind=COALESCE(home_contract_kind,?) WHERE id=? AND user_id=?",oldKinds.get(0),managed,user);
@@ -66,7 +66,6 @@ public class HomeInfoService {
                     java.sql.Timestamp.from(clock.instant()),managed,java.sql.Date.valueOf(today));
                 bills.removeFromHome(user,session,managed);
                 managed=null;
-                oldFee=0;
                 oldManagementDay="monthly".equals(input.kind())?input.rentDay():input.loan()==null?15:input.loan().day();
             }
         }
@@ -88,19 +87,59 @@ public class HomeInfoService {
         jdbc.update("UPDATE home_contracts SET contract_kind=?,deposit=?,management_included=?,management_fee=?,contract_fee=?,management_bill_id=?,payment_effective_from=? WHERE user_id=?",
             input.kind(),input.deposit(),input.included(),input.fee(),input.contractFee(),managed,java.sql.Date.valueOf(today),user);
         // 새 계약 기간 안의 도래분만 생성하고 이미 저장된 기록은 보존한다.
-        var existing=loan(user);
-        if (input.loan()==null) jdbc.update("UPDATE housing_loans SET is_active=0 WHERE user_id=?",user);
-        else {
-            var l=input.loan();
-            String id=existing==null?UUID.randomUUID().toString():(String)existing.get("id");
-            String start=existing!=null && Boolean.TRUE.equals(existing.get("active"))?(String)existing.get("startDate"):l.start().toString();
-            if (existing==null) jdbc.update("INSERT INTO housing_loans(id,user_id,principal,annual_rate,payment_day,start_date,is_active) VALUES (?,?,?,?,?,?,1)",id,user,l.principal(),l.rate(),l.day(),start);
-            else jdbc.update("UPDATE housing_loans SET principal=?,annual_rate=?,payment_day=?,start_date=?,is_active=1 WHERE user_id=?",l.principal(),l.rate(),l.day(),start,user);
-            settle(user);
-        }
-        paymentChanges.apply(user,input,previous,oldLoan,managed,oldFee,oldManagementDay);
+        writeLoan(user,input.loan(),oldLoan,today);
+        paymentChanges.apply(user,input,previous,oldLoan,managed,oldManagementDay);
         bills.autoRegisterSavedZone(user);
         return response(user);
+    }
+
+    @Transactional
+    public Map<String,Object> saveLoan(long user,long session,HomeInfoInput.Loan plan) {
+        lock(user,session);
+        var previous=settings.read(user);
+        var homes=jdbc.query("""
+            SELECT management_bill_id, management_fee, billing_time_zone
+            FROM home_contracts WHERE user_id=? AND contract_kind='jeonse'
+            """, (rs,row)->new LoanHome(rs.getObject("management_bill_id",Long.class),rs.getLong("management_fee"),
+                rs.getString("billing_time_zone")),user);
+        if (homes.isEmpty()) throw new ApiException(400,"내 집 정보에서 전세 계약을 먼저 저장해 주세요.");
+        var home=homes.get(0);
+        var today=LocalDate.now(clock.withZone(home.zone()==null?KOREA:ZoneId.of(home.zone())));
+        var month=YearMonth.from(today);
+        if (plan!=null && ((!previous.moveIn().isEmpty() && month.isBefore(YearMonth.parse(previous.moveIn())))
+            || (!previous.end().isEmpty() && month.isAfter(YearMonth.parse(previous.end()))))) {
+            throw new ApiException(400,"현재 날짜가 계약 기간 밖이에요. 내 집 정보를 확인해 주세요.");
+        }
+        var oldLoan=loan(user);
+        settle(user);
+        writeLoan(user,plan,oldLoan,today);
+        var input=new HomeInfoInput("jeonse",0,0,previous.day(),false,home.fee(),0,
+            previous.moveIn(),previous.end(),null,plan);
+        int oldDay=oldLoan!=null && Boolean.TRUE.equals(oldLoan.get("active"))?(Integer)oldLoan.get("paymentDay"):15;
+        paymentChanges.apply(user,input,previous,oldLoan,home.managementBill(),oldDay);
+        bills.autoRegisterSavedZone(user);
+        return response(user);
+    }
+
+    private record LoanHome(Long managementBill,long fee,String zone) {}
+
+    private void writeLoan(long user,HomeInfoInput.Loan plan,Map<String,Object> existing,LocalDate today) {
+        if (plan==null) {
+            if (existing==null) return;
+            jdbc.update("UPDATE housing_loans SET is_active=0 WHERE user_id=?",user);
+            jdbc.update("DELETE FROM loan_interest_charges WHERE loan_id=? AND paid_at IS NULL AND charge_date>?",
+                existing.get("id"),java.sql.Date.valueOf(today));
+            return;
+        }
+        if (existing==null) {
+            jdbc.update("INSERT INTO housing_loans(id,user_id,principal,annual_rate,payment_day,start_date,is_active) VALUES (?,?,?,?,?,?,1)",
+                UUID.randomUUID().toString(),user,plan.principal(),plan.rate(),plan.day(),plan.start().toString());
+        } else {
+            String start=Boolean.TRUE.equals(existing.get("active"))?(String)existing.get("startDate"):plan.start().toString();
+            jdbc.update("UPDATE housing_loans SET principal=?,annual_rate=?,payment_day=?,start_date=?,is_active=1 WHERE user_id=?",
+                plan.principal(),plan.rate(),plan.day(),start,user);
+        }
+        settle(user);
     }
 
     private Map<String,Object> loan(long user) {

@@ -23,24 +23,26 @@ public record HomeInfoInput(String kind, long deposit, long rent, int rentDay, b
         settingFields.put("rent",BigDecimal.valueOf(rent,4)); settingFields.put("rentDay",day); settingFields.put("moveIn",body.getOrDefault("moveIn","")); settingFields.put("contractEnd",body.getOrDefault("contractEnd","")); settingFields.put("notiOn",true);
         var settings = SettingsInput.parse(settingFields);
         String address = body.containsKey("homeAddress") ? SettingsInput.text(body.get("homeAddress"), "집 주소", 200, true) : null;
-        Loan loan = null;
-        if (body.get("loan") != null) {
-            if (monthly) throw SettingsInput.bad("월세 계약에는 전세 대출을 설정할 수 없어요.");
-            if (!(body.get("loan") instanceof Map<?, ?> fields) || !fields.keySet().equals(Set.of("principal", "annualRate", "paymentDay", "startDate"))) throw SettingsInput.bad("대출 조건을 확인해 주세요.");
-            long principal = amount(fields.get("principal"), 9999990000L);
-            BigDecimal rate = SettingsInput.number(fields.get("annualRate"), "이율");
-            int loanDay = (int) amount(fields.get("paymentDay"), 31);
-            if (principal == 0 || loanDay == 0 || rate.signum() < 0 || rate.compareTo(BigDecimal.valueOf(100)) > 0 || rate.stripTrailingZeros().scale() > 2) throw SettingsInput.bad("대출 금액·이율·납부일을 확인해 주세요.");
-            LocalDate start;
-            try {
-                String raw = SettingsInput.text(fields.get("startDate"), "시작일", 10, false);
-                start = LocalDate.parse(raw);
-                if (!start.toString().equals(raw) || start.isBefore(LocalDate.of(2000,1,1)) || start.isAfter(LocalDate.of(2100,12,31))) throw new IllegalArgumentException();
-            } catch (RuntimeException e) { throw SettingsInput.bad("대출 시작일을 확인해 주세요."); }
-            loan = new Loan(principal, rate, loanDay, start);
-        }
+        Loan loan = parseLoan(body.get("loan"));
+        if (monthly && loan != null) throw SettingsInput.bad("월세 계약에는 전세 대출을 설정할 수 없어요.");
         return new HomeInfoInput(kind, monthly ? deposit : 0, monthly ? rent : 0, day, monthly && included,
             monthly && included ? 0 : fee, monthly ? 0 : contractFee, settings.moveIn(), settings.contractEnd(), address, loan);
+    }
+
+    public static Loan parseLoan(Object value) {
+        if (value == null) return null;
+        if (!(value instanceof Map<?, ?> fields) || !fields.keySet().equals(Set.of("principal", "annualRate", "paymentDay", "startDate"))) throw SettingsInput.bad("대출 조건을 확인해 주세요.");
+        long principal = amount(fields.get("principal"), 9999990000L);
+        BigDecimal rate = SettingsInput.number(fields.get("annualRate"), "이율");
+        int loanDay = (int) amount(fields.get("paymentDay"), 31);
+        if (principal == 0 || loanDay == 0 || rate.signum() < 0 || rate.compareTo(BigDecimal.valueOf(100)) > 0 || rate.stripTrailingZeros().scale() > 2) throw SettingsInput.bad("대출 금액·이율·납부일을 확인해 주세요.");
+        LocalDate start;
+        try {
+            String raw = SettingsInput.text(fields.get("startDate"), "시작일", 10, false);
+            start = LocalDate.parse(raw);
+            if (!start.toString().equals(raw) || start.isBefore(LocalDate.of(2000,1,1)) || start.isAfter(LocalDate.of(2100,12,31))) throw new IllegalArgumentException();
+        } catch (RuntimeException e) { throw SettingsInput.bad("대출 시작일을 확인해 주세요."); }
+        return new Loan(principal, rate, loanDay, start);
     }
     private static long amount(Object value, long max) {
         try {
