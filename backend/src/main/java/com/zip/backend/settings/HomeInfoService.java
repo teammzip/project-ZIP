@@ -10,6 +10,7 @@ import java.util.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.json.JsonMapper;
 
 @Service
 public class HomeInfoService {
@@ -20,10 +21,12 @@ public class HomeInfoService {
     private final BillService bills;
     private final Clock clock;
     private final ContractPaymentChanges paymentChanges;
+    private final JsonMapper json;
     private static final ZoneId KOREA = ZoneId.of("Asia/Seoul");
-    public HomeInfoService(JdbcTemplate jdbc, AuthRepository auth, SettingsRepository settings, SettingsService settingsService, BillService bills, Clock clock) {
+    public HomeInfoService(JdbcTemplate jdbc, AuthRepository auth, SettingsRepository settings, SettingsService settingsService, BillService bills, Clock clock, JsonMapper json) {
         this.jdbc=jdbc; this.auth=auth; this.settings=settings; this.settingsService=settingsService; this.bills=bills; this.clock=clock;
         this.paymentChanges=new ContractPaymentChanges(jdbc,clock);
+        this.json=json;
     }
     private void lock(long user, long session) {
         auth.lockUser(user);
@@ -90,6 +93,7 @@ public class HomeInfoService {
         writeLoan(user,input.loan(),oldLoan,today);
         paymentChanges.apply(user,input,previous,oldLoan,managed,oldManagementDay);
         bills.autoRegisterSavedZone(user);
+        jdbc.update("UPDATE users SET housing_loan_draft=NULL WHERE id=?", user);
         return response(user);
     }
 
@@ -118,6 +122,7 @@ public class HomeInfoService {
         int oldDay=oldLoan!=null && Boolean.TRUE.equals(oldLoan.get("active"))?(Integer)oldLoan.get("paymentDay"):15;
         paymentChanges.apply(user,input,previous,oldLoan,home.managementBill(),oldDay);
         bills.autoRegisterSavedZone(user);
+        jdbc.update("UPDATE users SET housing_loan_draft=NULL WHERE id=?", user);
         return response(user);
     }
 
@@ -190,6 +195,8 @@ public class HomeInfoService {
             c.put("managementBillId",rs.getString("management_bill_id")); return (Map<String,Object>)c;
         },user).stream().findFirst().orElse(null);
         result.put("contract",contract); result.put("loan",loan(user));
+        String draft = jdbc.queryForObject("SELECT housing_loan_draft FROM users WHERE id=?", String.class, user);
+        result.put("loanDraft", draft == null ? null : json.readTree(draft));
         result.put("charges",jdbc.query("SELECT c.* FROM loan_interest_charges c JOIN housing_loans l ON l.id=c.loan_id WHERE l.user_id=? ORDER BY charge_date",(rs,row)->{
             String date=rs.getDate("charge_date").toLocalDate().toString(),id=rs.getString("loan_id");
             return Map.of("id",id+":"+date.substring(0,7),"loanId",id,"userId",Long.toString(user),"date",date,"amount",rs.getLong("amount"),"principal",rs.getLong("principal"),"annualRate",rs.getBigDecimal("annual_rate"));

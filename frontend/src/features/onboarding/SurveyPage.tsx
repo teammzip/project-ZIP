@@ -5,7 +5,7 @@ import { AmountInput, Button } from '@/components/ui'
 import { useQueryClient } from '@tanstack/react-query'
 import { authApi, useAuthStore } from '@/features/auth'
 import { useLifeStore } from '@/features/life'
-import { LoanFields, loanToday, useLoanStore, validateLoanTerms, type LoanTerms } from '@/features/loan'
+import { LoanFields, useLoanStore, validateLoanTerms, type LoanTerms } from '@/features/loan'
 import { cx } from '@/lib/cx'
 import { useAge } from '@/lib/useAge'
 import common from '@/styles/common.module.css'
@@ -13,13 +13,12 @@ import { useHousingSurveyStore, type ContractKind, type HousingSurvey, type Inco
 import styles from './SurveyPage.module.css'
 import { AddressSearch } from './AddressSearch'
 import type { AddressOption } from './addressResult'
-import { saveSalary } from '@/features/life/salaryApi'
 import { resolveBillingTimeZone } from '@/features/life/billingTimeZone'
 import { addressTimeZone, locationTimeZone } from '@/features/life/billingTimeZoneApi'
 import { deviceTimeZone } from '@/features/life/monthlyPeriod'
 import { isMockApi } from '@/lib/apiMode'
 import { apiClient, getErrorMessage } from '@/lib/apiClient'
-import { saveHomeInfo } from '@/features/life/homeApi'
+import { loadHomeInfo } from '@/features/life/homeApi'
 
 const num = (v: string) => Math.max(0, Number(v) || 0)
 
@@ -47,34 +46,35 @@ export function SurveyPage() {
     setSearchOpen(false)
     setError('')
   }, [])
-  const [kind, setKind] = useState<ContractKind>('monthly')
+  const [kind, setKind] = useState<ContractKind | null>(null)
   const [incomePeriod, setIncomePeriod] = useState<IncomePeriod>('monthly')
-  const [mgmtIncluded, setMgmtIncluded] = useState(true)
-  const [hasLoan, setHasLoan] = useState(false)
-  const [f, setF] = useState({ birth: '', deposit: '', rent: '', mgmtFee: '', contractFee: '', loanAmount: '', income: '', incomePaymentDay: '25', loanAnnualRate: '', loanPaymentDay: '25', loanStartDate: loanToday() })
+  const [mgmtIncluded, setMgmtIncluded] = useState<boolean | null>(null)
+  const [hasLoan, setHasLoan] = useState<boolean | null>(null)
+  const [f, setF] = useState({ birth: '', deposit: '', rent: '', mgmtFee: '', contractFee: '', loanAmount: '', income: '', incomePaymentDay: '', loanAnnualRate: '', loanPaymentDay: '', loanStartDate: '' })
   const { age, today } = useAge(f.birth)
   const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }))
 
   if (!user) return null
-  const close = () => updateUser({ ...user, firstLogin: false }) // 가드가 홈으로 보내 줌
+  const close = () => updateUser({ ...user, firstLogin: false })
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (saving) return
-    if (!Number.isSafeInteger(Number(f.income)) || Number(f.income) < 0 || Number(f.income) > (incomePeriod === 'annual' ? 11999999988 : 999999999) || (incomePeriod === 'annual' && Number(f.income) > 0 && Number(f.income) < 12) || !Number.isInteger(Number(f.incomePaymentDay)) || Number(f.incomePaymentDay) < 1 || Number(f.incomePaymentDay) > 31) {
+    if (!Number.isSafeInteger(Number(f.income)) || Number(f.income) < 0 || Number(f.income) > (incomePeriod === 'annual' ? 11999999988 : 999999999) || (incomePeriod === 'annual' && Number(f.income) > 0 && Number(f.income) < 12) || !Number.isInteger(Number(f.incomePaymentDay || 25)) || Number(f.incomePaymentDay || 25) < 1 || Number(f.incomePaymentDay || 25) > 31) {
       setError('월·연 수입 금액과 매월 받는 날짜(1~31일)를 확인해 주세요.'); return
     }
-    if (age === null) {
+    if (f.birth && age === null) {
       setError('올바른 생년월일을 입력해 주세요.')
       return
     }
-    if (!selectedAddress) {
-      setError('주소 검색으로 사는 동네를 선택해 주세요.')
-      setSearchOpen(true)
-      return
-    }
     let loan: LoanTerms | undefined
-    if (kind === 'jeonse' && hasLoan) {
+    const loanFields = {
+      ...(f.loanAmount !== '' ? { principal: Number(f.loanAmount) } : {}),
+      ...(f.loanAnnualRate !== '' ? { annualRate: Number(f.loanAnnualRate) } : {}),
+      ...(f.loanPaymentDay !== '' ? { paymentDay: Number(f.loanPaymentDay) } : {}),
+      ...(f.loanStartDate !== '' ? { startDate: f.loanStartDate } : {}),
+    }
+    if (kind === 'jeonse' && hasLoan && Object.keys(loanFields).length === 4) {
       try {
         loan = validateLoanTerms({ principal: Number(f.loanAmount), annualRate: Number(f.loanAnnualRate), paymentDay: Number(f.loanPaymentDay), startDate: f.loanStartDate })
       } catch (cause) {
@@ -91,63 +91,94 @@ export function SurveyPage() {
       birth: f.birth,
       address: selectedAddress,
       addressPoint: selectedPoint ?? undefined,
-      kind,
+      kind: kind ?? 'monthly',
       deposit: monthly ? num(f.deposit) : 0,
       rent: monthly ? num(f.rent) : 0,
-      mgmtIncluded: monthly ? mgmtIncluded : false,
+      mgmtIncluded: monthly && mgmtIncluded === true,
       mgmtFee,
       contractFee: monthly ? 0 : num(f.contractFee),
-      hasLoan: monthly ? false : hasLoan,
+      hasLoan: !!loan,
       loanAmount: !monthly && hasLoan ? num(f.loanAmount) : 0,
       loanAnnualRate: loan?.annualRate,
       loanPaymentDay: loan?.paymentDay,
       loanStartDate: loan?.startDate,
       income: num(f.income),
       incomePeriod,
-      incomePaymentDay: Number(f.incomePaymentDay),
+      incomePaymentDay: Number(f.incomePaymentDay || 25),
       answeredAt: new Date().toISOString(),
     }
     const token = useAuthStore.getState().token
     const sameSession = () => useAuthStore.getState().token === token && useAuthStore.getState().user?.id === user.id
     try {
-      const savedUser = await authApi.updateMe({ address: answers.address })
-      if (!sameSession()) return
-      updateUser({ ...savedUser, firstLogin: user.firstLogin })
       if (!isMockApi) {
-        await apiClient.patch('/me/profile-info', { nickname: savedUser.nickname, birth: answers.birth })
-        if (!sameSession()) return
-        updateUser({ ...savedUser, birth: answers.birth, firstLogin: user.firstLogin })
-        const zone = await resolveBillingTimeZone({ address: { label: selectedAddress, point: selectedPoint ?? undefined }, deviceZone: deviceTimeZone(), signal: new AbortController().signal, addressZone: addressTimeZone, locationZone: locationTimeZone })
-        if (!sameSession()) return
-        await saveSalary({ amount: answers.income, incomePeriod, paymentDay: Number(f.incomePaymentDay) }, zone.timeZone)
-        if (!sameSession()) return
-        await saveHomeInfo({
-          kind, deposit: answers.deposit, rent: answers.rent, rentDay: 15, moveIn: '', contractEnd: '',
-          mgmtIncluded: answers.mgmtIncluded, mgmtFee, contractFee: answers.contractFee,
-          homeAddress: answers.address, loan: loan ?? null,
+        const zone = f.income === '' || f.incomePaymentDay === '' ? undefined : await resolveBillingTimeZone({
+          address: { label: selectedAddress || user.address, point: selectedPoint ?? undefined },
+          deviceZone: deviceTimeZone(), signal: new AbortController().signal, addressZone: addressTimeZone, locationZone: locationTimeZone,
         })
         if (!sameSession()) return
-        const savedSurvey = useHousingSurveyStore.getState().survey
-        if (savedSurvey?.userId === user.id) {
-          saveSurvey({ ...savedSurvey, birth: answers.birth, address: answers.address, addressPoint: answers.addressPoint,
-            income: answers.income, incomePeriod, incomePaymentDay: answers.incomePaymentDay, answeredAt: answers.answeredAt })
+        const { data: savedUser } = await apiClient.put<typeof user>('/me/housing-onboarding', {
+          action: 'save',
+          ...(selectedAddress ? { address: selectedAddress } : {}),
+          ...(f.birth ? { birth: f.birth } : {}),
+          ...(f.income !== '' ? { salary: { amount: answers.income, incomePeriod, ...(zone ? { paymentDay: answers.incomePaymentDay } : {}) } } : {}),
+          ...(zone ? { timeZone: zone.timeZone } : {}),
+          ...(kind ? { home: {
+            kind,
+            ...(monthly && f.deposit !== '' ? { deposit: answers.deposit } : {}),
+            ...(monthly && f.rent !== '' ? { rent: answers.rent } : {}),
+            ...(monthly && mgmtIncluded !== null ? { mgmtIncluded } : {}),
+            ...(f.mgmtFee !== '' && !(monthly && mgmtIncluded) ? { mgmtFee } : {}),
+            ...(!monthly && f.contractFee !== '' ? { contractFee: answers.contractFee } : {}),
+            ...(!monthly && hasLoan === false ? { loan: null } : {}),
+            ...(!monthly && hasLoan ? { loan: loanFields } : {}),
+          } } : {}),
+        })
+        if (!sameSession()) return
+        if (selectedAddress && savedUser.address === selectedAddress) {
+          const settings = useLifeStore.getState().settings
+          saveSettings({ ...settings, region: selectedAddress, regionLocation: {
+            userId: user.id, region: selectedAddress, source: 'survey', point: selectedPoint ?? undefined,
+          } })
         }
+        updateUser(savedUser)
+        void loadHomeInfo().catch(() => {})
         void queryClient.invalidateQueries({ queryKey: ['monthly-bills'] })
         void queryClient.invalidateQueries({ queryKey: ['billing-address'] })
         void queryClient.invalidateQueries({ queryKey: ['ledger'] })
+        return
+      }
+      if (selectedAddress) {
+        const savedUser = await authApi.updateMe({ address: selectedAddress })
+        if (!sameSession()) return
+        updateUser({ ...savedUser, firstLogin: user.firstLogin })
       }
       const settings = useLifeStore.getState().settings
-      saveSettings({ ...settings, region: answers.address, regionLocation: { userId: user.id, region: answers.address, source: 'survey', point: selectedPoint ?? undefined },
-        ...(isMockApi ? { rent: answers.rent / 10000 } : {}) })
-      if (isMockApi) {
-        saveSurvey(answers)
-        if (mgmtFee > 0) addBill('관리비', mgmtFee, '관리비')
-        if (loan) saveLoan(loan)
-        else stopLoan()
-      }
+      saveSettings({ ...settings, ...(selectedAddress ? { region: selectedAddress,
+        regionLocation: { userId: user.id, region: selectedAddress, source: 'survey', point: selectedPoint ?? undefined } } : {}),
+        ...(kind && f.rent !== '' ? { rent: answers.rent / 10000 } : {}) })
+      if (kind) saveSurvey(answers)
+      if (kind && mgmtFee > 0) addBill('관리비', mgmtFee, '관리비')
+      if (loan) saveLoan(loan)
+      else if (kind && hasLoan === false) stopLoan()
       setDone(true)
     } catch (cause) {
       if (sameSession()) setError(getErrorMessage(cause, '정보를 저장하지 못했어요. 다시 시도해 주세요.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const skip = async () => {
+    if (saving) return
+    if (isMockApi) return close()
+    const token = useAuthStore.getState().token
+    setSaving(true)
+    setError('')
+    try {
+      const { data } = await apiClient.put<typeof user>('/me/housing-onboarding', { action: 'skip' })
+      if (useAuthStore.getState().token === token) updateUser(data)
+    } catch (cause) {
+      if (useAuthStore.getState().token === token) setError(getErrorMessage(cause, '설문을 건너뛰지 못했어요. 다시 시도해 주세요.'))
     } finally {
       setSaving(false)
     }
@@ -157,7 +188,7 @@ export function SurveyPage() {
   const steps = [
     { label: '생년월일', ok: age !== null },
     { label: '사는 곳', ok: !!selectedAddress },
-    { label: '계약 정보', ok: kind === 'monthly' ? !!f.deposit && !!f.rent : !!f.contractFee },
+    { label: '계약 정보', ok: !!kind },
     { label: '수입', ok: !!f.income },
   ]
   const doneCount = done ? steps.length : steps.filter((st) => st.ok).length
@@ -175,7 +206,7 @@ export function SurveyPage() {
           <br />
           알려 주세요
         </h1>
-        <p className={styles.sub}>계약 유형에 맞는 주거비와 고정 지출 계산에 써요. 1분이면 끝나요.</p>
+        <p className={styles.sub}>계약 유형에 맞는 주거비와 고정 지출 계산에 써요. 입력하지 않은 항목은 나중에 마이페이지에서 설정할 수 있어요.</p>
         <div className={styles.progress} role="progressbar" aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={doneCount} aria-label="설문 진행">
           <i style={{ width: `${(doneCount / steps.length) * 100}%` }} />
         </div>
@@ -194,7 +225,7 @@ export function SurveyPage() {
           <div className={styles.doneBox}>
             <div className={styles.doneIco} aria-hidden>🎉</div>
             <h1>설문이 끝났어요!</h1>
-            <p>{kind === 'monthly' ? '입력한 월세·관리비를 고정 지출에 반영했어요.' : `전세 계약 정보와 관리비를 저장했어요.${hasLoan ? ' 설정한 납부일에 대출 이자가 가계부에 자동 기록돼요.' : ''}`}</p>
+            <p>입력한 정보를 저장했어요. 나머지 정보는 마이페이지에서 설정할 수 있어요.</p>
             <Button block size="lg" onClick={close}>
               ZIP 시작하기
             </Button>
@@ -205,7 +236,7 @@ export function SurveyPage() {
               <h2><i aria-hidden="true">🎂</i>생년월일</h2>
               <label>
                 <span className={styles.srOnly}>생년월일</span>
-                <input type="date" value={f.birth} onChange={(e) => set('birth', e.target.value)} min="1900-01-01" max={today} required autoFocus aria-describedby="survey-age" />
+                <input type="date" value={f.birth} onChange={(e) => set('birth', e.target.value)} min="1900-01-01" max={today} autoFocus aria-describedby="survey-age" />
               </label>
               <p id="survey-age" className={styles.sub} aria-live="polite">
                 {age !== null ? `만 ${age}세` : f.birth ? '올바른 생년월일을 입력해 주세요.' : ''}
@@ -241,56 +272,56 @@ export function SurveyPage() {
                   <div className={common.two}>
                     <label>
                       보증금 (원)
-                      <AmountInput value={f.deposit} onValueChange={(value) => set('deposit', value)} max={9999990000} placeholder="예) 10,000,000" required />
+                      <AmountInput value={f.deposit} onValueChange={(value) => set('deposit', value)} max={9999990000} placeholder="예) 10,000,000" />
                     </label>
                     <label>
                       월세 (원)
-                      <AmountInput value={f.rent} onValueChange={(value) => set('rent', value)} max={99990000} placeholder="예) 550,000" required />
+                      <AmountInput value={f.rent} onValueChange={(value) => set('rent', value)} max={99990000} placeholder="예) 550,000" />
                     </label>
                   </div>
                   <p className={styles.q}>월세에 관리비가 포함돼 있나요?</p>
                   <div className={styles.yn} role="group" aria-label="관리비 포함 여부">
-                    <button type="button" className={cx(styles.ynBtn, mgmtIncluded && styles.kindOn)} aria-pressed={mgmtIncluded} onClick={() => setMgmtIncluded(true)}>
+                    <button type="button" className={cx(styles.ynBtn, mgmtIncluded && styles.kindOn)} aria-pressed={mgmtIncluded === true} onClick={() => setMgmtIncluded(true)}>
                       포함이에요
                     </button>
-                    <button type="button" className={cx(styles.ynBtn, !mgmtIncluded && styles.kindOn)} aria-pressed={!mgmtIncluded} onClick={() => setMgmtIncluded(false)}>
+                    <button type="button" className={cx(styles.ynBtn, mgmtIncluded === false && styles.kindOn)} aria-pressed={mgmtIncluded === false} onClick={() => setMgmtIncluded(false)}>
                       따로 내요
                     </button>
                   </div>
-                  {!mgmtIncluded && (
+                  {mgmtIncluded === false && (
                     <label>
                       관리비 (원, 매달)
-                      <AmountInput value={f.mgmtFee} onValueChange={(value) => set('mgmtFee', value)} max={9990000} placeholder="예) 70,000" required />
+                      <AmountInput value={f.mgmtFee} onValueChange={(value) => set('mgmtFee', value)} max={9990000} placeholder="예) 70,000" />
                     </label>
                   )}
                 </div>
-              ) : (
+              ) : kind === 'jeonse' ? (
                 <div className={styles.sub3}>
                   <label>
                     계약금 (원)
-                    <AmountInput value={f.contractFee} onValueChange={(value) => set('contractFee', value)} max={9999990000} placeholder="예) 20,000,000" required />
+                    <AmountInput value={f.contractFee} onValueChange={(value) => set('contractFee', value)} max={9999990000} placeholder="예) 20,000,000" />
                   </label>
                   <p className={styles.q}>전세 대출을 받았나요?</p>
                   <div className={styles.yn} role="group" aria-label="대출 여부">
-                    <button type="button" className={cx(styles.ynBtn, !hasLoan && styles.kindOn)} aria-pressed={!hasLoan} onClick={() => setHasLoan(false)}>
+                    <button type="button" className={cx(styles.ynBtn, hasLoan === false && styles.kindOn)} aria-pressed={hasLoan === false} onClick={() => setHasLoan(false)}>
                       없어요
                     </button>
-                    <button type="button" className={cx(styles.ynBtn, hasLoan && styles.kindOn)} aria-pressed={hasLoan} onClick={() => setHasLoan(true)}>
+                    <button type="button" className={cx(styles.ynBtn, hasLoan && styles.kindOn)} aria-pressed={hasLoan === true} onClick={() => setHasLoan(true)}>
                       있어요
                     </button>
                   </div>
                   {hasLoan && (
-                    <LoanFields
+                    <LoanFields optional
                       value={{ principal: f.loanAmount, annualRate: f.loanAnnualRate, paymentDay: f.loanPaymentDay, startDate: f.loanStartDate }}
                       onChange={(value) => setF((previous) => ({ ...previous, loanAmount: value.principal, loanAnnualRate: value.annualRate, loanPaymentDay: value.paymentDay, loanStartDate: value.startDate }))}
                     />
                   )}
                   <label>
                     관리비 (원, 매달)
-                    <AmountInput value={f.mgmtFee} onValueChange={(value) => set('mgmtFee', value)} max={9990000} placeholder="없으면 0" required />
+                    <AmountInput value={f.mgmtFee} onValueChange={(value) => set('mgmtFee', value)} max={9990000} placeholder="없으면 0" />
                   </label>
                 </div>
-              )}
+              ) : null}
             </section>
 
             <section className={styles.sec}>
@@ -304,9 +335,9 @@ export function SurveyPage() {
               </div>
               <label>
                 {incomePeriod === 'monthly' ? '월 수입 (원)' : '연 수입 (원)'}
-                <AmountInput value={f.income} onValueChange={(value) => set('income', value)} max={incomePeriod === 'monthly' ? 999999999 : 11999999988} placeholder={incomePeriod === 'monthly' ? '예) 2,500,000' : '예) 30,000,000'} required />
+                <AmountInput value={f.income} onValueChange={(value) => set('income', value)} max={incomePeriod === 'monthly' ? 999999999 : 11999999988} placeholder={incomePeriod === 'monthly' ? '예) 2,500,000' : '예) 30,000,000'} />
               </label>
-              <label>매월 월급 받는 날짜<input type="number" min="1" max="31" step="1" value={f.incomePaymentDay} onChange={(e) => set('incomePaymentDay', e.target.value)} required />일</label>
+              {f.income !== '' && <label>매월 월급 받는 날짜<input type="number" min="1" max="31" step="1" value={f.incomePaymentDay} onChange={(e) => set('incomePaymentDay', e.target.value)} />일</label>}
               <p>월·연 수입 금액을 월급으로 사용해요. 연 수입은 12로 나누고 남는 원 단위 금액은 12월에 더해요. 서버 연결 시 수령일이 된 월급을 고정 수입에 자동 등록하며, 짧은 달에는 말일로 처리해요.</p>
             </section>
 
@@ -314,7 +345,7 @@ export function SurveyPage() {
             <Button type="submit" size="lg" block loading={saving}>
               설문 완료
             </Button>
-            <button type="button" className={styles.skip} onClick={close} disabled={saving}>
+            <button type="button" className={styles.skip} onClick={() => void skip()} disabled={saving}>
               나중에 할게요
             </button>
           </form>

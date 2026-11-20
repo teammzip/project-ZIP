@@ -71,6 +71,7 @@ export function LifeStats({ postCount }: { postCount: number }) {
 
 /** 생활 정보: 선택한 계약 유형의 항목만 편집하고 설문·가계부 설정에 함께 반영한다. */
 type LifeInfoProps = { onSaved?: () => void; showHomeAddress?: boolean }
+type SurveyLoanDraft = NonNullable<Awaited<ReturnType<typeof loadHomeInfo>>['loanDraft']>
 export function LifeInfoForm(props: LifeInfoProps) {
   const token = useAuthStore((s) => s.token)
   const id = useAuthStore((s) => s.user?.id)
@@ -80,16 +81,21 @@ function ServerLifeInfoForm(props: LifeInfoProps) {
   const [ready, setReady] = useState(false)
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
+  const [loanDraft, setLoanDraft] = useState<SurveyLoanDraft>()
   useEffect(() => {
     let active = true
-    void loadHomeInfo().then(() => { if (active) setReady(true) }).catch((cause) => { if (active) setError(getErrorMessage(cause, '내 집 정보를 불러오지 못했어요.')) })
+    void loadHomeInfo().then((home) => {
+      if (!active) return
+      setLoanDraft(home.loanDraft ?? undefined)
+      setReady(true)
+    }).catch((cause) => { if (active) setError(getErrorMessage(cause, '내 집 정보를 불러오지 못했어요.')) })
     return () => { active = false }
   }, [attempt])
   if (error) return <div role="alert"><p>{error}</p><Button onClick={() => { setError(''); setAttempt((n) => n + 1) }}>다시 불러오기</Button></div>
   if (!ready) return <p role="status">내 집 정보를 불러오는 중이에요.</p>
-  return <LifeInfoFields {...props} />
+  return <LifeInfoFields {...props} loanDraft={loanDraft} />
 }
-export function LifeInfoFields({ onSaved, showHomeAddress = true }: LifeInfoProps) {
+export function LifeInfoFields({ onSaved, showHomeAddress = true, loanDraft }: LifeInfoProps & { loanDraft?: SurveyLoanDraft }) {
   const queryClient = useQueryClient()
   const { kind: savedKind, survey } = useHousingContract()
   const user = useAuthStore((s) => s.user)
@@ -102,13 +108,13 @@ export function LifeInfoFields({ onSaved, showHomeAddress = true }: LifeInfoProp
   const [kind, setKind] = useState<ContractKind>(savedKind)
   const monthly = kind === 'monthly'
   const [mgmtIncluded, setMgmtIncluded] = useState(survey?.mgmtIncluded ?? false)
-  const [hasLoan, setHasLoan] = useState(!!plan || !!survey?.hasLoan)
+  const [hasLoan, setHasLoan] = useState(!!loanDraft || !!plan || !!survey?.hasLoan)
   const [error, setError] = useState('')
   const [loan, setLoan] = useState<LoanDraft>({
-    principal: String(plan?.principal ?? survey?.loanAmount ?? ''),
-    annualRate: String(plan?.annualRate ?? survey?.loanAnnualRate ?? ''),
-    paymentDay: String(plan?.paymentDay ?? survey?.loanPaymentDay ?? 25),
-    startDate: plan?.startDate ?? survey?.loanStartDate ?? loanToday(),
+    principal: String(loanDraft ? loanDraft.principal ?? '' : plan?.principal ?? survey?.loanAmount ?? ''),
+    annualRate: String(loanDraft ? loanDraft.annualRate ?? '' : plan?.annualRate ?? survey?.loanAnnualRate ?? ''),
+    paymentDay: String(loanDraft ? loanDraft.paymentDay ?? '' : plan?.paymentDay ?? survey?.loanPaymentDay ?? 25),
+    startDate: loanDraft ? loanDraft.startDate ?? '' : plan?.startDate ?? survey?.loanStartDate ?? loanToday(),
   })
   const [form, setForm] = useState({
     homeAddress: user ? settings.homeAddresses?.[user.id] ?? '' : '',

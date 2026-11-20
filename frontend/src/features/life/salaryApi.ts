@@ -1,7 +1,7 @@
 import { apiClient } from '@/lib/apiClient'
 
 export type SalaryInput = { amount: number; incomePeriod: 'monthly' | 'annual'; paymentDay: number }
-export type SalarySettings = SalaryInput & { monthlyAmount: number; startMonth: string }
+export type SalarySettings = SalaryInput & { monthlyAmount: number; startMonth: string; draft?: Pick<SalaryInput, 'amount' | 'incomePeriod'> }
 export async function getSalary(signal?: AbortSignal) {
   return (await apiClient.get<SalarySettings>('/me/salary', { signal })).data
 }

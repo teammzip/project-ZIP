@@ -12,6 +12,7 @@ type HomeResponse = {
   settings: { rent: number; rentDay: number; moveIn: string; contractEnd: string; homeAddress: string }
   contract: Contract | null
   loan: HousingLoan | null
+  loanDraft?: { principal?: number; annualRate?: number; paymentDay?: number; startDate?: string } | null
   charges: LoanCharge[]
   managementBill: { id: string; name: string; defaultAmount: number; tag: string; paid: boolean; month: string } | null
 }
@@ -27,11 +28,11 @@ function session() {
 function apply(data: HomeResponse, owner: ReturnType<typeof session>, request: number) {
   const current = useAuthStore.getState()
   if (current.token !== owner.token || current.user?.id !== owner.id || request !== revision) throw new Error('로그인 상태 또는 내 집 정보가 변경됐어요. 다시 불러와 주세요.')
-  if (!data.contract) return // 서버에 계약이 없으면 기존 로컬 입력은 초안으로 보존한다. 자동 업로드하지 않는다.
   const settings = useLifeStore.getState().settings
-  useLifeStore.getState().saveSettings({ ...settings, rent: Number(data.settings.rent), rentDay: data.settings.rentDay,
-    moveIn: data.settings.moveIn, contractEnd: data.settings.contractEnd,
+  useLifeStore.getState().saveSettings({ ...settings, ...(data.contract ? { rent: Number(data.settings.rent), rentDay: data.settings.rentDay,
+    moveIn: data.settings.moveIn, contractEnd: data.settings.contractEnd } : {}),
     homeAddresses: { ...settings.homeAddresses, [owner.id]: data.settings.homeAddress } })
+  if (!data.contract) return // 서버에 계약이 없으면 기존 로컬 입력은 초안으로 보존한다.
   const old = useHousingSurveyStore.getState().survey
   const prior = old?.userId === owner.id ? old : null
   const loan = data.loan?.active ? data.loan : null

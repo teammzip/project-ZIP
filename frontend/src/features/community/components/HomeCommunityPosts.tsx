@@ -21,7 +21,7 @@ export function HomeCommunityPosts() {
     : popular.data ?? []
 
   return (
-    <Card title="커뮤니티 게시글" actions={<Link to="/community" className={common.link}>더 보기</Link>}>
+    <Card title="인기 게시글" actions={<Link to="/community" className={common.link}>더 보기</Link>}>
       {posts.length > 0 ? (
         <ol className={styles.ranking} aria-label="우리 동네 게시글 조회 수 순위">
           {posts.map((post, index) => (

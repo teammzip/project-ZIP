@@ -160,6 +160,10 @@ public class AuthRepository {
             """, Long.class, sessionId, userId, Timestamp.from(now)) == 1;
     }
 
+    public String housingSurveyStatus(long userId) {
+        return jdbc.queryForObject("SELECT housing_survey_status FROM users WHERE id = ?", String.class, userId);
+    }
+
     public void recordLogin(long userId, Instant now) {
         jdbc.update("UPDATE users SET last_login_at = ? WHERE id = ?", Timestamp.from(now), userId);
     }

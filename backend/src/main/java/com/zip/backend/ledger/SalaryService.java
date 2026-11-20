@@ -8,6 +8,7 @@ import java.util.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.json.JsonMapper;
 
 /** 월급 설정과 월별 실제 수령 기록. 이미 생성된 기록은 설정 변경으로 덮어쓰지 않는다. */
 @Service
@@ -15,8 +16,9 @@ public class SalaryService {
     private final JdbcTemplate jdbc;
     private final AuthRepository auth;
     private final Clock clock;
-    public SalaryService(JdbcTemplate jdbc, AuthRepository auth, Clock clock) {
-        this.jdbc=jdbc; this.auth=auth; this.clock=clock;
+    private final JsonMapper json;
+    public SalaryService(JdbcTemplate jdbc, AuthRepository auth, Clock clock, JsonMapper json) {
+        this.jdbc=jdbc; this.auth=auth; this.clock=clock; this.json=json;
     }
     private LocalDate today(String zone) {
         try { return LocalDate.now(clock.withZone(ZoneId.of(zone))); }
@@ -30,13 +32,39 @@ public class SalaryService {
             return result;
         },user).stream().findFirst().orElseGet(() -> Map.of("amount",0L,"incomePeriod","monthly","monthlyAmount",0L,"paymentDay",25,"startMonth",""));
     }
-    @Transactional
-    public Map<String,Object> save(long user,long session,String zone,Map<String,Object> input) {
+    public Map<String,Object> getWithDraft(long user) {
+        var result = new LinkedHashMap<>(get(user));
+        String draft = jdbc.queryForObject("SELECT housing_salary_draft FROM users WHERE id=?", String.class, user);
+        if (draft != null) result.put("draft", json.readTree(draft));
+        return result;
+    }
+
+    // 설문 트랜잭션에서 호출한다. 수령일까지 입력하기 전에는 자동 등록을 시작하지 않는다.
+    public void saveOnboarding(long user, long session, String zone, Map<String,Object> input) {
+        if (input.keySet().equals(Set.of("amount", "incomePeriod"))) {
+            var salary = validate(Map.of("amount", input.get("amount"), "incomePeriod", input.get("incomePeriod"), "paymentDay", 1));
+            var draft = json.writeValueAsString(Map.of("amount", salary.amount(), "incomePeriod", salary.period()));
+            jdbc.update("UPDATE users SET housing_salary_draft=? WHERE id=?", draft, user);
+        } else {
+            save(user, session, zone, input);
+        }
+    }
+
+    private record Terms(long amount, String period, long day) {}
+
+    private static Terms validate(Map<String,Object> input) {
         if(!input.keySet().equals(Set.of("amount","paymentDay","incomePeriod"))) throw new ApiException(400,"월급 금액과 수령일을 확인해 주세요.");
         String period=Objects.toString(input.get("incomePeriod"),"");
         if(!Set.of("monthly","annual").contains(period)) throw new ApiException(400,"월·연 수입 기준을 확인해 주세요.");
         long amount=BillInput.amount(input.get("amount")), day=BillInput.amount(input.get("paymentDay"));
         if(amount>(period.equals("annual")?11999999988L:999999999L) || (amount>0 && period.equals("annual") && amount<12) || day<1 || day>31) throw new ApiException(400,"월 환산 금액은 1~999,999,999원, 수령일은 1~31일로 입력해 주세요. 0원은 자동 등록 중단이에요.");
+        return new Terms(amount, period, day);
+    }
+    @Transactional
+    public Map<String,Object> save(long user,long session,String zone,Map<String,Object> input) {
+        var terms = validate(input);
+        var period = terms.period();
+        long amount = terms.amount(), day = terms.day();
         var now=today(zone);
         auth.lockUser(user);
         if(!auth.sessionActive(session,user,clock.instant())) throw new ApiException(401,"다시 로그인해 주세요.");
@@ -48,6 +76,7 @@ public class SalaryService {
         if(exists) jdbc.update("UPDATE salary_settings SET amount=?,income_period=?,payment_day=?,start_month=? WHERE user_id=?",amount,period,day,start,user);
         else jdbc.update("INSERT INTO salary_settings(user_id,amount,income_period,payment_day,start_month) VALUES (?,?,?,?,?)",user,amount,period,day,start);
         syncLocked(user,now);
+        jdbc.update("UPDATE users SET housing_salary_draft=NULL WHERE id=?",user);
         return get(user);
     }
     @Transactional

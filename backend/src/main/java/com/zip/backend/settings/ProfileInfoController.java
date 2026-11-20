@@ -14,7 +14,6 @@ import com.zip.backend.auth.AuthRepository;
 import com.zip.backend.common.ApiException;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Set;
 
 /** 로그인한 본인의 등록 정보만 조회한다. */
@@ -55,19 +54,12 @@ public class ProfileInfoController {
         String nickname = rawName.strip();
         int length = nickname.codePointCount(0, nickname.length());
         if (length < 2 || length > 12) throw new ApiException(400, "닉네임은 2~12자로 입력해 주세요.");
-        LocalDate date = null;
-        if (!birth.isEmpty()) {
-            try {
-                date = LocalDate.parse(birth);
-                if (!birth.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}") || !date.toString().equals(birth) || date.getYear() < 1 || date.isAfter(LocalDate.now(clock.withZone(ZoneId.of("Asia/Seoul"))))) throw new IllegalArgumentException();
-            } catch (RuntimeException error) { throw new ApiException(400, "생년월일은 미래가 아닌 올바른 날짜로 입력해 주세요."); }
-        }
+        LocalDate date = ProfileBirth.parse(birth, clock);
         long id = Long.parseLong(jwt.getSubject());
         auth.lockUser(id);
         if (!auth.sessionActive(Long.parseLong(jwt.getClaimAsString("sid")), id, clock.instant())) throw new ApiException(401, "로그인이 만료됐어요.");
         jdbc.update("UPDATE users SET nickname = ? WHERE id = ?", nickname, id);
-        if (jdbc.queryForObject("SELECT COUNT(*) FROM user_personal_info WHERE user_id = ?", Long.class, id) == 0) jdbc.update("INSERT INTO user_personal_info(user_id) VALUES (?)", id);
-        jdbc.update("UPDATE user_personal_info SET birth_date = ? WHERE user_id = ?", date == null ? null : java.sql.Date.valueOf(date), id);
+        ProfileBirth.save(jdbc, id, date);
         return get(jwt);
     }
 }
