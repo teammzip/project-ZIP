@@ -206,6 +206,24 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 - 정지 시작 시각은 초 단위로 내림해서 저장해요 (MySQL DATETIME 이 초 아래를 반올림해 "아직 시작 전"으로 보이는 것을 막음).
 - **검증**: `ModerationIntegrationTests` 7개 + 격리 MySQL 에서 실제 백엔드로 경고 · 정지 · 즉시 차단 · 해제 · 영구 정지 확인.
 
+## 일정
+
+`com.zip.backend.calendar` (CalendarController · CalendarService · CalendarRepository · CalendarDefaults). 표는 `events` · `event_categories` · `event_presets` · `trash_schedules` (DB 변경 없음). 규칙은 `frontend/API.md` 3장과 같아요.
+
+| API | 현재 동작 |
+|---|---|
+| GET `/api/events?from=&to=` | 내 일정 (기간 400일 이내, 없으면 전부 최대 10,000개). 매년 반복 기념일은 늘 포함 |
+| GET `/api/events/search?q=` | 제목 검색 (최근 것부터 100개) |
+| POST · PATCH · DELETE `/api/events/{id}` | `{ date, time, title, category, anniv, yearly, done, source }` — PATCH 는 보낸 칸만. 제목 60자, 시간 HH:MM 또는 ""(종일), `source` USER · RENT(만들 때만) |
+| PATCH `/api/events/{id}/done` | `{ done }` 완료 시각(`done_at`)은 완료로 바뀔 때만 적고 해제하면 지움 |
+| GET · POST `/api/event-categories`, PATCH · DELETE `/{id}` | 처음 쓸 때 기본 5개 + 미분류 생성. 이름 20자, 같은 이름 409, 미분류는 바꾸기 · 지우기 400 |
+| GET · POST `/api/event-presets`, PATCH · DELETE `/{id}` | 직접 만든 항목. 같은 카테고리에 같은 이름이 있으면 POST 는 그것을 돌려주고 PATCH 는 409 |
+| GET `/api/trash-schedules?regionId=` | 동네 쓰레기 배출표 (읽기만) |
+
+- 기념일(`anniv`)은 시간 · 카테고리 · 완료가 없고, 매년 반복(`yearly`)은 기념일만 (DB CHECK 와 같음).
+- 카테고리 지우기는 일정 → 미분류, 기본 항목 삭제, 직접 만든 항목 → 미분류(겹치는 이름은 기존 것만 남김)를 한 트랜잭션에서 해요. MySQL 은 같은 표를 하위 질의로 읽으며 지우지 못해서(1093) 겹치는 이름을 먼저 읽어요.
+- **검증**: `CalendarIntegrationTests` 6개 + 격리 MySQL 에서 실제 백엔드로 이모지 기본 카테고리 · TIME · 기념일 CHECK · RENT · 이름 바꾸기 · 지우기 확인. 프론트 동기화는 `frontend/tests/calendar-sync.test.mjs` 8개.
+
 ## 알림
 
 `com.zip.backend.notification` (NotificationController · NotificationService · NotificationRepository). 표는 `notifications` (DB 변경 없음). 규칙은 `frontend/API.md` 6장과 같아요.

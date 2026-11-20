@@ -10,9 +10,11 @@ import ts from 'typescript'
 
 const require = createRequire(import.meta.url)
 const { create } = require('zustand')
-const code = ts.transpileModule(readFileSync(new URL('../src/features/memo/sync.ts', import.meta.url), 'utf8'), {
+const compile = (path) => ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText
+const code = compile('../src/features/memo/sync.ts')
+const listSyncCode = compile('../src/lib/listSync.ts') // 메모 동기화가 쓰는 공통 엔진
 
 const network = () => Object.assign(new Error('network'), {})
 const http = (status) => Object.assign(new Error(`HTTP ${status}`), { response: { status } })
@@ -63,13 +65,16 @@ function setup({ server: initial = [], local = [], synced = true, moved = [] } =
   const setTimer = (fn, delay) => (timers.push({ fn, delay }), timers.length)
   const clearTimer = (n) => timers[n - 1] && (timers[n - 1].fn = null)
   const exports = {}
+  const listSync = {}
+  vm.runInNewContext(listSyncCode, { exports: listSync, localStorage, setTimeout, clearTimeout, console })
   vm.runInNewContext(code, {
     exports, localStorage, structuredClone, setTimeout, clearTimeout, console,
     require: (name) => {
       if (name === 'react') return { useEffect: () => {} }
+      if (name === '@/lib/listSync') return listSync
       if (name === '@/lib/apiClient') return { apiClient: api }
       if (name === '@/lib/apiMode') return { isMockApi: false }
-      if (name === '@/features/auth/store/authStore') return { useAuthStore: () => 'u1' }
+      if (name === '@/features/auth/store/authStore') return { useAuthStore: Object.assign(() => 'u1', { getState: () => ({ user: { id: 'u1' } }) }) }
       if (name === './store') return { useMemoStore: store }
       return {}
     },

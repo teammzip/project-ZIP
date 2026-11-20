@@ -39,6 +39,7 @@ function setup(initialSaved) {
     '@/features/auth/store/authStore': { useAuthStore: authStore },
     './data/seed': { seedBills: () => [], seedEvents: () => [], seedIncomes: () => [], seedSpends: () => [] },
     './data/presets': { UNCATEGORIZED: '미분류', defaultCategories: () => [] },
+    './calendarHooks': { calendarHooks: { onOp: null, quiet: false }, quietly: (apply) => apply() },
   }, {
     localStorage: {
       getItem: (key) => saved.get(key) ?? null,
