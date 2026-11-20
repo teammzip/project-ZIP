@@ -5,7 +5,7 @@ import { deleteAllConversations, useChatStore } from '@/features/ai'
 import { LoginBadge, LoginMethod, PasswordChangeForm, useAuthStore, useLogout, useUpdateMe, useWithdraw } from '@/features/auth'
 import { useCommunityStore, useReportStore } from '@/features/community'
 import { LegalLinks } from '@/features/legal'
-import { BudgetSummaryCard, LifeInfoForm, LifeStats, NotiSwitch, PersonalInfoCard, RegionVerifyDialog, SalaryInfo, useLifeStore, useLifeSummary, useRegionVerify } from '@/features/life'
+import { BudgetSummaryCard, LifeInfoForm, LifeStats, NotiSwitch, PersonalInfoCard, RegionVerifyDialog, SalaryInfo, useLifeStore, useLifeSummary, useRegionVerify, withoutCalendarSync } from '@/features/life'
 import { useMapStore } from '@/features/map'
 import { useMemoStore, withoutMemoSync } from '@/features/memo'
 import { SanctionHistoryDialog, useMySanctions } from '@/features/moderation'
@@ -22,7 +22,7 @@ import styles from './SettingsPage.module.css'
 /** 이 기기에 저장된 앱 기록(일정·가계부·알림·커뮤니티 글·AI 대화·메모·프로필·설정)을 처음 상태로 */
 function resetAppData() {
   useLoanStore.getState().resetCurrentUser()
-  useLifeStore.getState().reset()
+  withoutCalendarSync(() => useLifeStore.getState().reset()) // 이 기기 사본만 비움 (서버 일정은 지우지 않고 다시 받음)
   useCommunityStore.getState().reset()
   useReportStore.getState().reset()
   useChatStore.getState().reset()

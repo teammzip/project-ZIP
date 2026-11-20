@@ -14,7 +14,7 @@
 |---|---|---|
 | [인증 · 내 정보](#1-인증--내-정보-) | ✅ | `users` `social_accounts` `auth_sessions` `email_verifications` `password_resets` `user_term_agreements` `withdrawal_logs` |
 | [설정 · 동네·설문](#2-설정--동네-) | 📝 | `user_settings` `housing_surveys` `regions` `region_neighbors` · `users.region_verified_at` |
-| [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | 📝 | `events`(기념일·매년 반복 포함) `event_categories` `event_presets` `trash_schedules` |
+| [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | ✅ | `events`(기념일·매년 반복 포함) `event_categories` `event_presets` `trash_schedules` |
 | [월세 · 고정 지출·대출](#4-월세--고정-지출-) | 📝 | `rent_payments` `bill_items` `bill_payments` `housing_loans` `loan_interest_charges` |
 | [가계부](#5-가계부-수입--기타-지출-) | 📝 | `ledger_categories` `incomes` `expenses` + VIEW 2개 |
 | [알림](#6-알림-) | ✅ | `notifications` (읽음 · 삭제) |
@@ -236,7 +236,12 @@ GET/PUT `/api/me/home-info` 구현 및 내 집 정보 폼 연결 완료. 계약 
 
 ---
 
-## 3. 일정 · 쓰레기 배출 📝
+## 3. 일정 · 쓰레기 배출 ✅
+
+> **2026-11-20 백엔드 구현 · 프론트 연결**: 아래 API가 모두 있어요. 서버 모드에서는 `features/life/calendarSync.ts`가 일정 · 카테고리 · 항목 버튼을 서버와 맞춰요(화면은 그대로 `useLifeStore`). 자세한 서버 규칙은 [backend/IMPLEMENTATION.md](../backend/IMPLEMENTATION.md#일정).
+> - `GET /api/events`에 `from` · `to`를 빼면 내 일정 전부예요(매년 반복 기념일은 기간과 상관없이 늘 들어가요). 일정의 `category`는 카테고리 **이름**이고, 분류 없음은 `null`(보낼 때는 `""`)이에요. `PATCH /api/events/{id}`는 `done`도 받아요.
+> - 카테고리 · 항목은 처음 쓸 때 서버가 기본 5개 + 미분류와 기본 항목 30개를 만들어요(`db/seeds/event_defaults.sql`과 같은 내용). `GET /api/event-categories`의 `items`는 기본 항목, `GET /api/event-presets`는 직접 만든 항목이에요.
+> - 카테고리를 지우면 그 일정은 미분류로, 직접 만든 항목은 미분류로 옮기고(같은 이름이 있으면 하나만 남김) 기본 항목은 같이 없어져요. 쓰레기 배출표는 `trash_schedules`를 읽기만 해요(화면은 아직 프론트 배출표).
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|

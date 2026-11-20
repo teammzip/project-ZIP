@@ -7,9 +7,10 @@ import { stripLegacySamples, todosToEvents } from './data/seed'
 import { UNCATEGORIZED, defaultCategories } from './data/presets'
 import type { Bill, CalEvent, CustomPreset, EventCategory, LifeSettings, MoneyRecord, RegionVerify } from './types'
 import { updateBillPayment } from './payments'
+import { calendarHooks, quietly } from './calendarHooks'
 
 /* 생활 관리 데이터(일정·공과금·월세·수입·지출·알림 읽음·설정)를 한곳에서 들고 있음.
- * 아직 서버가 없어서 이 브라우저의 회원별 localStorage에만 저장됩니다.
+ * 이 브라우저의 회원별 localStorage에 저장되고, 서버 모드에서는 일정 · 카테고리 · 항목 버튼을 calendarSync.ts 가 서버와 맞춰요.
  * 백엔드가 생기면 이 파일의 동작들을 API 호출(features/life/api)로 바꾸면 화면 코드는 그대로 둘 수 있어요. */
 
 type LifeData = {
@@ -151,6 +152,7 @@ export const useLifeStore = create<LifeData & LifeActions>()(
         if (get().categories.some((c) => c.name === n)) return '같은 이름의 카테고리가 이미 있어요.'
         const cats = get().categories
         set({ categories: [...cats.slice(0, -1), { name: n, ico: '🏷️', items: [] }, cats[cats.length - 1]] }) // 미분류는 늘 맨 끝
+        calendarHooks.onOp?.({ type: 'addCategory', name: n })
         return null
       },
       renameCategory: (from, to) => {
@@ -158,17 +160,29 @@ export const useLifeStore = create<LifeData & LifeActions>()(
         if (from === UNCATEGORIZED) return '미분류는 이름을 바꿀 수 없어요.'
         if (!n) return '새 이름을 적어 주세요.'
         if (get().categories.some((c) => c.name === n)) return '같은 이름의 카테고리가 이미 있어요.'
-        set((s) => moveCategory(s, from, n, { categories: s.categories.map((c) => (c.name === from ? { ...c, name: n } : c)) }))
+        quietly(() => set((s) => moveCategory(s, from, n, { categories: s.categories.map((c) => (c.name === from ? { ...c, name: n } : c)) })))
+        calendarHooks.onOp?.({ type: 'renameCategory', from, to: n })
         return null
       },
       deleteCategory: (name) => {
         if (name === UNCATEGORIZED) return '미분류는 삭제할 수 없어요.'
-        set((s) => moveCategory(s, name, UNCATEGORIZED, { categories: s.categories.filter((c) => c.name !== name) }))
+        quietly(() => set((s) => moveCategory(s, name, UNCATEGORIZED, { categories: s.categories.filter((c) => c.name !== name) })))
+        calendarHooks.onOp?.({ type: 'deleteCategory', name })
         return null
       },
-      addPreset: (title, category) => set((s) => ({ customPresets: [...s.customPresets, { id: crypto.randomUUID(), title, category }] })),
-      updatePreset: (id, title, category) => set((s) => ({ customPresets: s.customPresets.map((p) => (p.id === id ? { ...p, title, category } : p)) })),
-      removePreset: (id) => set((s) => ({ customPresets: s.customPresets.filter((p) => p.id !== id) })),
+      addPreset: (title, category) => {
+        const id = crypto.randomUUID()
+        set((s) => ({ customPresets: [...s.customPresets, { id, title, category }] }))
+        calendarHooks.onOp?.({ type: 'addPreset', id, title, category })
+      },
+      updatePreset: (id, title, category) => {
+        set((s) => ({ customPresets: s.customPresets.map((p) => (p.id === id ? { ...p, title, category } : p)) }))
+        calendarHooks.onOp?.({ type: 'updatePreset', id, title, category })
+      },
+      removePreset: (id) => {
+        set((s) => ({ customPresets: s.customPresets.filter((p) => p.id !== id) }))
+        calendarHooks.onOp?.({ type: 'removePreset', id })
+      },
 
       markRead: (ids) => set((s) => ({ notiRead: { ...s.notiRead, ...Object.fromEntries(ids.map((id) => [id, true])) } })),
       deleteNotis: (ids) => set((s) => ({ notiDeleted: { ...s.notiDeleted, ...Object.fromEntries(ids.map((id) => [id, true])) } })),
