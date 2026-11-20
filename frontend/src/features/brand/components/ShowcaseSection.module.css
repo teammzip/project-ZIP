@@ -4,7 +4,7 @@
   width: min(1240px, 100%);
   margin: 0 auto;
   padding: 160px 32px;
-  background: #fff;
+  background: transparent;
 }
 
 .row {
@@ -23,8 +23,8 @@
   position: relative;
   height: 520px;
   overflow: hidden;
-  border-radius: 20px;
-  background: #eef0f4;
+  border-radius: 28px;
+  background: linear-gradient(160deg, #ffffff 0%, #e6eefb 100%);
 }
 
 .phoneWrap {
@@ -46,14 +46,15 @@
   font-size: clamp(32px, 3.2vw, 48px);
   font-weight: 800;
   line-height: 1.25;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.045em;
+  color: var(--b-ink);
 }
 
 .body {
   margin-top: 26px;
   font-size: clamp(16px, 1.4vw, 20px);
   line-height: 1.9;
-  color: #3c4254;
+  color: var(--b-sub);
 }
 
 @media (max-width: 1100px) {

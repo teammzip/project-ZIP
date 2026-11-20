@@ -22,11 +22,11 @@ export const router = createBrowserRouter([
         element: <GuestRoute />,
         children: [
           { path: '/start', lazy: page(() => import('@/pages/start/StartPage'), 'StartPage') },
-          { element: <AuthLayout />, children: [{ path: '/login', lazy: page(() => import('@/pages/auth/LoginPage'), 'LoginPage') }] },
-          // 회원가입 · 아이디/비밀번호 찾기: 별도 페이지
+          // 로그인 · 회원가입 · 아이디/비밀번호 찾기: 같은 틀(AccountLayout)의 별도 페이지
           {
             element: <AccountLayout />,
             children: [
+              { path: '/login', lazy: page(() => import('@/pages/auth/LoginPage'), 'LoginPage') },
               { path: '/signup', lazy: page(() => import('@/pages/auth/SignupPage'), 'SignupPage') },
               { path: '/find', lazy: page(() => import('@/pages/auth/FindPage'), 'FindPage') },
             ],

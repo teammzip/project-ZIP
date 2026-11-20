@@ -1,41 +1,97 @@
 .head {
   display: grid;
-  gap: 14px;
-  max-width: 720px;
+  gap: 28px;
+}
+
+.main {
+  display: grid;
+  gap: 18px;
 }
 
 .center {
-  margin: 0 auto;
+  justify-items: center;
   text-align: center;
+}
+
+/* 제목은 왼쪽, 설명은 오른쪽 아래에 맞춤 */
+.split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 40px;
 }
 
 .kicker {
   font-size: 15px;
   font-weight: 700;
-  color: var(--color-primary);
+  color: var(--b-blue, var(--color-primary));
+}
+
+.caps {
+  font-size: 13px;
+  letter-spacing: 0.16em;
 }
 
 .title {
-  font-size: clamp(30px, 5vw, 52px);
+  font-size: clamp(36px, 4.8vw, 72px);
   font-weight: 800;
-  line-height: 1.25;
-  letter-spacing: -0.03em;
+  line-height: 1.14;
+  letter-spacing: -0.045em;
+  color: var(--b-ink, var(--color-text));
+}
+
+.accent {
+  color: var(--b-blue, var(--color-primary));
 }
 
 .body {
-  font-size: 17px;
-  line-height: 1.7;
-  color: var(--color-muted);
+  font-size: 18px;
+  line-height: 1.85;
+  color: var(--b-sub, var(--color-muted));
+}
+
+.split .body {
+  padding-bottom: 8px;
 }
 
 .inverse .title {
   color: #fff;
 }
 
-.inverse .kicker {
+.inverse .kicker,
+.inverse .accent {
   color: #8fbaf7;
 }
 
 .inverse .body {
   color: rgba(255, 255, 255, 0.7);
+}
+
+@media (max-width: 900px) {
+  .head,
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .main {
+    gap: 12px;
+  }
+
+  .kicker {
+    font-size: 13px;
+  }
+
+  .caps {
+    font-size: 12px;
+  }
+
+  .title {
+    font-size: clamp(30px, 8.6vw, 40px);
+    line-height: 1.2;
+  }
+
+  .body {
+    font-size: 15px;
+    line-height: 1.8;
+  }
 }

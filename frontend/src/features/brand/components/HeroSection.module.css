@@ -1,149 +1,227 @@
 .hero {
   position: relative;
   display: grid;
-  place-items: center;
-  min-height: 100dvh;
-  padding: 120px 24px 80px;
-  overflow: hidden;
-  background: #fff;
-}
-
-/* ---------- 떠 있는 카드 ---------- */
-.tiles {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.tile {
-  position: absolute;
-}
-
-.float {
-  animation: bob 6s ease-in-out infinite;
-}
-
-@keyframes bob {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-1deg);
-  }
-
-  50% {
-    transform: translateY(-14px) rotate(1.5deg);
-  }
-}
-
-.illust {
-  display: grid;
-  place-items: center;
-  border-radius: 18px;
-  box-shadow: 0 18px 40px rgba(31, 36, 48, 0.12);
-}
-
-.illust span {
-  font-size: 64px;
-  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.15));
-}
-
-.photo {
-  width: 100%;
-  border-radius: 18px;
-  object-fit: cover;
-  box-shadow: 0 18px 40px rgba(31, 36, 48, 0.12);
-}
-
-.widget {
-  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  background: #fff;
-  box-shadow: 0 18px 40px rgba(31, 36, 48, 0.14);
+  min-height: 100dvh;
+  padding: 120px 72px 96px;
+  overflow: hidden;
+  /* 연한 하늘색 + 오른쪽 위 밝은 빛 */
+  background:
+    radial-gradient(60% 60% at 78% 30%, #ffffff 0%, rgba(255, 255, 255, 0) 70%),
+    radial-gradient(40% 50% at 10% 90%, #dfeafb 0%, rgba(223, 234, 251, 0) 70%),
+    linear-gradient(180deg, #f6f9fe 0%, var(--b-sky) 100%);
 }
 
-.widgetIco {
+.inner {
   display: grid;
-  place-items: center;
-  flex: none;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  font-size: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 40px;
+  width: min(1296px, 100%);
+  margin: 0 auto;
 }
 
-.widget small {
-  display: block;
-  font-size: 12px;
-  color: var(--color-muted);
-}
-
-.widget b {
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.cutout {
-  width: 100%;
-  filter: drop-shadow(0 18px 24px rgba(31, 36, 48, 0.18));
-}
-
-/* ---------- 가운데 제목 ---------- */
+/* ---------- 왼쪽 글 ---------- */
 .copy {
   position: relative;
   z-index: 1;
   display: grid;
-  justify-items: center;
-  gap: 18px;
-  text-align: center;
+  justify-items: start;
 }
 
 .kicker {
-  padding: 8px 16px;
-  border-radius: 999px;
-  background: #eaf2fe;
   font-size: 15px;
   font-weight: 700;
-  color: var(--color-primary);
+  color: var(--b-faint);
 }
 
 .title {
   display: grid;
-  font-size: clamp(56px, 7.5vw, 104px);
-  font-weight: 900;
-  line-height: 1.12;
-  letter-spacing: -0.04em;
+  margin-top: 22px;
+  font-size: clamp(52px, 5.6vw, 84px);
+  font-weight: 800;
+  line-height: 1.14;
+  letter-spacing: -0.05em;
+  color: var(--b-ink);
 }
 
 .lineMask {
   display: block;
   overflow: hidden;
+  padding-bottom: 0.04em;
 }
 
-.line {
+.lineMask > span {
   display: block;
 }
 
-.chevron {
-  width: 26px;
-  height: 26px;
-  margin-top: 24px;
-  border-right: 3px solid var(--color-text);
-  border-bottom: 3px solid var(--color-text);
-  transform: rotate(45deg);
+.accent {
+  color: var(--b-blue);
+}
+
+.description {
+  margin-top: 32px;
+  font-size: 19px;
+  line-height: 1.85;
+  color: var(--b-sub);
+}
+
+.cue {
+  display: inline-flex;
+  gap: 8px;
+  margin-top: 44px;
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid currentColor;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--b-sub);
+  transition: color 0.2s ease;
+}
+
+.cue:hover {
+  color: var(--b-blue);
+}
+
+.cue:focus-visible {
+  outline: 3px solid var(--b-blue);
+  outline-offset: 4px;
+}
+
+.cue span {
   animation: nudge 1.6s ease-in-out infinite;
+}
+
+/* ---------- 오른쪽 그림 ---------- */
+.visual {
+  position: relative;
+  justify-self: center;
+  width: min(600px, 100%);
+  aspect-ratio: 1 / 0.92;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+.house {
+  position: absolute;
+  right: -4%;
+  bottom: 2%;
+  width: 82%;
+  /* 흰 배경을 하늘색 바탕에 녹임 */
+  mix-blend-mode: multiply;
+  /* 이미지의 흰 바탕 가장자리가 비치지 않게 테두리를 흐리게 */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 6%, #000 88%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 6%, #000 88%, transparent 100%);
+  mask-composite: intersect;
+}
+
+.robot {
+  position: absolute;
+  left: 4%;
+  bottom: 0;
+  width: 42%;
+  filter: drop-shadow(0 26px 30px rgba(22, 35, 58, 0.18));
+  animation: bob 5s ease-in-out infinite;
+}
+
+.greeting {
+  left: 6%;
+  top: 16%;
+}
+
+.widget {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px 12px 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 16px 40px rgba(22, 35, 58, 0.1);
+  backdrop-filter: blur(8px);
+  animation: bob 6s ease-in-out infinite;
+}
+
+.widgetIco {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 19px;
+}
+
+.widget small {
+  display: block;
+  font-size: 12px;
+  color: var(--b-faint);
+}
+
+.widget b {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--b-ink);
+}
+
+.w0 {
+  right: 2%;
+  top: 4%;
+  animation-delay: -1s;
+}
+
+.w1 {
+  right: -6%;
+  top: 46%;
+  animation-delay: -2.5s;
+}
+
+.w2 {
+  left: 40%;
+  bottom: -2%;
+  animation-delay: -4s;
+}
+
+.scrollHint {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--b-faint);
+}
+
+@keyframes bob {
+  50% {
+    translate: 0 -10px;
+  }
 }
 
 @keyframes nudge {
   50% {
-    transform: translateY(8px) rotate(45deg);
+    transform: translateY(4px);
+  }
+}
+
+@media (max-width: 1100px) {
+  .hero {
+    padding: 110px 40px 96px;
+  }
+
+  .w1 {
+    right: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .float,
-  .chevron {
+  .robot,
+  .widget,
+  .cue span {
     animation: none;
   }
 }

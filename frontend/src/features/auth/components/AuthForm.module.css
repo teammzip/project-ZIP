@@ -92,3 +92,12 @@
 .naver {
   background: var(--color-naver);
 }
+
+/* 로그인 페이지: 로그인 유지 · 찾기 줄과 오류 칸 간격 (입력칸은 Account.module.css 의 둥근 상자) */
+.options {
+  margin-top: 18px;
+}
+
+.loginError {
+  margin-top: 14px;
+}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import logo from '@/assets/images/logo-zip.png'
 import styles from './BrandFooter.module.css'
 
 const REPO = 'https://github.com/teammzip/project-ZIP'
@@ -11,12 +12,16 @@ const LINKS = [
   { to: '/signup', label: '회원가입' },
 ]
 
-/** 브랜드 페이지 맨 아래: 링크 줄 → 팀 정보(펼치기) → 안내 → 깃허브 → 저작권. PC · 모바일 같은 구성 */
+/** 브랜드 페이지 맨 아래 (어두운 바탕): 로고 · 한 줄 소개 → 링크 줄 → 팀 정보(펼치기) → 안내 → 깃허브 → 저작권. PC · 모바일 같은 구성 */
 export function BrandFooter() {
   const [open, setOpen] = useState(false)
   return (
     <footer className={styles.footer}>
       <div className={styles.inner}>
+        <div className={styles.brand}>
+          <img src={logo} alt="ZIP" className={styles.logo} />
+          <p>자취생 생활 도우미 · 일정 · 가계부 · AI · 동네 정보</p>
+        </div>
         <nav className={styles.links} aria-label="서비스 정보">
           {LINKS.map((l) => (
             <Link key={l.label} to={l.to} className={l.strong ? styles.strong : undefined}>

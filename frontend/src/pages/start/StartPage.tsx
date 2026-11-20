@@ -9,19 +9,22 @@ import {
   CinemaSection,
   CloudSection,
   CtaSection,
+  FeatureListSection,
   FocusSection,
   HeroSection,
   MobileIntro,
+  QuestionSection,
   ShowcaseSection,
+  StepsSection,
   StoriesSection,
 } from '@/features/brand'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import styles from './StartPage.module.css'
 
-/* 시작 화면
- * - PC: 브랜드 스토리 (섹션 순서를 바꾸거나 빼려면 여기서 줄만 옮기면 됩니다)
- * - 모바일(900px 이하): PC와 같은 환영 문구·생활 카드와 로봇 인트로
- * 로그인은 AuthModal, 회원가입·아이디/비밀번호 찾기는 별도 페이지(/signup, /find).
+/* 시작 화면 (섹션 순서를 바꾸거나 빼려면 여기서 줄만 옮기면 됩니다)
+ * - PC: 브랜드 스토리 (화면에 고정되는 스크롤 연출 포함)
+ * - 모바일(900px 이하): 로봇 인트로 한 화면 → 아래로 질문 · 기능 · 이야기 · 시작 3단계 · 마지막 버튼 (무거운 고정 연출은 빼고)
+ * 로그인은 AuthModal(시작 화면 위에 뜨는 창), 회원가입·아이디/비밀번호 찾기는 별도 페이지(/signup, /find).
  * /start#login 으로 오면(가입·찾기 페이지의 "로그인") PC 는 로그인 창을 바로 열고, 모바일도 로그인 창을 바로 열음 */
 export function StartPage() {
   const navigate = useNavigate()
@@ -40,30 +43,35 @@ export function StartPage() {
   const goSignup = () => navigate('/signup', { state })
   const modal = <AuthModal open={loginOpen} onClose={() => setLoginOpen(false)} onSuccess={() => navigate(redirectTo, { replace: true })} />
 
-  if (isMobile) {
-    return (
-      <MotionConfig reducedMotion="user">
-        <MobileIntro onEnter={openLogin} onSignup={goSignup} paused={loginOpen} autoDoor={autoDoor} />
-        {modal}
-      </MotionConfig>
-    )
-  }
-
   return (
     // reducedMotion="user": 기기에서 '동작 줄이기'를 켠 사람에게는 움직임을 끔
     <MotionConfig reducedMotion="user">
       <div className={styles.page}>
-        <BrandHeader onLogin={openLogin} onSignup={goSignup} />
-        <main>
-          {/* 오늘의집 브랜드 페이지 흐름: 첫 화면 → 카드 구름이 로고로 → 어두운 장면 → 한 줄씩 강조 → 앱 화면 → 이야기 */}
-          <HeroSection />
-          <CloudSection />
-          <CinemaSection />
-          <FocusSection />
-          <ShowcaseSection />
-          <StoriesSection />
-          <CtaSection onLogin={openLogin} onSignup={goSignup} />
-        </main>
+        <BrandHeader onLogin={openLogin} onSignup={goSignup} actionsOnScroll={isMobile} />
+        {isMobile ? (
+          <main>
+            <MobileIntro onEnter={openLogin} onSignup={goSignup} paused={loginOpen} autoDoor={autoDoor} />
+            <QuestionSection />
+            <FeatureListSection />
+            <StoriesSection />
+            <StepsSection />
+            <CtaSection onLogin={openLogin} onSignup={goSignup} />
+          </main>
+        ) : (
+          <main>
+            {/* 첫 화면 → 카드 구름이 돌며 로고로 → 작은 불편(로봇 · 말풍선) → 어두운 장면 → 한 줄씩 강조 → 앱 화면 → 기능 목록 → 이야기 → 시작 3단계 → 마지막 */}
+            <HeroSection />
+            <CloudSection />
+            <QuestionSection />
+            <CinemaSection />
+            <FocusSection />
+            <ShowcaseSection />
+            <FeatureListSection />
+            <StoriesSection />
+            <StepsSection />
+            <CtaSection onLogin={openLogin} onSignup={goSignup} />
+          </main>
+        )}
         <BrandFooter />
       </div>
       {modal}

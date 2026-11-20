@@ -1,6 +1,6 @@
 .section {
   position: relative;
-  background: #fff;
+  background: transparent;
 }
 
 .sticky {
@@ -26,16 +26,16 @@
   white-space: nowrap;
   font-weight: 800;
   letter-spacing: -0.03em;
-  color: #dfe2e8;
+  color: #c9d3e3;
   transition: color 0.35s ease;
 }
 
 .lines .on {
-  color: var(--color-text);
+  color: var(--b-ink);
 }
 
 .lines .last.on {
-  color: var(--color-primary);
+  color: var(--b-blue);
 }
 
 /* ---------- 겹친 카드 ---------- */

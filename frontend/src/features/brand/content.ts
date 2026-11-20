@@ -1,35 +1,27 @@
 /* 시작 화면(브랜드 스토리) 문구와 그림 데이터. 문구를 바꿀 때는 이 파일만 고치면 됩니다.
- * 구성은 오늘의집 브랜드 페이지(https://events.ohou.se/brand)의 흐름을 참고했어요.
- * 사진이 아직 없어서 그림 자리는 이모지 일러스트 카드와 앱 화면 그림(Phone)으로 채웠어요.
- * TODO: 실제 사진이 생기면 각 카드의 image 에 주소를 넣으면 사진으로 바뀌어요. */
+ * 디자인은 호호컴퍼니(https://hohocompany.com) 처럼: 연한 하늘색 바탕 + 3D 로봇과 흰 말풍선,
+ * 진한 남색 굵은 제목(마지막 줄은 파란색), 큰 흰 판 위의 번호 목록 · 카드, 어두운 맨 아래.
+ * 그림은 3D 로봇(robot-cut) · 3D 집(house-mobile) · 앱 화면 그림(Phone)으로 채웠어요. */
 import type { ScreenName } from './components/Phone'
 
 /* ---------- 1. 첫 화면 ---------- */
 export const HERO = {
   kicker: '자취생 생활 도우미 ZIP',
-  lines: ['어서와요', '새로운 ZIP이에요'],
+  lines: ['어서와요,', '새로운 ZIP이에요.'],
+  description: '월세 날짜부터 분리배출 요일까지.\n흩어져 있던 자취 생활을 한곳에서 챙겨요.',
+  greeting: '안녕하세요, ZIP이에요!',
+  scrollCue: '질문 하나를 따라가 보세요',
 }
 
-/** 첫 화면 주변에 떠 있는 카드. x · y 는 화면 기준 %, w 는 너비(px), speed 는 스크롤할 때 움직이는 정도 */
-export type FloatTile =
-  | { kind: 'illust'; emoji: string; bg: string; x: number; y: number; w: number; h: number; speed: number; image?: string }
-  | { kind: 'widget'; icon: string; label: string; value: string; tone: string; x: number; y: number; w: number; speed: number }
-  | { kind: 'robot' | 'house'; x: number; y: number; w: number; speed: number }
-
-export const HERO_TILES: FloatTile[] = [
-  { kind: 'illust', emoji: '🛋️', bg: 'linear-gradient(160deg,#ffe3d3,#ffb999)', x: 2, y: 6, w: 150, h: 190, speed: 120 },
-  { kind: 'widget', icon: '💸', label: '월세 납부일', value: 'D-3', tone: '#7c6cf5', x: 15, y: 16, w: 168, speed: 60 },
-  { kind: 'illust', emoji: '🪴', bg: 'linear-gradient(160deg,#dff5e3,#9fdcae)', x: 64, y: 8, w: 120, h: 160, speed: 90 },
-  { kind: 'illust', emoji: '💡', bg: 'linear-gradient(160deg,#fff4cc,#ffd76b)', x: 80, y: 4, w: 200, h: 230, speed: 160 },
-  { kind: 'robot', x: 84, y: 54, w: 190, speed: 80 },
-  { kind: 'widget', icon: '♻️', label: '오늘 배출', value: '재활용', tone: '#1fb5a3', x: 66, y: 72, w: 170, speed: 140 },
-  { kind: 'illust', emoji: '🍳', bg: 'linear-gradient(160deg,#ffe7ea,#ff9db3)', x: 46, y: 80, w: 220, h: 150, speed: 70 },
-  { kind: 'house', x: 1, y: 50, w: 170, speed: 110 },
-  { kind: 'widget', icon: '✅', label: '오늘 할 일', value: '3개 남음', tone: '#2f80ed', x: 13, y: 66, w: 176, speed: 50 },
-  { kind: 'illust', emoji: '🧺', bg: 'linear-gradient(160deg,#e3eeff,#9ec2ff)', x: 28, y: 84, w: 130, h: 120, speed: 130 },
+/** 로봇 옆에 떠 있는 흰 카드 (앱 홈 화면의 요약 카드) */
+export type HeroWidget = { icon: string; label: string; value: string; tone: string }
+export const HERO_WIDGETS: HeroWidget[] = [
+  { icon: '💸', label: '월세 납부일', value: 'D-3', tone: '#efeaff' },
+  { icon: '✅', label: '오늘 할 일', value: '3개 남음', tone: '#e7f0fe' },
+  { icon: '♻️', label: '오늘 배출', value: '재활용', tone: '#e3f6f2' },
 ]
 
-/* ---------- 2. 카드 구름 → 로고 ---------- */
+/* ---------- 2. 카드 구름이 돌며 → 로고 (PC 만, 첫 화면 바로 다음) ---------- */
 export const CLOUD = {
   caption: '흩어져 있던 자취 생활을',
   after: '한곳에 모았어요',
@@ -48,10 +40,10 @@ export const CINEMA = {
 export type FocusItem = { line: string; caption: string; screen: ScreenName; tint: string }
 export const FOCUS_ITEMS: FocusItem[] = [
   { line: '오늘 할 일과 일정은 한눈에,', caption: '할 일과 일정을\n한 화면에서', screen: 'calendar', tint: '#eaf2fe' },
-  { line: '월세 · 공과금은 잊기 전에,', caption: '새는 돈 없는\n자취 가계부', screen: 'budget', tint: '#f1efff' },
-  { line: '헷갈리는 분리배출은 사진 한 장으로,', caption: '사진 한 장이면\n척척 알려 주는 AI', screen: 'ai', tint: '#eefaf8' },
-  { line: '이웃과 나누는 동네 이야기까지', caption: '우리 동네 꿀팁을\n이웃과 함께', screen: 'community', tint: '#fff0f3' },
-  { line: '자취가 훨씬 쉬워집니다', caption: '혼자여도\n든든한 하루', screen: 'home', tint: '#fff8e1' },
+  { line: '월세 · 공과금은 잊기 전에,', caption: '새는 돈 없는\n자취 가계부', screen: 'budget', tint: '#eef0fd' },
+  { line: '헷갈리는 분리배출은 사진 한 장으로,', caption: '사진 한 장이면\n척척 알려 주는 AI', screen: 'ai', tint: '#e9f6f8' },
+  { line: '이웃과 나누는 동네 이야기까지', caption: '우리 동네 꿀팁을\n이웃과 함께', screen: 'community', tint: '#eef3fb' },
+  { line: '자취가 훨씬 쉬워집니다', caption: '혼자여도\n든든한 하루', screen: 'home', tint: '#e7f0fe' },
 ]
 
 /* ---------- 5. 휴대폰 두 대 + 큰 제목 (번갈아) ---------- */
@@ -79,34 +71,76 @@ export const SHOWCASE_ROWS: ShowcaseRow[] = [
   },
 ]
 
-/* ---------- 6. 이야기 카드 ---------- */
+/* ---------- 질문: 작은 불편에서 시작 (로봇 + 말풍선) ---------- */
+export const QUESTION = {
+  kicker: '시작은 작은 불편에서',
+  title: '매일 챙기는 자취 생활,\n더 편해질까요?',
+  body: '월세 날짜, 분리배출 요일, 이번 달 지출까지.\n혼자 기억하던 일을 ZIP이 대신 챙겨요.',
+  /** 흰 말풍선: 자취생의 질문 */
+  asks: ['월세 내는 날, 또 깜빡했어요', '이 용기, 어디에 버려요?'],
+  /** 파란 말풍선: ZIP 의 답 */
+  reply: '제가 대신 챙겨 드릴게요!',
+}
+
+/* ---------- 번호 붙은 기능 목록 (흰 판) ---------- */
+export const FEATURE_HEAD = {
+  kicker: 'FEATURES',
+  title: '혼자 사는 하루에\n필요한 것만.',
+  body: '일정 · 가계부 · AI · 동네 정보까지.\n자취에 꼭 필요한 기능만 골라 담았어요.',
+}
+
+export type FeatureItem = { icon: string; title: string; body: string }
+export const FEATURES: FeatureItem[] = [
+  { icon: '🏠', title: '홈 한눈에 보기', body: '오늘 할 일 · 날씨 · 다가오는 기념일을 첫 화면에서 바로 확인해요.' },
+  { icon: '📅', title: '일정 · 할 일', body: '약속과 할 일, 쓰레기 배출 요일까지 달력 한 곳에 모아 둬요.' },
+  { icon: '💸', title: '자취 가계부', body: '월세 · 공과금 같은 고정 지출은 한 번만, 월급은 자동으로 기록돼요.' },
+  { icon: '🤖', title: 'AI 도우미', body: '사진을 찍어 물어보면 분리배출 · 요리 · 청소 방법을 알려 줘요.' },
+  { icon: '🗺️', title: '동네 지도', body: '세탁방 · 편의점 · 약국처럼 자취에 필요한 가게를 지도에서 찾아요.' },
+  { icon: '💬', title: '동네생활', body: '이웃과 자취 꿀팁을 나누고, 우리 동네 인기 글을 모아 봐요.' },
+]
+
+/* ---------- 이야기 카드 (흰 판 · 2 x 2) ---------- */
 export const STORIES_HEAD = {
-  title: '모두의 자취 이야기로\n함께 채워가요',
+  kicker: 'STORIES',
+  title: '모두의 자취 이야기로\n채워 가요.',
+  body: '처음 자취를 시작한 새내기부터 2년 차까지.\nZIP으로 달라진 하루를 모았어요.',
 }
 
 export type BrandStory = {
   id: string
+  /** 카드 위 작은 글씨 (누가 · 무엇) */
+  meta: string
   title: string
-  author: string
-  emoji: string
-  /** 사진이 들어갈 자리의 배경 (사진이 생기면 image 에 주소) */
-  gradient: string
-  image?: string
-  /** 카드 크기: tall(세로로 큼) · wide(가로로 큼) · small */
-  size: 'tall' | 'wide' | 'small'
+  body: string
+  screens: [ScreenName, ScreenName]
 }
 
-/* TODO: 예시 문구입니다. 실제 사용자 후기와 사진이 생기면 바꿔 주세요. */
+/* TODO: 예시 문구입니다. 실제 사용자 후기가 생기면 바꿔 주세요. */
 export const STORIES: BrandStory[] = [
-  { id: 'first', title: '첫 자취, 월세 날짜만큼은\n안 까먹어요', author: '마포구 새내기', emoji: '🏠', gradient: 'linear-gradient(160deg,#cfe3ff 0%,#8fbaf7 100%)', size: 'tall' },
-  { id: 'recycle', title: '헷갈리던 분리배출,\n사진 한 장으로 끝', author: '합정동 1인 가구', emoji: '♻️', gradient: 'linear-gradient(160deg,#d4f5ef 0%,#7fd6c8 100%)', size: 'small' },
-  { id: 'budget', title: '공과금까지 합치니\n한 달 지출이 보여요', author: '망원동 직장인', emoji: '📊', gradient: 'linear-gradient(160deg,#ffe0e7 0%,#ff9db3 100%)', size: 'wide' },
-  { id: 'cook', title: '냉장고 털이 레시피로\n식비 줄이기', author: '서교동 자취생', emoji: '🍳', gradient: 'linear-gradient(160deg,#e6e1ff 0%,#a99cf7 100%)', size: 'tall' },
-  { id: 'town', title: '이사 오자마자\n세탁방부터 찾았어요', author: '연남동 자취 2년 차', emoji: '🧺', gradient: 'linear-gradient(160deg,#fff1cc 0%,#ffd36b 100%)', size: 'wide' },
+  { id: 'first', meta: '마포구 새내기 · 월세', title: '첫 자취, 월세 날짜만큼은 안 까먹어요', body: '납부일이 홈에 D-day로 떠서 미리 준비할 수 있어요.', screens: ['home', 'calendar'] },
+  { id: 'recycle', meta: '합정동 1인 가구 · 분리배출', title: '헷갈리던 분리배출, 사진 한 장으로 끝', body: '버릴 물건을 찍어 물어보면 어디에 버릴지 바로 알려 줘요.', screens: ['ai', 'calendar'] },
+  { id: 'budget', meta: '망원동 직장인 · 가계부', title: '공과금까지 합치니 한 달 지출이 보여요', body: '고정 지출을 한 번 등록해 두니 매달 새는 돈이 줄었어요.', screens: ['budget', 'home'] },
+  { id: 'town', meta: '연남동 자취 2년 차 · 동네', title: '이사 오자마자 세탁방부터 찾았어요', body: '지도와 동네생활 글로 우리 동네에 금방 익숙해졌어요.', screens: ['map', 'community'] },
+]
+
+/* ---------- 시작 3단계 ---------- */
+export const STEPS_HEAD = {
+  kicker: '시작은 이렇게',
+  title: '세 걸음이면\n우리 집이 정리돼요.',
+  body: '처음 한 번만 적어 두면, 그다음부터는 ZIP이 알아서 챙겨요.',
+}
+
+export type StepItem = { title: string; body: string }
+export const STEPS: StepItem[] = [
+  { title: '우리 집을 알려 주세요.', body: '가입하고 사는 곳 · 계약 정보 · 수입을 짧은 설문으로 적어요.' },
+  { title: '고정 지출과 일정을 담아요.', body: '월세 · 관리비 · 통신비, 기념일과 할 일을 한 번만 등록해요.' },
+  { title: '매일 홈에서 챙겨요.', body: '납부일 · 배출 요일 · 할 일을 홈과 알림으로 놓치지 않아요.' },
 ]
 
 /* ---------- 7. 마지막 화면 ---------- */
 export const CTA = {
-  title: '이제\n집으로 들어가요',
+  kicker: '다음 자취는 ZIP과 함께',
+  title: '오늘부터,\nZIP에서 살아 볼까요?',
   body: '로그인하면 내 일정, 할 일, 공과금을 이어서 볼 수 있어요.',
+  bubble: '같이 챙겨 볼까요?',
 }
