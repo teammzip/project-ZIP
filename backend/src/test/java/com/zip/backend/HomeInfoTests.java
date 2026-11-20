@@ -36,6 +36,56 @@ class HomeInfoTests {
         return mvc.perform(put("/api/me/home-info").header("Authorization","Bearer "+token).contentType("application/json").content(json.writeValueAsString(body)));
     }
     private org.springframework.test.web.servlet.ResultActions read(String token) throws Exception { return mvc.perform(get("/api/me/home-info").header("Authorization","Bearer "+token)); }
+    private org.springframework.test.web.servlet.ResultActions saveLoan(String token,Map<String,Object> loan) throws Exception {
+        var body = new LinkedHashMap<String,Object>();
+        body.put("loan",loan);
+        return mvc.perform(put("/api/me/home-info/loan").header("Authorization","Bearer "+token)
+            .contentType("application/json").content(json.writeValueAsString(body)));
+    }
+
+    @Test void loanCardUpdatesOnlyTheOwnersLoanAndPreservesPastInterestOnEditAndStop() throws Exception {
+        var owner=token("loan-card-owner");
+        var other=token("loan-card-other");
+        var now=java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul"));
+        var originalStart=now.minusMonths(2).withDayOfMonth(1);
+        var home=monthly();
+        home.put("kind","jeonse"); home.put("contractFee",20000000);
+        home.put("moveIn",""); home.put("contractEnd","");
+        save(owner,home).andExpect(status().isOk());
+        save(other,monthly()).andExpect(status().isOk());
+        var terms=Map.<String,Object>of("principal",120000000,"annualRate",4,"paymentDay",1,"startDate",originalStart.toString());
+        saveLoan(owner,terms).andExpect(status().isOk()).andExpect(jsonPath("$.loan.active").value(true));
+        saveLoan(other,terms).andExpect(status().isBadRequest());
+        var loanId=jdbc.queryForObject("SELECT id FROM housing_loans",String.class);
+        jdbc.update("UPDATE home_contracts SET payment_effective_from=? WHERE contract_kind='jeonse'",java.sql.Date.valueOf(originalStart));
+        var effective=jdbc.queryForObject("SELECT payment_effective_from FROM home_contracts WHERE contract_kind='jeonse'",java.sql.Date.class);
+        jdbc.update("INSERT INTO loan_interest_charges(loan_id,charge_date,principal,annual_rate,amount,paid_at) VALUES (?,?,?,?,?,CURRENT_TIMESTAMP)",
+            loanId,java.sql.Date.valueOf(originalStart),120000000,4,400000);
+        var upcoming=java.sql.Date.valueOf(now.plusMonths(1).withDayOfMonth(1));
+        jdbc.update("INSERT INTO loan_interest_charges(loan_id,charge_date,principal,annual_rate,amount) VALUES (?,?,?,?,?)",
+            loanId,upcoming,120000000,4,400000);
+        var updated=new LinkedHashMap<>(terms);
+        updated.put("annualRate",6);
+        updated.put("startDate",now.toString());
+        saveLoan(owner,updated).andExpect(status().isOk())
+            .andExpect(jsonPath("$.loan.startDate").value(originalStart.toString()))
+            .andExpect(jsonPath("$.loan.annualRate").value(6))
+            .andExpect(jsonPath("$.contract.contractFee").value(20000000))
+            .andExpect(jsonPath("$.settings.homeAddress").value("검증용 집 주소"))
+            .andExpect(jsonPath("$.charges[0].amount").value(400000))
+            .andExpect(jsonPath("$.charges[1].amount").value(400000));
+        assertEquals(600000L,jdbc.queryForObject("SELECT amount FROM loan_interest_charges WHERE loan_id=? AND charge_date=?",Long.class,loanId,upcoming));
+        updated.put("annualRate",101);
+        saveLoan(owner,updated).andExpect(status().isBadRequest());
+        read(token("loan-card-owner")).andExpect(jsonPath("$.loan.annualRate").value(6));
+        read(other).andExpect(jsonPath("$.loan").isEmpty());
+        saveLoan(owner,null).andExpect(status().isOk()).andExpect(jsonPath("$.loan.active").value(false));
+        read(token("loan-card-owner")).andExpect(jsonPath("$.charges[0].amount").value(400000));
+        assertEquals(0L,jdbc.queryForObject("SELECT COUNT(*) FROM loan_interest_charges WHERE loan_id=? AND charge_date=?",Long.class,loanId,upcoming));
+        assertEquals(effective,jdbc.queryForObject("SELECT payment_effective_from FROM home_contracts WHERE contract_kind='jeonse'",java.sql.Date.class));
+        mvc.perform(put("/api/me/home-info/loan").contentType("application/json").content("{\"loan\":null}"))
+            .andExpect(status().isUnauthorized());
+    }
 
     @Test void monthlySaveReadAndReloginPreserveSettingsAndNoDuplicateManagement() throws Exception {
         String t=token("monthly");

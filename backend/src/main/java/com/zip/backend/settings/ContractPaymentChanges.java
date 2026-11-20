@@ -18,7 +18,7 @@ public class ContractPaymentChanges {
             && (home.end().isEmpty() || !month.isAfter(YearMonth.parse(home.end())));
     }
 
-    public void apply(long user,HomeInfoInput input,SettingsRepository.Settings previous,Map<String,Object> oldLoan,Long managed,long oldFee,int oldManagementDay) {
+    public void apply(long user,HomeInfoInput input,SettingsRepository.Settings previous,Map<String,Object> oldLoan,Long managed,int oldManagementDay) {
         var zones=jdbc.query("SELECT billing_time_zone FROM home_contracts WHERE user_id=?",(rs,n)->rs.getString(1),user);
         String zone=zones.isEmpty()?null:zones.get(0);
         LocalDate today=LocalDate.now(clock.withZone(zone==null?ZoneId.of("Asia/Seoul"):ZoneId.of(zone)));
@@ -51,6 +51,7 @@ public class ContractPaymentChanges {
         if("jeonse".equals(input.kind()) && loan!=null && oldLoan!=null &&
             (((Number)oldLoan.get("principal")).longValue()!=loan.principal() || ((BigDecimal)oldLoan.get("annualRate")).compareTo(loan.rate())!=0 || ((Number)oldLoan.get("paymentDay")).intValue()!=loan.day())) {
             String id=(String)oldLoan.get("id");
+            var start=Boolean.TRUE.equals(oldLoan.get("active"))?LocalDate.parse((String)oldLoan.get("startDate")):loan.start();
             long amount=BigDecimal.valueOf(loan.principal()).multiply(loan.rate()).divide(BigDecimal.valueOf(1200),0,RoundingMode.HALF_UP).longValueExact();
             var dates=jdbc.query("SELECT charge_date FROM loan_interest_charges WHERE loan_id=? AND paid_at IS NULL AND charge_date>=?",(rs,n)->rs.getDate(1).toLocalDate(),id,Date.valueOf(today));
             for(var oldDue:dates) {
@@ -58,7 +59,7 @@ public class ContractPaymentChanges {
                 if(!within(input,month)) continue;
                 var due=date(month,loan.day());
                 if(due.isBefore(today)) continue;
-                if(due.isBefore(loan.start())) continue;
+                if(due.isBefore(start)) continue;
                 jdbc.update("UPDATE loan_interest_charges SET principal=?,annual_rate=?,amount=?,charge_date=? WHERE loan_id=? AND charge_date=? AND paid_at IS NULL",
                     loan.principal(),loan.rate(),amount,Date.valueOf(due),id,Date.valueOf(oldDue));
             }

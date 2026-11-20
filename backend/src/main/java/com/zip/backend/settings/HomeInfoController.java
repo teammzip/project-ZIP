@@ -16,4 +16,11 @@ public class HomeInfoController {
     @PutMapping public Map<String,Object> put(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String,Object> body) {
         return service.save(Long.parseLong(jwt.getSubject()), Long.parseLong(jwt.getClaimAsString("sid")), HomeInfoInput.parse(body));
     }
+
+    @PutMapping("/loan")
+    public Map<String,Object> putLoan(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String,Object> body) {
+        if (!body.keySet().equals(java.util.Set.of("loan"))) throw SettingsInput.bad("대출 조건을 확인해 주세요.");
+        return service.saveLoan(Long.parseLong(jwt.getSubject()), Long.parseLong(jwt.getClaimAsString("sid")),
+            HomeInfoInput.parseLoan(body.get("loan")));
+    }
 }

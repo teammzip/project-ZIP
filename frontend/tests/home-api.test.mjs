@@ -85,3 +85,26 @@ test('같은 로그인 세션의 동시 조회는 요청 한 번으로 합친다
   await s.loadHomeInfo()
   assert.equal(requests, 2)
 })
+
+test('대출 전용 저장 중에는 조회가 저장 응답을 기다리고 서버 조건과 이자 기록을 반영한다', async () => {
+  const s = setup()
+  const terms = { principal: 120000000, annualRate: 6, paymentDay: 25, startDate: '2026-11-01' }
+  let finish
+  s.client.put = (path, input) => {
+    assert.equal(path, '/me/home-info/loan')
+    assert.equal(input.loan, terms)
+    return new Promise((resolve) => { finish = resolve })
+  }
+  const saving = s.saveHomeLoan(terms)
+  const reading = s.loadHomeInfo()
+  const loan = { ...terms, id: 'loan-a', userId: 'a', active: true }
+  const past = { id: 'loan-a:2026-10', userId: 'a', amount: 400000 }
+  const data = { ...s.response, contract: { ...s.response.contract, kind: 'jeonse' }, loan, charges: [past] }
+  finish({ data })
+  assert.equal(await saving, data)
+  assert.equal(await reading, data)
+  assert.equal(s.calls.length, 0)
+  assert.equal(s.survey.survey.loanAnnualRate, 6)
+  assert.equal(s.loans.plans[0], loan)
+  assert.equal(s.loans.charges[0], past)
+})

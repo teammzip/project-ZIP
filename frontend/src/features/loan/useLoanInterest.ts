@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { useHousingContract } from '@/features/onboarding/useHousingContract'
+import { loadHomeInfo } from '@/features/life/homeApi'
+import { isMockApi } from '@/lib/apiMode'
 import { useLoanStore } from './store'
 
 export function useLoanInterest() {
@@ -15,12 +17,13 @@ export function LoanInterestSync() {
   const { isJeonse } = useHousingContract()
   const userId = useAuthStore((s) => s.user?.id)
   const token = useAuthStore((s) => s.token)
-  const plans = useLoanStore((s) => s.plans)
+  const mockPlans = useLoanStore((s) => isMockApi ? s.plans : null)
   const syncDue = useLoanStore((s) => s.syncDue)
   useEffect(() => {
     if (!userId || !token || !isJeonse) return
-    const refresh = () => { if (document.visibilityState === 'visible') syncDue() }
-    syncDue()
+    const sync = isMockApi ? syncDue : () => { void loadHomeInfo().catch(() => {}) }
+    const refresh = () => { if (document.visibilityState === 'visible') sync() }
+    if (isMockApi) sync()
     const timer = window.setInterval(refresh, 60000)
     window.addEventListener('focus', refresh)
     document.addEventListener('visibilitychange', refresh)
@@ -29,6 +32,6 @@ export function LoanInterestSync() {
       window.removeEventListener('focus', refresh)
       document.removeEventListener('visibilitychange', refresh)
     }
-  }, [userId, token, plans, syncDue, isJeonse])
+  }, [userId, token, mockPlans, syncDue, isJeonse])
   return null
 }
