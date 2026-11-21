@@ -85,7 +85,12 @@ public class MemoRepository {
             .filter(java.util.Objects::nonNull).findFirst();
     }
 
-    /** json: JSON 배열 글자, null 이면 자동 */
+    /** 같은 회원의 요청을 한 줄로 (트랜잭션 맨 처음에) */
+    public void lockUser(long userId) {
+        jdbc.queryForList(com.zip.backend.common.Sql.LOCK_USER, Long.class, userId);
+    }
+
+    /** json: JSON 배열 글자, null 이면 자동. 설정 행이 없으면 만들어서 — 부르는 쪽이 먼저 lockUser */
     public void saveHomeMemoIds(long userId, String json) {
         if (jdbc.queryForObject("SELECT COUNT(*) FROM user_settings WHERE user_id = ?", Integer.class, userId) == 0) {
             jdbc.update("INSERT INTO user_settings (user_id) VALUES (?)", userId);

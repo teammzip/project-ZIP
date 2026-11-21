@@ -30,6 +30,7 @@ const incrementalMigrations = [
   '20261121_01_housing_onboarding.sql',
   '20261121_02_salary_record_deletion.sql',
   '20261121_03_ledger_category_label_case.sql',
+  '20261121_04_post_list_indexes.sql',
 ]
 
 module.exports = { legacyMigrations, incrementalMigrations }

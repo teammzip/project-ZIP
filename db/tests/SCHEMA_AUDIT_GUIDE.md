@@ -10,13 +10,15 @@
 
 | ID | 검증 내용 | checked_count |
 |---|---|---:|
-| M01 | 전체 기본 테이블 존재 | 44 |
-| M02 | 컬럼 타입·NULL·AUTO_INCREMENT·생성컬럼 여부·명시된 문자셋/정렬 규칙 | 352 |
-| M03 | PRIMARY/UNIQUE의 이름과 컬럼 순서 | 70 |
-| M04 | FK의 이름·출발 컬럼·대상 DB/테이블/컬럼·삭제 규칙 | 61 |
-| M05 | CHECK 존재 및 ENFORCED=YES | 17 |
+| M01 | 전체 기본 테이블 존재 | 53 |
+| M02 | 컬럼 타입·NULL·AUTO_INCREMENT·생성컬럼 여부·명시된 문자셋/정렬 규칙 | 414 |
+| M03 | PRIMARY/UNIQUE의 이름과 컬럼 순서 | 82 |
+| M04 | FK의 이름·출발 컬럼·대상 DB/테이블/컬럼·삭제 규칙 | 77 |
+| M05 | CHECK 존재 및 ENFORCED=YES | 23 |
 | M06 | VIEW 존재 및 출력 컬럼 순서 | 2 |
-| M07 | 테이블 저장 엔진 InnoDB | 44 |
+| M07 | 테이블 저장 엔진 InnoDB | 53 |
+
+> 위 숫자는 `schema_expected.json` 기준이에요. 스키마를 바꾸면 `node db/tests/generate-schema-audit.cjs` 로 다시 만들어요.
 
 각 결과가 result=PASS, failed_count=0, failed_items=NULL이어야 합니다. NULL은 실패 항목이 없다는 뜻입니다. 검증 대상 행이 0이면 통과로 판단하지 말고 checked_count를 표와 비교합니다.
 

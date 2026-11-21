@@ -1,14 +1,14 @@
 # ZIP 데이터베이스 설계
 
-Git 공개 전 확인 사항과 검토 범위는 [보안 검토 문서](SECURITY.md)를 참고하세요. 실제 사용자 데이터·DB 백업·인증정보는 저장소에 포함하지 않습니다.
+실제 사용자 데이터·DB 백업·인증정보는 저장소에 포함하지 않습니다.
 
 **2026-11-07 기준** [schema.sql](schema.sql)은 현재 프로젝트의 React 데이터 모델과 [백엔드 API 약속](../frontend/API.md)을 반영한 MySQL **8.0.16 이상** 설계입니다. 테이블 **44개**, 집계 VIEW **2개**입니다. 서버 API는 별도 구현 대상이며, 브라우저에 저장된 데이터가 이 SQL만으로 DB에 들어오지는 않습니다.
 
 ## 1. 이번에 반영한 변경
 
-최신 프로젝트의 신고·위치·주거 설문·대출·개인 카테고리·집 주소 변경을 반영했습니다. 현재 기준은 **44테이블·352컬럼·기본키/UNIQUE 70개·외래키 61개·CHECK 17개·VIEW 2개**입니다.
+최신 프로젝트의 신고·위치·주거 설문·대출·개인 카테고리·집 주소 변경을 반영했습니다. 현재 기준은 **53테이블 · VIEW 2개**입니다(세부 수치는 `tests/schema_expected.json`).
 
-[위치·신고 저장 계약](LATEST_REQUIREMENTS.md), [주거·대출 저장 계약](HOUSING_AND_LOAN.md), [개인 카테고리·월별 납부·집 주소](LIFE_CATEGORIES.md), [백엔드 착수 전 점검](PRE_BACKEND_REVIEW.md)을 함께 확인하세요. 이전 문서에 날짜별 구조 수치가 나오면 당시 이력이며 이 문서의 현재 기준과 구분합니다.
+이전 문서에 날짜별 구조 수치가 나오면 당시 이력이며 이 문서의 현재 기준과 구분합니다.
 
 | 기능 | DB 반영 |
 |---|---|
@@ -45,7 +45,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 ### 기존 DB
 
-20261102까지 적용된 DB는 [20261107_life_categories.sql](migrations/20261107_life_categories.sql)을 한 번 적용합니다. 이미 최신 컬럼·타입이 있으면 재실행하지 않습니다. [적용 여부 확인·검증 순서](LIFE_CATEGORIES.md)를 따르세요. 20261102 이전 44개 표 DB는 먼저 [20261102_requirements_hardening.sql](migrations/20261102_requirements_hardening.sql)의 사전 검사를 마친 뒤 순서대로 적용합니다. 테이블 수만으로 적용 버전을 판단하지 않습니다.
+20261102까지 적용된 DB는 [20261107_life_categories.sql](migrations/20261107_life_categories.sql)을 한 번 적용합니다. 이미 최신 컬럼·타입이 있으면 재실행하지 않습니다. 20261102 이전 44개 표 DB는 먼저 [20261102_requirements_hardening.sql](migrations/20261102_requirements_hardening.sql)의 사전 검사를 마친 뒤 순서대로 적용합니다. 테이블 수만으로 적용 버전을 판단하지 않습니다.
 
 기념일 정식 컬럼까지 적용한 41개 테이블 DB는 [주거·대출 마이그레이션](migrations/20261101_housing_and_loan.sql)을 추가 적용합니다. 기념일 중복 파일에 대한 주의사항과 전체 순서는 migrations/README.md를 확인하세요.
 
@@ -157,6 +157,15 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `places` | 장소 |
 | `place_favorites` | 장소 즐겨찾기 |
 | `place_reviews` | 장소 리뷰 |
+| `kakao_place_favorites` | 카카오 검색 장소 즐겨찾기 (id · 이름만) |
+| `place_lists` · `place_list_items` | 지도 저장 리스트와 그 안의 장소 |
+| `home_contracts` | 내 집 계약 (월세/전세 · 보증금 · 관리비 · 자동 등록 시간대) |
+| `user_personal_info` | 회원 개인 정보 (생년월일, 주거 계약과 분리) |
+| `salary_settings` · `salary_records` | 월급 자동 등록 설정과 월별 1건 기록 |
+| `bill_document_keys` · `bill_photo_imports` | 고지서 중복 등록 방지 해시 (문서 · 사진) |
+| `bill_photo_drafts` | 고지서 사진 인식 결과 (사용자 확인 전 임시, 30분) |
+
+> 2026-11-15 이후 추가된 위 7줄(표 10개)과 일부 칸(`users.housing_survey_status` 등, 고정 지출의 `due_date` · `memo` · `deleted_at` 등)은 아래 5장 컬럼 설명에 아직 없어요. 정확한 칸은 [`schema.sql`](schema.sql)을 보세요.
 
 ## 5. 전체 컬럼과 제약조건
 
@@ -1014,7 +1023,7 @@ INSERT IGNORE는 기존 고유 키의 행을 갱신하지 않습니다. 장소 �
 - 개인 데이터 소유권, 관리자 권한, 파일 MIME·소유권·최대 5개/합계 2MB는 서버에서 검사합니다. FK는 같은 사용자 소유인지까지 보장하지 않습니다.
 - 비밀번호·토큰 해시 생성, 이메일 인증 만료·사용 횟수·일회 사용, 로그인 세션 회수는 서버 로직입니다.
 - 좌표 범위·좌표 쌍, JSON 원소 형식·개수·소유권, 금액·날짜·태그·수입 분류 일치 여부를 검사합니다.
-- 재가입 차단과 회원 상태, 제재 기간 만료·해제는 트랜잭션과 조회 시 검사를 통해 일관되게 처리합니다.
+- 회원 상태와 제재 기간 만료·해제는 트랜잭션과 조회 시 검사를 통해 일관되게 처리합니다.
 - 외부 저장소 파일은 FK 삭제로 제거되지 않으므로 실제 파일 정리가 필요합니다. 프로필·게시글에 연결된 파일을 임의로 재사용하지 않도록 검사합니다.
 - 데이터베이스 ID는 API에서 문자열로, DATETIME은 합의된 시간대(권장 UTC 저장 후 ISO 변환)로 반환합니다. 일정 날짜·시간과 납부 연월은 한국의 달력 날짜를 유지합니다.
 - 알림·좋아요·댓글 건수 등 파생값, 보고서 대상의 존재 여부는 서버가 관리합니다.

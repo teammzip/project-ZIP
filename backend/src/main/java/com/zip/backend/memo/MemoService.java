@@ -87,6 +87,7 @@ public class MemoService {
 
     @Transactional
     public Map<String, Object> saveHomeMemos(long userId, HomeInput input) {
+        repository.lockUser(userId); // 두 기기가 처음 동시에 저장해도 설정 행은 하나
         if (input == null || input.ids() == null) {
             repository.saveHomeMemoIds(userId, null);
             return nullIds();
