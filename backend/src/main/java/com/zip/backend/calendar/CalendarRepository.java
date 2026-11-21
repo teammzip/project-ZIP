@@ -242,10 +242,27 @@ public class CalendarRepository {
 
     // ---------- 쓰레기 배출표 ----------
 
-    public record TrashRow(int weekday, String wasteType, String description) {}
+    /** 배출표 한 종류: 배출 요일(0=일 ~ 6=토) · 시작 시각("18:00"). 배출이 없는 종류는 null */
+    public record TrashKind(List<Integer> days, String startTime) {}
+
+    /** 배출표 한 줄 = 동네 · 배출장소, 생활쓰레기 · 음식물 · 재활용 (전국생활쓰레기배출정보표준데이터 한 줄과 같은 모양) */
+    public record TrashRow(String place, TrashKind general, TrashKind food, TrashKind recycle) {}
+
+    /** DB 요일 이름 → 번호 (0=일 ~ 6=토) */
+    private static final List<String> DAY_NAMES = List.of("일", "월", "화", "수", "목", "금", "토");
+
+    /** "월,수,금" + 18:00 → TrashKind([1,3,5], "18:00"). 요일이 비면 null */
+    private static TrashKind kind(String days, java.sql.Time time) {
+        if (days == null || days.isBlank() || time == null) return null;
+        var numbers = java.util.Arrays.stream(days.split(",")).map(String::strip).map(DAY_NAMES::indexOf).filter(n -> n >= 0).sorted().toList();
+        return numbers.isEmpty() ? null : new TrashKind(numbers, time.toLocalTime().toString());
+    }
 
     public List<TrashRow> trashSchedules(long regionId) {
-        return jdbc.query("SELECT weekday, waste_type, description FROM trash_schedules WHERE region_id = ? ORDER BY weekday, waste_type",
-            (rs, row) -> new TrashRow(rs.getInt(1), rs.getString(2), rs.getString(3)), regionId);
+        return jdbc.query("""
+            SELECT place, general_days, general_time, food_days, food_time, recycle_days, recycle_time
+            FROM trash_schedules WHERE region_id = ? ORDER BY place, id""",
+            (rs, row) -> new TrashRow(rs.getString(1), kind(rs.getString(2), rs.getTime(3)), kind(rs.getString(4), rs.getTime(5)), kind(rs.getString(6), rs.getTime(7))),
+            regionId);
     }
 }

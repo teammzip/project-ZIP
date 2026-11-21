@@ -15,8 +15,10 @@ public final class RegionMatcher {
     public record District(String id, String name, String parentName) {}
 
     private static final List<String> SIDO_SUFFIXES = List.of("특별자치시", "특별자치도", "특별시", "광역시", "시", "도");
+    // 전남광주통합 · 광주 · 전라남 · 전남 → 전남광주: 2026-07-01 광주광역시 · 전라남도가 전남광주통합특별시로 통합돼서 예전 이름도 같은 시 · 도로 봄
     private static final Map<String, String> SIDO_SHORT = Map.of(
-        "충청북", "충북", "충청남", "충남", "전라북", "전북", "전라남", "전남", "경상북", "경북", "경상남", "경남");
+        "충청북", "충북", "충청남", "충남", "전라북", "전북", "경상북", "경북", "경상남", "경남",
+        "전남광주통합", "전남광주", "광주", "전남광주", "전라남", "전남광주", "전남", "전남광주");
 
     private RegionMatcher() {}
 

@@ -86,13 +86,24 @@ class RegionVerifyIntegrationTests {
 
     @Test void unknownDistrictIsCreatedFromKakao() throws Exception {
         when(kakao.coordToRegion(anyDouble(), anyDouble())).thenReturn(List.of(new KakaoLocalClient.RegionDocument("H", "경기도", "성남시 분당구", "정자동")));
-        String response = verify(37.36, 127.11).andExpect(status().isOk()).andExpect(jsonPath("$.region.fullName").value("경기도 성남시 분당구"))
-            .andReturn().getResponse().getContentAsString();
+        // 구가 있는 시("성남시 분당구")는 시 단위("성남시")로 — 동네 목록 · 쓰레기 배출표와 같은 단위
+        String response = verify(37.36, 127.11).andExpect(status().isOk()).andExpect(jsonPath("$.region.fullName").value("경기도 성남시"))
+            .andExpect(jsonPath("$.region.name").value("성남시")).andReturn().getResponse().getContentAsString();
         long id = Long.parseLong(JsonPath.read(response, "$.region.id"));
         assertEquals(2, jdbc.queryForObject("SELECT level FROM regions WHERE id = ?", Integer.class, id));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM regions WHERE name = '성남시 분당구'", Integer.class));
         // 한 번 더 해도 같은 동네를 또 만들지 않음
         verify(37.36, 127.11).andExpect(jsonPath("$.region.id").value(Long.toString(id)));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM regions WHERE name = '경기도'", Integer.class));
+    }
+
+    // 세종: 카카오가 시 · 군 · 구를 비워 보내도(실제 응답 형태) 시 · 도 이름으로 시 · 군 · 구를 정해 인증됨
+    @Test void sejongWithoutDistrictUsesCityName() throws Exception {
+        when(kakao.coordToRegion(anyDouble(), anyDouble())).thenReturn(List.of(new KakaoLocalClient.RegionDocument("H", "세종특별자치시", "", "보람동")));
+        verify(36.48, 127.29).andExpect(status().isOk())
+            .andExpect(jsonPath("$.region.name").value("세종특별자치시")).andExpect(jsonPath("$.region.fullName").value("세종특별자치시 세종특별자치시"))
+            .andExpect(jsonPath("$.dong").value("보람동"));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM regions g JOIN regions p ON p.id = g.parent_id WHERE p.name = '세종특별자치시' AND g.name = '세종특별자치시' AND g.level = 2", Integer.class));
     }
 
     @Test void invalidOrUnavailable() throws Exception {

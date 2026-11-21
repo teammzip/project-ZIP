@@ -51,8 +51,8 @@ UPDATE users SET home_lat=0,home_lon=181 WHERE id=@latest_neg_user;
 UPDATE places SET lat=91 WHERE id=@latest_neg_place;
 -- W16: 3819 / ck_place_review_rating
 INSERT INTO place_reviews (place_id,user_id,rating) VALUES (@latest_neg_place,@latest_neg_user,0);
--- W17: 3819 / ck_trash_weekday
-INSERT INTO trash_schedules (region_id,weekday,waste_type,description) VALUES (@latest_neg_region,7,'GENERAL','잘못된 요일');
+-- W17: 3819 / ck_trash_any_day (세 종류 모두 배출 요일이 없음)
+INSERT INTO trash_schedules (region_id,place) VALUES (@latest_neg_region,'배출 요일 없음');
 -- W99 정리
 ROLLBACK;
 SELECT 'W99 테스트 데이터 제거' AS test,

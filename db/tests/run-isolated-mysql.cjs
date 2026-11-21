@@ -132,7 +132,7 @@ async function main() {
       [1452,'fk_reports_reporter_id'],[1452,'fk_support_inquiries_user_id'],[1048,'content'],
     ]],
     ['14_map_ai_negative.sql','L',[
-      [1062,'uk_regions_parent_id_name'],[1062,'PRIMARY'],[1062,'uk_trash_schedules_region_weekday_type'],
+      [1062,'uk_regions_parent_id_name'],[1062,'PRIMARY'],[3819,'ck_trash_day_time'],
       [1062,'uk_place_categories_name'],[1062,'PRIMARY'],[1062,'uk_place_reviews_place_id_user_id'],[1062,'PRIMARY'],
       [1062,'uk_ai_topics_code'],[1451,'fk_places_category_id'],[1451,'fk_regions_parent_id'],
       [1452,'fk_ai_messages_conversation_id'],[3140,'card_data'],[1451,'fk_places_region_id'],
@@ -151,7 +151,7 @@ async function main() {
     ...Array.from({length:4},()=>[3819,'ck_settings_region_location']),
     ...Array.from({length:4},()=>[3819,'ck_settings_json_arrays']),
     [3819,'ck_users_home_point'],[3819,'ck_users_home_point'],
-    [3819,'ck_places_point'],[3819,'ck_place_review_rating'],[3819,'ck_trash_weekday'],
+    [3819,'ck_places_point'],[3819,'ck_place_review_rating'],[3819,'ck_trash_any_day'],
   ])
   successful('life categories', read('db/tests/24_life_categories_positive.sql'), 5)
   rejected('life categories rejection', '25_life_categories_negative.sql', 'Y', [[3819,'ck_settings_ledger_object']])

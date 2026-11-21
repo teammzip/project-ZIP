@@ -47,6 +47,8 @@ test('all migrations produce the same columns, named keys and constraints as fre
   const baseline = tables(read('db/tests/18_legacy_schema.sql'))
   const state = new Map([...baseline].map(([name, body]) => [name, { columns: columns(body), definitions: definitions(body) }]))
   for (const [, migration] of migrations) {
+    // information_schema 로 확인한 뒤 PREPARE 로 지우는 표('DROP TABLE x')는 같은 파일에서 다시 만들 수 있음 (예: 20261121_06 쓰레기 배출표)
+    for (const [, table] of migration.matchAll(/^\s*'DROP TABLE `?(\w+)`?'/gm)) state.delete(table)
     for (const [name, body] of tables(migration)) {
       assert(!state.has(name), `duplicate new table ${name}`)
       state.set(name, { columns: columns(body), definitions: definitions(body) })

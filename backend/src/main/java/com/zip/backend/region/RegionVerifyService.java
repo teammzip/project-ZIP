@@ -90,9 +90,12 @@ public class RegionVerifyService {
         }
         // 행정동(H)을 먼저, 없으면 법정동(B)
         var doc = docs.stream().filter(d -> "H".equals(d.region_type())).findFirst().or(() -> docs.stream().findFirst())
-            .filter(d -> notBlank(d.region_1depth_name()) && notBlank(d.region_2depth_name()))
+            .filter(d -> notBlank(d.region_1depth_name()))
             .orElseThrow(() -> new ApiException(400, "이 위치의 동네 이름을 찾지 못했어요."));
-        String sido = cut(doc.region_1depth_name().strip()), gu = cut(doc.region_2depth_name().strip());
+        String sido = cut(doc.region_1depth_name().strip());
+        // 세종특별자치시처럼 시 · 군 · 구가 없는 곳은 카카오가 2단계를 비워 보냄 → 시 · 도 이름을 시 · 군 · 구 자리에도 씀 (db/seeds/regions_nationwide.sql 과 같은 규칙)
+        // 구가 있는 시는 카카오가 "성남시 분당구"처럼 보냄 → 앞의 시 이름만 씀. 동네 목록(regions.ts) · 쓰레기 배출표가 시 단위라서
+        String gu = notBlank(doc.region_2depth_name()) ? cut(doc.region_2depth_name().strip().split("\\s+")[0]) : sido;
 
         var now = clock.instant().truncatedTo(ChronoUnit.SECONDS); // MySQL DATETIME 반올림 대비
         long guId = transaction.execute(status -> {

@@ -151,6 +151,27 @@ class CalendarIntegrationTests {
         call(other, delete("/api/event-categories/{id}", house), null).andExpect(status().isNotFound());
     }
 
+    // 쓰레기 배출표: 동네 · 장소 한 줄에 종류별 요일(0=일 ~ 6=토) · 시작 시각, 배출 없는 종류는 null. 다른 동네 것은 안 섞임
+    @Test void trashSchedulesListKindsPerPlace() throws Exception {
+        jdbc.update("""
+            INSERT INTO trash_schedules (region_id, place, general_days, general_time, food_days, food_time, recycle_days, recycle_time) VALUES
+              (2, '내 집 혹은 내 점포 앞', '일,월,수', '18:00:00', '일,월,수', '18:00:00', '목', '20:00:00'),
+              (2, '마을 내 생활 폐기물 배출장', '월', '00:00:00', '', NULL, '', NULL),
+              (3, '집 앞', '', NULL, '', NULL, '화', '19:00:00')""");
+        call(me, get("/api/trash-schedules").param("regionId", "2"), null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[0].place").value("내 집 혹은 내 점포 앞"))
+            .andExpect(jsonPath("$[0].general.days.length()").value(3)).andExpect(jsonPath("$[0].general.days[0]").value(0)).andExpect(jsonPath("$[0].general.days[2]").value(3))
+            .andExpect(jsonPath("$[0].general.startTime").value("18:00"))
+            .andExpect(jsonPath("$[0].recycle.days[0]").value(4)).andExpect(jsonPath("$[0].recycle.startTime").value("20:00"))
+            .andExpect(jsonPath("$[1].place").value("마을 내 생활 폐기물 배출장"))
+            .andExpect(jsonPath("$[1].general.startTime").value("00:00"))
+            .andExpect(jsonPath("$[1].food").isEmpty()).andExpect(jsonPath("$[1].recycle").isEmpty());
+        call(me, get("/api/trash-schedules").param("regionId", "3"), null).andExpect(jsonPath("$.length()").value(1));
+        call(me, get("/api/trash-schedules").param("regionId", "999"), null).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        call(me, get("/api/trash-schedules").param("regionId", "abc"), null).andExpect(status().isNotFound());
+    }
+
     @Test void customPresetsUpdateAndDelete() throws Exception {
         call(me, get("/api/event-categories"), null);
         String id = JsonPath.read(call(me, post("/api/event-presets"), "{\"title\":\"화분 물 주기\",\"category\":\"집 관리\"}").andReturn().getResponse().getContentAsString(), "$.id");

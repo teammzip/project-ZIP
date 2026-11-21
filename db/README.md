@@ -59,6 +59,16 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 서버의 가입 트랜잭션에서 해당 SQL의 SELECT를 **새 회원 ID로 제한**하여 user_settings·user_profiles 생성과 함께 실행하세요. 전체 회원에 반복 실행하면 사용자가 이름을 바꾸거나 지운 기본 항목이 다시 생길 수 있으므로 초기화용으로만 사용합니다.
 
+### 전국 지역 · 쓰레기 배출표
+
+전국 시도 · 시군구(`regions` 249행)와 쓰레기 배출표(`trash_schedules` 6,218행)는 저장소 루트의 시드 두 개로 넣습니다. 백엔드가 자동으로 넣지 않으니 각자 DB 에 한 번 실행하세요(여러 번 실행해도 같음, 각자 DB 의 지역 번호는 그대로).
+
+1. [`migrations/20261121_06_trash_schedule_columns.sql`](migrations/20261121_06_trash_schedule_columns.sql) — 배출표 구조 (동네 · 장소 한 줄에 생활쓰레기 · 음식물 · 재활용 요일 · 시작 시각)
+2. [`../regions_nationwide.sql`](../regions_nationwide.sql) — 전국 시도 16 · 시군구 233 (없는 것만 추가)
+3. [`../trash_schedules_nationwide.sql`](../trash_schedules_nationwide.sql) — 배출표를 모두 지우고 다시 넣음. 마지막에 `파일 줄 수 6218 · 넣은 줄 수 6218 · 지역 없음 0` 이면 정상
+
+시드는 공공데이터포털 「전국생활쓰레기배출정보표준데이터」 CSV(`db/data/`, 저장소에 안 올림)를 `python db/tools/trash_import.py` 로 바꿔 만든 파일이에요. 표 구조는 아래 [`trash_schedules`](#trash_schedules--쓰레기-배출-요일표) 항목을 보세요.
+
 ## 3. 화면과 DB 연결 규칙
 
 ### 일정과 카테고리
@@ -914,20 +924,26 @@ AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 
 
 ### `trash_schedules` — 쓰레기 배출 요일표
 
-쓰레기 배출 일정: 동네별 요일 배출표.
+쓰레기 배출 일정: 동네(시군구) · 배출장소별 생활쓰레기 · 음식물 · 재활용 배출 요일과 시작 시각. 출처: 전국생활쓰레기배출정보표준데이터
 
 | 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
 |---|---|---|---|---|
 | `id` | BIGINT UNSIGNED | 필수 | — | 배출일정 아이디 — 자동 증가 / 자동 번호 |
-| `region_id` | BIGINT UNSIGNED | 필수 | — | 동네 아이디 |
-| `weekday` | TINYINT UNSIGNED | 필수 | — | 배출 요일 — 0=일 ~ 6=토 |
-| `waste_type` | ENUM('GENERAL','RECYCLE','FOOD') | 필수 | — | 배출 종류 — 일반쓰레기 / 재활용 / 음식물 |
-| `description` | VARCHAR(100) | 필수 | — | 배출 안내 — 예: 저녁 6시 ~ 자정, 종량제 봉투 사용 |
+| `region_id` | BIGINT UNSIGNED | 필수 | — | 동네 아이디 — 시군구 |
+| `place` | VARCHAR(100) | 필수 | — | 배출장소 — 예: 내 집 혹은 내 점포 앞 |
+| `general_days` | SET('일','월','화','수','목','금','토') | 필수 | '' | 생활쓰레기 배출 요일 — 예: 월,수,금 (없으면 빈 값) |
+| `general_time` | TIME | 선택 | NULL | 생활쓰레기 배출 시작 시각 — 배출 요일이 없으면 비움 |
+| `food_days` | SET('일','월','화','수','목','금','토') | 필수 | '' | 음식물쓰레기 배출 요일 |
+| `food_time` | TIME | 선택 | NULL | 음식물쓰레기 배출 시작 시각 |
+| `recycle_days` | SET('일','월','화','수','목','금','토') | 필수 | '' | 재활용품 배출 요일 |
+| `recycle_time` | TIME | 선택 | NULL | 재활용품 배출 시작 시각 |
 
 - 기본키: `id`
-- UNIQUE `uk_trash_schedules_region_weekday_type`: `region_id`, `weekday`, `waste_type`
+- 인덱스 `idx_trash_schedules_region_id`: `region_id`
 - 외래키 `fk_trash_schedules_region_id`: `region_id` → `regions` (`id`), ON DELETE CASCADE
-- CHECK: CONSTRAINT `ck_trash_weekday` CHECK (`weekday` BETWEEN 0 AND 6)
+- CHECK: CONSTRAINT `ck_trash_any_day` CHECK (세 종류 중 하나는 배출 요일이 있음)
+- CHECK: CONSTRAINT `ck_trash_day_time` CHECK (종류마다 배출 요일이 있으면 시각도 있고, 없으면 시각도 없음)
+- 데이터: `db/data/생활쓰레기배출정보.csv` → `python db/tools/trash_import.py` → `regions_nationwide.sql(저장소 루트)` · `trash_schedules_nationwide.sql(저장소 루트)`
 
 ### `place_categories` — 장소 분류
 
