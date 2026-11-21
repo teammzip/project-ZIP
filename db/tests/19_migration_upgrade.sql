@@ -901,3 +901,11 @@ SET @post_views_ddl = IF(
 PREPARE post_views_stmt FROM @post_views_ddl;
 EXECUTE post_views_stmt;
 DEALLOCATE PREPARE post_views_stmt;
+
+-- 20261121_02_salary_record_deletion.sql
+ALTER TABLE salary_records MODIFY COLUMN income_id BIGINT UNSIGNED NULL;
+
+-- 20261121_03_ledger_category_label_case.sql
+-- Distinct spellings can be used by different accounts without renaming shared rows.
+ALTER TABLE ledger_categories MODIFY COLUMN name VARCHAR(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL
+  COMMENT '분류 이름 — 회원별 표시 목록은 설정 JSON에서 관리';

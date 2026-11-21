@@ -11,23 +11,25 @@ import { useBillingTimeZone } from '../useBillingTimeZone'
 import common from '@/styles/common.module.css'
 import styles from './SalaryInfo.module.css'
 
-export function SalaryInfo() {
+export function SalaryInfo({ startEditing = false }: { startEditing?: boolean }) {
   const owner = useAuthStore((s) => s.user?.id), token = useAuthStore((s) => s.token)
   const storedSurvey = useHousingSurveyStore((s) => s.survey)
   const survey = owner && storedSurvey?.userId === owner ? storedSurvey : null
   const { choice, resolving } = useBillingTimeZone()
   const query = useQuery({ queryKey: ['salary-settings', owner, token], queryFn: ({ signal }) => getSalary(signal), enabled: !isMockApi && !!owner && !!token, staleTime: 0, retry: false })
   return <section aria-label="수입 정보"><h4>수입 정보</h4>
-    {isMockApi ? <><p>{survey ? `${survey.incomePeriod === 'annual' ? '연 수입' : '월 수입'} ${won(survey.income)}` : '등록된 수입 정보가 없어요.'}</p><p className={common.note}>수입 정보 수정과 월급 자동 등록은 서버 연결 모드에서 사용할 수 있어요.</p></> : query.isError ? <div role="alert"><p>{getErrorMessage(query.error, '수입 정보를 불러오지 못했어요.')}</p><Button onClick={() => void query.refetch()}>다시 조회</Button></div> : query.data ? <SalaryForm key={`${owner}:${token}`} settings={query.data} timeZone={choice?.timeZone} resolving={resolving} /> : <p role="status">불러오는 중이에요.</p>}
+    {isMockApi ? <><p>{survey ? `${survey.incomePeriod === 'annual' ? '연 수입' : '월 수입'} ${won(survey.income)}` : '등록된 수입 정보가 없어요.'}</p><p className={common.note}>수입 정보 수정과 월급 자동 등록은 서버 연결 모드에서 사용할 수 있어요.</p></> : query.isError ? <div role="alert"><p>{getErrorMessage(query.error, '수입 정보를 불러오지 못했어요.')}</p><Button onClick={() => void query.refetch()}>다시 조회</Button></div> : query.data ? <SalaryForm key={`${owner}:${token}`} settings={query.data} timeZone={choice?.timeZone} resolving={resolving} startEditing={startEditing} /> : <p role="status">불러오는 중이에요.</p>}
   </section>
 }
 
-function SalaryForm({ settings, timeZone, resolving }: { settings: SalarySettings; timeZone?: string; resolving: boolean }) {
-  const [editing, setEditing] = useState(false)
-  const [amount, setAmount] = useState(String(settings.amount)), [period, setPeriod] = useState(settings.incomePeriod), [day, setDay] = useState(String(settings.paymentDay))
+function SalaryForm({ settings, timeZone, resolving, startEditing }: { settings: SalarySettings; timeZone?: string; resolving: boolean; startEditing: boolean }) {
+  const draft = settings.draft
+  const [editing, setEditing] = useState(startEditing)
+  const [amount, setAmount] = useState(String(draft?.amount ?? settings.amount))
+  const [period, setPeriod] = useState(draft?.incomePeriod ?? settings.incomePeriod)
+  const [day, setDay] = useState(draft ? '' : String(settings.paymentDay))
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('')
   const pending = useRef(false), client = useQueryClient()
-  const draft = settings.draft
   return <div className={common.stack}>
     {!editing ? <><dl className={styles.details}>
       <div><dt>수입 기준</dt><dd>{(draft?.incomePeriod ?? settings.incomePeriod) === 'annual' ? '연 수입' : '월 수입'}</dd></div>

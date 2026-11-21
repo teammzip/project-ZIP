@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button, Card, Modal } from '@/components/ui'
 import { deleteAllConversations, useChatStore } from '@/features/ai'
 import { LoginBadge, LoginMethod, PasswordChangeForm, useAuthStore, useLogout, useUpdateMe, useWithdraw } from '@/features/auth'
@@ -39,7 +39,7 @@ const TILES = [
   { to: '/community', ico: '💬', label: '동네 이야기' },
 ]
 
-type Sheet = 'profile' | 'personal' | 'salary' | 'life' | 'verify' | 'password' | 'sanctions' | 'reset' | 'withdraw' | null
+type Sheet = 'profile' | 'personal' | 'life' | 'verify' | 'password' | 'sanctions' | 'reset' | 'withdraw' | null
 
 /* 내 정보
  * - PC(1100px 이상): 왼쪽 = 프로필 · 수입·지출 카드 / 오른쪽 = 이번 달 요약 · 바로 가기 · 계정·설정
@@ -54,6 +54,18 @@ export function SettingsPage() {
   const updateMe = useUpdateMe()
   const logout = useLogout()
   const [sheet, setSheet] = useState<Sheet>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const salaryOpen = searchParams.get('section') === 'income'
+  const editSalary = searchParams.get('edit') === 'income'
+  const setSalaryOpen = (open: boolean) => {
+    const next = new URLSearchParams(searchParams)
+    if (open) next.set('section', 'income')
+    else {
+      next.delete('section')
+      if (editSalary) next.delete('edit')
+    }
+    setSearchParams(next, { replace: true })
+  }
   const [toast, setToast] = useState('')
   const name = user?.nickname ?? '자취생'
   // 받은 경고 · 정지가 있으면 계정 · 설정에 내역 줄을 보여 줌
@@ -127,7 +139,7 @@ export function SettingsPage() {
               </button>
             </li>
             <li>
-              <button type="button" className={styles.row} onClick={() => setSheet('salary')}>
+              <button type="button" className={styles.row} onClick={() => setSalaryOpen(true)}>
                 <span className={styles.ico}>💵</span>
                 <span className={styles.grow}>수입 정보<small>월 수입 · 연 수입 · 매월 받는 날짜</small></span>
                 <i className={styles.chev} aria-hidden="true" />
@@ -199,8 +211,8 @@ export function SettingsPage() {
         {sheet === 'personal' && <PersonalInfoCard />}
       </Modal>
 
-      <Modal open={sheet === 'salary'} onClose={close} title="수입 정보">
-        {sheet === 'salary' && <SalaryInfo />}
+      <Modal open={salaryOpen} onClose={() => setSalaryOpen(false)} title="수입 정보">
+        {salaryOpen && <SalaryInfo key={String(editSalary)} startEditing={editSalary} />}
       </Modal>
 
       <Modal open={sheet === 'life'} onClose={closeHome} title="내 집 정보">

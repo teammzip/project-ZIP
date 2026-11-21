@@ -362,21 +362,18 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 ---
 
-### 회원별 카테고리·표시 순서 — API 추가 제안
-
-현재 `features/life/ledgerCategories.ts`는 추가·순서 변경만 구현하며 이름 변경·삭제는 없어요. 기존 `/api/ledger/categories?kind=INCOME`은 공용 사전 전체 공개가 아니라 본인에게 허용된 분류의 ID 매핑용으로 제한해야 해요.
+### 회원별 카테고리·표시 순서
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
-| GET | `/api/me/ledger-categories?scope=bill` | — | `{ scope, categories: [{ name, color }], custom: [{ name, color }], order: [name] }` |
-| POST | `/api/me/ledger-categories` | `{ scope, name }` | 해당 scope의 위 응답 |
-| PUT | `/api/me/ledger-categories/order` | `{ scope, order: [name] }` | 해당 scope의 위 응답 |
+| GET | `/api/me/ledger-categories?scope=bill` | — | `{ custom: [{ name, color }], order: [name], hidden: [name] }` |
+| POST | `/api/me/ledger-categories?scope=bill` | `{ action, name, target? }` | 갱신된 설정 |
 
-- scope: `fixed-income`, `other-income`, `spend`, `bill`. categories는 기본 목록 + 본인 custom을 order에 따라 정렬한 결과예요. 기본 목록은 `features/life/data/catalog.ts`, bill은 BILL_TAGS예요.
-- 서버는 이름의 앞뒤·연속 공백을 정리하고 1~24자·기본/사용자 목록 중복·허용 색·유효한 순서를 검사해요. 회원별 설정을 `user_settings.ledger_category_settings`의 scope별 `{ custom, order }`로 저장하고 다른 scope를 지우지 않아요.
-- 현재 byUser/ orders의 본인 부분만 서버에 매핑해요. 이름은 식별자가 아닌 표시값이며 공용 사전의 UNIQUE 비교와 프론트 중복 검사 규칙을 일치시켜야 해요.
-- 수입/지출 저장 시 본인 scope와 일치하는 이름을 공용 ledger_categories(kind,name)에 연결해 categoryId를 구해요. 사전 동시 생성 충돌은 기존 ID 재조회로 처리해요. bill scope는 bill_items.tag에 저장해요.
-- 프론트 MoneyRecord/Bill의 id는 현재 number예요. API BIGINT 문자열을 Number로 무조건 변환하지 말고 연동 시 타입·어댑터를 보완해요.
+- `scope`는 `fixed-income`, `other-income`, `spend`, `bill`이에요. 기본 목록에서 `hidden`을 빼고 `custom`을 합쳐 `order` 순서로 표시해요.
+- `action`은 `add`, `rename`, `delete`, `move`예요. 이름 변경에는 새 이름을, 이동에는 기준 카테고리 이름을 `target`으로 보내요.
+- 서버는 앞뒤·연속 공백을 정리하고 1~24자, 중복 이름, 이동 대상을 검사해요. 회원별 설정은 `user_settings.ledger_category_settings`에 분류별로 저장해요.
+- 이름을 변경하면 같은 계정과 같은 분류 그룹의 기존 거래에도 새 이름이 적용돼요. 카테고리를 삭제하면 선택 목록에서 사라지고 기존 거래에는 마지막 분류명이 표시돼요. 삭제한 기본 이름을 다시 추가하면 기본 카테고리가 복원돼요.
+- 서버에 해당 분류 설정이 없으면 `{ action: 'import', previous: { custom, order } }`로 현재 브라우저의 기존 설정을 이관해요. 한 번 설정된 분류에는 다시 이관하지 않아요.
 
 ---
 

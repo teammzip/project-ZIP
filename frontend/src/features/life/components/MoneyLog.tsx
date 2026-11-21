@@ -82,7 +82,8 @@ function LocalMoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeType?
   ) : records
   const thisMonth = monthKeyOf(useToday())
   const [monthKey, setMonthKey] = useState(resume?.month ?? thisMonth)
-  const [form, setForm] = useState({ date: resume?.values.date ?? todayStr(), cat: resume?.values.cat ?? cats[0].name, amount: resume?.values.amount ?? '', memo: '' })
+  const [form, setForm] = useState({ date: resume?.values.date ?? todayStr(), cat: resume?.values.cat ?? cats[0]?.name ?? '', amount: resume?.values.amount ?? '', memo: '' })
+  const selectedCat = cats.some((item) => item.name === form.cat) ? form.cat : cats[0]?.name ?? ''
   const [quickOpen, setQuickOpen] = useState(false)
   const [saved, setSaved] = useState('')
 
@@ -95,7 +96,7 @@ function LocalMoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeType?
   const byCat: Record<string, number> = Object.create(null)
   for (const r of rows) byCat[r.cat] = (byCat[r.cat] ?? 0) + r.amount
   // 분류별 비율 원형 그래프 (큰 분류부터 시계 방향)
-  const catRows = cats.filter((c) => byCat[c.name]).sort((a, b) => byCat[b.name] - byCat[a.name])
+  const catRows = Object.keys(byCat).map((name) => cats.find((cat) => cat.name === name) ?? { name, color: 'var(--color-muted)' }).sort((a, b) => byCat[b.name] - byCat[a.name])
   const stops: string[] = []
   catRows.reduce((from, c) => {
     const to = from + (byCat[c.name] / total) * 100
@@ -106,15 +107,15 @@ function LocalMoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeType?
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    if (kind === 'income' && incomeType === 'fixed' && form.cat === '월급') { setSaved('월급은 계정·설정의 수입 정보에서 관리해 주세요.'); return }
+    if (kind === 'income' && incomeType === 'fixed' && selectedCat === '월급') { setSaved('월급은 계정·설정의 수입 정보에서 관리해 주세요.'); return }
     const amount = Math.round(Number(form.amount))
-    if (!form.date || !(amount > 0)) return
-    add({ date: form.date, cat: form.cat, amount, memo: form.memo.trim(), ...(resume?.memoId ? { memoId: resume.memoId, memoTitle: resume.memoTitle } : {}), ...(kind === 'income' ? { incomeType } : {}) })
+    if (!selectedCat || !form.date || !(amount > 0)) return
+    add({ date: form.date, cat: selectedCat, amount, memo: form.memo.trim(), ...(resume?.memoId ? { memoId: resume.memoId, memoTitle: resume.memoTitle } : {}), ...(kind === 'income' ? { incomeType } : {}) })
     clearMemoDraft(resume); setResume(undefined)
     setMonthKey(form.date.slice(0, 7)) // 기록한 날짜의 달로 이동해서 바로 보이게
     setForm((f) => ({ ...f, amount: '', memo: '' }))
     setQuickOpen(false)
-    setSaved(`✅ ${form.cat} ${won(amount)} 기록했어요`)
+    setSaved(`✅ ${selectedCat} ${won(amount)} 기록했어요`)
   }
 
   /** 빠른 기록 폼 (panel = PC 오른쪽 카드 안, 아니면 모바일 그래프 아래 펼침) */
@@ -148,8 +149,8 @@ function LocalMoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeType?
             {...categoryDrag(c.name)}
             type="button"
             role="radio"
-            aria-checked={form.cat === c.name}
-            className={cx(styles.quickCat, styles.draggableCategory, form.cat === c.name && styles.on)}
+            aria-checked={selectedCat === c.name}
+            className={cx(styles.quickCat, styles.draggableCategory, selectedCat === c.name && styles.on)}
             style={cssVar({ '--c': c.color })}
             onClick={() => setForm({ ...form, cat: c.name })}
           >
@@ -157,7 +158,7 @@ function LocalMoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeType?
           </button>
         ))}
       </div>
-      <Button variant="line" onClick={() => setAddingCategory(true)}>＋ 카테고리 추가</Button>
+      <Button variant="line" onClick={() => setAddingCategory(true)}>카테고리 관리</Button>
       {/* 날짜 · 메모: 입력칸 모양 두 칸 나란히 */}
       <div className={styles.quickFields}>
         <label className={styles.quickField}>
@@ -176,13 +177,13 @@ function LocalMoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeType?
         </label>
           <button type="button" className={styles.quickField} onClick={() => {
             if (!owner) return
-            openLedgerMemo({ key: resume?.key, owner, kind, incomeType: kind === 'income' ? incomeType : undefined, month: form.date.slice(0, 7), label: `${t.title} · ${form.date} · ${form.cat}`, values: { amount: form.amount, date: form.date, cat: form.cat }, memoId: resume?.memoId, memoTitle: resume?.memoTitle })
+            openLedgerMemo({ key: resume?.key, owner, kind, incomeType: kind === 'income' ? incomeType : undefined, month: form.date.slice(0, 7), label: `${t.title} · ${form.date} · ${selectedCat}`, values: { amount: form.amount, date: form.date, cat: selectedCat }, memoId: resume?.memoId, memoTitle: resume?.memoTitle })
           }}>
             <span>메모 (선택)</span>
             <b className={styles.quickAdd}>{resume?.memoId ? resume.memoTitle || '제목 없는 메모' : '메모 작성'}</b>
           </button>
       </div>
-      <Button type="submit" block disabled={!(Number(form.amount) > 0)}>
+      <Button type="submit" block disabled={!selectedCat || !(Number(form.amount) > 0)}>
         기록하기
       </Button>
       {panel && saved && (
@@ -195,7 +196,7 @@ function LocalMoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeType?
 
   return (
     <div className={common.layout}>
-      {addingCategory && <LedgerCategoryDialog scope={scope} onClose={() => setAddingCategory(false)} onAdded={(cat) => setForm((value) => ({ ...value, cat }))} />}
+      {addingCategory && <LedgerCategoryDialog scope={scope} onClose={() => setAddingCategory(false)} onAdded={(cat) => setForm((value) => ({ ...value, cat }))} onRenamed={(oldName, newName) => { if (selectedCat === oldName) setForm((value) => ({ ...value, cat: newName })) }} />}
       <Card
         title={`${Number(monthKey.slice(5))}월 ${t.title}`}
         actions={

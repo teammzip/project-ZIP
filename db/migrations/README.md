@@ -107,3 +107,6 @@ MySQL DDL은 암묵 커밋됩니다. 중간 실패 시 백업과 실제 스키�
 - 20261118_08_contract_payment_effective_from.sql: 내 집 정보 저장일을 신규 계약 납부 내역의 반영 시작일로 기록합니다. 이미 지난 월세·관리비·이자를 조회/스케줄러가 새로 만드는 것을 막습니다. 기존 기록은 변경하지 않으며 컬럼이 있으면 건너뜁니다. 적용 후 백엔드를 재시작합니다. 검증은 RECURRING_PAYMENT_DAY_VERIFICATION.md 참고.
 - 20261118_09_management_contract_kind.sql: bill_items.home_contract_kind를 추가하고 현재 내 집 정보와 연결된 관리비의 유형을 기록합니다. 월세·전세 전환 후 각 유형의 관리비만 조회합니다. 기존 컬럼은 건너뛰며 UPDATE 동안 해당 세션의 Safe Update만 해제·복원합니다. 기존에 하나의 관리비 항목으로 여러 계약 유형 기록을 섞어 저장한 경우 과거 각 행의 유형은 복원할 수 없습니다. 상세 검증은 MANAGEMENT_CONTRACT_FIX_VERIFICATION.md 참고.
 - 20261119_01_bill_termination.sql: 일반 고정 지출의 사용자 지정 해지 적용일(termination_date)을 추가합니다. 컬럼이 있으면 건너뜁니다. 기존 납부 데이터는 변경하지 않습니다. 적용 후 서버 재시작.
+
+- 20261121_02_salary_record_deletion.sql: 월급 내역 삭제 후 해당 달의 재생성을 방지합니다.
+- 20261121_03_ledger_category_label_case.sql: 회원별 거래 분류명 수정 시 영문 대소문자를 정확하게 저장합니다.

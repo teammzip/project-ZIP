@@ -20,7 +20,8 @@ public class LedgerController {
     private final Clock clock;
     private final com.zip.backend.memo.LedgerMemoWriter memos;
     private final SalaryService salary;
-    public LedgerController(JdbcTemplate jdbc, AuthRepository auth, Clock clock,com.zip.backend.memo.LedgerMemoWriter memos,SalaryService salary) { this.jdbc=jdbc; this.auth=auth; this.clock=clock; this.memos=memos; this.salary=salary; }
+    private final LedgerCategoriesController categories;
+    public LedgerController(JdbcTemplate jdbc, AuthRepository auth, Clock clock,com.zip.backend.memo.LedgerMemoWriter memos,SalaryService salary,LedgerCategoriesController categories) { this.jdbc=jdbc; this.auth=auth; this.clock=clock; this.memos=memos; this.salary=salary; this.categories=categories; }
     private long user(Jwt jwt) { return Long.parseLong(jwt.getSubject()); }
     private boolean income(String kind) {
         if(!Set.of("income","spend").contains(kind)) throw bad("수입 또는 기타 지출을 선택해 주세요.");
@@ -47,8 +48,12 @@ public class LedgerController {
         String date=in?"income_date":"expense_date";
         var args=new ArrayList<Object>(List.of(user(jwt),java.sql.Date.valueOf(selected.atDay(1)),java.sql.Date.valueOf(through)));
         if(in) args.add(type(incomeType));
+        boolean fixed = in && incomeType.equals("fixed");
+        String salaryLabel = fixed ? categories.salaryLabel(user(jwt)) : "월급";
         return jdbc.query("SELECT r.id,r.amount,r."+date+" AS record_date,r.memo,c.name FROM "+(in?"incomes":"expenses")+" r JOIN ledger_categories c ON c.id=r.category_id WHERE r.user_id=? AND r."+date+">=? AND r."+date+"<=?"+(in?" AND r.income_type=?":"")+" ORDER BY r."+date+" DESC,r.id DESC",(rs,n)-> {
-            Map<String,Object> row=new LinkedHashMap<>(); row.put("id",rs.getString("id")); row.put("amount",rs.getLong("amount")); row.put("date",rs.getDate("record_date").toString()); row.put("cat",rs.getString("name")); row.put("memo",Objects.toString(rs.getString("memo"),"")); row.put("salaryManaged",in && salary.managed(user(jwt),rs.getLong("id"))); row.putAll(memos.reference(user(jwt),kind,rs.getString("id"))); return row;
+            String category = rs.getString("name");
+            boolean salaryCategory = fixed && category.equals("월급");
+            Map<String,Object> row=new LinkedHashMap<>(); row.put("id",rs.getString("id")); row.put("amount",rs.getLong("amount")); row.put("date",rs.getDate("record_date").toString()); row.put("cat",salaryCategory ? salaryLabel : category); row.put("memo",Objects.toString(rs.getString("memo"),"")); row.put("salaryCategory",salaryCategory); row.put("salaryManaged",in && salary.managed(user(jwt),rs.getLong("id"))); row.putAll(memos.reference(user(jwt),kind,rs.getString("id"))); return row;
         },args.toArray());
     }
     @PostMapping("/{kind}")
@@ -68,22 +73,28 @@ public class LedgerController {
         LocalDate date;
         try { date=LocalDate.parse(Objects.toString(body.get("date"),"")); if(date.getYear()<1 || date.getYear()>9999) throw new DateTimeException("date"); }
         catch(DateTimeException e) { throw bad("날짜를 확인해 주세요."); }
-        if(date.isAfter(today(zone))) throw bad("오늘 이후의 기록은 등록할 수 없어요.");
+        var now=today(zone);
+        if(date.isAfter(now)) throw bad("오늘 이후의 기록은 등록할 수 없어요.");
         String cat=BillInput.text(body.get("cat"),"분류",24);
         Object rawMemo=body.getOrDefault("memo","");
         if(!(rawMemo instanceof String memo) || memo.length()>100) throw bad("메모는 100자 이내로 입력해 주세요.");
         String incomeType=in?type(Objects.toString(body.get("incomeType"),"")):null;
         lock(jwt);
-        if(in && "FIXED".equals(incomeType) && "월급".equals(cat)) throw new ApiException(409,"월급은 계정·설정의 수입 정보에서 자동 등록돼요. 중복 방지를 위해 고정 수입에서 직접 등록하거나 월급으로 변경할 수 없어요.");
+        boolean ledgerSalary=in && "FIXED".equals(incomeType) && ("월급".equals(cat) || categories.salaryLabel(user(jwt)).equals(cat));
+        if(ledgerSalary) {
+            if(id!=null) throw new ApiException(409,"월급은 마이페이지의 수입 정보에서 설정해 주세요.");
+            salary.requireFirstLedgerSalary(user(jwt),date);
+        }
         if(in && id!=null && salary.managed(user(jwt),id)) throw new ApiException(409,"자동 등록 월급은 계정·설정의 수입 정보에서 변경해 주세요.");
         String table=in?"incomes":"expenses";
         if(id!=null && jdbc.queryForObject("SELECT COUNT(*) FROM "+table+" WHERE id=? AND user_id=?",Integer.class,id,user(jwt))==0) throw new ApiException(404,"기록을 찾을 수 없어요.");
         String beforeMemo=id==null?null:jdbc.queryForObject("SELECT memo FROM "+table+" WHERE id=? AND user_id=?",String.class,id,user(jwt));
         String categoryKind=in?"INCOME":"EXPENSE";
-        var categories=jdbc.queryForList("SELECT id FROM ledger_categories WHERE kind=? AND name=?",Long.class,categoryKind,cat);
+        String storedCategory = ledgerSalary ? "월급" : cat;
+        var categories=jdbc.queryForList("SELECT id FROM ledger_categories WHERE kind=? AND name=?",Long.class,categoryKind,storedCategory);
         if(categories.isEmpty()) {
-            jdbc.update("INSERT INTO ledger_categories(kind,name,color,sort_order) VALUES (?,?,?,0) ON DUPLICATE KEY UPDATE id=id",categoryKind,cat,"#7895cb");
-            categories=jdbc.queryForList("SELECT id FROM ledger_categories WHERE kind=? AND name=?",Long.class,categoryKind,cat);
+            jdbc.update("INSERT INTO ledger_categories(kind,name,color,sort_order) VALUES (?,?,?,0) ON DUPLICATE KEY UPDATE id=id",categoryKind,storedCategory,"#7895cb");
+            categories=jdbc.queryForList("SELECT id FROM ledger_categories WHERE kind=? AND name=?",Long.class,categoryKind,storedCategory);
         }
         long category=categories.get(0);
         String dateColumn=in?"income_date":"expense_date";
@@ -103,13 +114,17 @@ public class LedgerController {
             String preview=linked.body().substring(0,Math.min(100,linked.body().length()));
             jdbc.update("UPDATE "+table+" SET memo=? WHERE id=? AND user_id=?",preview,id,user(jwt));
         } else if(!Objects.equals(beforeMemo,memo.strip())) memos.save(user(jwt),kind,id.toString(),label,memo.strip());
+        if (ledgerSalary) {
+            salary.registerLedgerSalary(user(jwt),amount,date,now);
+            salary.linkLedgerSalary(user(jwt),date,id);
+        }
     }
     @DeleteMapping("/{kind}/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Transactional
     public void delete(@AuthenticationPrincipal Jwt jwt,@PathVariable String kind,@PathVariable String id) {
         boolean in=income(kind); long key=BillInput.id(id); lock(jwt);
-        if(in && salary.managed(user(jwt),key)) throw new ApiException(409,"자동 등록 월급은 계정·설정의 수입 정보에서 관리해 주세요.");
+        if(in) salary.clearForLedgerDeletion(user(jwt),key);
         if(jdbc.update("DELETE FROM "+(in?"incomes":"expenses")+" WHERE id=? AND user_id=?",key,user(jwt))==0) throw new ApiException(404,"기록을 찾을 수 없어요.");
     }
     private ApiException bad(String message) { return new ApiException(400,message); }

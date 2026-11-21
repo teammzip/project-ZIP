@@ -416,7 +416,7 @@ CREATE TABLE IF NOT EXISTS `notifications` (
 CREATE TABLE IF NOT EXISTS `ledger_categories` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '분류 아이디 — 자동 증가',
   `kind` ENUM('INCOME','EXPENSE') NOT NULL COMMENT '분류 구분 — 수입 / 기타 지출',
-  `name` VARCHAR(24) NOT NULL COMMENT '분류 이름 — 회원별 표시 목록은 설정 JSON에서 관리',
+  `name` VARCHAR(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '분류 이름 — 회원별 표시 목록은 설정 JSON에서 관리',
   `color` VARCHAR(32) NOT NULL COMMENT '기본 표시 색 — 회원별 색은 설정 JSON 우선',
   `sort_order` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '정렬 순서',
   PRIMARY KEY (`id`),
@@ -455,7 +455,7 @@ CREATE TABLE IF NOT EXISTS `salary_settings` (
 CREATE TABLE IF NOT EXISTS `salary_records` (
   `user_id` BIGINT UNSIGNED NOT NULL,
   `period_ym` CHAR(7) NOT NULL,
-  `income_id` BIGINT UNSIGNED NOT NULL,
+  `income_id` BIGINT UNSIGNED NULL,
   PRIMARY KEY (`user_id`, `period_ym`),
   UNIQUE KEY `uk_salary_records_income` (`income_id`),
   CONSTRAINT `fk_salary_records_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,

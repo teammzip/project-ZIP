@@ -67,7 +67,7 @@ function FixedSummary({ month, months, onMonthChange }: { month: string; months:
   const paid = (rentPaid ? rent : 0) + sumAmount(bills.filter((b) => billPaidInMonth(b, month))) + interest.recordedAmount
   const groups = [
     ...(isMonthly ? [{ name: survey?.mgmtIncluded ? '월세 · 관리비 포함' : '월세', amount: rent, color: '#6485df' }] : []),
-    ...billCategories.map(({ name }, index) => ({ name, amount: sumAmount(bills.filter((bill) => bill.tag === name)), color: ['#ef9b66', '#68b6a0', '#a28ad6', '#e4bd61', '#91a2b5'][index % 5] })),
+    ...[...new Set([...billCategories.map(({ name }) => name), ...bills.map((bill) => bill.tag)])].map((name, index) => ({ name, amount: sumAmount(bills.filter((bill) => bill.tag === name)), color: ['#ef9b66', '#68b6a0', '#a28ad6', '#e4bd61', '#91a2b5'][index % 5] })),
     { name: '대출 이자', amount: interest.expectedAmount, color: '#d884aa' },
   ].filter((group) => group.amount > 0).sort((a, b) => b.amount - a.amount)
   const stops = groups.map((group, index) => {
@@ -132,6 +132,7 @@ function PayChecklist({ monthKey }: { monthKey: string }) {
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
   const [tag, setTag] = useState<string>(BILL_TAGS[0])
+  const selectedTag = tag === bills.find((bill) => bill.id === editingBill)?.tag || billCategories.some((item) => item.name === tag) ? tag : billCategories[0]?.name ?? ''
 
   const rent = isMonthly ? (Number(settings.rent) || 0) * 10000 : 0
   const rentDone = isMonthly && !!rentPaid[monthKey]
@@ -142,12 +143,12 @@ function PayChecklist({ monthKey }: { monthKey: string }) {
   const doneCount = (rentDone ? 1 : 0) + bills.filter(isPaid).length + interest.recordedCount
   const pct = total ? Math.round((paid / total) * 100) : 0
   // 태그별 합계 (월세는 따로 보여 주므로 제외)
-  const tagSums = billCategories.map(({ name: t }) => ({ tag: t, sum: sumAmount(bills.filter((b) => b.tag === t)), n: bills.filter((b) => b.tag === t).length })).filter((x) => x.n)
+  const tagSums = [...new Set([...billCategories.map(({ name }) => name), ...bills.map((bill) => bill.tag)])].map((t) => ({ tag: t, sum: sumAmount(bills.filter((b) => b.tag === t)), n: bills.filter((b) => b.tag === t).length })).filter((x) => x.n)
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || (isMonthly && survey?.mgmtIncluded && tag === '관리비')) return
-    const values = { name: name.trim(), amount: Math.max(0, Number(amount) || 0), tag }
+    if (!name.trim() || !selectedTag || (isMonthly && survey?.mgmtIncluded && selectedTag === '관리비')) return
+    const values = { name: name.trim(), amount: Math.max(0, Number(amount) || 0), tag: selectedTag }
     if (editingBill !== null) {
       updateBill(editingBill, values)
       if (survey && values.name === '관리비' && values.tag === '관리비') saveSurvey({ ...survey, mgmtFee: values.amount })
@@ -226,7 +227,7 @@ function PayChecklist({ monthKey }: { monthKey: string }) {
       })}
       {count === 0 && <p className={common.empty}>등록된 항목이 없어요.</p>}
 
-      {addingCategory && <LedgerCategoryDialog scope="bill" onClose={() => setAddingCategory(false)} onAdded={setTag} />}
+      {addingCategory && <LedgerCategoryDialog scope="bill" onClose={() => setAddingCategory(false)} onAdded={setTag} onRenamed={(oldName, newName) => { if (selectedTag === oldName) setTag(newName) }} />}
       <Modal open={adding && !addingCategory} onClose={closeEditor} title={editingBill !== null ? '고정 지출 수정' : '고정 지출 추가'}>
         <form className={cx(common.form, styles.addForm)} onSubmit={submit}>
           <h3>{editingBill !== null ? '고정 지출 수정' : '고정 지출 추가'}</h3>
@@ -240,14 +241,14 @@ function PayChecklist({ monthKey }: { monthKey: string }) {
           </label>
           <div className={styles.tagPick} role="group" aria-label="태그">
             {billCategories.map((cat) => cat.name).filter((t) => !(t === '관리비' && isMonthly && survey?.mgmtIncluded)).map((t) => (
-              <button key={t} {...categoryDrag(t)} type="button" className={cx(styles.tagOpt, styles.draggableCategory, tag === t && styles.tagOptOn)} aria-pressed={tag === t} onClick={() => setTag(t)}>
+              <button key={t} {...categoryDrag(t)} type="button" className={cx(styles.tagOpt, styles.draggableCategory, selectedTag === t && styles.tagOptOn)} aria-pressed={selectedTag === t} onClick={() => setTag(t)}>
                 {t}
               </button>
             ))}
           </div>
           <div className={common.actions}>
-            <Button variant="line" onClick={() => setAddingCategory(true)}>＋ 카테고리 추가</Button>
-            <Button type="submit">{editingBill !== null ? '저장' : '추가'}</Button>
+            <Button variant="line" onClick={() => setAddingCategory(true)}>카테고리 관리</Button>
+            <Button type="submit" disabled={!selectedTag}>{editingBill !== null ? '저장' : '추가'}</Button>
             <Button variant="line" onClick={closeEditor}>
               취소
             </Button>
