@@ -1,55 +1,46 @@
 # ZIP backend
 
-고정 지출 지역별 월 조회 GET `/api/bills/monthly`를 추가했습니다. 요청 month와 timeZone으로 현재 월/과거 월 범위를 계산하며 실제 모드의 고정 지출 조회 화면에 연결했습니다. 등록·납부 변경의 서버 화면 연결은 후속 단계입니다. 상세 검증은 루트 MONTHLY_BILLS_VERIFICATION.md를 참고하세요.
+Java 17 · Spring Boot 4 · JdbcTemplate · MySQL · Spring Security + JWT(DB 세션) 서버예요. 상위 project-ZIP 저장소에서 같이 관리해요.
 
-내 집 정보 GET/PUT `/api/me/home-info`가 구현되어 있습니다. 계약·설정·관리비·대출을 함께 저장하고 프론트 내 집 정보 폼에 연결했습니다. 기존 DB는 `db/migrations/20261115_home_contracts.sql`을 적용한 뒤 재시작하세요. 검증과 후속 범위는 프로젝트 루트 `HOME_INFO_VERIFICATION.md`를 참고하세요.
+- 어떤 API 가 있는지: [frontend/API.md](../frontend/API.md) (프론트와의 약속 · 기능별 상태)
+- 기능별 서버 규칙 · Postman 확인 방법: [IMPLEMENTATION.md](IMPLEMENTATION.md)
+- DB 표 · 기존 DB 바꾸기: [db/README.md](../db/README.md) · [db/migrations/README.md](../db/migrations/README.md)
 
-Spring Boot + Spring Web MVC + JPA + MySQL 프로젝트입니다. 상위 project-ZIP Git 저장소에서 함께 관리합니다.
+## 처음 설정
 
-로그인·JWT/DB 세션·내 정보 조회·닉네임/프로필 꾸미기·프로필 사진 업로드·비밀번호 변경·로그아웃·약관 조회가 구현돼 있습니다. 문자 인증 및 회원가입은 아직 연결 대기 상태입니다. 실행 설정, 테스트 계정 준비, 사진 저장 폴더와 지원 API는 [인증 기반 API 연결](IMPLEMENTATION.md)을 참고하세요. DB 설정 외에 `JWT_SECRET`도 필요합니다.
+1. MySQL 을 켜고 DB 를 준비해요. 새 DB 는 `db/schema.sql`(이 파일은 `zip` DB 를 만들어 선택해요), 이미 쓰던 DB 는 [마이그레이션 안내](../db/migrations/README.md)대로 새 파일만 적용해요.
+2. 이 폴더의 `application-local.properties.example` 을 `application-local.properties` 로 복사하고 값을 채워요. 이 파일은 Git 에 올라가지 않아요(`.example` 에는 실제 값을 넣지 마세요).
 
-생활 설정 GET/PUT `/api/me/settings`도 구현돼 있습니다. [Postman 컬렉션](postman/life-settings.postman_collection.json)을 Import해 검증할 수 있습니다. 프론트 생활 설정의 서버 연결은 다음 단계입니다.
+   | 키 | 필요할 때 |
+   |---|---|
+   | `DB_URL` · `DB_USERNAME` · `DB_PASSWORD` | 항상. MySQL 포트 · DB 이름은 각자 환경대로 (`jdbc:mysql://localhost:3306/zip?...`) |
+   | `JWT_SECRET` | 항상. Base64, 32바이트 이상 |
+   | `MAIL_HOST` · `MAIL_PORT` · `MAIL_USERNAME` · `MAIL_PASSWORD` | 이메일 인증(가입 · 계정 찾기). 개발 중 실제로 안 보내려면 `MAIL_LOG_ONLY=true` |
+   | `KAKAO_REST_KEY` | 지도 장소 검색 · 동네 인증 |
+   | `GEMINI_API_KEY` | AI 대화 · 고지서 사진 인식 |
+   | `GOOGLE_*` · `NAVER_*` · `KAKAO_LOGIN_*` | 소셜 로그인 (키가 있는 공급자만 켜짐, 루트 [README](../README.md#백엔드-실행-선택) 참고) |
 
-고정 지출 조회·추가·수정·월별 납부·해지도 구현돼 있습니다. [고정 지출 Postman 컬렉션](postman/fixed-bills.postman_collection.json)과 [월별 금액 정책](IMPLEMENTATION.md#고정-지출-api-확인)을 참고하세요. 프론트 고정 지출 화면과 설문·대출은 별도 연결 대상입니다.
+   IntelliJ 실행 구성의 환경변수로 넣어도 되고, 환경변수가 이 파일보다 우선해요. `.env` 파일은 읽지 않아요.
+3. IntelliJ 에서 JDK 17 을 고르고 Gradle 을 새로고침해요.
 
-## 로컬 DB 연결
+DB 구조는 `db/` 의 SQL 로만 관리해요(Hibernate 자동 생성 · Spring SQL 자동 실행은 꺼져 있음). DB 에 접속하지 못하면 서버가 켜지지 않아요.
 
-1. MySQL을 실행하고 사용할 DB 이름을 확인합니다. 예시 주소는 `zip_test`입니다. 이미 준비된 테스트 DB를 사용할 수 있습니다. 새 DB 준비 및 기존 DB 변경은 [DB 안내](../db/README.md)를 따릅니다. `db/schema.sql`은 `zip` DB를 생성·선택하므로 테스트 DB에 그대로 실행하지 않습니다.
-2. 이 폴더의 `application-local.properties.example`을 `application-local.properties`로 복사합니다.
-3. 복사한 파일에 `DB_USERNAME`, `DB_PASSWORD`를 입력합니다. 접속 주소가 다르면 `DB_URL`도 수정합니다. 실제 설정 파일은 Git에서 제외됩니다.
-4. IntelliJ에서 `BackendApplication`을 실행합니다. 실행 작업 디렉터리는 `backend` 또는 프로젝트 최상위 폴더로 지정합니다. 기본 서버 포트는 8080입니다.
+## 실행
 
-설정 파일 대신 IntelliJ 실행 구성의 환경변수에 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`를 지정해도 됩니다. 환경변수가 로컬 파일보다 우선합니다. `.env` 파일은 자동으로 읽지 않습니다.
+IntelliJ 에서 `BackendApplication` 을 실행해요(작업 폴더는 `backend` 또는 저장소 최상위). 기본 포트는 8080 이고, 프론트 개발 서버(3000)가 `/api` 요청을 여기로 넘겨요.
 
-실제 계정·비밀번호는 `application-local.properties`에만 입력하고, Git으로 공유하는 `.example` 파일의 계정·비밀번호는 비워 둡니다.
-
-프로젝트 Java Toolchain은 17입니다. IntelliJ에서 JDK 17을 사용할 수 있도록 설정한 뒤 Gradle을 새로고침하세요.
-
-Hibernate의 테이블 자동 생성·변경과 Spring SQL 자동 실행은 꺼져 있습니다. DB 구조는 `db/`의 SQL로 관리합니다. DB 접속 정보가 없거나 MySQL이 실행되지 않으면 서버 기동이 실패할 수 있습니다.
-
-## 터미널 실행 (PowerShell)
-
-`backend` 폴더에서 실행합니다.
+터미널에서는 `backend` 폴더에서:
 
 ```powershell
-# 최초 설정 시에만 복사합니다. 기존 접속 설정 파일은 덮어쓰지 마세요.
-if (-not (Test-Path application-local.properties)) {
-    Copy-Item application-local.properties.example application-local.properties
-}
-# 복사한 파일에 실제 접속 정보를 입력한 뒤 실행
 .\gradlew.bat bootRun
 ```
-# 월별 고정 지출 등록·수정 / 고지서 사진 (2026-11-18)
 
-최신 수정: 사진 API는 POST `/api/ai/conversations/{id}/bill-photo`로 이동했습니다. AI 대화 답변과 가계부 등록을 함께 저장합니다. 가계부 화면에는 수동 기록·수정만 표시합니다. 메모 저장용 `20261118_02_bill_monthly_memo.sql`도 적용해야 합니다(현재 로컬 DB 적용 완료). 아래 초기 사진 API 경로는 사용하지 않습니다.
+## 테스트
 
-기존 DB에 `db/migrations/20261118_01_bill_monthly_registration.sql`을 한 번 적용한 후 서버를 재시작합니다. `bill_payments.due_date`와 `bill_photo_imports`가 필요합니다.
-직접 등록/수정은 POST `/api/bills/monthly`, PATCH `/api/bills/monthly/{id}`이며 공통으로 month/timeZone을 받습니다. 수정은 존재하는 월 기록만 허용합니다.
-사진 자동 등록은 POST `/api/bills/monthly/photo` multipart photo(JPG/PNG 2MB)입니다. 기존 서버 `GEMINI_API_KEY`/`GEMINI_MODEL` 설정을 사용합니다. 금액·납부 기한이 불명확하면 저장하지 않으며 동일 사진 중복 등록을 차단합니다.
-테스트 → 실제 MySQL → 프론트 수동 확인과 Git 가이드는 루트 `MONTHLY_BILLS_WRITE_VERIFICATION.md`를 참고하세요.
-실제 MySQL 재검증: `./gradlew.bat -I verify-monthly-mysql.init.gradle verifyMonthlyMysql` (backend에서 실행; 임시 데이터 롤백).
+```powershell
+$env:JAVA_TOOL_OPTIONS='-Dfile.encoding=UTF-8'   # Windows 한글 깨짐 방지
+.\gradlew.bat test                               # H2(MySQL 호환 모드) — 실제 DB 를 건드리지 않음
+.\gradlew.bat -I verify-monthly-mysql.init.gradle verifyMonthlyMysql   # 고정 지출을 실제 MySQL 로 재검증 (임시 데이터는 롤백)
+```
 
-## 계약별 고정 지출 조회 연결
-GET /api/bills/monthly는 DB 계약 형태별 월세·전세 이자를 housingItems로 반환합니다. 목록·차트·합계 연결과 직접 실행할 테스트→DB→프론트 가이드는 루트 CONTRACT_FIXED_EXPENSE_VERIFICATION.md를 참고하세요. 이번 변경의 테스트/실제 DB 검증은 미실행입니다.
-
-계약별 자동 등록: 20261118_05_contract_auto_register.sql 적용 필요. 서버는 저장된 시간대별 월을 1분 간격으로 확인합니다. 최초 가계부 진입 시 자동 등록 POST로 시간대를 확정합니다. 검증 가이드는 CONTRACT_AUTO_REGISTER_VERIFICATION.md 참고. 테스트와 실제 DB 적용은 미실행입니다.
+Postman 컬렉션: [생활 설정](postman/life-settings.postman_collection.json) · [고정 지출](postman/fixed-bills.postman_collection.json)

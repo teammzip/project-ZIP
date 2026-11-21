@@ -1,42 +1,33 @@
 
 # 백엔드 API 약속
 
-프론트(React)와 백엔드가 주고받을 API를 정리한 문서예요. **DB는 [`../db/schema.sql`](../db/schema.sql)(2026-11-07 변경 반영)이 기준**이고, 표마다 어느 API가 쓰는지 같이 적었어요.
+프론트(React)와 백엔드가 주고받는 API를 정리한 문서예요. **DB는 [`../db/schema.sql`](../db/schema.sql)이 기준**이고, 표마다 어느 DB 표를 쓰는지 같이 적었어요.
 
-- ✅ **프론트 코드 있음**: `src/features/auth/api/realAuthApi.ts`가 이미 이 주소로 요청해요. 요청 경로·기본 DTO가 구현돼 있어요. 실제 연결에는 `VITE_USE_MOCK=false`, 서버 설정과 통합 검증이 필요해요.
-- 📝 **약속만 있음**: 화면은 다 만들어져 있고 지금은 브라우저(localStorage)에 저장해요. 백엔드가 만들면 프론트가 이 모양대로 붙일게요.
-- 📝 영역의 주소·DTO는 **서버 연동을 위한 제안 계약**이에요. 실제 호출 코드가 있다는 뜻은 아니에요. 현재 브라우저 모델과 API DTO가 다른 부분은 연동 어댑터가 필요해요.
-- 현재 코드와 서버 연동 시 확장할 필드를 구분해 적었어요. 최신 저장 규칙은 [DB 최근 요구사항](../db/LATEST_REQUIREMENTS.md), [생활 카테고리](../db/LIFE_CATEGORIES.md), [착수 전 점검](../db/PRE_BACKEND_REVIEW.md)을 함께 보세요.
+- ✅ **서버 · 화면 연결됨**: 백엔드 API가 있고, 서버 모드(`VITE_USE_MOCK=false`)에서 화면이 이 API를 써요.
+- 🔶 **서버만 있음**: 백엔드 API는 있는데 화면은 아직 프론트에 적힌 내용을 써요.
+- 각 장의 처음 표 중 일부는 **처음에 세운 제안**이에요. 실제 구현이 제안과 달라진 곳은 장마다 "현재 서버" 안내를 붙였어요. 정확한 주소는 백엔드 `*Controller.java` 가 기준이에요.
 
-> 마지막 대조: 2026-11-07 — 인증 실제 요청 코드, 각 기능의 types/store, 최신 DB 스키마 기준. 백엔드 구현 완료를 뜻하지 않아요.
+> 마지막 대조: 2026-11-21 — 최신 dev 의 백엔드 Controller 전체 · 프론트 호출 코드와 맞춰 봤어요.
 
 | 영역 | 상태 | DB 표 |
 |---|---|---|
-| [인증 · 내 정보](#1-인증--내-정보-) | ✅ | `users` `social_accounts` `auth_sessions` `email_verifications` `password_resets` `user_term_agreements` `withdrawal_logs` |
-| [설정 · 동네·설문](#2-설정--동네-) | 📝 | `user_settings` `housing_surveys` `regions` `region_neighbors` · `users.region_verified_at` |
-| [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | ✅ | `events`(기념일·매년 반복 포함) `event_categories` `event_presets` `trash_schedules` |
-| [월세 · 고정 지출·대출](#4-월세--고정-지출-) | 📝 | `rent_payments` `bill_items` `bill_payments` `housing_loans` `loan_interest_charges` |
-| [가계부](#5-가계부-수입--기타-지출-) | 📝 | `ledger_categories` `incomes` `expenses` + VIEW 2개 |
+| [인증 · 내 정보](#1-인증--내-정보-) | ✅ | `users` `social_accounts` `auth_sessions` `email_verifications` `password_resets` `user_term_agreements` `withdrawal_logs` `user_profiles` `user_personal_info` |
+| [설정 · 동네 · 설문 · 내 집 정보](#2-설정--동네-) | ✅ | `user_settings` `home_contracts` `housing_surveys` `regions` `region_neighbors` · `users.region_verified_at` (동네 목록 API 는 아직 없음) |
+| [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | ✅ | `events`(기념일·매년 반복 포함) `event_categories` `event_presets` `trash_schedules` (쓰레기 배출 화면은 아직 프론트 고정표 🔶) |
+| [월세 · 고정 지출 · 대출](#4-월세--고정-지출-) | ✅ | `bill_items` `bill_payments` `bill_document_keys` `bill_photo_imports` `bill_photo_drafts` `rent_payments` `housing_loans` `loan_interest_charges` |
+| [가계부 · 월급](#5-가계부-수입--기타-지출-) | ✅ | `ledger_categories` `incomes` `expenses` `salary_settings` `salary_records` + VIEW 2개 |
 | [알림](#6-알림-) | ✅ | `notifications` (읽음 · 삭제) |
-| [커뮤니티 · 첨부 · 신고](#7-커뮤니티--첨부--신고-) | 📝 | `posts` `post_likes` `comments` `uploaded_files` `post_attachments` `reports` |
-| [AI](#8-ai-) | 📝 | `ai_topics`(`guide` 포함) `ai_conversations` `ai_messages` `ai_usage_daily` |
-| [지도](#9-지도-) | 📝 | `places` `place_categories` `place_reviews` · `place_favorites` · `users.home_lat/home_lon` |
-| [약관](#10-약관-) | 📝 | `terms_documents` |
-| [관리자 · 이용 정지 · 경고](#11-관리자--이용-정지-) | 📝 | `user_sanctions`(`seen_at` 포함) `users.status` `reports` |
+| [커뮤니티 · 첨부 · 신고](#7-커뮤니티--첨부--신고-) | ✅ | `posts` `post_likes` `comments` `uploaded_files` `post_attachments` `reports` |
+| [AI](#8-ai-) | ✅ | `ai_topics`(`guide` 포함) `ai_conversations` `ai_messages` `ai_usage_daily` (분야 목록 API 는 없고 프론트 고정) |
+| [지도](#9-지도-) | ✅ | `places` `place_categories` `place_reviews` `place_favorites` `kakao_place_favorites` `place_lists` `place_list_items` · `users.home_lat/home_lon` (리뷰 화면은 없음) |
+| [약관](#10-약관-) | 🔶 | `terms_documents` |
+| [관리자 · 이용 정지 · 경고](#11-관리자--이용-정지-) | ✅ | `user_sanctions`(`seen_at` 포함) `users.status` `reports` |
 | [메모](#12-메모-) | ✅ | `memos` |
 | [고객센터](#13-고객센터-) | ✅ | `support_inquiries` |
 
 ---
 
-## 내 집 정보 서버 연결 (2026-11-15)
-
-GET/PUT `/api/me/home-info`는 첫 주거 설문과 내 집 정보 폼에서 사용한다. 계약 유형·보증금·월세·관리비·전세 계약금·입주/종료월·주소·대출 조건을 저장한다. 모든 입력 금액은 원이며 응답 settings.rent는 기존 설정과 동일한 만원 단위다. 설문의 생년월일과 수입은 각각 `/api/me/profile-info`와 `/api/me/salary`에 저장한다.
-
-PUT `/api/me/home-info/loan`은 전세 대출 카드에서 사용한다. 본문은 `{"loan":{"principal":120000000,"annualRate":4,"paymentDay":25,"startDate":"2026-11-01"}}` 형식이며 `{"loan":null}`은 자동 기록을 중지한다. 응답 형식은 GET `/api/me/home-info`와 같다. 회원 ID는 토큰에서 결정한다.
-
 ## 0. 공통 규칙
-
-고정 지출 월별 조회: GET `/api/bills/monthly?month=YYYY-MM&timeZone=Asia%2FSeoul`. DB의 등록 집 주소(없으면 본인 설문·가입 주소) → 실제 현재 위치 → 기기 설정 순으로 결정한 시간대를 보내며 서버 시각으로 조회 범위를 제한한다. 현재 월은 미납·예정도 포함하고 과거 월은 저장된 기록만 반환한다. 상세 검증은 루트 MONTHLY_BILLS_VERIFICATION.md 참고.
 
 | 항목 | 약속 |
 |---|---|
@@ -165,9 +156,19 @@ PUT `/api/me/home-info/loan`은 전세 대출 카드에서 사용한다. 본문�
 
 ---
 
-## 2. 설정 · 동네 📝
+## 2. 설정 · 동네 ✅
 
-백엔드 GET/PUT `/api/me/settings`는 구현돼 있어요. 프론트 화면은 아직 브라우저 저장이므로 별도 연결해야 해요. PUT은 rent/rentDay/moveIn/contractEnd/notiOn이 필수이고 선택 주소·동네 필드는 생략하면 유지해요. 월세는 만원 단위 소수점 4자리까지 지원해요. Postman 검증은 [설정 API 안내](../backend/IMPLEMENTATION.md#생활-설정-api-확인)를 보세요.
+> **현재 서버**: `/api/me/settings` · `/api/me/region-verify` · `/api/me/home-info`(+`/loan`) · `/api/me/housing-onboarding` · `/api/me/profile-info` 가 있고 화면이 써요. 아래 "우리 집 설문 — API 추가 제안"의 `/api/me/housing-survey` 는 만들지 않고 `housing-onboarding` · `home-info` 로 바뀌었어요. `GET /api/regions` · `/api/regions/{id}/neighbors` 는 아직 없어요(화면도 쓰지 않음).
+
+### 내 집 정보 서버 연결 (2026-11-15)
+
+GET/PUT `/api/me/home-info`는 첫 주거 설문과 내 집 정보 폼에서 사용한다. 계약 유형·보증금·월세·관리비·전세 계약금·입주/종료월·주소·대출 조건을 저장한다. 모든 입력 금액은 원이며 응답 settings.rent는 기존 설정과 동일한 만원 단위다. 설문의 생년월일과 수입은 각각 `/api/me/profile-info`와 `/api/me/salary`에 저장한다.
+
+PUT `/api/me/home-info/loan`은 전세 대출 카드에서 사용한다. 본문은 `{"loan":{"principal":120000000,"annualRate":4,"paymentDay":25,"startDate":"2026-11-01"}}` 형식이며 `{"loan":null}`은 자동 기록을 중지한다. 응답 형식은 GET `/api/me/home-info`와 같다. 회원 ID는 토큰에서 결정한다.
+
+### 설정
+
+백엔드 GET/PUT `/api/me/settings`는 구현돼 있어요. PUT은 rent/rentDay/moveIn/contractEnd/notiOn이 필수이고 선택 주소·동네 필드는 생략하면 유지해요. 월세는 만원 단위 소수점 4자리까지 지원해요. Postman 검증은 [설정 API 안내](../backend/IMPLEMENTATION.md#생활-설정-api-확인)를 보세요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
@@ -286,9 +287,11 @@ PUT `/api/me/home-info/loan`은 전세 대출 카드에서 사용한다. 본문�
 
 ---
 
-## 4. 월세 · 고정 지출 📝
+## 4. 월세 · 고정 지출 ✅
 
 가계부 → 지출 → **고정 지출** 화면: 월세 + 공과금 · 통신 · 구독 · 관리비 같은 매달 나가는 돈. 항목마다 **태그**를 붙여 태그별 합계를 보여 주고, **이번 달 납부 체크리스트**로 달마다 체크해요.
+
+> **현재 서버**: 화면은 아래 [4-1. 월별 고정 지출](#4-1-월별-고정-지출-현재-화면이-쓰는-api)의 `/api/bills/monthly` 묶음을 써요. 바로 아래 첫 표의 `/api/rent-payments` 는 만들지 않았고(월세는 `monthly` 응답의 `housingItems`), "전세 대출 — API 추가 제안"의 `/api/me/housing-loan` 은 `PUT /api/me/home-info/loan`(2장)으로 바뀌었어요. `/api/bills` · `/api/bills/{id}` 는 서버에 남아 있는 이전 방식이에요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
@@ -334,9 +337,64 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 - 서버 작업과 동시 요청에서도 loan_id/period_ym UNIQUE로 월별 한 번만 기록해요. 이미 있는 행을 새 조건으로 덮어쓰지 않아요. DB period_ym은 생성된 YYYYMM 정수이며 API의 YYYY-MM과 변환해요.
 - 공과금/기타 지출에 복사하지 않아요. 기록된 이자는 홈·AI 지출에 한 번만 포함하고 고정 지출 화면의 예정 이자와 구분해요.
 
+### 4-1. 월별 고정 지출 (현재 화면이 쓰는 API)
+
+팀원들이 기능을 넣을 때마다 적은 설명을 날짜 순서대로 모았어요. 뒤에 적힌 규칙이 앞의 것을 바꾼 경우가 있으니 아래쪽이 최신이에요.
+
+#### 월별 조회 · 시간대
+
+고정 지출 월별 조회: GET `/api/bills/monthly?month=YYYY-MM&timeZone=Asia%2FSeoul`. DB의 등록 집 주소(없으면 본인 설문·가입 주소) → 실제 현재 위치 → 기기 설정 순으로 결정한 시간대를 보내며 서버 시각으로 조회 범위를 제한한다. 현재 월은 미납·예정도 포함하고 과거 월은 저장된 기록만 반환한다.
+
+#### 월별 고정 지출 쓰기 API (2026-11-18)
+
+등록 API의 name은 선택이며 생략하면 분류명으로 저장합니다. 신규 납부 기한은 요청 timeZone의 오늘 이전이면 400입니다. 같은 월·분류·금액만으로 중복을 차단하지 않습니다. AI가 명확히 읽은 발행처·문서 식별번호·청구 월을 정규화한 해시가 같으면 409로 차단하며 식별 정보 원문은 DB에 저장하지 않습니다. 식별 정보가 불명확하면 재촬영 사진 간 중복 검사는 불가능하다는 안내와 함께 등록합니다. 동일 파일의 재업로드는 기존 해시로 계속 차단합니다.
+
+최신 변경: 사진 등록은 AI 대화의 POST `/api/ai/conversations/{id}/bill-photo`로 이동했습니다. multipart `photo`, `question`과 query `month`, `timeZone`을 받으며 `{bill, reply}`를 반환합니다. 소유한 대화에서만 호출 가능하고 AI 답변·청구·중복 방지 해시를 함께 저장합니다. 가계부는 사진 업로드를 제공하지 않습니다. 월별 등록/수정에 선택 `memo`(200자 이내)를 추가했고 조회 응답에도 반환합니다. 아래 초기 `/api/bills/monthly/photo` 설명은 더 이상 사용하지 않습니다.
+
+- `POST /api/bills/monthly?month=YYYY-MM&timeZone=IANA`: `{name,tag,amount,dueDate}`. 로그인 회원의 선택 월 청구를 등록한다. 같은 이름·분류의 활성 항목은 재사용하고 이미 등록된 월은 409.
+- `PATCH /api/bills/monthly/{id}?month=YYYY-MM&timeZone=IANA`: `{amount,dueDate}`. 선택 월에 청구 기록이 존재해야 수정 가능하다. 미등록/타인 항목 404. 기본 금액·다른 월·납부 상태는 보존한다.
+- ~~`POST /api/bills/monthly/photo?month=YYYY-MM&timeZone=IANA`~~ (더 이상 없음 — 아래 "고지서 인식 후 확인 등록"으로 바뀜): multipart `photo` (JPG/PNG, 2MB). Gemini가 금액·납부 기한을 추출하고 검증 후 자동 등록한다. 사진은 보관하지 않고 중복 방지 해시를 DB에 저장한다. 실패 시 등록하지 않는다.
+- 응답은 기존 ServerBill에 `dueDate: YYYY-MM-DD | null` 추가. 월별 조회 응답의 `snapshot=true`는 등록된 월 기록, false는 미등록 예정액이다.
+- 미래 월/잘못된 입력 400, 미로그인 401, 중복 409, 불명확한 사진 422, AI 일일 제한 429, 제공자 실패 502, AI 설정 없음 503.
+- AI 사진은 사용자의 버튼 클릭 시 Google Gemini로 전송되며 기존 AI 대화와 일일 사용량을 공유한다. 등록 후 화면에서 수정 가능하다.
+- 실제 모드 월별 고정 지출 화면에 연결. 일반 AI 채팅·기타 지출은 이 기능 범위 밖이다.
+- DELETE /api/bills/monthly/{id}?month=YYYY-MM&timeZone=IANA: 등록된 선택 월 기록 삭제(204). 삭제 재요청 204, 미등록/타인 404. 다른 월 및 고지서 중복 인식 정보 보존.
+
+#### 계약별 고정 지출 서버 조회 (2026-11-18)
+
+GET /api/bills/monthly는 contractKind(monthly/jeonse/null), managementIncluded, housingItems(월세/대출 이자)를 함께 반환한다. 기존 items는 공통 고지서다. 화면은 두 목록을 합산한다. 실제 이자 납부 여부는 현재 스키마로 확인할 수 없어 paid=false이며 계산 기록임을 표시한다.
+
+#### 계약 고정 지출 자동 등록
+
+POST /api/bills/monthly/auto-register?timeZone=IANA: 현재 월 월세·별도 관리비·전세 이자 DB 등록(204). 확정 시간대를 저장하며 중복 호출 시 기존 기록을 보존한다. 가계부는 자동 등록 후 GET 조회한다. 계약 관리비는 homeManaged=true이며 일반 수정/삭제·금액 변경은 409.
+
+#### 고지서 인식 후 확인 등록 (기존 즉시 등록 흐름 대체)
+
+공과금·생활비(bill) 대화에서만 POST /ai/conversations/{id}/bill-photo를 사용합니다. 분석 응답은 draftId, preview, reply이며 가계부에는 아직 저장하지 않습니다. POST /ai/conversations/{id}/bill-photo/{draftId}/decision에 {"register":true}로 동의하면 서버 임시 결과를 가계부에 등록합니다. false는 취소입니다. 처리된 결과 409, 만료(30분) 410, 다른 분야 403입니다. DB 06 마이그레이션이 필요합니다. QR 링크는 접속하지 않으며 명확한 금액·납부 기한이 없으면 등록하지 않습니다.
+
+#### 계약 기간 및 수정일부터 미납·예정 변경 반영
+
+월별 가계부 신규 등록·수정은 등록된 계약의 시작~종료 월 범위를 서버에서 검사합니다. 납부 기한도 계약 월 범위 안이어야 합니다. 계약이 미등록이면 기존 독립 고지서 등록은 유지합니다. 내 집 정보 자체(미래 계약 설정 포함)는 저장할 수 있습니다. 수정 시 같은 고정 지출 ID의 오늘 이후 미납·예정 기록만 갱신하며 납부 완료·삭제·과거 기한 기록은 자동 갱신하지 않습니다. 새 납부일이 오늘 이전으로 바뀌는 대상이 있으면 400으로 전체 저장을 취소합니다. DB 07 마이그레이션이 필요합니다. 과거의 무조건 스냅샷 보존 안내는 이 규칙으로 대체합니다.
+
+#### 계약 기간 및 유형 전환 보완 (2026-11-18)
+
+관리비 계약 분리 보완: bill_items.home_contract_kind가 monthly/jeonse인 항목은 현재 계약 유형과 일치할 때만 조회·합산합니다. 계약 유형 전환 시 이전 관리비를 비활성화하고 오늘 이후 미납 예정분을 취소 표시하며 새 유형의 항목을 생성합니다. 일반 지출의 유형은 NULL입니다. 월세 저장 시 남아 있는 오늘 이후 미납 월세 금액을 동기화하며, 새 납부일이 이미 지났다면 해당 기록의 기존 기한을 유지합니다.
+
+반복 납부일은 1~31일이면 오늘 이전이어도 내 집 정보에 저장할 수 있습니다. 저장 시 payment_effective_from을 지역 기준 오늘로 기록하고 신규 월세·관리비·이자 자동 등록 및 예정 금액 조회는 해당 날짜 이상부터 반영합니다. 기존 미납 기록은 변경 전후 기한이 모두 오늘 이후일 때만 갱신하고 과거·납부 완료 기록은 유지합니다. 실제 연결 DB에는 08 마이그레이션 적용이 필요합니다.
+
+고정 지출 monthly 응답의 housingItems는 현재 contractKind에 해당하는 주거비만 반환합니다. monthly이면 월세, jeonse이면 전세 대출 이자를 반환하며 과거 조회 월에도 동일합니다. 반대 유형의 기존 기록은 조회에서 제외하고 DB에는 보존합니다. 공통 items(관리비·공과금)는 이 유형 필터로 제외하지 않습니다. 가계부 및 같은 응답을 사용하는 홈 합계에 동일하게 반영됩니다.
+
+내 집 정보 저장은 입력 계약 기간에 현재 월이 포함되지 않으면 400입니다. 고정 지출 등록·수정도 선택 월뿐 아니라 현재 월이 계약 기간 안이어야 합니다. monthly 응답 contractPeriod.currentOutside는 현재 월의 기간 이탈 여부이며 outside는 선택 월의 이탈 여부입니다. 계약 유형 저장 시 오늘 이후 미납인 반대 유형의 월세/이자 예정분을 정리합니다. 과거 및 납부 완료 기록은 보존합니다.
+
+#### 고정 지출 납부 · 해지 (2026-11-19)
+
+PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{paid: true|false}`를 보내 등록된 월별 납부 상태만 변경합니다(204). id는 숫자 항목 ID 또는 monthly 응답의 `rent:YYYY-MM`, `interest:{loanId}:YYYY-MM`입니다. 반복 납부는 paid_at을 유지하고 취소는 NULL로 복원합니다. 미등록·삭제 건은 404, 미래 월과 잘못된 body는 400입니다. 일반 지출 해지는 POST `/api/bills/monthly/{id}/termination?timeZone=...`에 `{effectiveDate: 'YYYY-MM-DD'}`를 보냅니다(204). 적용일 이후 미납·예정 건을 취소 표시하고 납부 완료와 적용일 이전 기록은 보존합니다. 현재·미래 해지일을 사용자가 입력합니다. 월세·이자·계약 관리비 조건 종료는 내 집 정보에서 관리합니다. monthly 응답의 terminationDate는 해지 적용일입니다. 기존 DB에 20261119_01_bill_termination.sql 적용 필요.
+
 ---
 
-## 5. 가계부 (수입 · 기타 지출) 📝
+## 5. 가계부 (수입 · 기타 지출) ✅
+
+> **현재 서버**: 아래 표의 `/api/incomes` · `/api/expenses` · `/api/stats/*` 는 처음 제안이고, 실제로는 `GET · POST /api/ledger/{income|spend}?month=&timeZone=`, `PUT · DELETE /api/ledger/{kind}/{id}`, `GET /api/ledger/income-summary`, `GET · PUT /api/me/salary`(월급), `POST /api/memos/ledger-draft`(가계부 메모)로 만들어졌어요. 회원별 분류는 아래 "회원별 카테고리·표시 순서"의 `/api/me/ledger-categories` 그대로예요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
@@ -400,7 +458,7 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 ---
 
-## 7. 커뮤니티 · 첨부 · 신고 📝
+## 7. 커뮤니티 · 첨부 · 신고 ✅
 
 > **2026-11-15 백엔드 구현 · 프론트 연결 (회원 기능)**: 아래 표의 API가 모두 있어요. 서버 모드(`VITE_USE_MOCK=false`)에서 동네생활 화면 · 글 상세 · 글쓰기 · 홈 꿀팁이 서버를 써요. 응답에는 표의 모양에 `reported`(내가 신고했는지) · `homeTip` 이 더 있어요. 첨부는 사진(JPEG · PNG)만, 쓰기는 동네가 있어야 해요(403 `REGION_REQUIRED`). 관리자 화면의 게시글 관리 · 신고 관리(삭제 · 운영자 댓글 · 홈 꿀팁 지정 · 신고 처리)도 서버 모드에서 `/api/admin/**` 를 써요(11장). 회원 관리 · 경고 · 정지는 아직 브라우저 기록이에요. 자세한 서버 규칙은 [backend/IMPLEMENTATION.md](../backend/IMPLEMENTATION.md#커뮤니티).
 
@@ -448,7 +506,9 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 ---
 
-## 8. AI 📝
+## 8. AI ✅
+
+> **현재 서버**: 대화 목록 · 만들기 · 메시지 · 삭제와 `POST /api/ai/conversations/{id}/exchanges`(답변 기록), 고지서 사진(`/bill-photo`, 4-1 참고)이 있어요. `GET /api/ai/topics` 는 만들지 않았고 분야 목록은 프론트 `features/ai/topics.ts` 에 있어요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
@@ -496,7 +556,7 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 ---
 
-## 9. 지도 📝
+## 9. 지도 ✅
 
 동네 화면 (네이버 지도처럼): 움직이는 지도(Leaflet + OpenStreetMap)에 장소 핀 · 🏠 우리 집, 장소 목록(가까운 순 · 24시간 · 저렴한 · 조용한), 장소 상세(저장 · 길찾기 · 큰 지도), **검색 = 장소 이름 + AI 장소 찾기**, **★ 저장(즐겨찾기)**, **종류 편집**(켜기·끄기, 직접 검색어 추가).
 - 모바일: 화면 가득 지도 + 위 검색창 · 종류 칩 + 아래 끌어올리는 목록 시트 / PC: 왼쪽 목록 칸 + 오른쪽 지도
@@ -537,7 +597,9 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 ---
 
-## 10. 약관 📝
+## 10. 약관 🔶
+
+> **현재 서버**: `GET /api/terms` 는 있지만 약관 화면은 아직 프론트 `features/legal/content.ts` 의 글을 보여 줘요. 가입 동의는 서버 버전(`termsVersion`)으로 저장해요.
 
 | 메서드 | 주소 | 받는 값 |
 |---|---|---|
@@ -548,7 +610,7 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 ---
 
-## 11. 관리자 · 이용 정지 📝
+## 11. 관리자 · 이용 정지 ✅
 
 > **2026-11-15 백엔드 구현 · 프론트 연결**: 아래 API가 모두 있어요(`stats` · `members` · `sanctions` · `bulk` · 정지 해제 · 게시글 · 신고). 서버 모드에서 관리자 화면의 회원 관리 · 신고 관리 · 게시글 관리, 회원 화면의 경고 안내 창 · 받은 경고/정지 내역 · 쓰는 중 정지(403 `SUSPENDED` → 안내 후 로그아웃)가 서버를 써요. 추가: `GET /api/me/sanctions`, `POST /api/me/warnings/seen`. 자세한 규칙은 [backend/IMPLEMENTATION.md](../backend/IMPLEMENTATION.md#회원-관리--경고--정지).
 
@@ -670,19 +732,13 @@ DB 저장 공간은 다음과 같이 반영되어 있어요. 실제 API 구현�
 
 - 본인 확인은 이메일 인증만 써요(`password_resets.method = EMAIL`). 휴대전화 인증은 없앴어요.
 - 첨부 MIME·5개/2MB, 소유권, JSON 내부 원소, 관리자 역할, 동네 인증 유효기간은 서버가 검사해요.
-- DB 구조 감사는 44테이블·358컬럼·71키·62FK·15CHECK·2VIEW 기준이에요. API 구현이나 권한 테스트 통과를 뜻하지 않아요.
-- 소셜 provider_user_id 비교 규칙, refresh 세션 정책, 예상/실제 지출 집계 기준은 [백엔드 착수 전 점검](../db/PRE_BACKEND_REVIEW.md)에 따라 구현 전에 확정하세요.
+- DB 구조 감사는 53테이블 + VIEW 2개 (세부 수치는 `db/tests/schema_expected.json`) 기준이에요. API 구현이나 권한 테스트 통과를 뜻하지 않아요.
 
-## 프론트에서 서버를 붙이는 순서 (예: 일정)
+## 브라우저 저장 (localStorage)
 
-1. `features/life/api/`에 API 함수 만들기 (`apiClient` 사용, 이 문서의 주소)
-2. `features/life/hooks/`에 `useQuery` · `useMutation` 훅 만들기
-3. 화면이 `useLifeStore` 대신 그 훅을 쓰게 바꾸기
-4. 다 옮기면 localStorage 저장(`zip-life` 등)을 지우기
+서버 모드(`VITE_USE_MOCK=false`)에서는 위 기능들이 모두 서버를 기준으로 써요. 아래 저장 키는 **목업 모드**(`VITE_USE_MOCK=true`)의 저장소이거나, 서버 모드에서 화면을 빨리 보여 주는 **캐시**예요(일정 · 메모는 `lib/listSync.ts` 로 서버와 맞춰요). 처음 서버를 붙일 때 쓴 "API 붙이는 순서" 안내는 연결이 끝나서 뺐어요.
 
-지금 브라우저에 저장하는 곳 (서버가 생기면 차례로 옮겨요)
-
-| 저장 키 | 들어 있는 것 | 파일 | 옮겨 갈 API |
+| 저장 키 | 들어 있는 것 | 파일 | 서버 모드의 기준 |
 |---|---|---|---|
 | `zip-auth` | 로그인 토큰 · 내 정보 · 로그인한 시각 | `features/auth/store/authStore.ts` | 1번 |
 | `zip-life` | 일정 · 월세 · 고정 지출 · 수입 · 지출 · 알림 읽음 · 지운 알림 · 동네 인증 · 설정 | `features/life/store.ts` | 2 ~ 6번 |
@@ -690,50 +746,11 @@ DB 저장 공간은 다음과 같이 반영되어 있어요. 실제 API 구현�
 | `zip-ai-chat` | 홈 AI 대화 (최근 40개) | `features/ai/store.ts` | 8번 |
 | `zip-map` | 지도 칩에 보일 종류 · 직접 검색어 · 즐겨찾기 | `features/map/store.ts` | 9번 |
 | `zip-memos` | 메모 | `features/memo/store.ts` | 12번 |
-| `zip-housing-survey` | 처음 로그인 설문 답변 | `features/onboarding/store.ts` | 2번 설문 API 제안, housing_surveys |
-| `zip-loan-interest` | 회원별 대출 설정·월별 이자 기록 | `features/loan/store.ts` | 4번 대출 API 제안 |
-| `zip-ledger-categories` | 회원별 사용자 카테고리·표시 순서 | `features/life/ledgerCategories.ts` | 5번 개인 분류 API 제안 |
+| `zip-housing-survey` | 처음 로그인 설문 답변 | `features/onboarding/store.ts` | 2번 `/api/me/housing-onboarding` · `home-info` |
+| `zip-loan-interest` | 회원별 대출 설정·월별 이자 기록 | `features/loan/store.ts` | 2번 `/api/me/home-info/loan` |
+| `zip-ledger-categories` | 회원별 사용자 카테고리·표시 순서 | `features/life/ledgerCategories.ts` | 5번 `/api/me/ledger-categories` |
 | `zip-reports` | 신고·처리 상태·신고 당시 내용 | `features/community/reports.ts` | 7번 신고 API |
 | `zip-support` | 고객센터 문의 · 답변 | `features/support/store.ts` | 13번 |
 | `zip-profile` | 프로필 사진 · 캐릭터 · 배경 색 · 한 줄 소개 | `features/profile/store.ts` | 1번 (프로필 꾸미기) |
 | `zip-home-noti-closed` | 홈 알림 회전창에서 오늘 닫은 알림 | `features/life/components/HomePhotoCard.tsx` | (서버 필요 없음) |
 | `zipban-records` · `zipban-warn-seen` | 정지 · 경고 기록, 확인한 경고 횟수 (데이터 초기화로 안 지워지게 `zip-`로 시작하지 않음) | `features/moderation` | 11번 |
-# 월별 고정 지출 쓰기 API (2026-11-18)
-
-등록 API의 name은 선택이며 생략하면 분류명으로 저장합니다. 신규 납부 기한은 요청 timeZone의 오늘 이전이면 400입니다. 같은 월·분류·금액만으로 중복을 차단하지 않습니다. AI가 명확히 읽은 발행처·문서 식별번호·청구 월을 정규화한 해시가 같으면 409로 차단하며 식별 정보 원문은 DB에 저장하지 않습니다. 식별 정보가 불명확하면 재촬영 사진 간 중복 검사는 불가능하다는 안내와 함께 등록합니다. 동일 파일의 재업로드는 기존 해시로 계속 차단합니다.
-
-최신 변경: 사진 등록은 AI 대화의 POST `/api/ai/conversations/{id}/bill-photo`로 이동했습니다. multipart `photo`, `question`과 query `month`, `timeZone`을 받으며 `{bill, reply}`를 반환합니다. 소유한 대화에서만 호출 가능하고 AI 답변·청구·중복 방지 해시를 함께 저장합니다. 가계부는 사진 업로드를 제공하지 않습니다. 월별 등록/수정에 선택 `memo`(200자 이내)를 추가했고 조회 응답에도 반환합니다. 아래 초기 `/api/bills/monthly/photo` 설명은 더 이상 사용하지 않습니다.
-
-- `POST /api/bills/monthly?month=YYYY-MM&timeZone=IANA`: `{name,tag,amount,dueDate}`. 로그인 회원의 선택 월 청구를 등록한다. 같은 이름·분류의 활성 항목은 재사용하고 이미 등록된 월은 409.
-- `PATCH /api/bills/monthly/{id}?month=YYYY-MM&timeZone=IANA`: `{amount,dueDate}`. 선택 월에 청구 기록이 존재해야 수정 가능하다. 미등록/타인 항목 404. 기본 금액·다른 월·납부 상태는 보존한다.
-- `POST /api/bills/monthly/photo?month=YYYY-MM&timeZone=IANA`: multipart `photo` (JPG/PNG, 2MB). Gemini가 금액·납부 기한을 추출하고 검증 후 자동 등록한다. 사진은 보관하지 않고 중복 방지 해시를 DB에 저장한다. 실패 시 등록하지 않는다.
-- 응답은 기존 ServerBill에 `dueDate: YYYY-MM-DD | null` 추가. 월별 조회 응답의 `snapshot=true`는 등록된 월 기록, false는 미등록 예정액이다.
-- 미래 월/잘못된 입력 400, 미로그인 401, 중복 409, 불명확한 사진 422, AI 일일 제한 429, 제공자 실패 502, AI 설정 없음 503.
-- AI 사진은 사용자의 버튼 클릭 시 Google Gemini로 전송되며 기존 AI 대화와 일일 사용량을 공유한다. 등록 후 화면에서 수정 가능하다.
-- 실제 모드 월별 고정 지출 화면에 연결. 일반 AI 채팅·기타 지출은 이 기능 범위 밖이다.
-
-- DELETE /api/bills/monthly/{id}?month=YYYY-MM&timeZone=IANA: 등록된 선택 월 기록 삭제(204). 삭제 재요청 204, 미등록/타인 404. 다른 월 및 고지서 중복 인식 정보 보존.
-
-## 계약별 고정 지출 서버 조회 (2026-11-18)
-GET /api/bills/monthly는 contractKind(monthly/jeonse/null), managementIncluded, housingItems(월세/대출 이자)를 함께 반환한다. 기존 items는 공통 고지서다. 화면은 두 목록을 합산한다. 실제 이자 납부 여부는 현재 스키마로 확인할 수 없어 paid=false이며 계산 기록임을 표시한다. 상세 범위와 검증: 루트 CONTRACT_FIXED_EXPENSE_VERIFICATION.md.
-
-## 계약 고정 지출 자동 등록
-POST /api/bills/monthly/auto-register?timeZone=IANA: 현재 월 월세·별도 관리비·전세 이자 DB 등록(204). 확정 시간대를 저장하며 중복 호출 시 기존 기록을 보존한다. 가계부는 자동 등록 후 GET 조회한다. 계약 관리비는 homeManaged=true이며 일반 수정/삭제·금액 변경은 409. 상세: CONTRACT_AUTO_REGISTER_VERIFICATION.md.
-
-### 고지서 인식 후 확인 등록 (기존 즉시 등록 흐름 대체)
-공과금·생활비(bill) 대화에서만 POST /ai/conversations/{id}/bill-photo를 사용합니다. 분석 응답은 draftId, preview, reply이며 가계부에는 아직 저장하지 않습니다. POST /ai/conversations/{id}/bill-photo/{draftId}/decision에 {"register":true}로 동의하면 서버 임시 결과를 가계부에 등록합니다. false는 취소입니다. 처리된 결과 409, 만료(30분) 410, 다른 분야 403입니다. DB 06 마이그레이션이 필요합니다. QR 링크는 접속하지 않으며 명확한 금액·납부 기한이 없으면 등록하지 않습니다.
-
-### 계약 기간 및 수정일부터 미납·예정 변경 반영
-월별 가계부 신규 등록·수정은 등록된 계약의 시작~종료 월 범위를 서버에서 검사합니다. 납부 기한도 계약 월 범위 안이어야 합니다. 계약이 미등록이면 기존 독립 고지서 등록은 유지합니다. 내 집 정보 자체(미래 계약 설정 포함)는 저장할 수 있습니다. 수정 시 같은 고정 지출 ID의 오늘 이후 미납·예정 기록만 갱신하며 납부 완료·삭제·과거 기한 기록은 자동 갱신하지 않습니다. 새 납부일이 오늘 이전으로 바뀌는 대상이 있으면 400으로 전체 저장을 취소합니다. DB 07 마이그레이션이 필요합니다. 과거의 무조건 스냅샷 보존 안내는 이 규칙으로 대체합니다.
-# 계약 기간 및 유형 전환 보완 (2026-11-18)
-
-관리비 계약 분리 보완: bill_items.home_contract_kind가 monthly/jeonse인 항목은 현재 계약 유형과 일치할 때만 조회·합산합니다. 계약 유형 전환 시 이전 관리비를 비활성화하고 오늘 이후 미납 예정분을 취소 표시하며 새 유형의 항목을 생성합니다. 일반 지출의 유형은 NULL입니다. 월세 저장 시 남아 있는 오늘 이후 미납 월세 금액을 동기화하며, 새 납부일이 이미 지났다면 해당 기록의 기존 기한을 유지합니다. 09 마이그레이션과 MANAGEMENT_CONTRACT_FIX_VERIFICATION.md를 참고합니다.
-
-반복 납부일은 1~31일이면 오늘 이전이어도 내 집 정보에 저장할 수 있습니다. 저장 시 payment_effective_from을 지역 기준 오늘로 기록하고 신규 월세·관리비·이자 자동 등록 및 예정 금액 조회는 해당 날짜 이상부터 반영합니다. 기존 미납 기록은 변경 전후 기한이 모두 오늘 이후일 때만 갱신하고 과거·납부 완료 기록은 유지합니다. 실제 연결 DB에는 08 마이그레이션 적용이 필요합니다.
-
-고정 지출 monthly 응답의 housingItems는 현재 contractKind에 해당하는 주거비만 반환합니다. monthly이면 월세, jeonse이면 전세 대출 이자를 반환하며 과거 조회 월에도 동일합니다. 반대 유형의 기존 기록은 조회에서 제외하고 DB에는 보존합니다. 공통 items(관리비·공과금)는 이 유형 필터로 제외하지 않습니다. 가계부 및 같은 응답을 사용하는 홈 합계에 동일하게 반영됩니다.
-
-내 집 정보 저장은 입력 계약 기간에 현재 월이 포함되지 않으면 400입니다. 고정 지출 등록·수정도 선택 월뿐 아니라 현재 월이 계약 기간 안이어야 합니다. monthly 응답 contractPeriod.currentOutside는 현재 월의 기간 이탈 여부이며 outside는 선택 월의 이탈 여부입니다. 계약 유형 저장 시 오늘 이후 미납인 반대 유형의 월세/이자 예정분을 정리합니다. 과거 및 납부 완료 기록은 보존합니다. 상세 검증은 CONTRACT_KIND_FIX_VERIFICATION.md를 따릅니다.
-# 고정 지출 납부·해지 (2026-11-19)
-
-PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{paid: true|false}`를 보내 등록된 월별 납부 상태만 변경합니다(204). id는 숫자 항목 ID 또는 monthly 응답의 `rent:YYYY-MM`, `interest:{loanId}:YYYY-MM`입니다. 반복 납부는 paid_at을 유지하고 취소는 NULL로 복원합니다. 미등록·삭제 건은 404, 미래 월과 잘못된 body는 400입니다. 일반 지출 해지는 POST `/api/bills/monthly/{id}/termination?timeZone=...`에 `{effectiveDate: 'YYYY-MM-DD'}`를 보냅니다(204). 적용일 이후 미납·예정 건을 취소 표시하고 납부 완료와 적용일 이전 기록은 보존합니다. 현재·미래 해지일을 사용자가 입력합니다. 월세·이자·계약 관리비 조건 종료는 내 집 정보에서 관리합니다. monthly 응답의 terminationDate는 해지 적용일입니다. 기존 DB에 20261119_01_bill_termination.sql 적용 필요.

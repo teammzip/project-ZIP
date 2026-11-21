@@ -1,40 +1,46 @@
-> 2026-11-07 최신 변경: [생활 카테고리·월별 납부·집 주소 가이드](../LIFE_CATEGORIES.md). 기존 DB는 `20261102` 다음 `20261107_life_categories.sql`을 적용합니다. 최신 감사 기준: 44테이블 / 358컬럼 / 71키 / 62FK / 15CHECK / 2VIEW. 아래 이전 날짜의 수치는 당시 이력입니다.
+# DB 검사
 
-# 최신 주거·대출 DB 수동 검증
+DB 를 바꿨으면 **자동 검사**를 돌리면 돼요. 아래 수동 SQL 테스트는 Workbench 에서 하나씩 눈으로 확인하고 싶을 때 써요. 결과 기록은 [RESULTS.md](RESULTS.md)에 남겨요.
 
-최신 독립 실행 결과는 [검증 JSON](VALIDATION_20261107.json)과 [검증 기록](RESULTS.md)을 참고하세요. 격리 MySQL 9.6.0에서 정상 검증 111개·예상 오류 95개 및 전체/증분 이전이 통과했습니다. 기존 사용자 DB 적용은 별도입니다.
+## 자동 검사 (저장소 최상위에서)
 
-**최신 변경 시작점:** [20261107 생활 기능 가이드](../LIFE_CATEGORIES.md)의 적용 확인 → 24번 정상 → 25번 예외 → 15번 감사입니다. 이미 적용한 DDL은 다시 실행하지 않습니다.
+```powershell
+node --test --test-reporter=spec db/tests/schema-assets.test.cjs   # 빠른 정적 검사: 마이그레이션 빠짐 · 새 DB 와 업그레이드 DB 구조 차이 · 비교 자료 동기화
+node db/tests/generate-schema-audit.cjs                            # schema.sql 을 바꾼 뒤 비교 자료(schema_expected.json · 15/20번 감사 SQL) 갱신
+node db/tests/run-isolated-mysql.cjs                               # 격리 MySQL 9.6 에서 아래 SQL 테스트 전부 + 새 설치 · 전체/증분 업그레이드 · 데이터 보존
+```
 
-**20261102 이전 DB의 선행 단계:** [요구사항·예외 가이드](LATEST_REQUIREMENTS_GUIDE.md). 기존 zip_test에는 21번의 사전 조회/변경을 블록별 적용한 뒤 22번 정상 테스트, 23번 오류 테스트, 갱신된 15번 구조 감사를 실행합니다. 이전 PASS 기록은 변경 전 버전의 이력입니다.
+격리 검사는 지금 켜진 MySQL 에 접속하지 않아요. `db/private` 에 임시 DB 를 만들어 TCP 없이(named pipe) 돌리고 끝나면 꺼요. 마이그레이션을 새로 만들 때 할 일은 [마이그레이션 안내](../migrations/README.md#마이그레이션을-새로-만들-때)에 있어요.
 
-보완 제약 다음은 [마이그레이션 가이드](MIGRATION_GUIDE.md)의 `18_legacy_schema.sql` → `19_migration_upgrade.sql` → `20_migration_schema_audit.sql` 순서입니다. 현재 zip_test가 아닌 별도 zip_migration_test에서 실행합니다.
+## 수동 SQL 테스트 순서
 
-전체 구조 확인 이후에는 [보완 제약 가이드](SUPPLEMENTAL_GUIDE.md)의 `17_supplemental_negative.sql`을 S00부터 블록별 실행합니다.
+`zip_test` 같은 **테스트용 DB** 에서만 실행해요(실제 데이터가 있는 DB 금지). 정상 테스트(`*_positive`)는 전체 실행 후 마지막에 자동 ROLLBACK, 오류 테스트(`*_negative`)는 준비 블록 다음 한 문장씩 선택 실행해요.
 
-기능별 테스트 이후 [전체 구조 대조 가이드](SCHEMA_AUDIT_GUIDE.md)의 `15_schema_audit.sql`을 실행합니다. M01~M07 및 추가 객체/컬럼 목록을 확인합니다.
+| 파일 | 범위 | 결과 번호 | 안내 |
+|---|---|---|---|
+| 01 · 02 | 주거 설문 · 전세 대출 · 월별 이자 | P · N | 이 문서 아래 |
+| 03 · 04 | 회원 · 인증 · 약관 | A · B | [AUTH_TERMS_GUIDE](AUTH_TERMS_GUIDE.md) |
+| 05 · 06 | 일정 · 카테고리 · 메모 · 알림 | C · D | [LIFE_GUIDE](LIFE_GUIDE.md) |
+| 07 · 08 | 가계부 · 지출 VIEW | E · F | [LEDGER_GUIDE](LEDGER_GUIDE.md) |
+| 09 · 10 | 커뮤니티 · 첨부 | G · H | [COMMUNITY_GUIDE](COMMUNITY_GUIDE.md) |
+| 11 · 12 | 신고 · 제재 · 고객센터 | I · J | [MODERATION_GUIDE](MODERATION_GUIDE.md) |
+| 13 · 14 | 동네 · 지도 · AI | K · L | [MAP_AI_GUIDE](MAP_AI_GUIDE.md) |
+| 15 · 16 | 전체 구조 대조 · 금액 타입 복구 | M · R | [SCHEMA_AUDIT_GUIDE](SCHEMA_AUDIT_GUIDE.md) |
+| 17 | 보완 제약 | S | [SUPPLEMENTAL_GUIDE](SUPPLEMENTAL_GUIDE.md) |
+| 18 · 19 · 20 | 옛 35개 표 DB → 최신으로 이전 (별도 `zip_migration_test`) | U · M | [MIGRATION_GUIDE](MIGRATION_GUIDE.md) |
+| 21 · 22 · 23 | 20261102 요구사항 단계 (지난 단계) | Q · V · W | [LATEST_REQUIREMENTS_GUIDE](LATEST_REQUIREMENTS_GUIDE.md) |
+| 24 · 25 | 개인 분류 · 집 주소 (20261107) | X · Y | 각 SQL 파일 맨 위 주석 |
 
-신고·제재 다음은 [동네·지도·AI 가이드](MAP_AI_GUIDE.md)의 `13_map_ai_positive.sql`과 `14_map_ai_negative.sql`이며 K/L 번호로 기록합니다.
+## 01 · 02 주거 · 대출
 
-커뮤니티 다음은 [신고·제재·고객센터 가이드](MODERATION_GUIDE.md)의 `11_moderation_positive.sql`과 `12_moderation_negative.sql`이며 I/J 번호로 기록합니다.
+모든 데이터는 가상이며 로그인 가능한 계정이나 실제 은행 거래를 만들지 않습니다. 검사하는 표는 users, housing_surveys, housing_loans, loan_interest_charges, user_settings, events 및 지출 VIEW입니다.
 
-가계부 다음은 [커뮤니티·첨부 가이드](COMMUNITY_GUIDE.md)의 `09_community_positive.sql` 및 `10_community_negative.sql`이며 G/H 번호로 기록합니다.
-
-진행 결과는 [수동 검증 기록](RESULTS.md)에 보관합니다. 생활 데이터 다음 단계는 [가계부 가이드](LEDGER_GUIDE.md)의 `07_ledger_positive.sql`과 `08_ledger_negative.sql`이며 E/F 번호로 기록합니다.
-
-일정·카테고리·메모·알림은 [생활 데이터 가이드](LIFE_GUIDE.md)의 `05_life_positive.sql`과 `06_life_negative.sql`로 이어갑니다. C/D 번호로 결과를 기록합니다.
-
-다음 단계인 회원·인증·약관 테스트는 [별도 가이드](AUTH_TERMS_GUIDE.md)를 따릅니다. `03_auth_terms_positive.sql` 전체 실행 후 `04_auth_terms_negative.sql`을 블록별 실행합니다. 이 페이지의 P/N 번호와 다음 단계의 A/B 번호를 구분해 결과를 기록하세요.
-
-아래 01/02번은 주거·대출 기능 범위이며 최신 스키마에서도 실행 가능합니다. 대상: 최신 스키마(44개 테이블·2개 VIEW). 모든 데이터는 가상이며 로그인 가능한 계정/실제 은행 거래를 만들지 않습니다. 여기서 검사하는 표는 users, housing_surveys, housing_loans, loan_interest_charges, user_settings, events 및 지출 VIEW입니다. 전체 44개 테이블 검증 완료를 의미하지 않습니다.
-
-## 1. DB 준비
+### 1. DB 준비
 
 MySQL Workbench의 로컬 테스트 서버에 새 연결을 엽니다. 실제 데이터가 있는 서버에서는 실행하지 않습니다.
 
 - 새 DB: ../schema.sql을 Workbench에서 열고 **실행용 사본**의 CREATE DATABASE와 USE에 있는 zip을 zip_test로 바꿔 전체 실행합니다. 프로젝트 원본은 변경하지 않습니다.
 - 이전 테스트 DB: ../migrations/README.md에서 현재 버전에 필요한 변경만 적용합니다. 마이그레이션 사본의 USE도 zip_test로 바꿉니다. 최신 스키마를 다시 실행하는 것만으로 기존 컬럼은 변경되지 않습니다.
-- 이전 할 일 보관 테이블이 있으면 테이블 수는 45개일 수 있습니다. 새 DB의 예상값은 44개입니다.
 - 테스트 중 DDL(CREATE/ALTER/TRUNCATE), COMMIT, 새 START TRANSACTION을 실행하지 않습니다. 기존 작업 트랜잭션이 없는 연결에서 시작합니다.
 
 다음 조회에서 신규 표 3개와 최신 기념일 컬럼을 확인합니다.
@@ -50,7 +56,7 @@ SHOW COLUMNS FROM user_settings LIKE 'rent_amount';
 
 rent_amount는 DECIMAL(14,4) UNSIGNED, 이벤트 컬럼은 is_anniversary/repeat_yearly여야 합니다. 다른 구조이면 실행을 멈추고 마이그레이션부터 확인합니다.
 
-## 2. 정상 테스트
+### 2. 정상 테스트
 
 01_housing_loan_positive.sql을 연결된 SQL 편집기에서 열고 전체 실행합니다. P01~P10 결과가 모두 PASS인지 확인합니다. 파일 마지막에서 자동 ROLLBACK합니다. 중간 오류로 중단됐다면 같은 탭에서 ROLLBACK을 직접 실행하고 첫 오류를 기록합니다. 일부 PASS만 나온 경우 전체 통과가 아닙니다.
 
@@ -69,7 +75,7 @@ rent_amount는 DECIMAL(14,4) UNSIGNED, 이벤트 컬럼은 is_anniversary/repeat
 
 P04의 VIEW 결과는 2026-02 / 전세 대출 이자 / 400000, 2026-03 / 전세 대출 이자 / 500000 두 행입니다. 이후 경계값 테스트로 추가한 4·5월 자료는 P04 판정 이후 생성됩니다.
 
-## 3. 오류 테스트
+### 3. 오류 테스트
 
 02_housing_loan_negative.sql은 **전체 실행하지 않습니다.** 같은 SQL 탭에서 다음 순서를 지킵니다.
 
@@ -81,9 +87,9 @@ P04의 VIEW 결과는 2026-02 / 전세 대출 이자 / 400000, 2026-03 / 전세 
 
 자동 증가 번호는 ROLLBACK 후에도 비어 있을 수 있으며 정상입니다. 공개 화면에는 개인 서버 주소·계정·비밀번호 대신 테스트 ID와 결과만 공유하세요.
 
-## 4. 결과 기록
+### 4. 결과 기록
 
-### Error 1175: ID 비교의 문자셋 변환
+#### Error 1175: ID 비교의 문자셋 변환
 
 housing_loans.id와 loan_interest_charges.loan_id는 ascii/ascii_bin입니다. 연결의 기본 문자셋으로 만들어진 UUID 변수와 비교하면 컬럼의 암묵 변환 때문에 기본키를 쓰지 못하고 안전 업데이트 모드가 차단할 수 있습니다. 수정한 테스트는 변수 생성 시 ascii_bin을 지정하고, WHERE의 변수 쪽에만 CONVERT(... USING ascii) COLLATE ascii_bin을 적용합니다. 안전 모드를 해제할 필요가 없습니다.
 
@@ -99,15 +105,3 @@ N99: PASS / FAIL
 ```
 
 독립 MySQL 실행과 사용자 실행 이력은 RESULTS.md에 있습니다. 새 환경의 결과는 별도로 확인합니다. 서버의 월말·한국 날짜 계산, 자동 동기화·중지 정책, 권한, 동시성, 마이그레이션은 이 수동 저장 테스트로 검증되지 않습니다. 특히 P07은 중지 후 직접 INSERT하는 경계값 검사로 서버가 자동 기록을 막는지 검사하는 것이 아닙니다.
-
-## 마이그레이션 자동 검사 (2026-11-21)
-
-저장소 루트에서 실행합니다.
-
-- 정적 검사: `node --test --test-reporter=spec db/tests/schema-assets.test.cjs`
-- 스키마 변경 후 비교 자료 갱신: `node db/tests/generate-schema-audit.cjs`
-- Windows MySQL 9.6 격리 검증: `node db/tests/run-isolated-mysql.cjs`
-
-정식 마이그레이션 추가 시 migration-path.cjs와 19_migration_upgrade.sql에 동일 원문을 순서대로 반영합니다. 폐기된 20261101_event_anniversary.sql은 제외합니다. 정적 검사는 파일 누락, 신규 스키마와 업그레이드 경로의 컬럼·키·제약 차이, 비교 자료의 동기화를 확인합니다.
-
-격리 검증은 기존 MySQL에 접속하지 않고 db/private에 독립 데이터 디렉터리를 생성합니다. TCP를 비활성화한 전용 named pipe로 실행하며 종료 시 해당 서버를 중지합니다. 신규 설치, 전체·증분 업그레이드, 기존 데이터 보존과 중복 데이터 거부를 확인합니다. 최신 증분 경로는 주거 설문 상태 이관(COMPLETED/SKIPPED/PENDING), 계약·월급 금액 보존, 월급 삭제 후 월별 기록 유지, 분류 이름 대소문자 구분을 추가 확인합니다. 실제 서비스 DB 적용은 이 검사와 별개입니다.
