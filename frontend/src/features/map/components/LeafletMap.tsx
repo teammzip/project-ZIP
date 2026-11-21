@@ -2,6 +2,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef } from 'react'
 import { HOME, type PlaceItem } from '../data/places'
+import type { NearbyMapResult } from '../nearbyMap'
 import { placeColors, placeIconSvg } from '../placeIcons'
 
 type Props = {
@@ -21,23 +22,27 @@ type Props = {
   viewport?: { lat: number; lon: number; zoom: number }
   /** 브라우저에서 확인한 실제 현재 위치. 예시 집 위치와 구분해서 표시 */
   currentPosition?: { lat: number; lon: number } | null
+  searchOrigin?: NearbyMapResult['origin']
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 /** 움직이는 동네 지도 (Leaflet + OpenStreetMap, 색을 조금 빼서 차분하게). 장소마다 동그란 핀, 고른 곳은 크게 + 이름표. 🏠 = 우리 집 */
-export function LeafletMap({ places, selectedId, onSelect, focus, fitKey, bottomInset, className, readOnly = false, viewport, currentPosition }: Props) {
+export function LeafletMap({ places, selectedId, onSelect, focus, fitKey, bottomInset, className, readOnly = false, viewport, currentPosition, searchOrigin }: Props) {
   const el = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
   const pins = useRef<L.LayerGroup | null>(null)
   const viewLat = viewport?.lat
   const viewLon = viewport?.lon
   const viewZoom = viewport?.zoom
-  const currentLat = currentPosition?.lat
-  const currentLon = currentPosition?.lon
-  const latest = useRef({ onSelect, places, bottomInset, viewport, readOnly, selectedId })
+  const markedPoint = searchOrigin?.point ?? currentPosition
+  const currentLat = markedPoint?.lat
+  const currentLon = markedPoint?.lon
+  const markerLabel = searchOrigin?.label ?? '내 위치'
+  const searchInset = searchOrigin ? bottomInset : 0
+  const latest = useRef({ onSelect, places, bottomInset, viewport, readOnly, selectedId, searchOrigin })
   useEffect(() => {
-    latest.current = { onSelect, places, bottomInset, viewport, readOnly, selectedId }
+    latest.current = { onSelect, places, bottomInset, viewport, readOnly, selectedId, searchOrigin }
   })
 
   useEffect(() => {
@@ -59,6 +64,8 @@ export function LeafletMap({ places, selectedId, onSelect, focus, fitKey, bottom
       if (view) {
         const point = m.project([view.lat, view.lon], view.zoom).add([0, latest.current.bottomInset / 2])
         m.setView(m.unproject(point, view.zoom), view.zoom, { animate: false })
+      } else if (latest.current.searchOrigin && !latest.current.selectedId) {
+        fitPlaces(m, latest.current)
       }
     })
     ro.observe(box)
@@ -112,20 +119,19 @@ export function LeafletMap({ places, selectedId, onSelect, focus, fitKey, bottom
   // 칩 · 탭 · 조건을 바꿨을 때(fitKey)만: 그 장소들이 다 보이게. 고정 화면이 있으면 그쪽이 우선
   useEffect(() => {
     const m = map.current
-    const list = latest.current.places
-    if (!m || latest.current.viewport || !list.length) return
-    const bounds = L.latLngBounds(list.map((p) => [p.lat, p.lon] as [number, number]))
-    m.fitBounds(bounds, { paddingTopLeft: [40, 150], paddingBottomRight: [40, latest.current.bottomInset + 30], maxZoom: 17 })
-  }, [fitKey])
+    const view = latest.current
+    if (!m || view.viewport || (view.searchOrigin && view.selectedId)) return
+    fitPlaces(m, view)
+  }, [fitKey, searchInset])
 
   useEffect(() => {
     const m = map.current
     if (!m || currentLat === undefined || currentLon === undefined) return
     const marker = L.circleMarker([currentLat, currentLon], {
       radius: 9, color: '#fff', weight: 3, fillColor: '#2f80ed' /* --color-primary (SVG 속성이라 CSS 변수를 못 씀) */, fillOpacity: 1, interactive: false,
-    }).bindTooltip('내 위치', { permanent: true, direction: 'top', offset: [0, -10] }).addTo(m)
+    }).bindTooltip(markerLabel, { permanent: true, direction: 'top', offset: [0, -10] }).addTo(m)
     return () => { marker.remove() }
-  }, [currentLat, currentLon])
+  }, [currentLat, currentLon, markerLabel])
 
   // 장소를 고르면 그곳으로 (아래 시트에 가리지 않게 조금 위로)
   useEffect(() => {
@@ -139,6 +145,14 @@ export function LeafletMap({ places, selectedId, onSelect, focus, fitKey, bottom
   }, [focus, bottomInset])
 
   return <div ref={el} className={className} />
+}
+
+function fitPlaces(map: L.Map, { places, bottomInset, searchOrigin }: Pick<Props, 'places' | 'bottomInset' | 'searchOrigin'>) {
+  if (!places.length) return
+  const bounds = L.latLngBounds(places.map((p) => [p.lat, p.lon] as [number, number]))
+  if (searchOrigin) bounds.extend([searchOrigin.point.lat, searchOrigin.point.lon])
+  const top = searchOrigin ? Math.min(150, Math.max(64, (map.getSize().y - bottomInset) * 0.32)) : 150
+  map.fitBounds(bounds, { paddingTopLeft: [40, top], paddingBottomRight: [40, bottomInset + 30], maxZoom: 17 })
 }
 
 /** 장소 핀 아이콘: 종류 선 아이콘(종류 색), 고른 핀은 크게 + 이름표 */

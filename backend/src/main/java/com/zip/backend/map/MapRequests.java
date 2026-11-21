@@ -15,6 +15,8 @@ public final class MapRequests {
         @NotBlank @Size(max = 40) String q,
         @NotBlank @Pattern(regexp = "[1-9][0-9]{0,18}") String regionId) {}
 
+    public record NearbySearch(@NotBlank @Size(max = 40) String q, @NotNull Double lat, @NotNull Double lon) {}
+
     /** 칩에 보일 종류(place_categories 이름)와 직접 추가한 검색어 — 프론트 features/map/store.ts 와 같은 규칙 */
     public record MapSettings(
         @NotNull @Size(max = 15) List<@NotBlank @Size(max = 20) String> categories,

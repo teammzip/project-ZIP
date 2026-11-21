@@ -24,6 +24,9 @@ export type MonthlyBills = {
 }
 export async function getMonthlyBills(month: string, timeZone: string, signal?: AbortSignal) {
   await apiClient.post('/bills/monthly/auto-register', null, { params: { timeZone }, signal })
+  return readMonthlyBills(month, timeZone, signal)
+}
+export async function readMonthlyBills(month: string, timeZone: string, signal?: AbortSignal) {
   const { data } = await apiClient.get<MonthlyBills>('/bills/monthly', { params: { month, timeZone }, signal })
   return data
 }

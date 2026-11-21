@@ -93,6 +93,30 @@ class AiChatTests {
         mvc.perform(post("/api/ai/conversations/" + id + "/messages").header("Authorization", token).contentType("application/json").content(ask("둘째 질문"))).andExpect(status().isOk());
     }
 
+    @Test void theTopicGuidesTheAnswerWithoutChangingTheKeyword() throws Exception {
+        seedUser(1, "tester01");
+        String token = login("tester01");
+        String id = newConversation(token, "AI_PAGE", "cook");
+        when(gemini.enabled()).thenReturn(true);
+        when(gemini.chat(anyString(), any())).thenAnswer(call -> {
+            String system = call.getArgument(0);
+            List<GeminiClient.Turn> turns = call.getArgument(1);
+            assertTrue(system.contains("사용자가 선택한 주제: 분리배출"));
+            assertEquals(1, turns.size());
+            assertEquals("치킨 뼈", turns.get(0).text());
+            return "치킨 뼈는 일반쓰레기로 버려 주세요.";
+        });
+
+        mvc.perform(post("/api/ai/conversations/" + id + "/messages").header("Authorization", token)
+            .contentType("application/json").content("{\"text\":\"치킨 뼈\",\"topic\":\"trash\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.user.text").value("치킨 뼈"))
+            .andExpect(jsonPath("$.reply.text").value("치킨 뼈는 일반쓰레기로 버려 주세요."));
+        mvc.perform(get("/api/ai/conversations/" + id + "/messages").header("Authorization", token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].text").value("치킨 뼈"));
+    }
+
     @Test void anExchangeTheAppAnsweredItselfIsSavedWithItsCard() throws Exception {
         seedUser(1, "tester01");
         String token = login("tester01");

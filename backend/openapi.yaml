@@ -1053,6 +1053,43 @@ paths:
         - { name: wide, in: query, schema: { type: boolean, default: false }, description: '검색창 검색 (q 와 함께): 반경 5km + 거리 제한 없는 정확도 검색을 합쳐 이름이 같은 곳 → 이름에 든 곳 → 나머지 순. false(칩)면 반경 1km 가까운 순' }
       responses:
         '200': { description: 장소, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Place' } } } } }
+  /api/places/nearby:
+    post:
+      tags: [지도]
+      summary: 지정한 위치 반경 1km의 카카오맵 장소 최대 15곳
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [q, lat, lon]
+              properties:
+                q: { type: string, minLength: 1, maxLength: 40, example: 약국 }
+                lat: { type: number, minimum: -90, maximum: 90 }
+                lon: { type: number, minimum: -180, maximum: 180 }
+      responses:
+        '200':
+          description: 지정한 위치에서 직선 거리가 가까운 순
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 15
+                items:
+                  type: object
+                  required: [id, name, address, distanceMeters, lat, lon, category]
+                  properties:
+                    id: { type: string, description: 카카오맵 장소 ID }
+                    name: { type: string }
+                    address: { type: string, nullable: true }
+                    distanceMeters: { type: integer }
+                    lat: { type: number, minimum: -90, maximum: 90 }
+                    lon: { type: number, minimum: -180, maximum: 180 }
+                    category: { type: string }
+        '400': { description: 검색어 또는 좌표 오류 }
+        '429': { description: 장소 검색 한도 초과 }
+        '503': { description: 카카오맵 장소 검색 사용 불가 }
   /api/places/ai-search:
     post:
       tags: [지도]

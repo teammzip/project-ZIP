@@ -2,6 +2,7 @@ import axios from 'axios'
 import { isMockApi } from '@/features/auth/api'
 import { apiClient } from '@/lib/apiClient'
 import type { ChatMsg, SpendCard } from './store'
+import type { TopicSuggestion } from './topics'
 
 /* AI 대화 서버 API (frontend/API.md 8장, DB: ai_conversations · ai_messages).
  * 브라우저는 우리 서버에만 묻고 Gemini 키는 서버에만 있어요. 가짜 API 모드이거나 서버를 쓸 수 없으면 모두 null 로 돌려줘서
@@ -10,13 +11,24 @@ export type EntryPoint = 'HOME_MODAL' | 'AI_PAGE'
 export type AiAnswer = { text: string; /** 하루 질문 한도를 넘었다는 안내 문구 (저장되지 않음) */ limited?: boolean }
 
 type ServerMessage = { id: string; role: 'USER' | 'ASSISTANT'; text: string; card?: { type: string; data: unknown } }
+type ExchangeCard =
+  | { type: 'SPEND_SUMMARY'; data: SpendCard }
+  | { type: 'LINK'; data: { to: '/ai' } & TopicSuggestion }
+  | { type: 'LINK'; data: { to: '/map'; nearbyKeyword: string } }
 
-const toMsg = (m: ServerMessage): ChatMsg => ({
-  role: m.role === 'USER' ? 'user' : 'bot',
-  text: m.text,
-  ...(m.card?.type === 'SPEND_SUMMARY' ? { card: m.card.data as SpendCard } : {}),
-  ...(m.card?.type === 'LINK' && (m.card.data as { to?: string })?.to === '/my/budget/expense' ? { billRegistered: true } : {}),
-})
+const toMsg = (m: ServerMessage): ChatMsg => {
+  const link = m.card?.type === 'LINK' ? m.card.data as { to?: string; topicId?: unknown; keyword?: unknown; nearbyKeyword?: unknown } | null : null
+  return {
+    role: m.role === 'USER' ? 'user' : 'bot',
+    text: m.text,
+    ...(m.card?.type === 'SPEND_SUMMARY' ? { card: m.card.data as SpendCard } : {}),
+    ...(link?.to === '/my/budget/expense' ? { billRegistered: true } : {}),
+    ...(link?.to === '/ai' && typeof link.topicId === 'string' && typeof link.keyword === 'string'
+      ? { suggestion: { topicId: link.topicId, keyword: link.keyword } }
+      : {}),
+    ...(link?.to === '/map' && typeof link.nearbyKeyword === 'string' ? { nearbyKeyword: link.nearbyKeyword } : {}),
+  }
+}
 
 /** 새 대화방을 만들고 id 를 돌려줌 */
 export async function createConversation(entryPoint: EntryPoint, topic?: string): Promise<string | null> {
@@ -62,10 +74,10 @@ export async function askAi(conversationId: string | null, text: string, topic?:
 }
 
 /** 앱이 직접 답한 질문·답(정해진 분야 · 지출 요약 카드 · 데모 답변)도 같은 대화방에 저장. 실패해도 대화는 계속됨 */
-export async function recordExchange(conversationId: string | null, text: string, reply: string, card?: SpendCard): Promise<void> {
+export async function recordExchange(conversationId: string | null, text: string, reply: string, card?: ExchangeCard): Promise<void> {
   if (isMockApi || !conversationId || !text.trim() || !reply.trim()) return
   try {
-    await apiClient.post(`/ai/conversations/${conversationId}/exchanges`, { text, reply, card: card ? { type: 'SPEND_SUMMARY', data: card } : undefined })
+    await apiClient.post(`/ai/conversations/${conversationId}/exchanges`, { text, reply, card })
   } catch {
     // 저장에 실패해도 화면의 대화는 그대로
   }

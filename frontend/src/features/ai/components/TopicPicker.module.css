@@ -1,0 +1,120 @@
+.keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.picker {
+  flex: none;
+  padding: 6px 0 8px;
+}
+
+.keyword,
+.all {
+  min-height: 44px;
+  padding: 5px 10px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.all,
+.keyword[aria-pressed='true'] {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.keyword[aria-pressed='true'] {
+  background: #eaf2ff;
+}
+
+.photoHint {
+  margin-inline-start: 5px;
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
+.selection {
+  display: flex;
+  padding: 0 8px 4px;
+}
+
+.suggestion {
+  margin-top: 8px;
+}
+
+.selected {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--color-primary);
+  border-radius: 999px;
+  background: #eaf2ff;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.panel {
+  position: fixed;
+  inset: auto auto calc(100% - var(--trigger-top, 50%) + 8px) clamp(12px, var(--trigger-left, 12px), calc(100% - 392px));
+  width: min(380px, calc(100% - 24px));
+  max-height: max(100px, calc(var(--trigger-top, 50dvh) - 20px));
+  margin: 0;
+  padding: 14px 16px 18px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--color-line);
+  border-radius: 20px;
+  background: #fff;
+  color: var(--color-text);
+  box-shadow: 0 10px 32px rgba(31, 36, 48, 0.2);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header h2 {
+  font-size: 18px;
+}
+
+.close {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 23px;
+}
+
+.group {
+  margin-top: 12px;
+}
+
+.group h3 {
+  margin-bottom: 4px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .panel {
+    inset: auto 0 0;
+    width: 100%;
+    max-width: none;
+    max-height: 80dvh;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+    border-radius: 20px 20px 0 0;
+  }
+
+  .panel::backdrop {
+    background: rgba(31, 36, 48, 0.3);
+  }
+}

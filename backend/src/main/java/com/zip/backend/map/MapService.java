@@ -3,6 +3,7 @@ package com.zip.backend.map;
 import com.zip.backend.common.ApiException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -55,6 +56,7 @@ public class MapService {
 
     /** 장소 목록 + 카카오를 못 써서 DB 장소로 대신했을 때의 이유 코드 (없으면 null) */
     public record PlaceResult(List<Map<String, Object>> items, String notice) {}
+    public record NearbyPlace(String id, String name, String address, long distanceMeters, double lat, double lon, String category) {}
 
     /** 응답 장소 한 곳. 카카오 장소는 DB 번호가 없어 id 가 "kakao:카카오장소id" */
     record Item(String id, MapRepository.PlaceRow row) {}
@@ -80,7 +82,10 @@ public class MapService {
         String notice = null;
         if (kakaoUsed) {
             try {
-                rows = kakaoPlaces(userId, kind, keyword, center.get(), wide);
+                var point = center.get();
+                // 지도에서는 약 100m 안의 같은 검색에 캐시를 공유한다.
+                var cell = Math.round(point.lat() * 1_000) + "," + Math.round(point.lon() * 1_000);
+                rows = kakaoPlaces(userId, kind, keyword, point, wide, cell);
             } catch (KakaoQuota.Unavailable unavailable) {
                 notice = unavailable.code();
                 rows = dbPlaces(region, kind, keyword);
@@ -101,14 +106,44 @@ public class MapService {
         return repository.places(region, kind, keyword).stream().map(p -> new Item(Long.toString(p.id()), p)).toList();
     }
 
+    public List<NearbyPlace> nearby(long userId, MapRequests.NearbySearch request) {
+        double lat = request.lat(), lon = request.lon();
+        if (!Double.isFinite(lat) || Math.abs(lat) > 90 || !Double.isFinite(lon) || Math.abs(lon) > 180) {
+            throw new ApiException(400, "검색 위치를 확인해 주세요.");
+        }
+        if (!kakao.enabled()) throw new ApiException(503, "장소 검색 서비스가 아직 준비되지 않았어요.");
+
+        var keyword = request.q().strip();
+        var kind = KAKAO_CODES.containsKey(keyword) || KAKAO_KEYWORDS.containsKey(keyword) ? keyword : null;
+        var center = new MapRepository.Point(lat, lon);
+        var cell = Math.round(lat * 100_000) + "," + Math.round(lon * 100_000) + "|nearby";
+        try {
+            var seen = new HashSet<String>();
+            return kakaoPlaces(userId, kind, keyword, center, false, cell).stream()
+                .filter(item -> KAKAO_PLACE_ID.matcher(item.id().substring(KAKAO_ID.length())).matches())
+                .map(item -> new NearbyPlace(item.id().substring(KAKAO_ID.length()), item.row().name(), item.row().address(),
+                    (long) Math.ceil(meters(lat, lon, item.row().lat(), item.row().lon())),
+                    item.row().lat(), item.row().lon(), item.row().category()))
+                .filter(place -> place.distanceMeters() <= KAKAO_RADIUS)
+                .sorted(Comparator.comparingLong(NearbyPlace::distanceMeters))
+                .filter(place -> seen.add(place.id()))
+                .limit(KakaoLocalClient.SIZE)
+                .toList();
+        } catch (KakaoQuota.Unavailable unavailable) {
+            throw switch (unavailable.code()) {
+                case "user-limit" -> new ApiException(429, "장소 검색을 너무 자주 했어요. 1분 뒤 다시 검색해 주세요.");
+                case "daily-limit" -> new ApiException(429, "오늘 장소 검색 한도에 도달했어요. 내일 다시 검색해 주세요.");
+                default -> new ApiException(503, "카카오맵 장소 검색에 연결하지 못했어요. 잠시 뒤 다시 검색해 주세요.");
+            };
+        }
+    }
+
     /** 카카오에서 지도 중심 근처 장소를 찾아 그대로 돌려줌 (DB 에 저장하지 않음, 같은 검색은 KakaoQuota 가 10분 캐시)
      * - 종류 칩 · 검색어 칩: 반경 1km 가까운 순
      * - 검색창(wide): 반경 5km 가까운 순 + 거리 제한 없는 정확도 순을 합쳐 이름이 같은 곳 → 이름에 든 곳 → 나머지
      * 한도 초과 · 실패면 KakaoQuota.Unavailable */
-    List<Item> kakaoPlaces(long userId, String kind, String keyword, MapRepository.Point center, boolean wide) {
+    private List<Item> kakaoPlaces(long userId, String kind, String keyword, MapRepository.Point center, boolean wide, String cell) {
         double lat = center.lat(), lon = center.lon();
-        // 약 100m 안의 같은 검색은 같은 캐시를 씀
-        var cell = Math.round(lat * 1_000) + "," + Math.round(lon * 1_000);
         var code = kind == null ? null : KAKAO_CODES.get(kind);
         List<KakaoLocalClient.Document> docs;
         if (code != null) {
@@ -128,10 +163,11 @@ public class MapService {
         }
         var items = new ArrayList<Item>();
         for (var doc : docs) {
-            if (doc.id() == null || doc.x() == null || doc.y() == null) continue;
+            if (doc.id() == null || doc.x() == null || doc.y() == null || doc.place_name() == null || doc.place_name().isBlank()) continue;
             double y, x;
             try { y = Double.parseDouble(doc.y()); x = Double.parseDouble(doc.x()); }
             catch (NumberFormatException error) { continue; }
+            if (!Double.isFinite(y) || Math.abs(y) > 90 || !Double.isFinite(x) || Math.abs(x) > 180) continue;
             // 종류 칩이면 그 종류, 검색어면 카카오 분류로 나누고 안 맞으면 '기타'
             var name = kind != null ? kind : Optional.ofNullable(kindOf(doc)).orElse(OTHER);
             var parts = doc.category_name() == null ? new String[0] : doc.category_name().split(">");
@@ -408,7 +444,7 @@ public class MapService {
         double dLat = Math.toRadians(lat2 - lat1), dLon = Math.toRadians(lon2 - lon1);
         double a = Math.pow(Math.sin(dLat / 2), 2)
             + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) * Math.pow(Math.sin(dLon / 2), 2);
-        return 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0, 1 - a)));
     }
 
     private static Map<String, Object> place(String id, MapRepository.PlaceRow p, Optional<MapRepository.Point> home) {

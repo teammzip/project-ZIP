@@ -1,0 +1,97 @@
+.search {
+  --nearby-link: color-mix(in srgb, var(--color-primary) 70%, var(--color-text));
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  white-space: normal;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions button {
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-line);
+  border-radius: 22px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.actions .primary {
+  border-color: var(--nearby-link);
+  color: var(--nearby-link);
+}
+
+.actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.output {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.output:empty {
+  display: none;
+}
+
+.openMap {
+  justify-self: start;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--nearby-link);
+  border-radius: 12px;
+  color: var(--nearby-link);
+  font-weight: 750;
+  text-align: left;
+}
+
+.openMap:hover {
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.places {
+  display: grid;
+}
+
+.places li {
+  padding: 8px 0 3px;
+  border-top: 1px solid var(--color-line);
+  overflow-wrap: anywhere;
+}
+
+.placeHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.placeHeading small {
+  flex: none;
+  font-size: 13px;
+}
+
+.places a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  color: var(--nearby-link);
+  font-weight: 700;
+}
+
+.places a:hover {
+  text-decoration: underline;
+}
+
+.note {
+  color: color-mix(in srgb, var(--color-text) 65%, var(--color-muted));
+  font-size: 13px;
+}

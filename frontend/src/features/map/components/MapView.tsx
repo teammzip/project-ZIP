@@ -7,6 +7,7 @@ import common from '@/styles/common.module.css'
 import { aiFind } from '../aiFind'
 import { isKakaoPlace, mapApi, usePlaceNotice } from '../api'
 import { walkMin, type PlaceItem } from '../data/places'
+import type { NearbyMapResult } from '../nearbyMap'
 import { placeColors } from '../placeIcons'
 import { PlaceIcon } from './PlaceIcon'
 import { SaveSheet } from './SaveSheet'
@@ -62,10 +63,11 @@ type Found = { q: string; items: Array<{ p: PlaceItem; why: string[] }>; named: 
  * - 검색은 장소 이름 + AI 장소 찾기("밤에 갈 수 있는 약국" → 가까운 순 추천 + 이유, 시연용)
  * - 처음엔 종류를 고르지 않은 "전체"(주변 장소 모두), ?cat=세탁방 으로 열면 그 종류부터
  * - ★ 저장(즐겨찾기), 종류 편집(켜기 · 끄기 · 직접 검색어) */
-export function MapView() {
+export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapResult | null }) {
   const { on, custom, favs, favNames, lists, ensureCat, toggleCat } = useMapStore()
   const position = useNeighborhoodPosition()
-  const data = useMapData(position.point)
+  const [nearby, setNearby] = useState(initialNearby)
+  const data = useMapData(nearby ? null : position.point)
   const placeNotice = usePlaceNotice((s) => s.notice)
   const favNote = useFavNote((s) => s.note)
   const chipsRef = useRef<HTMLDivElement>(null)
@@ -94,8 +96,9 @@ export function MapView() {
   const { verified } = useRegionVerify()
   const [verifyOpen, setVerifyOpen] = useState(false)
   const currentPoint = position.verifiedPoint
-  const mapPoint = position.point
-  const locationKey = `${region}|${position.source}|${mapPoint?.lat}|${mapPoint?.lon}|${position.verifiedAt}`
+  const mapPoint = nearby?.origin.point ?? position.point
+  const locationKey = `${region}|${position.source}|${position.point?.lat}|${position.point?.lon}|${position.verifiedAt}`
+  const selectionKey = nearby ? 'nearby' : locationKey
   const asked = params.get('cat')
   // 서버 모드는 종류 목록을 받기 전이라 비어 있을 수 있어서, 그때는 주소의 종류를 그대로 믿음 (아래에서 칩에도 켬)
   const [cat, setCat] = useState(() => (asked && (data.kinds.includes(asked) || !data.kinds.length) ? asked : ALL))
@@ -103,8 +106,8 @@ export function MapView() {
   const [filter, setFilter] = useState('near')
   const [selId, setSelId] = useState<string | null>(null)
   const [selectedLocationKey, setSelectedLocationKey] = useState('')
-  const [query, setQuery] = useState('')
-  const [found, setFound] = useState<Found | null>(null)
+  const [query, setQuery] = useState(initialNearby?.query ?? '')
+  const [mapSearch, setFound] = useState<Found | null>(null)
   const [searching, setSearching] = useState(false)
   const searchRequest = useRef<AbortController | null>(null)
   const [editing, setEditing] = useState(false)
@@ -124,6 +127,10 @@ export function MapView() {
     if (asked) ensureCat(asked)
   }, [asked, ensureCat])
 
+  const found: Found | null = nearby
+    ? { q: nearby.query, items: nearby.places.map((p) => ({ p, why: [] })), named: true, failed: false }
+    : mapSearch
+  const distances = new Map(nearby?.places.map((p) => [p.id, p.distanceMeters]))
   const base = (() => {
     if (found) return found.items.map((r) => r.p)
     if (tab === 'fav') return places.filter((p) => favs.includes(p.id))
@@ -140,7 +147,7 @@ export function MapView() {
   const savedKakao = tab === 'fav' && !found
     ? favs.filter((id) => isKakaoPlace(id) && favNames[id] && !list.some((p) => p.id === id)).map((id) => ({ id, ...favNames[id] }))
     : []
-  const activeSelectedId = selectedLocationKey === locationKey ? selId : null
+  const activeSelectedId = selectedLocationKey === selectionKey ? selId : null
   // 검색 결과는 불러온 목록에 없을 수 있어서 함께 찾음
   const pool = found ? [...found.items.map((r) => r.p), ...places] : places
   const selected = activeSelectedId ? pool.find((p) => p.id === activeSelectedId) : undefined
@@ -151,7 +158,7 @@ export function MapView() {
   const bottomInset = mobile && sheet === 'peek' ? Math.round(window.innerHeight * 0.4) : 0
 
   const select = (p: PlaceItem) => {
-    setSelectedLocationKey(locationKey)
+    setSelectedLocationKey(selectionKey)
     setSelId(p.id)
     setFocus({ lat: p.lat, lon: p.lon, n: Date.now() })
     setSheet('peek')
@@ -167,6 +174,11 @@ export function MapView() {
     searchRequest.current?.abort()
     setSearching(false)
     setFound(null)
+    setNearby(null)
+    if (nearby) {
+      setSelId(null)
+      setFocus(null)
+    }
   }
   const search = async (q: string) => {
     const text = q.trim()
@@ -179,7 +191,7 @@ export function MapView() {
     let named = false
     let failed = false
     if (data.server && data.regionId) {
-      const center = mapPoint ? { lat: Number(mapPoint.lat.toFixed(5)), lon: Number(mapPoint.lon.toFixed(5)) } : {}
+      const center = position.point ? { lat: Number(position.point.lat.toFixed(5)), lon: Number(position.point.lon.toFixed(5)) } : {}
       const [keyword, recommendation] = await Promise.allSettled([
         mapApi.places(data.regionId, { q: text, ...center, wide: true }, request.signal),
         mapApi.aiSearch(text, data.regionId, request.signal),
@@ -210,7 +222,14 @@ export function MapView() {
     setFocus(null)
     setSheet('peek')
   }
-  const goCurrent = () => setVerifyOpen(true)
+  const resetFocus = () => {
+    setSelId(null)
+    setFocus(null)
+    if (nearby) {
+      setSheet('peek')
+      setCenterRequest((value) => value + 1)
+    }
+  }
 
   // 시트 손잡이: 위로 끌면 펼치고 아래로 끌면 접기, 누르기만 하면 바꾸기
   const onGrab = (e: PointerEvent) => {
@@ -265,9 +284,10 @@ export function MapView() {
         {mapPoint ? <Suspense fallback={<div className={styles.map} />}>
           <LeafletMap
             className={styles.map} places={pins} selectedId={activeSelectedId} onSelect={(id) => select(pool.find((p) => p.id === id)!)}
-            focus={selectedLocationKey === locationKey ? focus : null} fitKey={fitKey} bottomInset={bottomInset}
+            focus={activeSelectedId ? focus : null} fitKey={fitKey} bottomInset={bottomInset}
             viewport={!selected && !found && mapPoint ? { ...mapPoint, zoom: 16 } : undefined}
             currentPosition={currentPoint}
+            searchOrigin={nearby?.origin}
           />
         </Suspense> : <div className={cx(styles.map, styles.mapLoading)} role="status">
           <p>{position.loading ? '선택한 동네의 지도를 준비하고 있어요.' : position.error}</p>
@@ -361,7 +381,7 @@ export function MapView() {
             ★
             {favs.length > 0 && <span className={styles.fabBadge} aria-hidden="true">{favs.length > 99 ? '99+' : favs.length}</span>}
           </button>
-          <button type="button" className={styles.fab} onClick={goCurrent} aria-label={verified ? '현 위치 다시 인증' : '현 위치 인증'} title={verified ? '현 위치 다시 인증' : '현 위치 인증'} aria-haspopup="dialog">
+          <button type="button" className={styles.fab} onClick={() => setVerifyOpen(true)} aria-label={verified ? '현 위치 다시 인증' : '현 위치 인증'} title={verified ? '현 위치 다시 인증' : '현 위치 인증'} aria-haspopup="dialog">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="12" r="7" />
               <circle cx="12" cy="12" r="2.4" />
@@ -379,28 +399,32 @@ export function MapView() {
         <div className={styles.pcOnly}>{searchBox}</div>
 
         <div className={styles.panelScroll}>
-          <p className={styles.note} role="status">
+          {nearby ? (
+            <div className={styles.nearbySummary}>
+              <h2>근처 탐색 <span>“{nearby.query}”</span> <small>{nearby.places.length}곳</small></h2>
+              <p className={styles.note}>{nearby.origin.label} 기준 · 반경 1km · 가까운 순</p>
+              {nearby.checkHours && <p className={styles.note}>영업시간은 카카오맵 상세 화면에서 확인해 주세요.</p>}
+              <Button variant="line" onClick={resetFocus}>핀 전체 보기</Button>
+            </div>
+          ) : <p className={styles.note} role="status">
             {position.loading ? '저장한 동네를 찾고 있어요.' : position.error || `${region} · ${currentPoint ? '파란 점이 인증한 위치예요.' : '선택한 동네 중심을 표시해요. 위치 인증 시 인증한 위치로 변경돼요.'}`}
-          </p>
-          {data.server && (data.loading || data.error) && (
+          </p>}
+          {!nearby && data.server && (data.loading || data.error) && (
             <p className={styles.note} role="status">
               {data.loading ? '서버에서 장소를 불러오고 있어요.' : data.error}
             </p>
           )}
-          {data.server && placeNotice && <p className={styles.note} role="status">{placeNotice}</p>}
+          {!nearby && data.server && placeNotice && <p className={styles.note} role="status">{placeNotice}</p>}
           {favNote && (
             <p className={styles.favNote} role="status">
               {favNote}
             </p>
           )}
           {selected ? (
-            <PlaceDetail p={selected} onBack={() => {
-              setSelId(null)
-              setFocus(null)
-            }} />
+            <PlaceDetail p={selected} distanceMeters={distances.get(selected.id)} onBack={resetFocus} />
           ) : (
             <>
-              <div className={styles.tabs} role="tablist">
+              {!nearby && <div className={styles.tabs} role="tablist">
                 <button
                   type="button"
                   role="tab"
@@ -425,9 +449,9 @@ export function MapView() {
                 >
                   <i aria-hidden="true">★</i> 내가 저장한 곳 <b className={styles.tabCount}>{favs.length}</b>
                 </button>
-              </div>
+              </div>}
 
-              <h2 className={styles.listTitle}>
+              {!nearby && <h2 className={styles.listTitle}>
                 {found ? (
                   <>
                     <span className={styles.ai}>{found.named ? '🔎 검색 결과' : '✨ AI 추천'}</span> &ldquo;{found.q}&rdquo;
@@ -438,7 +462,7 @@ export function MapView() {
                   <>이 주변 {cat === ALL ? '장소' : cat.startsWith(CUSTOM) ? cat.slice(CUSTOM.length) : cat}</>
                 )}
                 <small>{list.length + savedKakao.length}곳</small>
-              </h2>
+              </h2>}
 
               {!found && tab === 'near' && (
                 <div className={styles.filters}>
@@ -501,7 +525,7 @@ export function MapView() {
               ) : (
                 <ol className={styles.list}>
                   {list.map((p, i) => (
-                    <PlaceRow key={p.id} p={p} rank={i + 1} why={found?.items.find((r) => r.p.id === p.id)?.why} onClick={() => select(p)} />
+                    <PlaceRow key={p.id} p={p} rank={i + 1} why={found?.items.find((r) => r.p.id === p.id)?.why} distanceMeters={distances.get(p.id)} onClick={() => select(p)} />
                   ))}
                 </ol>
               )}
@@ -513,6 +537,7 @@ export function MapView() {
       </section>
 
       <RegionVerifyDialog open={verifyOpen} onClose={() => setVerifyOpen(false)} onVerified={() => {
+        if (nearby) clearSearch()
         setSelId(null)
         setFocus(null)
         setSheet('peek')
@@ -574,7 +599,7 @@ function ActionIcon({ name, filled }: { name: 'star' | 'route' | 'info' | 'map';
 }
 
 /** 목록 한 줄: 왼쪽 썸네일, 순위 · 이름 · 종류 · 도보, 특징 칩 (AI 추천이면 추천 이유) */
-function PlaceRow({ p, rank, why, onClick }: { p: PlaceItem; rank: number; why?: string[]; onClick: () => void }) {
+function PlaceRow({ p, rank, why, distanceMeters, onClick }: { p: PlaceItem; rank: number; why?: string[]; distanceMeters?: number; onClick: () => void }) {
   return (
     <li>
       <div className={styles.row} role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => e.key === 'Enter' && onClick()}>
@@ -587,7 +612,7 @@ function PlaceRow({ p, rank, why, onClick }: { p: PlaceItem; rank: number; why?:
             <b>{p.n}</b>
           </span>
           <small>
-            {p.cat} · {walkText(p)}
+            {p.cat} · {distanceMeters === undefined ? walkText(p) : `직선 ${distanceMeters.toLocaleString('ko-KR')}m`}
           </small>
           <span className={styles.rowTag}>{why?.length ? `추천 이유: ${why.join(' · ')}` : tagsOf(p).join(' · ') || '동네 장소'}</span>
         </span>
@@ -711,7 +736,7 @@ function SavedKakaoRow({ id, n, cat }: { id: string; n: string; cat: string }) {
 }
 
 /** 장소 상세: 이름 · 종류 · 도보, 특징, 저장 · 길찾기 · 큰 지도 */
-function PlaceDetail({ p, onBack }: { p: PlaceItem; onBack: () => void }) {
+function PlaceDetail({ p, distanceMeters, onBack }: { p: PlaceItem; distanceMeters?: number; onBack: () => void }) {
   return (
     <div className={styles.detail}>
       <button type="button" className={styles.back} onClick={onBack}>
@@ -724,7 +749,7 @@ function PlaceDetail({ p, onBack }: { p: PlaceItem; onBack: () => void }) {
         <div>
           <h2>{p.n}</h2>
           <small>
-            {p.cat} · 🏠 우리 집에서 {walkText(p)}
+            {p.cat} · {distanceMeters === undefined ? `🏠 우리 집에서 ${walkText(p)}` : `직선 ${distanceMeters.toLocaleString('ko-KR')}m`}
           </small>
         </div>
       </div>
