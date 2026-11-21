@@ -99,3 +99,15 @@ N99: PASS / FAIL
 ```
 
 독립 MySQL 실행과 사용자 실행 이력은 RESULTS.md에 있습니다. 새 환경의 결과는 별도로 확인합니다. 서버의 월말·한국 날짜 계산, 자동 동기화·중지 정책, 권한, 동시성, 마이그레이션은 이 수동 저장 테스트로 검증되지 않습니다. 특히 P07은 중지 후 직접 INSERT하는 경계값 검사로 서버가 자동 기록을 막는지 검사하는 것이 아닙니다.
+
+## 마이그레이션 자동 검사 (2026-11-21)
+
+저장소 루트에서 실행합니다.
+
+- 정적 검사: `node --test --test-reporter=spec db/tests/schema-assets.test.cjs`
+- 스키마 변경 후 비교 자료 갱신: `node db/tests/generate-schema-audit.cjs`
+- Windows MySQL 9.6 격리 검증: `node db/tests/run-isolated-mysql.cjs`
+
+정식 마이그레이션 추가 시 migration-path.cjs와 19_migration_upgrade.sql에 동일 원문을 순서대로 반영합니다. 폐기된 20261101_event_anniversary.sql은 제외합니다. 정적 검사는 파일 누락, 신규 스키마와 업그레이드 경로의 컬럼·키·제약 차이, 비교 자료의 동기화를 확인합니다.
+
+격리 검증은 기존 MySQL에 접속하지 않고 db/private에 독립 데이터 디렉터리를 생성합니다. TCP를 비활성화한 전용 named pipe로 실행하며 종료 시 해당 서버를 중지합니다. 신규 설치, 전체·증분 업그레이드, 기존 데이터 보존과 중복 데이터 거부를 확인합니다. 최신 증분 경로는 주거 설문 상태 이관(COMPLETED/SKIPPED/PENDING), 계약·월급 금액 보존, 월급 삭제 후 월별 기록 유지, 분류 이름 대소문자 구분을 추가 확인합니다. 실제 서비스 DB 적용은 이 검사와 별개입니다.
