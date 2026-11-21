@@ -73,6 +73,7 @@ secrets/       (선택) 로컬 비밀값(구글 키 등). 깃에 올리지 않�
 **문서 안내**
 | 보고 싶은 것 | 문서 |
 |---|---|
+| 프론트 · 백엔드 · DB 에서 누가 언제 무엇을 했는지 (PR 마다 한 줄씩 추가) | [CHANGELOG.md](CHANGELOG.md) |
 | 프론트 ↔ 서버 API 전체와 기능별 상태 | [frontend/API.md](frontend/API.md) |
 | 프론트 폴더 · 실행 | [frontend/README.md](frontend/README.md) |
 | 백엔드 실행 · 기능별 구현 설명 | [backend/README.md](backend/README.md) · [backend/IMPLEMENTATION.md](backend/IMPLEMENTATION.md) |
