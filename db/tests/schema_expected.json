@@ -3643,29 +3643,69 @@
     },
     {
       "table": "trash_schedules",
-      "column": "weekday",
-      "type": "tinyint unsigned",
-      "nullable": "NO",
-      "auto": 0,
-      "generated": 0,
-      "charset": "",
-      "collation": ""
-    },
-    {
-      "table": "trash_schedules",
-      "column": "waste_type",
-      "type": "enum('general','recycle','food')",
-      "nullable": "NO",
-      "auto": 0,
-      "generated": 0,
-      "charset": "",
-      "collation": ""
-    },
-    {
-      "table": "trash_schedules",
-      "column": "description",
+      "column": "place",
       "type": "varchar(100)",
       "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "trash_schedules",
+      "column": "general_days",
+      "type": "set('일','월','화','수','목','금','토')",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "trash_schedules",
+      "column": "general_time",
+      "type": "time",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "trash_schedules",
+      "column": "food_days",
+      "type": "set('일','월','화','수','목','금','토')",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "trash_schedules",
+      "column": "food_time",
+      "type": "time",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "trash_schedules",
+      "column": "recycle_days",
+      "type": "set('일','월','화','수','목','금','토')",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "trash_schedules",
+      "column": "recycle_time",
+      "type": "time",
+      "nullable": "YES",
       "auto": 0,
       "generated": 0,
       "charset": "",
@@ -4639,11 +4679,6 @@
       "columns": "id"
     },
     {
-      "table": "trash_schedules",
-      "name": "uk_trash_schedules_region_weekday_type",
-      "columns": "region_id,weekday,waste_type"
-    },
-    {
       "table": "place_categories",
       "name": "PRIMARY",
       "columns": "id"
@@ -5391,7 +5426,11 @@
     },
     {
       "table": "trash_schedules",
-      "name": "ck_trash_weekday"
+      "name": "ck_trash_any_day"
+    },
+    {
+      "table": "trash_schedules",
+      "name": "ck_trash_day_time"
     },
     {
       "table": "places",

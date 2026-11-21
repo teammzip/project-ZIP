@@ -17,10 +17,11 @@ INSERT INTO users (nickname,region_id) VALUES ('지도AI검증회원',@map_regio
 SET @map_user=LAST_INSERT_ID();
 INSERT INTO users (nickname,region_id) VALUES ('다른지도회원',@map_other_region);
 SET @map_other=LAST_INSERT_ID();
-INSERT INTO trash_schedules (region_id,weekday,waste_type,description)
-VALUES (@map_region,1,'GENERAL','가상 월요일 일반 배출'),(@map_region,1,'RECYCLE','가상 월요일 재활용 배출');
-SELECT 'K02 같은 요일 다른 배출 종류' AS test,IF(COUNT(*)=2,'PASS','FAIL') AS result
-FROM trash_schedules WHERE region_id=@map_region AND weekday=1;
+-- 한 줄에 종류별 요일 · 시각, 배출 없는 종류는 빈 요일 · NULL 시각. 같은 동네에 장소가 다르면(마을 · 거점마다 다른 군 지역) 여러 줄
+INSERT INTO trash_schedules (region_id,place,general_days,general_time,food_days,food_time,recycle_days,recycle_time)
+VALUES (@map_region,'가상 집 앞','월,수,금','18:00','월,수,금','18:00','목','18:00'),(@map_region,'가상 마을 배출장','월','20:00','',NULL,'',NULL);
+SELECT 'K02 같은 동네 다른 장소 · 월요일 생활쓰레기' AS test,IF(COUNT(*)=2,'PASS','FAIL') AS result
+FROM trash_schedules WHERE region_id=@map_region AND FIND_IN_SET('월',general_days);
 INSERT INTO place_categories (name,icon) VALUES (CONCAT('검증',@map_tag),'📍');
 SET @map_category=LAST_INSERT_ID();
 INSERT INTO places (region_id,category_id,name,lat,lon)

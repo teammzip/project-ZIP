@@ -701,18 +701,26 @@ CREATE TABLE IF NOT EXISTS `ai_usage_daily` (
   CONSTRAINT `fk_ai_usage_daily_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 세는 표.';
 
--- 쓰레기 배출 일정: 동네별 요일 배출표. 홈 쓰레기 카드, 쓰레기 화면의 요일표, 오른쪽 패널, 알림이 모두 이 표로 "오늘 무슨 쓰레기를 내놓는지"를 알려줍니다. 배출 없는 요일은 줄이 없습니다.
+-- 쓰레기 배출 일정: 원본 CSV(전국생활쓰레기배출정보표준데이터)와 같은 모양. 한 줄 = 동네(시군구) · 배출장소, 종류마다 배출 요일 · 시작 시각.
+-- 쓰레기 배출일 아침 알림(notification/TrashReminderService)이 집 주소의 동네 줄에서 오늘 요일이 든 종류를 찾아 알려줘요.
+-- 같은 동네에 장소마다 요일이 다르면 줄이 여러 개예요 (마을 · 거점마다 장소가 다른 군 지역). 배출이 없는 종류는 요일 빈 값 · 시각 NULL.
+-- 데이터: db/data/생활쓰레기배출정보.csv → db/tools/trash_import.py → trash_schedules_nationwide.sql(저장소 루트)
 CREATE TABLE IF NOT EXISTS `trash_schedules` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '배출일정 아이디 — 자동 증가',
-  `region_id` BIGINT UNSIGNED NOT NULL COMMENT '동네 아이디',
-  `weekday` TINYINT UNSIGNED NOT NULL COMMENT '배출 요일 — 0=일 ~ 6=토',
-  `waste_type` ENUM('GENERAL','RECYCLE','FOOD') NOT NULL COMMENT '배출 종류 — 일반쓰레기 / 재활용 / 음식물',
-  `description` VARCHAR(100) NOT NULL COMMENT '배출 안내 — 예: 저녁 6시 ~ 자정, 종량제 봉투 사용',
+  `region_id` BIGINT UNSIGNED NOT NULL COMMENT '동네 아이디 — 시군구',
+  `place` VARCHAR(100) NOT NULL COMMENT '배출장소 — 예: 내 집 혹은 내 점포 앞',
+  `general_days` SET('일','월','화','수','목','금','토') NOT NULL DEFAULT '' COMMENT '생활쓰레기 배출 요일 — 예: 월,수,금 (없으면 빈 값)',
+  `general_time` TIME NULL COMMENT '생활쓰레기 배출 시작 시각 — 배출 요일이 없으면 비움',
+  `food_days` SET('일','월','화','수','목','금','토') NOT NULL DEFAULT '' COMMENT '음식물쓰레기 배출 요일',
+  `food_time` TIME NULL COMMENT '음식물쓰레기 배출 시작 시각',
+  `recycle_days` SET('일','월','화','수','목','금','토') NOT NULL DEFAULT '' COMMENT '재활용품 배출 요일',
+  `recycle_time` TIME NULL COMMENT '재활용품 배출 시작 시각',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_trash_schedules_region_weekday_type` (`region_id`, `weekday`, `waste_type`),
+  KEY `idx_trash_schedules_region_id` (`region_id`),
   CONSTRAINT `fk_trash_schedules_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `ck_trash_weekday` CHECK (`weekday` BETWEEN 0 AND 6)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='쓰레기 배출 일정: 동네별 요일 배출표.';
+  CONSTRAINT `ck_trash_any_day` CHECK (`general_days` <> '' OR `food_days` <> '' OR `recycle_days` <> ''),
+  CONSTRAINT `ck_trash_day_time` CHECK ((`general_days` = '') = (`general_time` IS NULL) AND (`food_days` = '') = (`food_time` IS NULL) AND (`recycle_days` = '') = (`recycle_time` IS NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='쓰레기 배출 일정: 동네(시군구) · 배출장소별 생활쓰레기 · 음식물 · 재활용 배출 요일과 시작 시각. 출처: 전국생활쓰레기배출정보표준데이터';
 
 -- 장소 분류: 지도 화면의 칩(세탁방·편의점·약국·마트) 목록.
 CREATE TABLE IF NOT EXISTS `place_categories` (
@@ -908,14 +916,7 @@ UPDATE `place_categories` SET `icon` = '🥘' WHERE `name` = '반찬가게';
 UPDATE `place_categories` SET `icon` = '👔' WHERE `name` = '세탁소';
 UPDATE `place_categories` SET `icon` = '🏛️' WHERE `name` = '주민센터';
 
--- 쓰레기 배출표 (마포구 예시: 일반쓰레기 월·수·금 ... 요일은 0=일 ~ 6=토, 토요일은 배출 없음)
-INSERT IGNORE INTO `trash_schedules` (`region_id`, `weekday`, `waste_type`, `description`) VALUES
-  (2, 0, 'GENERAL', '저녁 6시 ~ 자정, 종량제 봉투 사용'),
-  (2, 1, 'RECYCLE', '저녁 6시 ~ 자정, 플라스틱 · 캔 · 종이 분리'),
-  (2, 2, 'GENERAL', '저녁 6시 ~ 자정, 종량제 봉투 사용'),
-  (2, 3, 'RECYCLE', '저녁 6시 ~ 자정, 유리병 · 비닐 분리'),
-  (2, 4, 'GENERAL', '저녁 6시 ~ 자정, 종량제 봉투 사용'),
-  (2, 5, 'RECYCLE', '저녁 6시 ~ 자정, 플라스틱 · 캔 · 종이 분리');
+-- 쓰레기 배출표는 여기서 넣지 않아요 (예전 마포구 예시 6행은 삭제). 전국 데이터는 regions_nationwide.sql(저장소 루트) → trash_schedules_nationwide.sql(저장소 루트) 순서로 넣어요.
 
 -- 약관 본문: frontend/src/features/legal/content.ts의 제목·본문·LEGAL_VERSION과 동일
 -- 이미 동의한 이전 버전은 보존하며, 본문 변경 시 프론트와 함께 새 버전을 추가합니다.
