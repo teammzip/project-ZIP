@@ -110,3 +110,13 @@ MySQL DDL은 암묵 커밋됩니다. 중간 실패 시 백업과 실제 스키�
 
 - 20261121_02_salary_record_deletion.sql: 월급 내역 삭제 후 해당 달의 재생성을 방지합니다.
 - 20261121_03_ledger_category_label_case.sql: 회원별 거래 분류명 수정 시 영문 대소문자를 정확하게 저장합니다.
+
+## 2026-11-21 주거 설문·월급 삭제·분류 이름
+
+기존 DB는 20261120_01까지 적용한 뒤 아래 순서로 각각 한 번 적용합니다. 신규 DB는 최신 schema.sql을 사용합니다.
+
+1. 20261121_01_housing_onboarding.sql: 설문 상태와 대출·월급 초안 컬럼 추가. 기존 계약 회원은 COMPLETED, 로그인 이력이 있는 나머지 회원은 SKIPPED, 신규 회원은 PENDING으로 보완합니다. 상태 보완 블록은 동일 세션에서 실행하며 SQL_SAFE_UPDATES를 복원합니다.
+2. 20261121_02_salary_record_deletion.sql: salary_records.income_id를 NULL 허용으로 변경해 월급 삭제 후 해당 월의 중복 자동 등록 방지 기록을 유지합니다.
+3. 20261121_03_ledger_category_label_case.sql: ledger_categories.name에 utf8mb4_bin을 사용해 대소문자가 다른 이름을 구분합니다.
+
+DDL은 암묵 커밋되므로 백업 후 적용하며 전체 파일을 무조건 재실행하지 않습니다. 정적·격리 MySQL 검사 절차는 ../tests/README.md의 마이그레이션 자동 검사 항목을 참고합니다.

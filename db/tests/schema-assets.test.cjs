@@ -21,6 +21,12 @@ const current = tables(schema)
 const migrations = [...legacyMigrations, ...incrementalMigrations]
   .map(name => [`db/migrations/${name}`, read(`db/migrations/${name}`)])
 
+test('all supported migration files are included in the validation path', () => {
+  const deprecated = new Set(['20261101_event_anniversary.sql'])
+  const files = fs.readdirSync('db/migrations').filter(name => name.endsWith('.sql') && !deprecated.has(name)).sort()
+  assert.deepEqual([...legacyMigrations, ...incrementalMigrations].sort(), files)
+})
+
 test('foreign keys reference existing compatible columns and SET NULL allows NULL', () => {
   const seen = new Set()
   for (const [name, body] of current) {
@@ -52,7 +58,7 @@ test('all migrations produce the same columns, named keys and constraints as fre
       const table = state.get(alter[1])
       assert(table, `unknown table ${alter[1]}`)
       for (const [, quoted, unquoted, definition] of alter[2].matchAll(
-        /^\s*(?:ADD|MODIFY) (?:(?:COLUMN )?`(\w+)`|COLUMN (\w+)) (.+)$/gm
+        /^\s*(?:ADD|MODIFY) (?:(?:COLUMN )?`(\w+)`|(?:COLUMN )?((?!(?:CONSTRAINT|UNIQUE|KEY|PRIMARY|FOREIGN|CHECK)\b)\w+)) (.+)$/gm
       )) {
         table.columns.set(quoted || unquoted, normalize(definition))
       }

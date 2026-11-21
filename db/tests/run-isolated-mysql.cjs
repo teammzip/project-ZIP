@@ -170,9 +170,39 @@ async function main() {
   assert.equal(violations.length,8)
   for (const row of violations) assert(row.endsWith('\t0'), `preflight: ${row}`)
   for (const name of incrementalMigrations) {
+    if (name === '20261121_01_housing_onboarding.sql') {
+      successful('latest upgrade fixtures', `USE zip_incremental_test;
+INSERT INTO users(nickname,last_login_at) VALUES ('mig-return',NOW());
+SET @returning=LAST_INSERT_ID();
+INSERT INTO users(nickname) VALUES ('mig-new');
+SET @new_user=LAST_INSERT_ID();
+INSERT INTO users(nickname) VALUES ('mig-home');
+SET @home_user=LAST_INSERT_ID();
+INSERT INTO home_contracts(user_id,contract_kind,deposit) VALUES (@home_user,'monthly',123456);
+INSERT INTO incomes(user_id,category_id,amount,income_date)
+SELECT @returning,id,2500000,'2026-11-01' FROM ledger_categories WHERE kind='INCOME' AND name='월급';
+SET @salary_income=LAST_INSERT_ID();
+INSERT INTO salary_records(user_id,period_ym,income_id) VALUES (@returning,'2026-11',@salary_income);
+`, 0)
+    }
     const migration = read(`db/migrations/${name}`).replaceAll('USE `zip`;', 'USE `zip_incremental_test`;')
     successful(name, 'USE `zip_incremental_test`;\n' + migration, 0)
   }
+  successful('latest migration behavior and preservation', `USE zip_incremental_test;
+SELECT 'onboarding backfill',IF(
+ (SELECT housing_survey_status FROM users WHERE nickname='mig-return')='SKIPPED'
+ AND (SELECT housing_survey_status FROM users WHERE nickname='mig-new')='PENDING'
+ AND (SELECT housing_survey_status FROM users WHERE nickname='mig-home')='COMPLETED','PASS','FAIL');
+SELECT 'contract and salary preserved',IF(
+ (SELECT deposit FROM home_contracts h JOIN users u ON h.user_id=u.id WHERE u.nickname='mig-home')=123456
+ AND (SELECT i.amount FROM incomes i JOIN users u ON i.user_id=u.id WHERE u.nickname='mig-return')=2500000,'PASS','FAIL');
+SET @returning=(SELECT id FROM users WHERE nickname='mig-return');
+UPDATE salary_records SET income_id=NULL WHERE user_id=@returning AND period_ym='2026-11';
+DELETE FROM incomes WHERE user_id=@returning;
+SELECT 'salary deletion tombstone',IF((SELECT COUNT(*) FROM salary_records WHERE user_id=@returning AND period_ym='2026-11' AND income_id IS NULL)=1,'PASS','FAIL');
+INSERT INTO ledger_categories(kind,name,color) VALUES ('INCOME','CaseVerify','#123456'),('INCOME','caseverify','#123456');
+SELECT 'case-sensitive labels',IF((SELECT COUNT(*) FROM ledger_categories WHERE kind='INCOME' AND name IN ('CaseVerify','caseverify'))=2,'PASS','FAIL');
+`, 4)
   successful('incremental structure audit', read('db/tests/15_schema_audit.sql')
     .replace('USE zip_test;','USE zip_incremental_test;'), 7)
   successful('duplicate upgrade legacy fixture',oldSchema.replaceAll('zip_incremental_test','zip_dirty_upgrade_test'),0)

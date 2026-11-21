@@ -27,6 +27,9 @@ const incrementalMigrations = [
   '20261119_02_ledger_memos.sql',
   '20261119_03_salary_income.sql',
   '20261120_01_community_post_views.sql',
+  '20261121_01_housing_onboarding.sql',
+  '20261121_02_salary_record_deletion.sql',
+  '20261121_03_ledger_category_label_case.sql',
 ]
 
 module.exports = { legacyMigrations, incrementalMigrations }
