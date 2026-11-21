@@ -16,7 +16,7 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
-/** 즐겨찾기: DB 장소(번호)와 카카오 장소("kakao:id", id · 이름만 저장) */
+/** 지도 API: 장소 검색 경로와 DB · 카카오 장소 즐겨찾기 */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -41,6 +41,14 @@ class MapFavoriteIntegrationTests {
     private ResultActions save(String token, String placeId, String body) throws Exception {
         var request = put("/api/me/place-favorites/{id}", placeId).header("Authorization", "Bearer " + token);
         return mvc.perform(body == null ? request : request.contentType("application/json").content(body));
+    }
+
+    @Test void nearbySearchRouteValidatesCoordinatesForSignedInUsers() throws Exception {
+        mvc.perform(post("/api/places/nearby").header("Authorization", "Bearer " + login("tester01"))
+            .contentType("application/json").content("""
+                {"q":"약국","lat":91,"lon":126.91}
+                """))
+            .andExpect(status().isBadRequest());
     }
 
     @Test void kakaoPlaceSavesOnlyIdNameAndCategoryAndListsWithDbPlaces() throws Exception {

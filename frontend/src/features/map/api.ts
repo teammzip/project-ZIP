@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { apiClient } from '@/lib/apiClient'
 import type { PlaceItem } from './data/places'
 import type { PlaceList } from './store'
+import type { MapPoint } from './location'
 
 /** 카카오 검색 장소의 id ("kakao:카카오장소id"). 서버 DB 에 없어서 저장 · 리뷰를 못 해요 */
 export const isKakaoPlace = (id: string) => id.startsWith('kakao:')
@@ -32,6 +33,7 @@ export type ServerPlace = {
 }
 
 export type MapSettings = { categories: string[]; keywords: string[] }
+export type NearbyPlace = MapPoint & { id: string; name: string; address: string | null; distanceMeters: number; category: string }
 
 /** 서버 장소 → 화면이 쓰는 모양 (즐겨찾기 번호는 서버의 장소 id) */
 export const toPlaceItem = (p: ServerPlace): PlaceItem => ({ id: p.id, cat: p.category, n: p.name, d: p.description, lat: p.lat, lon: p.lon, walk: p.walkMin })
@@ -51,6 +53,8 @@ export const mapApi = {
   },
   aiSearch: async (q: string, regionId: string, signal?: AbortSignal) =>
     (await apiClient.post<Array<{ place: ServerPlace; reasons: string[] }>>('/places/ai-search', { q, regionId }, { signal })).data.map((r) => ({ p: toPlaceItem(r.place), why: r.reasons })),
+  nearby: async (q: string, point: MapPoint, signal: AbortSignal) =>
+    (await apiClient.post<NearbyPlace[]>('/places/nearby', { q, lat: point.lat, lon: point.lon }, { signal })).data,
   favorites: async () => (await apiClient.get<string[]>('/me/place-favorites')).data,
   /** 카카오 장소는 { name, category } 를 같이 보냄 (서버는 id · 이름만 저장) */
   addFavorite: (placeId: string, meta?: { n: string; cat: string }) =>

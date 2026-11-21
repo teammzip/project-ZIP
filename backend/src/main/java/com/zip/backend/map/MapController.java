@@ -34,6 +34,11 @@ public class MapController {
 
     static final String PLACE_NOTICE = "X-Place-Notice";
 
+    @PostMapping("/api/places/nearby")
+    public List<MapService.NearbyPlace> nearby(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody MapRequests.NearbySearch request) {
+        return map.nearby(userId(jwt), request);
+    }
+
     @PostMapping("/api/places/ai-search")
     public List<Map<String, Object>> aiSearch(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody MapRequests.AiSearch request) {
         return map.aiSearch(userId(jwt), request);

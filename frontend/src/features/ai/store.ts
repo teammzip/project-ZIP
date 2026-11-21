@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createAccountStorage } from '@/lib/accountStorage'
+import type { TopicSuggestion } from './topics'
 
 /* ---------- 첨부한 사진 (사진 화면 → AI 화면으로 넘김, 저장하지 않음) ---------- */
 
@@ -30,13 +31,14 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
 export type SpendCard = {
   month: number
   total: number
-  prevTotal: number
+  prevTotal?: number
+  income?: number
   fixed: number
   rows: Array<[string, number]>
   top: [string, number] | null
 }
 
-export type ChatMsg = { role: 'bot' | 'user'; text: string; card?: SpendCard; billRegistered?: boolean }
+export type ChatMsg = { role: 'bot' | 'user'; text: string; card?: SpendCard; billRegistered?: boolean; suggestion?: TopicSuggestion; nearbyKeyword?: string }
 
 export const GREETING = '안녕하세요! 자취하면서 궁금한 걸 편하게 물어보세요. 😊\n분리배출, 냉장고 요리, 곰팡이, 보증금·계약, 공과금, 이번 달 지출 요약까지 도와드려요.'
 const MAX = 40

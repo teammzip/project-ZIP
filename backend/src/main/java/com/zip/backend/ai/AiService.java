@@ -31,6 +31,10 @@ public class AiService {
     private static final int HISTORY_TURNS = 12;
     private static final int MAX_MESSAGES = 400;
     private static final int MAX_CARD_JSON = 4000;
+    private static final Map<String, String> TOPIC_LABELS = Map.of(
+        "trash", "분리배출", "cook", "냉장고 요리", "clean", "청소·곰팡이",
+        "contract", "계약·보증금", "bill", "공과금·생활비"
+    );
 
     // 법률·세금·의료·금융은 틀리면 피해가 크다. AI가 지시문의 "전문가 확인" 안내를 빼먹어도 되도록,
     // 이런 질문·답변에는 서버가 면책 문구를 항상 직접 덧붙인다(AI에게 맡기지 않는다).
@@ -45,6 +49,8 @@ public class AiService {
     private static final String SYSTEM = """
         너는 혼자 사는 사람(자취생)의 생활을 돕는 한국어 도우미 "ZIP AI"야.
         분리배출, 냉장고 재료로 요리, 곰팡이·청소, 월세·보증금·계약, 공과금과 생활비 절약, 집주인에게 보낼 연락 문구 등을 도와줘.
+        - 문장뿐 아니라 단어, 짧은 구절, 쉼표로 나열한 재료나 조건도 입력으로 들어와. 선택 주제가 있으면 그 주제에서 입력이 뜻하는 요청으로 해석하고 바로 답해.
+        - 주제가 없으면 입력과 앞선 대화로 의도를 판단해. 답변을 바꿀 만한 정보가 부족할 때만 한 가지를 짧게 확인해.
         - 존댓말로, 친근하고 짧게 답해. 길어도 핵심만 단계별로 정리해.
         - 법률·세금·의료처럼 전문 판단이 필요한 내용은 일반적인 안내만 하고, 중요한 결정은 전문가나 관할 기관에 확인하라고 덧붙여.
         - 모르는 건 아는 척하지 말고 모른다고 말해.
@@ -119,7 +125,8 @@ public class AiService {
         String answer;
         try {
             String code = topic != null && !topic.isBlank() ? topic.strip() : conversation.topic();
-            String system = code == null ? SYSTEM : SYSTEM + "\n지금 대화 주제 코드: " + code;
+            String label = code == null ? null : TOPIC_LABELS.get(code);
+            String system = label == null ? SYSTEM : SYSTEM + "\n사용자가 선택한 주제: " + label;
             answer = plain(gemini.chat(system, merge(turns)));
             if (answer.isEmpty()) throw new IllegalStateException("empty answer");
             answer = withDisclaimer(question, answer); // 빈 답변 검사 뒤에 붙인다(빈 답변이 문구만 남아 성공처럼 보이지 않게)

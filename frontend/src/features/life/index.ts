@@ -11,6 +11,7 @@ export { BudgetSummaryCard, LifeInfoForm, LifeStats, NotiSwitch } from './compon
 export { RegionVerifyDialog } from './components/RegionVerify'
 export { RegionAccessGate } from './components/RegionAccessGate'
 export { spendBreakdown, useLifeSummary, useRegionVerify } from './derive'
+export { loadMonthlyBudget } from './monthlyBudget'
 export { useNotis } from './notifications'
 export { useCalendarServerSync, withoutCalendarSync } from './calendarSync'
 export { useLifeStore } from './store'

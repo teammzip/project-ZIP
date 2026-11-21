@@ -43,7 +43,7 @@ export function HomeAiCard({ ctx }: { ctx: Omit<AiContext, 'hasPhoto'> }) {
         </div>
         <div className={styles.chips}>
           {CHAT_TOPICS.map((t) => (
-            <button key={t.id} type="button" className={styles.chip} onClick={() => start({ text: t.ask, topic: t.id })}>
+            <button key={t.id} type="button" className={styles.chip} onClick={() => start({ topic: t.id })}>
               {t.label}
             </button>
           ))}

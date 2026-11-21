@@ -320,11 +320,9 @@
   }
 }
 
-/* 모달 아래쪽 분야 카드 (TopicCards, 옆으로 끌어서 이동) */
-.chatCards {
+.chatTopics {
   flex: none;
-  padding: 4px 16px 0;
-  overflow: hidden;
+  padding-inline: 12px;
 }
 
 .chatForm {
@@ -396,6 +394,38 @@
   height: 100%;
   border-radius: 99px;
   background: var(--color-primary);
+}
+
+.budgetBars {
+  display: grid;
+  gap: 8px;
+}
+
+.budgetBars p {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  margin-bottom: 3px;
+  font-size: 13px;
+}
+
+.budgetBars .sumBar {
+  height: 9px;
+}
+
+.budgetBars .incomeBar {
+  background: var(--color-teal);
+}
+
+.budgetBars .excessBar {
+  background: #b42318;
+}
+
+.budgetExcess {
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .sumVal {

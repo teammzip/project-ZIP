@@ -1,0 +1,146 @@
+.conversation {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.guide {
+  --guide-link-color: color-mix(in srgb, var(--color-primary) 72%, var(--color-text));
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: min(100%, 640px);
+  min-height: 0;
+  margin-inline: auto;
+}
+
+.header {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 12px;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.header h2 {
+  font-size: 20px;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  padding: 12px 12px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.prompt {
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+
+.categories {
+  border-top: 1px solid var(--color-line);
+}
+
+.categories > li {
+  border-bottom: 1px solid var(--color-line);
+}
+
+.category {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 50px;
+  padding: 6px 10px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.category[aria-expanded='true'],
+.category span,
+.back {
+  color: var(--guide-link-color);
+}
+
+.features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 10px 12px;
+}
+
+.feature,
+.go {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 6px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 22px;
+  background: var(--color-card);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.back {
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.answer {
+  padding: 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 20px 20px 20px 6px;
+  background: var(--color-card);
+  font-size: 15px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.answer h3 {
+  font-size: 18px;
+}
+
+.path,
+.note {
+  color: color-mix(in srgb, var(--color-text) 64%, var(--color-muted));
+  font-size: 14px;
+}
+
+.path {
+  margin-top: 4px;
+}
+
+.steps {
+  display: grid;
+  gap: 8px;
+  margin-block: 12px;
+  padding-inline-start: 24px;
+  list-style: decimal;
+}
+
+.go {
+  margin-top: 8px;
+  border-color: var(--color-primary);
+  color: var(--guide-link-color);
+}
+
+.guide :is(button, a):hover {
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-card));
+}
+
+.guide :is(button, a, h3):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

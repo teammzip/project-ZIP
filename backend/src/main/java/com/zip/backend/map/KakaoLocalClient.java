@@ -15,7 +15,7 @@ public class KakaoLocalClient {
 
     record Response(List<Document> documents) {}
 
-    private static final int SIZE = 15; // 한 번에 최대 15곳 (카카오 제한)
+    static final int SIZE = 15; // 한 번에 최대 15곳 (카카오 제한)
 
     private final RestClient rest;
     private final String key;

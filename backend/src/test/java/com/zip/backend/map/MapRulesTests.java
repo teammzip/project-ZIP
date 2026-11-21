@@ -1,8 +1,11 @@
 package com.zip.backend.map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.zip.backend.common.ApiException;
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,59 @@ class MapRulesTests {
         assertEquals(99, MapService.walkMin(place(9, "공원", "설명 없음", null, 37.55, 126.92), Optional.empty()));
     }
 
+    @Test
+    void nearbyReturnsAllPlacesInsideOneKilometerWithCoordinatesInDistanceOrder() {
+        var service = new MapService(null, new KakaoLocalClient("test") {
+            @Override
+            public List<Document> category(String code, double lat, double lon, int radius) {
+                assertEquals("PM9", code);
+                assertEquals(35.16, lat);
+                assertEquals(129.06, lon);
+                assertEquals(1_000, radius);
+                return List.of(
+                    pharmacy("1", 35.18), pharmacy("2", 35.165), pharmacy("3", 35.162),
+                    pharmacy("4", 35.161), pharmacy("5", 35.164), pharmacy("6", Double.NaN), pharmacy("4", 35.163));
+            }
+        }, new KakaoQuota(Clock.systemUTC(), 30, 30_000));
+
+        var results = service.nearby(1, new MapRequests.NearbySearch("약국", 35.16, 129.06));
+        assertEquals(List.of("4", "3", "5", "2"), results.stream().map(MapService.NearbyPlace::id).toList());
+        assertEquals(List.of(112L, 223L, 445L, 556L), results.stream().map(MapService.NearbyPlace::distanceMeters).toList());
+        assertEquals("가까운 도로명", results.get(0).address());
+        assertEquals(35.161, results.get(0).lat());
+        assertEquals(129.06, results.get(0).lon());
+        assertEquals("약국", results.get(0).category());
+    }
+
+    @Test
+    void nearbyKeywordSearchStaysWithinOneKilometerAndReportsLimits() {
+        var service = new MapService(null, new KakaoLocalClient("test") {
+            @Override
+            public List<Document> keyword(String q, double lat, double lon, int radius) {
+                assertEquals("카페 브라운", q);
+                assertEquals(1_000, radius);
+                return List.of(pharmacy("1", 35.18));
+            }
+        }, new KakaoQuota(Clock.systemUTC(), 1, 30_000));
+
+        assertTrue(service.nearby(1, new MapRequests.NearbySearch("카페 브라운", 35.16, 129.06)).isEmpty());
+        var limit = assertThrows(ApiException.class, () -> service.nearby(1, new MapRequests.NearbySearch("다른 장소", 35.16, 129.06)));
+        assertEquals(429, limit.status());
+    }
+
+    @Test
+    void nearbyRejectsInvalidCoordinatesAndUnavailableKakaoBeforeSearching() {
+        var service = new MapService(null, new KakaoLocalClient(""), null);
+        assertEquals(400, assertThrows(ApiException.class,
+            () -> service.nearby(1, new MapRequests.NearbySearch("약국", Double.NaN, 129.06))).status());
+        assertEquals(503, assertThrows(ApiException.class,
+            () -> service.nearby(1, new MapRequests.NearbySearch("약국", 35.16, 129.06))).status());
+    }
+
+    private static KakaoLocalClient.Document pharmacy(String id, double lat) {
+        return new KakaoLocalClient.Document(id, "약국 " + id, "건강 > 약국", "PM9", null,
+            "가까운 지번", "가까운 도로명", "129.06", Double.toString(lat));
+    }
     @Test
     void aiFindPrefersCategoryAndConditions() {
         var found = PlaceFinder.find("밤에 갈 수 있는 약국", PLACES, List.of("세탁방", "약국", "카페"),

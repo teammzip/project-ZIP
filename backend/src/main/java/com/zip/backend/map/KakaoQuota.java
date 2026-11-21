@@ -67,10 +67,10 @@ public class KakaoQuota {
             documents = List.copyOf(kakao.get());
         } catch (HttpClientErrorException.TooManyRequests error) {
             synchronized (this) { exhaustedToday = true; }
-            log.warn("카카오 로컬 API 한도 초과 — 오늘은 DB 장소만 보여 줘요");
+            log.warn("카카오 로컬 API 한도 초과");
             throw new Unavailable("daily-limit");
         } catch (RestClientException error) {
-            log.warn("카카오 로컬 API 실패 — DB 장소로 대신해요: {}", error.getMessage());
+            log.warn("카카오 로컬 API 실패: {}", error.getClass().getSimpleName());
             throw new Unavailable("error");
         }
         if (cache.size() >= CACHE_MAX) cache.entrySet().removeIf(e -> !e.getValue().at().plus(CACHE_TTL).isAfter(now));
