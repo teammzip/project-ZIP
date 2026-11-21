@@ -504,6 +504,9 @@ CREATE TABLE IF NOT EXISTS `posts` (
   KEY `idx_posts_region_id_category_created_at` (`region_id`, `category`, `created_at`),
   KEY `idx_posts_region_status_views` (`region_id`, `status`, `view_count`, `created_at`, `id`),
   KEY `idx_posts_status_created_at` (`status`, `created_at`, `id`),
+  KEY `idx_posts_home_tip` (`is_home_tip`, `status`, `created_at`, `id`),
+  KEY `idx_posts_region_status_created` (`region_id`, `status`, `created_at`, `id`),
+  KEY `idx_posts_user_status` (`user_id`, `status`),
   CONSTRAINT `fk_posts_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_posts_region_id` FOREIGN KEY (`region_id`) REFERENCES `regions` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_posts_deleted_by` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
@@ -534,6 +537,7 @@ CREATE TABLE IF NOT EXISTS `comments` (
   `delete_reason` VARCHAR(200) NULL COMMENT '운영자가 지운 사유 — 작성자 본인 삭제는 비움',
   PRIMARY KEY (`id`),
   KEY `idx_comments_post_id_created_at` (`post_id`, `created_at`),
+  KEY `idx_comments_user_status` (`user_id`, `status`),
   CONSTRAINT `fk_comments_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_comments_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_comments_parent_id` FOREIGN KEY (`parent_id`) REFERENCES `comments` (`id`) ON DELETE CASCADE,
