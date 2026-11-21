@@ -69,8 +69,8 @@ public class CalendarService {
     @Transactional
     public Map<String, Object> createEvent(long userId, EventInput input) {
         if (input == null) throw new ApiException(400, "일정 내용을 보내 주세요.");
-        if (repository.countEvents(userId) >= EVENTS_MAX) throw new ApiException(400, "일정은 " + String.format("%,d", EVENTS_MAX) + "개까지 만들 수 있어요.");
         repository.ensureDefaults(userId);
+        if (repository.countEvents(userId) >= EVENTS_MAX) throw new ApiException(400, "일정은 " + String.format("%,d", EVENTS_MAX) + "개까지 만들 수 있어요.");
         var blank = new CalendarRepository.EventRow(0, null, null, null, null, false, "USER", false, false);
         var values = values(userId, blank, input, true);
         long id = repository.insertEvent(userId, values, now());

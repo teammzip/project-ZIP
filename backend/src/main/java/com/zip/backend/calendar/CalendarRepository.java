@@ -27,8 +27,9 @@ public class CalendarRepository {
 
     public record CategoryRow(long id, String name, String ico, boolean system, int sortOrder) {}
 
-    /** 처음 쓰는 회원이면 기본 카테고리 5개 + 미분류와 기본 항목을 만들어 줌 (이미 있으면 그대로) */
+    /** 처음 쓰는 회원이면 기본 카테고리 5개 + 미분류와 기본 항목을 만들어 줌 (이미 있으면 그대로). 트랜잭션 맨 처음에 불러요 */
     public void ensureDefaults(long userId) {
+        jdbc.queryForList(com.zip.backend.common.Sql.LOCK_USER, Long.class, userId); // 두 화면 · 두 기기가 동시에 처음 열어도 한 벌만
         if (jdbc.queryForObject("SELECT COUNT(*) FROM event_categories WHERE user_id = ?", Integer.class, userId) > 0) return;
         var defaults = CalendarDefaults.CATEGORIES;
         for (int i = 0; i < defaults.size(); i++) {
