@@ -32,11 +32,75 @@ public class SalaryService {
             return result;
         },user).stream().findFirst().orElseGet(() -> Map.of("amount",0L,"incomePeriod","monthly","monthlyAmount",0L,"paymentDay",25,"startMonth",""));
     }
+    @Transactional
     public Map<String,Object> getWithDraft(long user) {
-        var result = new LinkedHashMap<>(get(user));
+        auth.lockUser(user);
+        var settings = get(user);
         String draft = jdbc.queryForObject("SELECT housing_salary_draft FROM users WHERE id=?", String.class, user);
+        if (draft == null && settings.get("startMonth").equals("") && !hasDeletedSalary(user)) {
+            var latest = jdbc.query("""
+                SELECT i.amount,i.income_date FROM incomes i JOIN ledger_categories c ON c.id=i.category_id
+                WHERE i.user_id=? AND i.income_type='FIXED' AND c.kind='INCOME' AND c.name='월급'
+                  AND i.amount BETWEEN 1 AND 999999999
+                ORDER BY i.income_date DESC,i.id DESC LIMIT 1
+                """, (rs,n) -> new LegacySalary(rs.getLong("amount"), rs.getDate("income_date").toLocalDate()), user);
+            if (!latest.isEmpty()) {
+                var record = latest.get(0);
+                registerLedgerSalary(user, record.amount(), record.date(), LocalDate.now(clock));
+                settings = get(user);
+            }
+        }
+        var result = new LinkedHashMap<>(settings);
         if (draft != null) result.put("draft", json.readTree(draft));
         return result;
+    }
+
+    private record LegacySalary(long amount, LocalDate date) {}
+
+    // The ledger save and legacy import both hold the account lock.
+    void requireFirstLedgerSalary(long user, LocalDate date) {
+        var month = YearMonth.from(date);
+        if (jdbc.queryForObject("""
+            SELECT COUNT(*) FROM users u WHERE u.id=? AND (
+                u.housing_salary_draft IS NOT NULL
+                OR EXISTS (SELECT 1 FROM salary_settings s WHERE s.user_id=u.id)
+                OR EXISTS (SELECT 1 FROM incomes i JOIN ledger_categories c ON c.id=i.category_id
+                           WHERE i.user_id=u.id AND i.income_type='FIXED' AND c.kind='INCOME' AND c.name='월급'
+                             AND (?=0 OR (i.income_date>=? AND i.income_date<?))))
+            """, Integer.class, user, hasDeletedSalary(user) ? 1 : 0, month.atDay(1), month.plusMonths(1).atDay(1)) > 0) {
+            throw new ApiException(409,"이미 월급 정보가 있어요. 마이페이지의 수입 정보에서 수정해 주세요.");
+        }
+    }
+
+    private boolean hasDeletedSalary(long user) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM salary_records WHERE user_id=? AND income_id IS NULL", Integer.class, user) > 0;
+    }
+
+    void linkLedgerSalary(long user, LocalDate date, long id) {
+        String month = YearMonth.from(date).toString();
+        if (jdbc.update("UPDATE salary_records SET income_id=? WHERE user_id=? AND period_ym=? AND income_id IS NULL", id, user, month) == 0) {
+            jdbc.update("INSERT INTO salary_records(user_id,period_ym,income_id) VALUES (?,?,?)", user, month, id);
+        }
+    }
+
+    void clearForLedgerDeletion(long user, long id) {
+        var months = jdbc.query("""
+            SELECT i.income_date FROM incomes i JOIN ledger_categories c ON c.id=i.category_id
+            WHERE i.id=? AND i.user_id=? AND i.income_type='FIXED' AND c.kind='INCOME' AND c.name='월급'
+            """, (rs,n) -> YearMonth.from(rs.getDate("income_date").toLocalDate()).toString(), id, user);
+        if (months.isEmpty()) return;
+        String month = months.get(0);
+        jdbc.update("UPDATE salary_records SET income_id=NULL WHERE user_id=? AND income_id=?", user, id);
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM salary_records WHERE user_id=? AND period_ym=?", Integer.class, user, month) == 0) {
+            jdbc.update("INSERT INTO salary_records(user_id,period_ym,income_id) VALUES (?,?,NULL)", user, month);
+        }
+        jdbc.update("DELETE FROM salary_settings WHERE user_id=?", user);
+        jdbc.update("UPDATE users SET housing_salary_draft=NULL WHERE id=?", user);
+    }
+
+    void registerLedgerSalary(long user, long amount, LocalDate received, LocalDate now) {
+        jdbc.update("INSERT INTO salary_settings(user_id,amount,income_period,payment_day,start_month) VALUES (?,?,'monthly',?,?)",
+            user, amount, received.getDayOfMonth(), YearMonth.from(now).toString());
     }
 
     // 설문 트랜잭션에서 호출한다. 수령일까지 입력하기 전에는 자동 등록을 시작하지 않는다.

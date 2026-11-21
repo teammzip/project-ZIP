@@ -26,7 +26,7 @@ function editor(bill, fail = false, confirm = true, resume) {
     if (name === '../billsApi') return { registerMonthlyBill: save('create'), updateMonthlyBill: save('update'), deleteMonthlyBill: save('delete') }
     if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: { id: '1' } }) }
     if (name === '../ledgerMemoNavigation') return { returnedMemoDraft: () => resume, clearMemoDraft() {}, openLedgerMemo: (...args) => calls.push({ kind: 'memo', args }) }
-    if (name === '../ledgerCategories') return { useLedgerCategories: () => [{ name: '공과금' }, { name: '통신' }] }
+    if (name === '../ledgerCategories') return { useLedgerCategorySettings: () => ({ categories: [{ name: '공과금' }, { name: '통신' }], loading: false, failed: false }) }
     if (name === './LedgerCategoryDialog') return { LedgerCategoryDialog: () => null }
     if (name === '@/lib/apiClient') return { getErrorMessage: (error) => error.message }
     if (name === '@/lib/cx') return { cx: (...values) => values.filter(Boolean).join(' ') }
@@ -88,7 +88,7 @@ test('취소·유효하지 않은 금액은 전송하지 않고 실패 시 입�
 test('고정 지출 입력 폼은 바로 보이고 사진 업로드를 제공하지 않는다', async () => {
   const ui = editor()
   assert.ok(ui.button('기록하기'))
-  assert.ok(ui.button('＋ 카테고리 추가'))
+  assert.ok(ui.button('카테고리 관리'))
   const memoButton = ui.nodes().find((node) => node.props?.['aria-label'] === '메모 작성')
   assert.ok(memoButton)
   assert.equal(memoButton.props.target, undefined)

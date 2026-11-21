@@ -1,7 +1,7 @@
 import { apiClient } from '@/lib/apiClient'
 
 export type LedgerKind = 'income' | 'spend'
-export type LedgerRow = { id: string; amount: number; date: string; cat: string; memo: string; memoId?: string; memoTitle?: string; salaryManaged?: boolean }
+export type LedgerRow = { id: string; amount: number; date: string; cat: string; memo: string; memoId?: string; memoTitle?: string; salaryManaged?: boolean; salaryCategory?: boolean }
 export type LedgerInput = Omit<LedgerRow, 'id'> & { incomeType?: 'fixed' | 'other' }
 export async function getLedger(kind: LedgerKind, month: string, timeZone: string, incomeType: 'fixed' | 'other' = 'fixed', signal?: AbortSignal) {
   return (await apiClient.get<LedgerRow[]>(`/ledger/${kind}`, { params: { month, timeZone, incomeType }, signal })).data

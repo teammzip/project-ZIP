@@ -26,26 +26,38 @@ test('가계부 API는 조회 시간대·유형을 전달하고 등록·수정·
 })
 
 function view(result = {}, user = '1', kind = 'spend') {
-  const exports = {}, options = []
+  const exports = {}, options = [], buttons = [], navigations = []
   const card = ({ title, actions, children }) => React.createElement('section', null, React.createElement('h2', null, title), actions, children)
   vm.runInNewContext(compile('../src/features/life/components/ServerMoneyLog.tsx'), { exports, Intl, Date, require: (name) => {
     if (name === 'react') return { useState: (initial) => [typeof initial === 'function' ? initial() : initial, () => {}], useRef: () => ({ current: false }) }
+    if (name === 'react-router-dom') return {
+      Link: ({ to, children }) => React.createElement('a', { href: to }, children),
+      useNavigate: () => (to) => navigations.push(to),
+    }
     if (name === '@tanstack/react-query') return { useQuery: (config) => { options.push(config); return { ...result, refetch() {} } }, useQueryClient: () => ({ invalidateQueries() {} }) }
     if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: user ? { id: user } : null, token: user ? 'session' : null }) }
     if (name === '../useBillingTimeZone') return { useBillingTimeZone: () => ({ choice: { source: 'address', timeZone: 'Asia/Seoul' }, resolving: false }) }
     if (name === '../useLocalMonth') return { useLocalMonth: () => ({ currentMonth: '2026-11', timeZone: 'Asia/Seoul' }) }
     if (name === '../monthlyPeriod') return { selectedMonth: (_, month) => month }
-    if (name === '../ledgerCategories') return { useLedgerCategories: () => [{ name: '식비' }] }
+    if (name === '../ledgerCategories') return { useLedgerCategorySettings: () => ({ categories: [{ name: '식비' }], loading: false, failed: false }) }
     if (name === './LedgerCategoryDialog') return { LedgerCategoryDialog: () => null }
     if (name === '../ledgerApi') return { getLedger() {} }
+    if (name === '../salaryApi') return { getSalary() {} }
     if (name === '../ledgerMemoNavigation') return { returnedMemoDraft: () => undefined }
-    if (name === '@/components/ui') return { Card: card, Button: ({ children, ...props }) => React.createElement('button', props, children), AmountInput: () => React.createElement('input') }
+    if (name === '@/components/ui') return {
+      Card: card,
+      Button: ({ children, variant, block, ...props }) => {
+        buttons.push({ children, variant, onClick: props.onClick })
+        return React.createElement('button', props, children)
+      },
+      AmountInput: () => React.createElement('input'),
+    }
     if (name === '@/lib/date') return { won: (amount) => `${amount}원` }
     if (name === '@/lib/apiClient') return { getErrorMessage: () => '조회 실패' }
     if (name.endsWith('.css')) return { default: {} }
     return require(name)
   } })
-  return { html: () => renderToStaticMarkup(exports.ServerMoneyLog({ kind })), options }
+  return { html: () => renderToStaticMarkup(exports.ServerMoneyLog({ kind })), options, buttons, navigations }
 }
 
 test('서버 월별 기록의 합계·설정 메뉴와 입력 폼을 표시한다', () => {
@@ -71,7 +83,23 @@ test('조회 실패를 빈 기록으로 숨기지 않고 비로그인 조회를 
 test('자동 월급은 가계부 직접 수정·삭제 대신 내 정보 설정으로 안내한다', () => {
   const ui = view({ data: [{ id: '1', date: '2026-11-01', cat: '월급', amount: 2500000, memo: '', salaryManaged: true }], isPending: false }, '1', 'income')
   const html = ui.html()
-  assert.match(html, /수입 정보에서 월급 수정/)
-  assert.match(html, /href="\/my\/settings"/)
-  assert.doesNotMatch(html, /기록 삭제/)
+  const edit = ui.buttons.find((button) => button.children === '수정')
+  assert.equal(edit.variant, 'line')
+  edit.onClick()
+  assert.deepEqual(ui.navigations, ['/my/settings?section=income&edit=income'])
+  assert.match(html, /기록 삭제/)
+})
+
+test('급여 기록이 없어도 고정 수입에서 수입 정보 창으로 이동할 수 있다', () => {
+  const empty = { data: [], isPending: false }
+  assert.match(view(empty, '1', 'income').html(), /href="\/my\/settings\?section=income">월·연 수입 설정/)
+  assert.doesNotMatch(view(empty).html(), /월·연 수입 설정/)
+})
+
+test('기존에 직접 등록한 고정 월급도 수입 정보 편집으로 연결한다', () => {
+  const ui = view({ data: [{ id: '1', date: '2026-11-01', cat: '월급', amount: 2500000, memo: '', salaryManaged: false }] }, '1', 'income')
+  const html = ui.html()
+  ui.buttons.find((button) => button.children === '수정').onClick()
+  assert.deepEqual(ui.navigations, ['/my/settings?section=income&edit=income'])
+  assert.match(html, /기록 삭제/)
 })

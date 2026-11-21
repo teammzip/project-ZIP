@@ -31,6 +31,60 @@ class LedgerIntegrationTests {
     String body(int amount,String category,String type) {
         return "{\"amount\":"+amount+",\"date\":\""+date+"\",\"cat\":\""+category+"\",\"memo\":\"검증\""+(type==null?"":",\"incomeType\":\""+type+"\"")+"}";
     }
+    private org.springframework.test.web.servlet.ResultActions changeCategory(String scope, String body) throws Exception {
+        return mvc.perform(post("/api/me/ledger-categories").param("scope", scope)
+            .header("Authorization", "Bearer " + token).contentType("application/json").content(body));
+    }
+
+    @Test void categoryRenameUpdatesExistingTransactionsOnlyForTheOwner() throws Exception {
+        mvc.perform(post("/api/ledger/spend").param("timeZone", "UTC").header("Authorization", "Bearer " + token)
+            .contentType("application/json").content(body(1000, "식비", null))).andExpect(status().isCreated());
+        mvc.perform(post("/api/ledger/spend").param("timeZone", "UTC").header("Authorization", "Bearer " + other)
+            .contentType("application/json").content(body(2000, "식비", null))).andExpect(status().isCreated());
+        changeCategory("spend", """
+            {"action":"import","previous":{"custom":[{"name":"반려동물","color":"#6485df"}],"order":["반려동물","식비"]}}
+            """).andExpect(status().isOk()).andExpect(jsonPath("$.order[0]").value("반려동물"));
+        changeCategory("spend", """
+            {"action":"rename","name":"식비","target":"외식"}
+            """).andExpect(status().isOk()).andExpect(jsonPath("$.hidden[0]").value("식비"));
+        changeCategory("spend", """
+            {"action":"move","name":"외식","target":"반려동물"}
+            """).andExpect(status().isOk()).andExpect(jsonPath("$.order[0]").value("외식"));
+        changeCategory("spend", """
+            {"action":"delete","name":"반려동물"}
+            """).andExpect(status().isOk()).andExpect(jsonPath("$.custom.length()").value(1));
+        changeCategory("spend", """
+            {"action":"import","previous":{"custom":[{"name":"반려동물","color":"#6485df"}]}}
+            """).andExpect(status().isOk()).andExpect(jsonPath("$.custom.length()").value(1));
+        changeCategory("bill", """
+            {"action":"delete","name":"공과금"}
+            """).andExpect(status().isOk()).andExpect(jsonPath("$.hidden[0]").value("공과금"));
+        changeCategory("spend", """
+            {"action":"add","name":"외식"}
+            """).andExpect(status().isConflict());
+        mvc.perform(get("/api/me/ledger-categories").param("scope", "spend").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.order[0]").value("외식"));
+        mvc.perform(get("/api/me/ledger-categories").param("scope", "spend").header("Authorization", "Bearer " + other))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.custom.length()").value(0)).andExpect(jsonPath("$.hidden.length()").value(0));
+        mvc.perform(get("/api/ledger/spend").param("month", month).param("timeZone", "UTC").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].cat").value("외식")).andExpect(jsonPath("$[0].amount").value(1000));
+        mvc.perform(get("/api/ledger/spend").param("month", month).param("timeZone", "UTC").header("Authorization", "Bearer " + other))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].cat").value("식비"));
+    }
+    @Test void renamingSalaryKeepsItLinkedToSalarySettings() throws Exception {
+        changeCategory("fixed-income", """
+            {"action":"rename","name":"월급","target":"급여"}
+            """).andExpect(status().isOk()).andExpect(jsonPath("$.salaryLabel").value("급여"));
+        for (int attempt = 0; attempt < 2; attempt++) {
+            mvc.perform(post("/api/ledger/income").param("timeZone","UTC").header("Authorization","Bearer "+token)
+                .contentType("application/json").content(body(5000,"급여","fixed")))
+                .andExpect(attempt == 0 ? status().isCreated() : status().isConflict());
+        }
+        mvc.perform(get("/api/ledger/income").param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].cat").value("급여")).andExpect(jsonPath("$[0].salaryCategory").value(true));
+        mvc.perform(get("/api/me/salary").header("Authorization","Bearer "+token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.amount").value(5000));
+    }
     @Test void incomeIsPartitionedByTypeAndMonthAndSummaryUsesBothTypes() throws Exception {
         for(String type:new String[]{"fixed","other"}) mvc.perform(post("/api/ledger/income").param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content(body(1000,"임대 수입",type))).andExpect(status().isCreated());
         mvc.perform(get("/api/ledger/income").param("month",month).param("timeZone","UTC").param("incomeType","fixed").header("Authorization","Bearer "+token)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));

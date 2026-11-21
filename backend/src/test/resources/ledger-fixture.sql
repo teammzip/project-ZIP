@@ -19,5 +19,5 @@ CREATE TABLE salary_settings (
 );
 CREATE TABLE salary_records (
  user_id BIGINT NOT NULL REFERENCES users(id), period_ym CHAR(7) NOT NULL,
- income_id BIGINT NOT NULL UNIQUE REFERENCES incomes(id), PRIMARY KEY(user_id,period_ym)
+ income_id BIGINT UNIQUE REFERENCES incomes(id), PRIMARY KEY(user_id,period_ym)
 );

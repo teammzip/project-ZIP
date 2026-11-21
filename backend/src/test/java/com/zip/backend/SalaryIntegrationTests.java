@@ -33,14 +33,30 @@ class SalaryIntegrationTests {
     }
     @Autowired tools.jackson.databind.json.JsonMapper json;
     SalaryService at(String instant) { return new SalaryService(jdbc,authRepository,Clock.fixed(Instant.parse(instant),ZoneOffset.UTC),json); }
-    @Test void manualSalaryCreateAndCategoryChangeAreRejected() throws Exception {
+    @Test void firstManualSalarySetsMonthlyIncomeAndFurtherRegistrationIsRejected() throws Exception {
         String date=LocalDate.now(ZoneOffset.UTC).toString();
         String body="{\"amount\":1000,\"date\":\""+date+"\",\"cat\":\"월급\",\"memo\":\"\",\"incomeType\":\"fixed\"}";
+        mvc.perform(post("/api/ledger/income").param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content(body)).andExpect(status().isCreated());
+        mvc.perform(get("/api/me/salary").header("Authorization","Bearer "+token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.incomePeriod").value("monthly"))
+            .andExpect(jsonPath("$.amount").value(1000)).andExpect(jsonPath("$.paymentDay").value(LocalDate.parse(date).getDayOfMonth()));
         mvc.perform(post("/api/ledger/income").param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content(body)).andExpect(status().isConflict());
+        mvc.perform(get("/api/ledger/income").param("timeZone","UTC").param("month",date.substring(0,7)).header("Authorization","Bearer "+token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
         mvc.perform(post("/api/ledger/income").param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content(body.replace("월급","임대 수입"))).andExpect(status().isCreated());
-        long id=jdbc.queryForObject("SELECT id FROM incomes",Long.class);
+        long id=jdbc.queryForObject("SELECT MAX(id) FROM incomes",Long.class);
         mvc.perform(put("/api/ledger/income/"+id).param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content(body)).andExpect(status().isConflict());
-        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM incomes",Integer.class));
+        assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM incomes",Integer.class));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM salary_records",Integer.class));
+    }
+    @Test void latestLegacySalaryFillsOnlyAnUnregisteredAccount() throws Exception {
+        long category=jdbc.queryForObject("SELECT id FROM ledger_categories WHERE kind='INCOME' AND name='월급'",Long.class);
+        jdbc.update("INSERT INTO incomes(user_id,category_id,amount,income_date,memo,income_type) VALUES (?,?,1500000,'2025-01-05','','FIXED'),(?,?,2700000,'2025-02-07','','FIXED')",owner,category,owner,category);
+        for (int i=0;i<2;i++) mvc.perform(get("/api/me/salary").header("Authorization","Bearer "+token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.amount").value(2700000)).andExpect(jsonPath("$.paymentDay").value(7));
+        jdbc.update("UPDATE salary_settings SET amount=0 WHERE user_id=?",owner);
+        mvc.perform(get("/api/me/salary").header("Authorization","Bearer "+token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.amount").value(0));
     }
     @Test void existingManualSalaryPreventsAutomaticDuplicateInSameMonth() {
         long category=jdbc.queryForObject("SELECT id FROM ledger_categories WHERE kind='INCOME' AND name='월급'",Long.class);
@@ -62,12 +78,20 @@ class SalaryIntegrationTests {
         mvc.perform(get("/api/ledger/income-summary").param("timeZone","UTC").header("Authorization","Bearer "+token))
             .andExpect(jsonPath("$['"+month+"']").value(2500000));
         long id=jdbc.queryForObject("SELECT id FROM incomes",Long.class);
-        mvc.perform(delete("/api/ledger/income/"+id).header("Authorization","Bearer "+token)).andExpect(status().isConflict());
         mvc.perform(put("/api/ledger/income/"+id).param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json")
             .content("{\"amount\":1,\"date\":\""+LocalDate.now(ZoneOffset.UTC)+"\",\"cat\":\"월급\",\"memo\":\"\",\"incomeType\":\"fixed\"}")).andExpect(status().isConflict());
         mvc.perform(put("/api/me/salary").param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json")
             .content("{\"amount\":3000000,\"incomePeriod\":\"monthly\",\"paymentDay\":1}")).andExpect(status().isOk());
         assertEquals(2500000L,jdbc.queryForObject("SELECT amount FROM incomes",Long.class));
+        mvc.perform(delete("/api/ledger/income/"+id).header("Authorization","Bearer "+token)).andExpect(status().isNoContent());
+        mvc.perform(get("/api/me/salary").header("Authorization","Bearer "+token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.startMonth").value(""));
+        mvc.perform(get("/api/ledger/income").param("timeZone","UTC").param("month",month).header("Authorization","Bearer "+token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM salary_records WHERE income_id IS NULL",Integer.class));
+        mvc.perform(post("/api/ledger/income").param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json")
+            .content("{\"amount\":2000000,\"date\":\""+LocalDate.now(ZoneOffset.UTC)+"\",\"cat\":\"월급\",\"memo\":\"\",\"incomeType\":\"fixed\"}")).andExpect(status().isCreated());
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM salary_records WHERE income_id IS NOT NULL",Integer.class));
         mvc.perform(get("/api/me/salary")).andExpect(status().isUnauthorized());
     }
     @Test void annualIncomeUsesMonthEndAndDecemberRemainderWithoutDuplicates() {
