@@ -99,11 +99,11 @@ export const FEATURES: FeatureItem[] = [
   { icon: '💬', title: '동네생활', body: '이웃과 자취 꿀팁을 나누고, 우리 동네 인기 글을 모아 봐요.' },
 ]
 
-/* ---------- 이야기 카드 (흰 판 · 2 x 2) ---------- */
+/* ---------- 추천 카드 (흰 판 · 2 x 2) ---------- */
 export const STORIES_HEAD = {
-  kicker: 'STORIES',
-  title: '모두의 자취 이야기로\n채워 가요.',
-  body: '처음 자취를 시작한 새내기부터 2년 차까지.\nZIP으로 달라진 하루를 모았어요.',
+  kicker: 'FOR YOU',
+  title: '이런 분께\nZIP을 추천해요.',
+  body: '처음 자취를 시작한 새내기부터 바쁜 직장인까지.\n자취하며 자주 생기는 고민을 ZIP이 챙겨요.',
 }
 
 export type BrandStory = {
@@ -115,12 +115,12 @@ export type BrandStory = {
   screens: [ScreenName, ScreenName]
 }
 
-/* TODO: 예시 문구입니다. 실제 사용자 후기가 생기면 바꿔 주세요. */
+/* 추천 대상 카드: 실제 사용자 후기가 아니라 어떤 분께 맞는지 설명해요. 지금 있는 기능만 적어요. */
 export const STORIES: BrandStory[] = [
-  { id: 'first', meta: '마포구 새내기 · 월세', title: '첫 자취, 월세 날짜만큼은 안 까먹어요', body: '납부일이 홈에 D-day로 떠서 미리 준비할 수 있어요.', screens: ['home', 'calendar'] },
-  { id: 'recycle', meta: '합정동 1인 가구 · 분리배출', title: '헷갈리던 분리배출, 사진 한 장으로 끝', body: '버릴 물건을 찍어 물어보면 어디에 버릴지 바로 알려 줘요.', screens: ['ai', 'calendar'] },
-  { id: 'budget', meta: '망원동 직장인 · 가계부', title: '공과금까지 합치니 한 달 지출이 보여요', body: '고정 지출을 한 번 등록해 두니 매달 새는 돈이 줄었어요.', screens: ['budget', 'home'] },
-  { id: 'town', meta: '연남동 자취 2년 차 · 동네', title: '이사 오자마자 세탁방부터 찾았어요', body: '지도와 동네생활 글로 우리 동네에 금방 익숙해졌어요.', screens: ['map', 'community'] },
+  { id: 'first', meta: '처음 자취하는 분 · 월세', title: '월세 · 관리비 날짜를 자주 잊는 분', body: '납부일이 홈에 D-day로 뜨고, 알림으로 미리 알려 줘요.', screens: ['home', 'calendar'] },
+  { id: 'recycle', meta: '1인 가구 · 분리배출', title: '분리배출 요일이 헷갈리는 분', body: '우리 동네 배출 요일을 알림으로 받고, 헷갈리는 건 AI에게 물어볼 수 있어요.', screens: ['ai', 'calendar'] },
+  { id: 'budget', meta: '직장인 · 가계부', title: '한 달 지출이 궁금한 분', body: '고정 지출과 가계부를 한곳에서 보고, AI가 이번 달 지출을 요약해 줘요.', screens: ['budget', 'home'] },
+  { id: 'town', meta: '이사 온 분 · 동네', title: '새 동네가 아직 낯선 분', body: '지도에서 세탁방 · 편의점을 찾고, ZIP 회원 리뷰와 동네 글을 볼 수 있어요.', screens: ['map', 'community'] },
 ]
 
 /* ---------- 시작 3단계 ---------- */

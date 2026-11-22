@@ -24,8 +24,8 @@ export function LegalPage({ kind }: { kind: LegalKind }) {
           <NavLink to="/privacy">개인정보 처리방침</NavLink>
         </nav>
         <h1 className={styles.pageTitle}>{doc.title}</h1>
-        {/* TODO: 법률 검토를 마치고 [ ] 칸을 채우면 이 안내를 지우기 */}
-        <p className={styles.draft}>⚠️ 출시 전 예시 문구입니다. 법률 검토 후 [ ] 로 표시한 운영 주체·연락처·위탁 업체를 채워야 합니다.</p>
+        {/* TODO: 법률 검토를 마치면 이 안내를 지우기 */}
+        <p className={styles.draft}>⚠️ 출시 전 문구입니다. 법률 검토를 마친 뒤 확정해요.</p>
         <LegalDocView doc={doc} />
       </article>
     </main>
