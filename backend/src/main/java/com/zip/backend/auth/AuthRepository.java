@@ -26,7 +26,7 @@ public class AuthRepository {
 
     public record Account(long id, String username, String passwordHash, String email,
         String nickname, String address, String provider, String role, String status,
-        Instant lastLoginAt, String regionId, String regionName) {}
+        Instant lastLoginAt, String regionId, String regionName, int loginFailures, Instant loginFailureSince) {}
 
     private static final String ACCOUNT_SQL = """
         SELECT u.*, r.name AS region_name FROM users u
@@ -42,12 +42,21 @@ public class AuthRepository {
         return new Account(rs.getLong("id"), rs.getString("login_id"), rs.getString("password_hash"),
             rs.getString("email"), rs.getString("nickname"), rs.getString("address"),
             rs.getString("signup_provider"), rs.getString("role"), rs.getString("status"),
-            instant(rs, "last_login_at"), rs.getString("region_id"), rs.getString("region_name"));
+            instant(rs, "last_login_at"), rs.getString("region_id"), rs.getString("region_name"),
+            rs.getInt("login_failures"), instant(rs, "login_failure_since"));
     }
 
     public Optional<Account> findForLogin(String loginId) {
         return jdbc.query(ACCOUNT_SQL + " WHERE u.login_id = ? OR u.email = ? FOR UPDATE",
             this::account, loginId, loginId).stream().findFirst();
+    }
+
+    void recordLoginFailure(long userId, int failures, Instant since) {
+        jdbc.update("UPDATE users SET login_failures=?, login_failure_since=? WHERE id=?", failures, Timestamp.from(since), userId);
+    }
+
+    void clearLoginFailures(long userId) {
+        jdbc.update("UPDATE users SET login_failures=0, login_failure_since=NULL WHERE id=?", userId);
     }
 
     public Optional<Account> findById(long userId) {
@@ -273,7 +282,7 @@ public class AuthRepository {
     }
 
     public void changePassword(long userId, String hash, Instant now) {
-        jdbc.update("UPDATE users SET password_hash = ?, password_changed_at = ? WHERE id = ?",
+        jdbc.update("UPDATE users SET password_hash = ?, password_changed_at = ?, login_failures=0, login_failure_since=NULL WHERE id = ?",
             hash, Timestamp.from(now), userId);
         jdbc.update("UPDATE auth_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL",
             Timestamp.from(now), userId);

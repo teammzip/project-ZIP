@@ -120,3 +120,4 @@ MySQL DDL은 암묵 커밋됩니다. 중간 실패 시 백업과 실제 스키�
 3. 20261121_03_ledger_category_label_case.sql: ledger_categories.name에 utf8mb4_bin을 사용해 대소문자가 다른 이름을 구분합니다.
 
 DDL은 암묵 커밋되므로 백업 후 적용하며 전체 파일을 무조건 재실행하지 않습니다. 정적·격리 MySQL 검사 절차는 ../tests/README.md의 마이그레이션 자동 검사 항목을 참고합니다.
+- 20261121_04_login_lockout.sql: 비밀번호 로그인 실패와 잠금 시작 시각을 저장합니다. 기존 DB에 적용 후 백엔드를 재시작합니다.
