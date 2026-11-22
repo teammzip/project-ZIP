@@ -32,9 +32,7 @@ fs.writeFileSync(schemaPath, schema.replace(/\n/g, nl))
 // 2) 기존 DB 맞춤: 같은 버전의 본문을 화면 문구와 똑같이 (이미 같으면 그대로)
 const lines = [
   `-- 적용할 DB를 선택한 후 실행. 약관 3종(${VERSION})의 본문을 화면 문구(frontend/src/features/legal/content.ts) · db/schema.sql 과 똑같이 맞춘다.`,
-  '--   · 이용약관 제2조: 쓰레기 배출 공공데이터 출처 표시 추가',
-  '--   · 이용약관 제3조 · 개인정보 처리방침 1: 주소는 가입 필수가 아니라 가입 후 주거 설문 · 내 정보에서 입력(선택)',
-  '--   · 예전 DB 에 남은 "휴대전화 번호" 등 지난 문구 정리',
+  '--   · (무엇이 바뀌었는지 여기에 적어 주세요)',
   '-- 약관 버전 · 회원 동의 기록은 그대로 둔다. 이미 같으면 아무것도 바뀌지 않아 다시 실행해도 된다.',
   'SET @terms_sync_safe_updates = @@SESSION.SQL_SAFE_UPDATES;',
   'SET SESSION SQL_SAFE_UPDATES = 0;',

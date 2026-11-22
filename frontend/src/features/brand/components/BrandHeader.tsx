@@ -14,7 +14,7 @@ type Props = {
 /** 섹션으로 바로 가는 메뉴 (PC 만) */
 const NAV = [
   { href: '#features', label: '기능' },
-  { href: '#stories', label: '이야기' },
+  { href: '#stories', label: '추천' },
   { href: '#steps', label: '시작하기' },
 ]
 

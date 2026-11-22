@@ -38,6 +38,7 @@ const incrementalMigrations = [
   '20261122_01_terms_sync.sql',
   '20261122_03_place_reviews.sql',
   '20261122_05_place_review_photos.sql',
+  '20261122_06_terms_privacy_ai.sql',
 ]
 
 // 표 구조는 안 바꾸고 데이터만 넣는 마이그레이션 (전국 지역 · 쓰레기 배출표 · 주변 동네, db/tools/ 의 변환 스크립트가 만듦).
