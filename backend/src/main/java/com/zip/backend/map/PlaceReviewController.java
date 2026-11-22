@@ -46,9 +46,6 @@ public class PlaceReviewController {
     @GetMapping("/api/places/review-summary")
     public List<Map<String, Object>> summary(@RequestParam(required = false) String ids) { return reviews.summaries(ids); }
 
-    @GetMapping("/api/me/place-reviews")
-    public List<Map<String, Object>> mine(@AuthenticationPrincipal Jwt jwt) { return reviews.myReviews(userId(jwt)); }
-
     // ---------- 관리자 ----------
 
     public record Resolution(String status) {}

@@ -160,6 +160,9 @@
       "table": "place_review_reports"
     },
     {
+      "table": "place_review_photos"
+    },
+    {
       "table": "user_personal_info"
     },
     {
@@ -4461,6 +4464,56 @@
       "collation": ""
     },
     {
+      "table": "place_review_photos",
+      "column": "review_kind",
+      "type": "enum('place','kakao')",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_photos",
+      "column": "review_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_photos",
+      "column": "file_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_photos",
+      "column": "sort_order",
+      "type": "tinyint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_photos",
+      "column": "created_at",
+      "type": "datetime",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
       "table": "user_personal_info",
       "column": "user_id",
       "type": "bigint unsigned",
@@ -5088,6 +5141,16 @@
       "columns": "reporter_id,review_kind,review_id"
     },
     {
+      "table": "place_review_photos",
+      "name": "PRIMARY",
+      "columns": "review_kind,review_id,file_id"
+    },
+    {
+      "table": "place_review_photos",
+      "name": "uk_place_review_photos_file_id",
+      "columns": "file_id"
+    },
+    {
       "table": "user_personal_info",
       "name": "PRIMARY",
       "columns": "user_id"
@@ -5711,6 +5774,14 @@
       "target": "users",
       "target_column": "id",
       "delete_rule": "SET NULL"
+    },
+    {
+      "table": "place_review_photos",
+      "name": "fk_place_review_photos_file_id",
+      "column": "file_id",
+      "target": "uploaded_files",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
     },
     {
       "table": "user_personal_info",

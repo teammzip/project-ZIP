@@ -90,6 +90,9 @@ CREATE TABLE uploaded_files (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, deleted_at TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+CREATE TABLE place_review_photos (review_kind VARCHAR(10) NOT NULL, review_id BIGINT NOT NULL, file_id BIGINT NOT NULL, sort_order TINYINT DEFAULT 0 NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, PRIMARY KEY (review_kind, review_id, file_id), UNIQUE (file_id),
+    FOREIGN KEY (file_id) REFERENCES uploaded_files (id) ON DELETE CASCADE);
 CREATE TABLE user_profiles (
     user_id BIGINT PRIMARY KEY, bio VARCHAR(30) NOT NULL DEFAULT '', avatar_file_id BIGINT,
     avatar_emoji VARCHAR(20), avatar_color VARCHAR(20), updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

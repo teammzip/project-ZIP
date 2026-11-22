@@ -1,8 +1,8 @@
-/* 장소 상세의 리뷰 */
+/* 장소 상세의 리뷰 (평균 별점 · 사진 줄 · 리뷰 카드) */
 .root {
   display: grid;
-  gap: 12px;
-  padding-top: 14px;
+  gap: 14px;
+  padding-top: 16px;
   border-top: 1px solid var(--color-line);
 }
 
@@ -13,21 +13,25 @@
   gap: 8px;
 }
 
-.title {
-  font-size: 16px;
+.score {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.score b {
+  font-size: 24px;
   font-weight: 800;
 }
 
-.count {
+.countBtn {
+  font-size: 15px;
   color: var(--color-muted);
-  font-weight: 700;
+  cursor: pointer;
 }
 
-.avg {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
+.countBtn:disabled {
+  cursor: default;
 }
 
 .stars {
@@ -36,7 +40,7 @@
 }
 
 .starOn {
-  color: #ffb400;
+  color: #f4483b;
 }
 
 .muted {
@@ -44,9 +48,55 @@
   color: var(--color-muted);
 }
 
+.notice {
+  font-size: 13px;
+  color: var(--color-primary);
+}
+
+.error {
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+/* 사진 줄: 옆으로 넘김 */
+.strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scroll-snap-type: x mandatory;
+}
+
+.stripPhoto {
+  position: relative;
+  flex: none;
+  width: 132px;
+  height: 132px;
+  border-radius: 14px;
+  background: var(--color-bg) center / cover no-repeat;
+  cursor: pointer;
+  scroll-snap-align: start;
+}
+
+.stripPhoto span {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 11px;
+}
+
+.writeBtn {
+  justify-self: stretch;
+}
+
+/* 쓰기 · 수정 */
 .form {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   padding: 12px;
   border-radius: 12px;
   background: var(--color-bg);
@@ -60,14 +110,14 @@
 
 .pickStar {
   padding: 0 2px;
-  font-size: 26px;
+  font-size: 28px;
   line-height: 1;
   color: #d5d9e0;
   cursor: pointer;
 }
 
 .pickStar.starOn {
-  color: #ffb400;
+  color: #f4483b;
 }
 
 .pick .muted {
@@ -86,42 +136,115 @@
   resize: vertical;
 }
 
+.photoPick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.photoThumb,
+.photoAdd {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+}
+
+.photoThumb {
+  background: var(--color-card) center / cover no-repeat;
+}
+
+.photoThumb button {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 11px;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.photoAdd {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  border: 1px dashed var(--color-line);
+  background: var(--color-card);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.photoAdd small {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
 .formFoot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.error {
-  font-size: 13px;
-  color: var(--color-danger);
+.formBtns {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
+.confirmText {
+  margin-bottom: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* 리뷰 카드 */
 .list {
   display: grid;
-  gap: 10px;
   padding: 0;
   list-style: none;
 }
 
-.item {
+.card {
   display: grid;
-  gap: 4px;
-  padding-bottom: 10px;
+  gap: 10px;
+  padding: 16px 0;
   border-bottom: 1px solid var(--color-line);
 }
 
-.item:last-child {
+.card:last-child {
   border-bottom: 0;
 }
 
-.itemHead {
+.cardHead {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.who {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+
+.who b {
+  display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 15px;
+}
+
+.who small {
+  font-size: 12px;
+  color: var(--color-muted);
 }
 
 .mine {
@@ -133,47 +256,142 @@
   font-weight: 700;
 }
 
+.more {
+  position: relative;
+}
+
+.moreBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--color-muted);
+  font-size: 20px;
+  line-height: 32px;
+  cursor: pointer;
+}
+
+.moreBtn:hover {
+  background: var(--color-bg);
+}
+
+.menu {
+  position: absolute;
+  top: 34px;
+  right: 0;
+  z-index: 5;
+  display: grid;
+  min-width: 112px;
+  padding: 6px 0;
+  border-radius: 12px;
+  background: var(--color-card);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+}
+
+.menu button {
+  padding: 11px 18px;
+  font-size: 15px;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu button:hover:not(:disabled) {
+  background: var(--color-bg);
+}
+
+.menu button:disabled {
+  color: var(--color-muted);
+  cursor: default;
+}
+
+.menu .danger {
+  color: var(--color-danger);
+}
+
+.cardBody {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.cardText {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .text {
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.notice {
+.clamp {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.moreText {
+  justify-self: start;
   font-size: 13px;
-  color: var(--color-primary);
-}
-
-.formBtns {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.itemActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-
-.linkBtn {
-  padding: 0;
-  font-size: 12px;
   color: var(--color-muted);
   text-decoration: underline;
   cursor: pointer;
 }
 
-.linkBtn:disabled {
-  opacity: 0.5;
+.cardPhoto {
+  position: relative;
+  flex: none;
+  width: 96px;
+  height: 96px;
+  border-radius: 12px;
+  background: var(--color-bg) center / cover no-repeat;
+  cursor: pointer;
 }
 
-.danger {
-  color: var(--color-danger);
+.cardPhoto span {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
 }
 
-/* 지도 목록 · 내 리뷰의 작은 별점 */
+/* 사진 크게 보기 */
+.viewer {
+  display: grid;
+  gap: 12px;
+}
+
+.viewer img {
+  width: 100%;
+  max-height: 70vh;
+  border-radius: 12px;
+  object-fit: contain;
+  background: #000;
+}
+
+.viewerNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* 지도 목록의 작은 별점 */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -185,10 +403,26 @@
 
 .badge i {
   font-style: normal;
-  color: #ffb400;
+  color: #f4483b;
 }
 
 .badge small {
   font-weight: 400;
   color: var(--color-muted);
+}
+
+.danger {
+  color: var(--color-danger);
+}
+
+@media (max-width: 480px) {
+  .stripPhoto {
+    width: 112px;
+    height: 112px;
+  }
+
+  .cardPhoto {
+    width: 80px;
+    height: 80px;
+  }
 }

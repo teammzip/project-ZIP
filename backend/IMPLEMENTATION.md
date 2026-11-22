@@ -336,8 +336,9 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 | GET · PUT `/api/me/map-settings` | `user_settings.map_categories · map_keywords`. NULL이면 정렬 순서 앞 4종류 · 빈 검색어. 없는 종류, 종류와 같은 검색어(12자 이내)는 400 |
 | GET · POST `/api/places/{id}/reviews` | `PlaceReviewService`. DB 장소는 `place_reviews`(저장 · 고치기 · 지우기 후 `places.rating_avg · review_count` 갱신), 카카오 장소(`kakao:…`)는 `kakao_place_reviews`(id · 이름 + 리뷰, `name` 필수). 한 사람당 한 장소 하나(두 번이면 409). 우리 서버에만 저장 |
 | PUT · DELETE `/api/places/{id}/reviews/mine` | 내 리뷰 고치기 · 지우기 (없으면 404) |
+| 리뷰 사진 | `place_review_photos` (리뷰당 5장). `POST /api/files` 로 올린 내 사진만, 다른 리뷰 · 글 · 프로필에 쓰인 파일은 400. 고치기에서 빠지거나 리뷰를 지우면(운영자 삭제 포함) 파일도 지움. 리뷰 사진은 누구나 볼 수 있음(`/api/files/content` 허용 목록에 추가), 커뮤니티 첨부 중복 검사에도 리뷰 사진 포함 |
 | POST `/api/places/{id}/reviews/{reviewId}/reports` | 리뷰 신고 `place_review_reports` (사유는 커뮤니티 신고와 같음, 내 리뷰 400 · 중복 409, 당시 작성자 · 내용 · 별점 · 장소 이름 스냅샷) |
-| GET `/api/places/review-summary` · `/api/me/place-reviews` | 지도 목록 별점(100곳까지) · 내가 쓴 리뷰 |
+| GET `/api/places/review-summary` | 지도 목록 별점(100곳까지) |
 | GET · PATCH `/api/admin/place-review-reports` | 관리자 리뷰 신고: HIDDEN = 리뷰 삭제 + 작성자 SYSTEM 알림, DISMISSED = 문제없음. 관리자 화면 "리뷰 신고" 탭 |
 
 - **카카오 로컬 API**: `KAKAO_REST_KEY`(application-local.properties, Git 제외)가 있으면 `GET /api/places`의 `category` · `q` 검색을 카카오에서 지도 중심(`lat` · `lon`, 없으면 집) 반경 1km로 찾아 **DB에 저장하지 않고 그대로** 줘요(id는 `kakao:카카오장소id`). 카카오 운영 정책이 장소명 · 주소 · 좌표의 장기 저장을 제한하기 때문이에요. 즐겨찾기는 위 표처럼 id · 이름만 따로 저장하고(`db/migrations/20261115_kakao_place_favorites.sql`), 리뷰는 카카오 장소 id · 이름과 함께 `kakao_place_reviews` 에 따로 저장해요(주소 · 좌표 없음). 무료 쿼터를 지키려고 `KakaoQuota`가 같은 검색(약 100m 안)을 10분 메모리 캐시하고, 한 사람당 1분 `KAKAO_PER_USER_PER_MINUTE`(기본 30)번 · 서버 전체 하루 `KAKAO_DAILY_LIMIT`(기본 30000, 한국 시간 자정 초기화)번까지만 불러요. 카카오가 429를 주면 그날은 멈춰요. 키가 없거나 한도 · 오류면 DB 장소로 대신하고 응답 헤더 `X-Place-Notice: user-limit | daily-limit | error`로 이유를 알려요. 카카오 콘솔에서 카카오맵(로컬) 사용 설정을 켜야 하고, 유료 추가 사용은 켜지 않아요. 예전 코드가 저장한 카카오 장소(`places.source='KAKAO'`)는 정리 대상이에요. 기존 DB는 `db/migrations/20261108_places_kakao.sql`을 한 번 적용해야 해요.

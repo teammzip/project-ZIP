@@ -1,5 +1,6 @@
 package com.zip.backend.map;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -7,10 +8,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Repository;
 
 /** 장소 리뷰 · 리뷰 신고 (place_reviews · kakao_place_reviews · place_review_reports).
@@ -57,15 +60,131 @@ public class PlaceReviewRepository {
             + " WHERE pr.reporter_id = ? AND pr.review_kind = ? AND r." + target.column() + " = ?", Long.class, userId, target.kind(), target.value());
     }
 
-    /** 리뷰 쓰기. 같은 사람이 같은 곳에 또 쓰면 DuplicateKeyException (uk_place_reviews_place_id_user_id · uk_kakao_place_reviews_place_user) */
-    public void addReview(Target target, long userId, String placeName, int rating, String body) {
-        if (target.isKakao()) {
-            jdbc.update("INSERT INTO kakao_place_reviews (kakao_place_id, user_id, name, rating, body) VALUES (?, ?, ?, ?, ?)",
-                target.kakaoPlaceId(), userId, placeName, rating, body);
-        } else {
-            jdbc.update("INSERT INTO place_reviews (place_id, user_id, rating, body) VALUES (?, ?, ?, ?)", target.placeId(), userId, rating, body);
-        }
+    /** 리뷰 쓰기 → 새 리뷰 id. 같은 사람이 같은 곳에 또 쓰면 DuplicateKeyException (uk_place_reviews_place_id_user_id · uk_kakao_place_reviews_place_user) */
+    public long addReview(Target target, long userId, String placeName, int rating, String body) {
+        var keys = new GeneratedKeyHolder();
+        jdbc.update(connection -> {
+            PreparedStatement ps;
+            if (target.isKakao()) {
+                ps = connection.prepareStatement("INSERT INTO kakao_place_reviews (kakao_place_id, user_id, name, rating, body) VALUES (?, ?, ?, ?, ?)", new String[] {"id"});
+                ps.setString(1, target.kakaoPlaceId()); ps.setLong(2, userId); ps.setString(3, placeName); ps.setInt(4, rating); ps.setString(5, body);
+            } else {
+                ps = connection.prepareStatement("INSERT INTO place_reviews (place_id, user_id, rating, body) VALUES (?, ?, ?, ?)", new String[] {"id"});
+                ps.setLong(1, target.placeId()); ps.setLong(2, userId); ps.setInt(3, rating); ps.setString(4, body);
+            }
+            return ps;
+        }, keys);
         refreshPlaceRating(target);
+        return keys.getKey().longValue();
+    }
+
+    /** 이 장소에 쓴 내 리뷰 id */
+    public Optional<Long> myReviewId(Target target, long userId) {
+        return jdbc.queryForList("SELECT id FROM " + target.table() + " WHERE " + target.column() + " = ? AND user_id = ?", Long.class, target.value(), userId)
+            .stream().findFirst();
+    }
+
+    // ---------- 사진 (place_review_photos) ----------
+
+    public record Photo(long fileId, String url) {}
+
+    /** 리뷰들의 사진 (리뷰 id → 붙인 순서대로). 지운 파일은 빼요 */
+    public Map<Long, List<Photo>> photos(String kind, Collection<Long> reviewIds) {
+        if (reviewIds.isEmpty()) return Map.of();
+        var result = new LinkedHashMap<Long, List<Photo>>();
+        var args = new ArrayList<Object>(List.of(kind));
+        args.addAll(reviewIds);
+        jdbc.query("""
+            SELECT p.review_id, f.id, f.storage_url FROM place_review_photos p JOIN uploaded_files f ON f.id = p.file_id
+            WHERE p.review_kind = ? AND p.review_id IN (%s) AND f.deleted_at IS NULL ORDER BY p.review_id, p.sort_order
+            """.formatted(marks(reviewIds.size())),
+            rs -> { result.computeIfAbsent(rs.getLong(1), k -> new ArrayList<>()).add(new Photo(rs.getLong(2), rs.getString(3))); },
+            args.toArray());
+        return result;
+    }
+
+    /** 사진으로 붙일 파일 (주인 · 형식 · 지움 검사용) */
+    public record FileRow(long id, long userId, String type, boolean deleted) {}
+
+    public List<FileRow> files(Collection<Long> ids) {
+        if (ids.isEmpty()) return List.of();
+        return jdbc.query("SELECT id, user_id, mime_type, deleted_at FROM uploaded_files WHERE id IN (" + marks(ids.size()) + ")",
+            (rs, row) -> new FileRow(rs.getLong(1), rs.getLong(2), rs.getString(3), rs.getTimestamp(4) != null), ids.toArray());
+    }
+
+    /** 이 파일들이 다른 리뷰 · 커뮤니티 글 · 프로필 사진에 쓰이는지 (reviewId 는 지금 고치는 리뷰, 새 리뷰면 null) */
+    public boolean filesInUse(Collection<Long> fileIds, String kind, Long reviewId) {
+        if (fileIds.isEmpty()) return false;
+        var m = marks(fileIds.size());
+        var args = new ArrayList<Object>(fileIds);
+        String otherReview = "";
+        if (reviewId != null) {
+            otherReview = " AND NOT (review_kind = ? AND review_id = ?)";
+            args.add(kind);
+            args.add(reviewId);
+        }
+        args.addAll(fileIds);
+        args.addAll(fileIds);
+        return jdbc.queryForObject("SELECT (SELECT COUNT(*) FROM place_review_photos WHERE file_id IN (" + m + ")" + otherReview + ")"
+            + " + (SELECT COUNT(*) FROM post_attachments WHERE file_id IN (" + m + "))"
+            + " + (SELECT COUNT(*) FROM user_profiles WHERE avatar_file_id IN (" + m + "))", Long.class, args.toArray()) > 0;
+    }
+
+    /** 리뷰 사진을 배열 순서대로 다시 씀 → 빠진 파일 id */
+    public List<Long> replacePhotos(String kind, long reviewId, List<Long> fileIds) {
+        var before = jdbc.queryForList("SELECT file_id FROM place_review_photos WHERE review_kind = ? AND review_id = ?", Long.class, kind, reviewId);
+        jdbc.update("DELETE FROM place_review_photos WHERE review_kind = ? AND review_id = ?", kind, reviewId);
+        var rows = new ArrayList<Object[]>();
+        for (int i = 0; i < fileIds.size(); i++) rows.add(new Object[] {kind, reviewId, fileIds.get(i), i});
+        if (!rows.isEmpty()) jdbc.batchUpdate("INSERT INTO place_review_photos (review_kind, review_id, file_id, sort_order) VALUES (?, ?, ?, ?)", rows);
+        return before.stream().filter(id -> !fileIds.contains(id)).toList();
+    }
+
+    /** 빠진 사진 파일을 지운 것으로 표시하고 저장 주소를 돌려줌 (실제 파일은 커밋 뒤 삭제) */
+    public List<String> markFilesDeleted(List<Long> fileIds, Instant now) {
+        if (fileIds.isEmpty()) return List.of();
+        var m = marks(fileIds.size());
+        var urls = jdbc.queryForList("SELECT storage_url FROM uploaded_files WHERE id IN (" + m + ")", String.class, fileIds.toArray());
+        var args = new ArrayList<Object>(List.of(Timestamp.from(now)));
+        args.addAll(fileIds);
+        jdbc.update("UPDATE uploaded_files SET deleted_at = ? WHERE id IN (" + m + ")", args.toArray());
+        return urls;
+    }
+
+    // ---------- 작성자 정보 (후기 수 · 별점 평균 · 프로필 모양) ----------
+
+    public record AuthorStat(int count, double rating) {}
+
+    /** 작성자별 후기 수 · 별점 평균 (DB 장소 + 카카오 장소 리뷰 합쳐서) */
+    public Map<Long, AuthorStat> authorStats(Collection<Long> userIds) {
+        if (userIds.isEmpty()) return Map.of();
+        var sums = new HashMap<Long, long[]>();
+        for (var table : List.of("place_reviews", "kakao_place_reviews")) {
+            jdbc.query("SELECT user_id, COUNT(*), SUM(rating) FROM " + table + " WHERE user_id IN (" + marks(userIds.size()) + ") GROUP BY user_id",
+                rs -> {
+                    var sum = sums.computeIfAbsent(rs.getLong(1), k -> new long[2]);
+                    sum[0] += rs.getLong(2);
+                    sum[1] += rs.getLong(3);
+                }, userIds.toArray());
+        }
+        var result = new HashMap<Long, AuthorStat>();
+        sums.forEach((id, sum) -> result.put(id, new AuthorStat((int) sum[0], sum[0] == 0 ? 0 : round((double) sum[1] / sum[0]))));
+        return result;
+    }
+
+    public record AuthorLook(String avatarUrl, String avatarEmoji, String avatarColor) {}
+
+    /** 작성자 프로필 모양 (사진 · 캐릭터 · 색). 프로필이 없으면 빠져요 */
+    public Map<Long, AuthorLook> authorLooks(Collection<Long> userIds) {
+        if (userIds.isEmpty()) return Map.of();
+        var result = new HashMap<Long, AuthorLook>();
+        jdbc.query("""
+            SELECT p.user_id, f.storage_url, p.avatar_emoji, p.avatar_color FROM user_profiles p
+            LEFT JOIN uploaded_files f ON f.id = p.avatar_file_id AND f.deleted_at IS NULL
+            WHERE p.user_id IN (%s)
+            """.formatted(marks(userIds.size())),
+            rs -> { result.put(rs.getLong(1), new AuthorLook(rs.getString(2), rs.getString(3), rs.getString(4))); }, userIds.toArray());
+        return result;
     }
 
     /** 내 리뷰 고치기. 고친 줄 수 (내 리뷰가 없으면 0) */
@@ -115,22 +234,6 @@ public class PlaceReviewRepository {
     private static String marks(int n) { return String.join(",", java.util.Collections.nCopies(n, "?")); }
 
     private static double round(double value) { return Math.round(value * 10) / 10.0; }
-
-    /** 내가 쓴 리뷰 (두 표를 합쳐 최신순) */
-    public record MyReviewRow(String placeKey, String placeName, long id, int rating, String body, Instant createdAt) {}
-
-    public List<MyReviewRow> myReviews(long userId) {
-        var rows = new ArrayList<MyReviewRow>();
-        rows.addAll(jdbc.query("""
-            SELECT r.id, r.place_id, p.name, r.rating, r.body, r.created_at FROM place_reviews r JOIN places p ON p.id = r.place_id WHERE r.user_id = ?
-            """, (rs, row) -> new MyReviewRow(Long.toString(rs.getLong("place_id")), rs.getString("name"), rs.getLong("id"), rs.getInt("rating"),
-                rs.getString("body"), rs.getTimestamp("created_at").toInstant()), userId));
-        rows.addAll(jdbc.query("SELECT id, kakao_place_id, name, rating, body, created_at FROM kakao_place_reviews WHERE user_id = ?",
-            (rs, row) -> new MyReviewRow(MapService.KAKAO_ID + rs.getString("kakao_place_id"), rs.getString("name"), rs.getLong("id"), rs.getInt("rating"),
-                rs.getString("body"), rs.getTimestamp("created_at").toInstant()), userId));
-        rows.sort((a, b) -> a.createdAt().equals(b.createdAt()) ? Long.compare(b.id(), a.id()) : b.createdAt().compareTo(a.createdAt()));
-        return rows;
-    }
 
     // ---------- 신고 ----------
 
