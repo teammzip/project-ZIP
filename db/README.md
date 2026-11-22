@@ -61,13 +61,15 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 ### 전국 지역 · 쓰레기 배출표
 
-전국 시도 · 시군구(`regions` 249행)와 쓰레기 배출표(`trash_schedules` 6,218행)는 저장소 루트의 시드 두 개로 넣습니다. 백엔드가 자동으로 넣지 않으니 각자 DB 에 한 번 실행하세요(여러 번 실행해도 같음, 각자 DB 의 지역 번호는 그대로).
+전국 시도 · 시군구(`regions` 249행)와 쓰레기 배출표(`trash_schedules` 6,218행)는 데이터 마이그레이션 두 개(`20261122_01` · `02`)로 넣습니다. 백엔드가 자동으로 넣지 않으니 각자 DB 에 한 번 실행하세요(여러 번 실행해도 같음, 각자 DB 의 지역 번호는 그대로).
 
 1. [`migrations/20261121_06_trash_schedule_columns.sql`](migrations/20261121_06_trash_schedule_columns.sql) — 배출표 구조 (동네 · 장소 한 줄에 생활쓰레기 · 음식물 · 재활용 요일 · 시작 시각)
-2. [`../regions_nationwide.sql`](../regions_nationwide.sql) — 전국 시도 16 · 시군구 233 (없는 것만 추가)
-3. [`../trash_schedules_nationwide.sql`](../trash_schedules_nationwide.sql) — 배출표를 모두 지우고 다시 넣음. 마지막에 `파일 줄 수 6218 · 넣은 줄 수 6218 · 지역 없음 0` 이면 정상
+2. [`migrations/20261122_01_regions_nationwide.sql`](migrations/20261122_01_regions_nationwide.sql) — 전국 시도 16 · 시군구 233 (없는 것만 추가)
+3. [`migrations/20261122_02_trash_schedules_nationwide.sql`](migrations/20261122_02_trash_schedules_nationwide.sql) — 배출표를 모두 지우고 다시 넣음. 마지막에 `파일 줄 수 6218 · 넣은 줄 수 6218 · 지역 없음 0` 이면 정상
 
-시드는 공공데이터포털 「전국생활쓰레기배출정보표준데이터」 CSV(`db/data/`, 저장소에 안 올림)를 `python db/tools/trash_import.py` 로 바꿔 만든 파일이에요. 표 구조는 아래 [`trash_schedules`](#trash_schedules--쓰레기-배출-요일표) 항목을 보세요.
+`20261122_01` · `02` 는 공공데이터포털 「전국생활쓰레기배출정보표준데이터」 CSV(`db/data/`, 저장소에 안 올림)를 `python db/tools/trash_import.py` 로 바꿔 만든 파일이에요. 표 구조는 아래 [`trash_schedules`](#trash_schedules--쓰레기-배출-요일표) 항목을 보세요.
+
+**이용허락 · 출처**: 제공기관 행정안전부, 공공데이터포털 [15025450](https://www.data.go.kr/data/15025450/standard.do) 의 이용허락범위는 **"이용허락범위 제한 없음"**(2026-11-22 확인 · 상업적 이용 · 변경 가능). 출처 표시 의무는 없지만 앱에서 이용약관 제2조와 브랜드 페이지 아래(`BrandFooter`)에 출처를 적어 두었어요. 쓰레기 배출 화면을 만들면 화면 아래에도 같은 출처를 적어요.
 
 ## 3. 화면과 DB 연결 규칙
 
@@ -944,7 +946,7 @@ AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 
 - 외래키 `fk_trash_schedules_region_id`: `region_id` → `regions` (`id`), ON DELETE CASCADE
 - CHECK: CONSTRAINT `ck_trash_any_day` CHECK (세 종류 중 하나는 배출 요일이 있음)
 - CHECK: CONSTRAINT `ck_trash_day_time` CHECK (종류마다 배출 요일이 있으면 시각도 있고, 없으면 시각도 없음)
-- 데이터: `db/data/생활쓰레기배출정보.csv` → `python db/tools/trash_import.py` → `regions_nationwide.sql(저장소 루트)` · `trash_schedules_nationwide.sql(저장소 루트)`
+- 데이터: `db/data/생활쓰레기배출정보.csv` → `python db/tools/trash_import.py` → `db/migrations/20261122_01_regions_nationwide.sql` · `20261122_02_trash_schedules_nationwide.sql`
 
 ### `place_categories` — 장소 분류
 

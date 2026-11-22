@@ -984,7 +984,7 @@ DEALLOCATE PREPARE post_list_stmt;
 -- 바뀌는 것: 안내 문구(description) 삭제 · 배출 시작 시각(start_time) · 배출장소(place) 추가 ·
 --   같은 동네 · 종류 · 요일에 시각이나 장소가 다르면 여러 줄을 둘 수 있게 중복 방지 키를 바꿈.
 -- 주의: 처음 실행할 때(description 칸이 아직 있을 때) 기존 배출표 행을 모두 지운다. 지금까지는 마포구 예시 6행뿐이었고,
---   실제 데이터는 trash_schedules_nationwide.sql(저장소 루트) 로 다시 넣는다. 다시 실행하면 이미 바뀐 부분은 건너뛴다.
+--   실제 데이터는 다음 마이그레이션 20261122_02_trash_schedules_nationwide.sql 로 다시 넣는다. 다시 실행하면 이미 바뀐 부분은 건너뛴다.
 
 -- 1) 예시 행 삭제: 예전 형식(description)일 때만. 새 칸을 NOT NULL 로 추가하려면 표가 비어 있어야 함
 SET @trash_ddl = IF(
@@ -1054,7 +1054,7 @@ ALTER TABLE trash_schedules COMMENT = '쓰레기 배출 일정: 동네(시군구
 -- 적용할 DB를 선택한 후 실행. 쓰레기 배출표(trash_schedules)를 원본 CSV(전국생활쓰레기배출정보표준데이터)와 같은 모양으로 바꾼다:
 --   한 줄 = 동네 · 배출장소, 종류(생활쓰레기 · 음식물 · 재활용)마다 배출 요일 · 배출 시작 시각 칸.
 -- 이전 모양(종류 × 요일마다 한 줄, weekday · waste_type · start_time 칸)이면 표를 지우고 새로 만든다.
---   배출표는 공공데이터를 넣은 표라 다른 표가 참조하지 않고, 적용 후 trash_schedules_nationwide.sql(저장소 루트) 로 다시 넣는다.
+--   배출표는 공공데이터를 넣은 표라 다른 표가 참조하지 않고, 적용 후 다음 마이그레이션 20261122_02_trash_schedules_nationwide.sql 로 다시 넣는다.
 -- 이미 새 모양이면 아무것도 하지 않는다(다시 실행 가능).
 
 -- 1) 이전 모양이면 표 삭제

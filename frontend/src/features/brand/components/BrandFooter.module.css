@@ -68,6 +68,13 @@
   line-height: 1.6;
 }
 
+/* 안내 문장 속 링크 (공공데이터 출처): 어두운 바탕에서 기본 파란색 대신 글자색 + 밑줄 */
+.company a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .companyBtn {
   justify-self: start;
   font-size: 15px;
