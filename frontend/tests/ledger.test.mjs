@@ -46,7 +46,8 @@ function view(result = {}, user = '1', kind = 'spend') {
     if (name === '../ledgerMemoNavigation') return { returnedMemoDraft: () => undefined }
     if (name === '@/components/ui') return {
       Card: card,
-      Button: ({ children, variant, block, ...props }) => {
+      // block 은 진짜 <button> 에 넘기지 않으려고 꺼내기만 함 (_ = 일부러 안 씀)
+      Button: ({ children, variant, block: _block, ...props }) => {
         buttons.push({ children, variant, onClick: props.onClick })
         return React.createElement('button', props, children)
       },

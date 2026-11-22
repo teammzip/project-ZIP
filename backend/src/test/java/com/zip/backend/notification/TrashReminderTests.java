@@ -77,6 +77,30 @@ class TrashReminderTests {
             jdbc.queryForObject("SELECT notify_at FROM notifications WHERE user_id = 1", java.sql.Timestamp.class).toInstant().atZone(TrashReminderService.ZONE).toLocalDateTime());
     }
 
+    @Test void usesSignupAddressWhenNoHomeAddress() {
+        // 내 집 주소가 없으면 회원 주소(users.address, 주거 설문 · 가입 때 정함)로 동네를 찾음
+        jdbc.update("UPDATE user_settings SET home_address = NULL WHERE user_id = 1");
+        jdbc.update("UPDATE users SET address = '서울특별시 마포구 합정동' WHERE id = 1");
+        assertEquals(1, service.sendDue(seoul("2026-11-23T00:00:00")));
+        assertEquals(List.of("생활쓰레기 · 음식물 · 18:00부터 · 내 집 앞"), bodies(1));
+    }
+
+    @Test void regionWithoutScheduleGetsOneNoticeThenNothing() {
+        // 용산구(3)는 배출표가 없음 → "배출 정보가 없어요" 안내를 한 번만, 그 뒤로는 아무것도 안 보냄
+        jdbc.update("INSERT INTO users (id, login_id, password_hash, nickname, address) VALUES (4, 'yongsan01', 'x', '용산주민', '서울 용산구 한강대로 405')");
+        jdbc.update("INSERT INTO user_settings (user_id, noti_on) VALUES (4, TRUE)");
+        assertEquals(2, service.sendDue(seoul("2026-11-23T00:00:00"))); // 마포 회원 배출일 알림 1 + 용산 회원 안내 1
+        assertEquals(1, service.sendDue(seoul("2026-11-25T00:00:00"))); // 수요일: 마포 회원만 (용산 회원은 다시 안 받음)
+        assertEquals(0, service.sendDue(seoul("2026-11-29T00:00:00"))); // 일요일: 마포도 배출 없고, 용산 회원도 다시 안 받음
+        var notices = jdbc.queryForList("SELECT title FROM notifications WHERE user_id = 4", String.class);
+        assertEquals(List.of(TrashReminderService.NO_DATA_TITLE), notices);
+        assertEquals(List.of("서울특별시 용산구는 공공데이터에 배출 요일 정보가 없어 쓰레기 배출일 알림을 보내지 않아요. 배출 요일은 시 · 군 · 구청 안내를 확인해 주세요."), bodies(4));
+        // 지워도 다시 오지 않음
+        jdbc.update("UPDATE notifications SET deleted_at = CURRENT_TIMESTAMP WHERE user_id = 4");
+        assertEquals(1, service.sendDue(seoul("2026-12-07T00:00:00"))); // 월요일: 마포 회원만
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM notifications WHERE user_id = 4", Integer.class));
+    }
+
     @Test void bodyShowsTimesPerTypeAndHidesMidnightAndManyPlaces() {
         var general = new TrashReminderService.TypeSummary("GENERAL", LocalTime.of(18, 0), 1, "집 앞");
         var recycleLate = new TrashReminderService.TypeSummary("RECYCLE", LocalTime.of(20, 0), 1, "집 앞");

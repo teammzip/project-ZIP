@@ -45,6 +45,15 @@ async function fetchJSON(url: string, signal: AbortSignal) {
   return response.json() as Promise<unknown>
 }
 
+// 전남광주통합특별시(2026-07): OpenStreetMap 은 시 · 군마다 새 이름(예: 순천시)과 예전 이름(예: 광주 북구 = 광주광역시)이 섞여 있어서
+// 새 이름으로 먼저 찾고, 없으면 예전 이름(광주광역시 · 전라남도)으로 다시 찾음. 결과 비교(sameRegion)는 셋 다 '전남광주'로 읽음
+const GWANGJU_GU = ['광산구', '동구', '서구', '남구', '북구']
+export function osmQueries(normalized: string): string[] {
+  const [sido, sigungu = ''] = normalized.split(' ')
+  if (sido !== '전남광주') return [normalized]
+  return [normalized.replace('전남광주', '전남광주통합특별시'), normalized.replace('전남광주', GWANGJU_GU.includes(sigungu) ? '광주광역시' : '전라남도')]
+}
+
 // Nominatim은 자동완성 없이 저장한 동네만 검색. 결과를 캐시하고 요청을 직렬화한다.
 let geoQueue: Promise<unknown> = Promise.resolve()
 let nextGeoAt = 0
@@ -55,14 +64,18 @@ export async function resolveWeatherPlace(region: string, signal: AbortSignal): 
   const cached = cacheSchema.safeParse(readJSON(key))
   if (cached.success && cached.data.expires > Date.now()) return cached.data.place
   const request = geoQueue.catch(() => undefined).then(async () => {
-    const delay = nextGeoAt - Date.now()
-    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
-    signal.throwIfAborted()
-    nextGeoAt = Date.now() + 1100
-    const url = new URL(import.meta.env.VITE_WEATHER_GEOCODING_URL || 'https://nominatim.openstreetmap.org/search', window.location.origin)
-    url.search = new URLSearchParams({ q: normalized, format: 'jsonv2', countrycodes: 'kr', limit: '5', layer: 'address', 'accept-language': 'ko' }).toString()
-    const result = z.array(z.object({ lat: z.string(), lon: z.string(), display_name: z.string() })).parse(await fetchJSON(url.toString(), signal))
-    const matches = result.filter((r) => sameRegion(normalized, r.display_name.replaceAll(',', ' ')))
+    let matches: { lat: string; lon: string; display_name: string }[] = []
+    for (const query of osmQueries(normalized)) {
+      const delay = nextGeoAt - Date.now()
+      if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
+      signal.throwIfAborted()
+      nextGeoAt = Date.now() + 1100 // 이용 정책: 초당 1회 이하 (다시 찾을 때도 지킴)
+      const url = new URL(import.meta.env.VITE_WEATHER_GEOCODING_URL || 'https://nominatim.openstreetmap.org/search', window.location.origin)
+      url.search = new URLSearchParams({ q: query, format: 'jsonv2', countrycodes: 'kr', limit: '5', layer: 'address', 'accept-language': 'ko' }).toString()
+      const result = z.array(z.object({ lat: z.string(), lon: z.string(), display_name: z.string() })).parse(await fetchJSON(url.toString(), signal))
+      matches = result.filter((r) => sameRegion(normalized, r.display_name.replaceAll(',', ' ')))
+      if (matches.length) break
+    }
     const unique = [...new Map(matches.map((r) => [r.display_name, r])).values()]
     // 동까지 넣으면 같은 동네가 '동' · '우편번호 구역'으로 두 번 나올 수 있음 → 모두 5km 안이면 같은 곳으로 보고 첫 번째를 씀.
     // 서울 중구 · 부산 중구처럼 멀리 떨어진 다른 지역이 섞이면 고르지 않음

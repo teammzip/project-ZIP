@@ -55,6 +55,10 @@ export const toPost = (p: ServerPost): Post => ({
 
 export type Scope = 'here' | 'near' | 'all'
 export type PostPage = { items: Post[]; hasNext: boolean }
+/** "주변 동네" 탭 안내용 동네 이름 (sido: 시 · 도 이름, 시 · 도 자체면 null) */
+export type NeighborRegion = { id: string; name: string; sido: string | null }
+/** GET /api/posts/neighbors: 내 동네(주거 설문 · 내 정보 주소 기준)와 이웃 동네. 동네가 없으면 region = null */
+export type Neighbors = { region: NeighborRegion | null; neighbors: NeighborRegion[] }
 
 /** 새로 붙인 첨부(data URL)는 서버에 올리고(동시에, 순서는 그대로), 이미 올린 첨부는 id 그대로 → attachmentIds.
  * 서버 첨부는 JPEG · PNG 사진만 (서버가 다시 저장하며 사진 속 정보를 지움) */
@@ -88,6 +92,7 @@ export const communityApi = {
   post: async (id: number) => toPost((await apiClient.get<ServerPost>(`/posts/${id}`)).data),
   recordView: (id: number) => apiClient.post(`/posts/${id}/views`),
   popularPosts: async () => (await apiClient.get<ServerPost[]>('/posts/popular')).data.map(toPost),
+  neighbors: async () => (await apiClient.get<Neighbors>('/posts/neighbors')).data,
   create: async (draft: PostDraft) => toPost((await apiClient.post<ServerPost>('/posts', await postBody(draft))).data),
   update: async (id: number, draft: PostDraft) => toPost((await apiClient.patch<ServerPost>(`/posts/${id}`, await postBody(draft))).data),
   remove: (id: number) => apiClient.delete(`/posts/${id}`),

@@ -1,11 +1,14 @@
 # 홈 날씨
 
-- 날씨·홈 지도·동네 지도는 `useNeighborhoodLocation`의 같은 지역과 좌표를 사용한다. 설문에서 선택한 주소의 좌표는 `survey.addressPoint`와 `settings.regionLocation`에 저장하며 재검색 없이 사용한다.
+- **날씨는 주거 설문에서 고른 주소 기준**(`useWeatherLocation`, 2026-11-22): 설문 주소 검색에서 고를 때 저장한 좌표(`survey.addressPoint`)를 바로 쓰고, 좌표가 없는 예전 설문만 주소에서 시·도 + 시·군·구를 뽑아(`addressRegion.ts`) 좌표를 찾는다. 설문 주소가 없거나 위치를 못 찾으면 아래 동네 기준으로 돌아간다.
+- 홈 지도·동네 지도(와 집 주소가 없을 때의 날씨)는 `useNeighborhoodLocation`의 같은 지역과 좌표를 사용한다.
+- 전남광주통합특별시는 OpenStreetMap 에 새 이름 · 예전 이름(광주광역시 · 전라남도)이 섞여 있어 새 이름으로 먼저 찾고 없으면 예전 이름으로 다시 찾는다(`osmQueries`). 설문에서 선택한 주소의 좌표는 `survey.addressPoint`와 `settings.regionLocation`에 저장하며 재검색 없이 사용한다.
 - 동네 인증에 성공하면 주소와 실제 GPS 좌표를 `settings.regionLocation`에 함께 저장한다. 인증한 위치는 설문 주소보다 우선하며 새로고침 후에도 유지된다. GPS는 인증 버튼을 눌렀을 때만 요청한다.
 - 좌표가 없는 기존 설문·인증 기록은 해당 동네 이름으로 지역을 조회한다. 수동으로 주소를 바꾸면 이전 좌표와 인증을 해제한다. 회원 ID가 다른 지역·좌표는 사용하지 않는다.
 - 첫 로그인에서 저장한 주소로 날씨와 지도를 인증 없이 이용한다. 위치 인증이 성공하면 회원 주소와 생활 정보가 인증한 동네로 변경된다. 커뮤니티만 위치 인증이 필요하다.
 - 지역은 Nominatim의 대한민국 주소 검색 결과와 입력한 행정구역이 일치할 때만 사용한다. 결과가 없거나 모호하면 지역 수정 안내를 보여준다. GPS 권한은 요청하지 않는다.
 - 위치 검색은 입력할 때마다 실행하지 않는다. 저장한 지역만 검색하며 결과는 `zip-weather-place:<지역>`에 90일 저장한다. 같은 탭의 요청은 직렬화하고 1.1초 이상 간격을 둔다.
+- 주소로 좌표를 찾을 때 지번 번지('합정동 123-4')가 있으면 OpenStreetMap 이 못 찾아서, 주소 그대로 → 번지 · 호수를 뺀 주소 → 시·도 + 시·군·구 순서로 다시 찾는다(`addressCandidates`, 지도 · 날씨 공통).
 - 날씨는 Open-Meteo의 현재 기온·WMO 날씨 코드, 일 최저/최고 기온·최대 강수확률, 시간별 예보를 이용한다. 한국 시간 기준으로 2일을 받아 현재 시각부터 12시간을 표시한다.
 - React Query 캐시는 10분, 활성 화면의 자동 갱신은 15분이다. 지역 변경 시 이전 지역 정보를 표시하지 않으며 갱신 실패 시 마지막 정보임을 표시한다. 누락된 수치는 0으로 바꾸지 않는다.
 - `VITE_WEATHER_GEOCODING_URL`, `VITE_WEATHER_FORECAST_URL`로 동일 응답 형식의 서버 프록시로 교체할 수 있다. 키가 필요한 경우 서버에서 관리하며 프론트 환경변수에 비밀 키를 넣지 않는다.
@@ -18,4 +21,4 @@
 - [Nominatim 검색 API](https://nominatim.org/release-docs/latest/api/Search/)
 - [Nominatim 이용 정책](https://operations.osmfoundation.org/policies/nominatim/)
 
-검증: `node --test tests/weather.test.mjs tests/neighborhood-location.test.mjs`
+검증: `node --test tests/weather.test.mjs tests/weather-address-region.test.mjs tests/neighborhood-location.test.mjs`

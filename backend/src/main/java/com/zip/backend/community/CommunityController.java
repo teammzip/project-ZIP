@@ -26,6 +26,10 @@ public class CommunityController {
     @GetMapping("/api/posts/home-tips")
     public List<Map<String, Object>> homeTips(@AuthenticationPrincipal Jwt jwt) { return community.homeTips(userId(jwt)); }
 
+    /** "주변 동네" 탭 안내: 내 동네와 이웃 동네 이름 (글 목록 scope=near 와 같은 기준) */
+    @GetMapping("/api/posts/neighbors")
+    public Map<String, Object> neighbors(@AuthenticationPrincipal Jwt jwt) { return community.neighbors(userId(jwt)); }
+
     @GetMapping("/api/posts/popular")
     public List<Map<String, Object>> popularPosts(@AuthenticationPrincipal Jwt jwt) { return community.popularPosts(userId(jwt)); }
 

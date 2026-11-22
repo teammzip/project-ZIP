@@ -55,6 +55,22 @@ class CommunityIntegrationTests {
         return JsonPath.read(response, "$.id");
     }
 
+    @Test void neighborsShowMyRegionAndNeighborNames() throws Exception {
+        // 마포구(2) 이웃: 용산구(3, community-fixture) + 다른 시 · 도의 고양시 → 같은 시 · 도 먼저
+        jdbc.update("INSERT INTO regions (id, parent_id, name, level) VALUES (20, NULL, '경기도', 1), (21, 20, '고양시', 2)");
+        jdbc.update("INSERT INTO region_neighbors VALUES (2, 21), (21, 2)");
+        call(login("mapo01"), get("/api/posts/neighbors"), null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.region.id").value("2")).andExpect(jsonPath("$.region.name").value("마포구"))
+            .andExpect(jsonPath("$.region.sido").value("서울특별시"))
+            .andExpect(jsonPath("$.neighbors.length()").value(2))
+            .andExpect(jsonPath("$.neighbors[0].name").value("용산구")).andExpect(jsonPath("$.neighbors[0].sido").value("서울특별시"))
+            .andExpect(jsonPath("$.neighbors[1].name").value("고양시")).andExpect(jsonPath("$.neighbors[1].sido").value("경기도"));
+        // 동네가 없으면 region 은 null, 이웃도 없음
+        call(login("nowhere1"), get("/api/posts/neighbors"), null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.region").isEmpty()).andExpect(jsonPath("$.neighbors.length()").value(0));
+        mvc.perform(get("/api/posts/neighbors")).andExpect(status().isUnauthorized());
+    }
+
     @Test void writeReadAndScopes() throws Exception {
         String mapo = login("mapo01"), yongsan = login("yongsan1"), nowhere = login("nowhere1");
         String id = write(mapo, "TIP", "  곰팡이 제거 꿀팁 ", "락스 희석해서 닦아요");

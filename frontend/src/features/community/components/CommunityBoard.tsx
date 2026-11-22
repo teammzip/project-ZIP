@@ -7,10 +7,11 @@ import { cx } from '@/lib/cx'
 import { relTime } from '@/lib/date'
 import { CAT_ICON, shortRegion } from '../data/display'
 import { CATEGORIES, NEARBY } from '../data/seed'
+import { serverNearNote } from '../neighborNote'
 import { communityApi } from '../server'
 import { useCommunityStore } from '../store'
 import { commentCountOf, type Post } from '../types'
-import { useCommunityActions, useServerPost, useServerPosts } from '../useCommunity'
+import { useCommunityActions, useServerNeighbors, useServerPost, useServerPosts } from '../useCommunity'
 import styles from './Community.module.css'
 import { PostDetail } from './PostDetail'
 import { PostComposer } from './PostEditor'
@@ -73,6 +74,8 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
     return () => clearTimeout(timer)
   }, [query])
   const server = useServerPosts(scope, cat, serverQ)
+  // 서버 모드 "주변 동네" 탭: 내 동네와 이웃 동네 이름을 서버에서 받아 안내 (탭을 열 때만)
+  const serverNeighbors = useServerNeighbors(scope === 'near')
   const serverPost = useServerPost(selectedId)
   const serverItems = server.data?.pages.flatMap((page) => page.items) ?? []
   // 가짜 API 모드는 이 브라우저 글을 여기서 거르고, 서버 모드는 서버가 걸러 준 글
@@ -106,7 +109,9 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
     if (!verified) return setVerifyFor('write')
     setWriting(true)
   }
-  const scopeNote = !region
+  const scopeNote = !isMockApi && scope === 'near'
+    ? serverNearNote(serverNeighbors)
+    : !region
     ? '내 정보에서 우리 동네를 입력하면 동네별로 모아 볼 수 있어요.'
     : scope === 'near'
       ? near.length
