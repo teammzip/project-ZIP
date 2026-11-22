@@ -51,7 +51,7 @@ export type ShowcaseRow = { title: string; body: string; screens: [ScreenName, S
 export const SHOWCASE_ROWS: ShowcaseRow[] = [
   {
     title: '할 일도, 일정도 한 화면에',
-    body: '오늘 할 일과 이번 주 일정을 홈에서 바로 확인하고,\n끝낸 일은 체크하면 끝. 쓰레기 배출 요일도 달력에 저절로 보여요.',
+    body: '오늘 할 일과 이번 주 일정을 홈에서 바로 확인하고,\n일정 화면에서 우리 동네 쓰레기 배출표를 펼쳐 볼 수 있어요.',
     screens: ['home', 'calendar'],
   },
   {

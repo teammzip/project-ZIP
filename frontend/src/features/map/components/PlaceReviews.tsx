@@ -66,6 +66,11 @@ function ReviewForm({ initial, pending, error, submitLabel, onSubmit, onCancel }
   const [localError, setLocalError] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
   const created = useRef<string[]>([])
+  const discard = () => {
+    if (pending) return
+    void reviewApi.discardPhotos(photos)
+    onCancel()
+  }
 
   // 미리보기 주소(blob:) 정리
   useEffect(() => {
@@ -134,13 +139,13 @@ function ReviewForm({ initial, pending, error, submitLabel, onSubmit, onCancel }
       <div className={styles.photoPick}>
         {photos.map((p, i) => (
           <span key={p.url} className={styles.photoThumb} style={{ backgroundImage: `url("${p.url}")` }}>
-            <button type="button" aria-label={`사진 ${i + 1} 빼기`} onClick={() => setPhotos((prev) => prev.filter((x) => x !== p))}>
+            <button type="button" disabled={pending} aria-label={`사진 ${i + 1} 빼기`} onClick={() => { void reviewApi.discardPhotos([p]); setPhotos((prev) => prev.filter((x) => x !== p)) }}>
               ✕
             </button>
           </span>
         ))}
         {photos.length < PHOTO_MAX && (
-          <button type="button" className={styles.photoAdd} onClick={() => fileInput.current?.click()}>
+          <button type="button" disabled={pending} className={styles.photoAdd} onClick={() => fileInput.current?.click()}>
             <span aria-hidden="true">📷</span>
             <small>
               {photos.length}/{PHOTO_MAX}
@@ -154,7 +159,7 @@ function ReviewForm({ initial, pending, error, submitLabel, onSubmit, onCancel }
           {body.length}/{MAX_BODY} · 사진은 JPEG · PNG, 한 장 2MB
         </small>
         <span className={styles.formBtns}>
-          <Button type="button" variant="line" onClick={onCancel}>
+          <Button type="button" variant="line" disabled={pending} onClick={discard}>
             취소
           </Button>
           <Button type="submit" disabled={pending}>
@@ -303,14 +308,14 @@ function ReviewCard({ r, mine, onEdit, onDelete, onReport, onPhoto }: {
   )
 }
 
-export function PlaceReviews({ placeId, placeName }: { placeId: string; placeName: string }) {
+export function PlaceReviews({ placeId, placeName, initialShowAll = false }: { placeId: string; placeName: string; initialShowAll?: boolean }) {
   const me = useAuthStore((s) => s.user)
   const meRef = me ? { id: me.id, nickname: me.nickname } : undefined
   const invalidate = useInvalidateReviews()
   const reviews = useQuery({ queryKey: reviewKeys.place(placeId), queryFn: () => reviewApi.reviews(placeId, meRef), staleTime: 30_000 })
   const [writing, setWriting] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [showAll, setShowAll] = useState(false)
+  const [showAll, setShowAll] = useState(initialShowAll)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [reporting, setReporting] = useState<PlaceReview | null>(null)
   const [viewer, setViewer] = useState<{ photos: Array<ReviewPhoto & { date?: string }>; start: number } | null>(null)

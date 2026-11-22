@@ -13,7 +13,7 @@
 |---|---|---|
 | [인증 · 내 정보](#1-인증--내-정보-) | ✅ | `users` `social_accounts` `auth_sessions` `email_verifications` `password_resets` `user_term_agreements` `withdrawal_logs` `user_profiles` `user_personal_info` |
 | [설정 · 동네 · 설문 · 내 집 정보](#2-설정--동네-) | ✅ | `user_settings` `home_contracts` `housing_surveys` `regions` `region_neighbors` · `users.region_verified_at` (동네 목록 API 는 아직 없음) |
-| [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | ✅ | `events`(기념일·매년 반복 포함) `event_categories` `event_presets` `trash_schedules` (쓰레기 배출 화면은 아직 프론트 고정표 🔶) |
+| [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | ✅ | `events`(기념일·매년 반복 포함) `event_categories` `event_presets` `trash_schedules` |
 | [월세 · 고정 지출 · 대출](#4-월세--고정-지출-) | ✅ | `bill_items` `bill_payments` `bill_document_keys` `bill_photo_imports` `bill_photo_drafts` `rent_payments` `housing_loans` `loan_interest_charges` |
 | [가계부 · 월급](#5-가계부-수입--기타-지출-) | ✅ | `ledger_categories` `incomes` `expenses` `salary_settings` `salary_records` + VIEW 2개 |
 | [알림](#6-알림-) | ✅ | `notifications` (읽음 · 삭제) |
@@ -247,7 +247,7 @@ PUT `/api/me/home-info/loan`은 전세 대출 카드에서 사용한다. 본문�
 > **2026-11-20 백엔드 구현 · 프론트 연결**: 아래 API가 모두 있어요. 서버 모드에서는 `features/life/calendarSync.ts`가 일정 · 카테고리 · 항목 버튼을 서버와 맞춰요(화면은 그대로 `useLifeStore`). 자세한 서버 규칙은 [backend/IMPLEMENTATION.md](../backend/IMPLEMENTATION.md#일정).
 > - `GET /api/events`에 `from` · `to`를 빼면 내 일정 전부예요(매년 반복 기념일은 기간과 상관없이 늘 들어가요). 일정의 `category`는 카테고리 **이름**이고, 분류 없음은 `null`(보낼 때는 `""`)이에요. `PATCH /api/events/{id}`는 `done`도 받아요.
 > - 카테고리 · 항목은 처음 쓸 때 서버가 기본 5개 + 미분류와 기본 항목 30개를 만들어요(`db/seeds/event_defaults.sql`과 같은 내용). `GET /api/event-categories`의 `items`는 기본 항목, `GET /api/event-presets`는 직접 만든 항목이에요.
-> - 카테고리를 지우면 그 일정은 미분류로, 직접 만든 항목은 미분류로 옮기고(같은 이름이 있으면 하나만 남김) 기본 항목은 같이 없어져요. 쓰레기 배출표는 `trash_schedules`를 읽기만 해요(화면은 아직 프론트 배출표).
+> - 카테고리를 지우면 그 일정은 미분류로, 직접 만든 항목은 미분류로 옮기고(같은 이름이 있으면 하나만 남김) 기본 항목은 같이 없어져요. 쓰레기 배출표는 `trash_schedules`를 읽기만 해요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
@@ -258,6 +258,7 @@ PUT `/api/me/home-info/loan`은 전세 대출 카드에서 사용한다. 본문�
 | PATCH | `/api/events/{id}/done` | `{ done: true }` | `event` |
 | DELETE | `/api/events/{id}` | — | — |
 | GET | `/api/trash-schedules?regionId=2` | — | `[{ place, general: { days: [1,3,5], startTime: "18:00" } \| null, food, recycle }]` (장소 한 줄에 종류별 요일 · 시각, 배출 없는 종류는 `null`) |
+| GET | `/api/trash-schedules/me` | — | `{ regionName, items }`. 내 집 주소가 비어 있으면 회원 주소를 사용해 시·군·구를 찾아요. 지역을 찾지 못하면 `regionName: null`, 배출표가 없으면 `items: []`예요. `items`는 위 배출표와 같은 형식이에요. |
 | GET | `/api/event-categories` | — | `[{ id, name, ico, items: ["에어컨 필터 청소", …] }]` (기본 5개 + 내가 만든 것 + 미분류) |
 | POST | `/api/event-categories` | `{ name }` | `category` |
 | PATCH | `/api/event-categories/{id}` | `{ name }` | — (그 카테고리의 일정 · 항목 이름도 같이 바뀜) |
@@ -278,14 +279,14 @@ PUT `/api/me/home-info/loan`은 전세 대출 카드에서 사용한다. 본문�
   - 일정을 **직접 입력**하면 고른 카테고리 아래에 **항목 버튼**으로도 저장돼요(같은 이름이 이미 있으면 안 만듦). 직접 만든 항목은 수정 · 삭제할 수 있어요.
   - DB는 `event_categories` · `event_presets` 표와 `events.category_id`(NULL = 미분류)를 써요. 삭제 시 프리셋을 미분류로 이동한 뒤 카테고리를 삭제해야 해요. 미분류의 같은 제목과 충돌하면 기존 버튼을 재사용하고 중복 원본을 정리하는 등 병합 정책을 트랜잭션으로 처리하세요. FK CASCADE만으로는 프리셋이 이동하지 않고 삭제돼요.
   - 지금은 브라우저(`zip-life`의 `categories` · `customPresets`)에 저장해요.
-- **달력에서 날짜를 누르면 그날 일정 창**이 떠요 (그날 일정 전부 + 쓰레기 배출, 완료 체크 · 수정 · 삭제 · 이 날에 바로 추가). 새 API는 필요 없고 위 `GET /api/events?from=…&to=…`(그날 하루) · `POST` · `PATCH` · `DELETE`를 그대로 써요.
-- 달력 막대 색은 프론트가 카테고리 순서로 정해요 (미분류 · 직접 입력은 파랑, 쓰레기 배출은 초록). 같은 제목이 며칠 이어지면 막대를 이어 그려요.
+- **달력에서 날짜를 누르면 그날 일정 창**이 떠요 (그날 일정 전부, 완료 체크 · 수정 · 삭제 · 이 날에 바로 추가). 새 API는 필요 없고 위 `GET /api/events?from=…&to=…`(그날 하루) · `POST` · `PATCH` · `DELETE`를 그대로 써요.
+- 달력 막대 색은 프론트가 카테고리 순서로 정해요 (미분류 · 직접 입력은 파랑). 같은 제목이 며칠 이어지면 막대를 이어 그려요.
 - 같은 날 · 같은 제목 · 같은 카테고리 일정은 프론트가 한 번 더 추가하지 않게 막아요.
 - **기념일** (일정 기록하기 > 🎉 기념일): `anniv: true`인 일정이에요. 카테고리 · 시간 · 완료 체크가 없고, 제목 앞에 `🎉 `를 붙여 저장해요(프론트가 보여 줄 때 뗌).
   - `yearly: true`면 **매년 반복**이에요. 서버는 한 줄만 저장하고, 프론트가 달력 · 목록 · 알림에 해당 연도 날짜로 펼쳐 보여요(윤년 2/29는 평년에 2/28). 펼친 일정의 id는 `"<id>@<연도>"`지만 서버에는 원래 `id`로만 요청해요.
   - 기념일은 "남은 일" 수에 안 들어가고, 홈 요약 카드 **다가오는 기념일**(오늘 포함 가장 가까운 것, D-day)과 알림(3일 전부터)에 쓰여요.
   - ✅ DB 칸은 `events.is_anniversary` · `repeat_yearly`예요 (`anniv` → `is_anniversary`, `yearly` → `repeat_yearly`로 매핑. `db/migrations/20261031_02_event_anniversaries.sql` 참고).
-- 쓰레기 배출은 일정으로 저장하지 않아요. **화면(달력 · 홈)에는 그리지 않고, 서버가 배출일 0시에 알림(`TRASH`, 6장)으로만 알려요** (2026-11-22 결정). 이 API 는 읽기 전용으로 남겨 둔 것이고 지금 화면은 부르지 않아요.
+- 일정 화면의 **우리 동네 배출표 보기**는 기본적으로 접혀 있어요. 펼칠 때 `/api/trash-schedules/me`에서 장소별 품목·요일·시작 시각을 읽어 와요. 배출일 알림(`TRASH`, 6장)은 서버가 기본 0시에 만들어요.
   - `days` 0=일 ~ 6=토, `general`(생활쓰레기) · `food`(음식물) · `recycle`(재활용). DB 는 원본 CSV 한 줄과 같은 모양(`general_days` · `general_time` …)
   - `startTime`은 배출 시작 시각(종료 시각은 저장하지 않음), `place`는 배출장소예요. 같은 동네에 장소 · 요일이 다른 줄이 여럿일 수 있어요. 데이터는 전국생활쓰레기배출정보표준데이터(공공데이터포털)를 `db/tools/trash_import.py`로 바꿔 넣어요. 마을 단위 장소는 `마을 내 생활 폐기물 배출장` 한 문구로 합쳐져 있어요.
   - 시작 시각 `00:00`은 실제 자정 배출과 "시간 제한 없음"이 섞여 있어요(원본 데이터 한계).
@@ -541,6 +542,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 >
 > - 다른 사람의 대화방은 모두 404예요. 회원 탈퇴 시 대화도 함께 지워져요(FK CASCADE).
 > - 질문 1번마다 `ai_usage_daily`가 +1 (하루 기본 30번, 넘으면 429 `AI_LIMIT`). AI 호출이 실패하면(502 `AI_FAILED`) 아무것도 저장하지 않고 횟수도 되돌려요. 키가 없으면 503 `AI_DISABLED`.
+> - Gemini의 사용량 제한 응답(429)은 503 `AI_QUOTA`로 안내하고 질문 횟수를 되돌려요. `/ai`의 ‘사용 방법’에서 전체 기능 안내를 분류별로 볼 수 있어요. 고객센터 문의 방법도 바로 확인할 수 있어요. 각 안내는 브라우저에서 표시하고, ‘질문 다시 보내기’를 누르면 같은 대화방에 원래 질문을 다시 보내요.
 > - 제목(`title`)은 첫 질문 30자. 대화방 하나에 말풍선 400개까지. 사진은 저장하지 않아요(`attachment_id`는 비워 둠).
 > - 프론트: 홈 "AI와 대화"는 열 때 최근 대화를 불러와 이어가고 "새 대화"는 새 대화방을 만들어요. AI 화면은 화면을 열 때마다 새 대화방을 만들어요(이전 대화 복원은 아직 없음). 가짜 API 모드이거나 서버를 쓸 수 없으면 예전처럼 이 브라우저에서만 대화해요.
 > - 키는 `secrets/gemini.properties`의 `GEMINI_API_KEY`, 모델은 `GEMINI_MODEL`(기본 `gemini-3.1-flash-lite`).
@@ -577,6 +579,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | GET | `/api/places?regionId=2&category=세탁방&lat=37.5496&lon=126.9137` | — | `[place]` (가까운 순. `lat` · `lon` = 지도 중심, 생략하면 우리 집) |
 | GET | `/api/places?regionId=2&q=빵집` | — | `[place]` (직접 추가한 검색어 칩: 이름 · 설명 · 종류에 글자 포함. 검색창은 `&wide=true` — 가게 이름 · 유명한 곳까지, 이름이 맞는 곳부터) |
 | POST | `/api/places/ai-search` | `{ q: "밤에 갈 수 있는 약국", regionId }` | `[{ place, reasons: ["약국", "24시간·심야 운영"], walkMin }]` (최대 5곳) |
+| GET | `/api/places/reviews/mine` | — | `[{ id, placeId, placeName, rating, body, createdAt }]` 로그인한 회원의 DB·카카오 장소 리뷰 통합 목록, 최신순. 마이페이지 내 정보의 내가 쓴 리뷰에서 장소 리뷰로 연결 |
 | GET | `/api/places/{id}/reviews` | — | `[{ id, rating, body, photos: [{ id, url }], author: { id, nickname, avatarUrl, avatarEmoji, avatarColor, reviewCount, ratingAvg }, createdAt, reportedByMe }]` 최신순 (장소 상세 아래 리뷰). id = DB 장소 `12` 또는 카카오 장소 `kakao:123` |
 | POST | `/api/places/{id}/reviews` | `{ rating(1~5), body(300자, 선택), name(카카오 장소만, 60자), photoIds(선택, 5장까지 — 먼저 `POST /api/files` 로 올린 내 사진) }` | — (한 사람당 한 장소 하나, 두 번이면 409. 카카오 장소는 `name` 없으면 400) |
 | PUT | `/api/places/{id}/reviews/mine` | `{ rating, body, photoIds }` | — 내 리뷰 고치기 (빠진 사진은 서버가 지움, 없으면 404) |
@@ -690,9 +693,15 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
 | GET | `/api/memos?q=` | — | `[memo]` (고정 먼저, 그다음 최근 수정 순) |
-| POST | `/api/memos` | `{ title, body, color, pinned, checklist, items }` (전부 선택) | `memo` |
+| POST | `/api/memos` | `{ title, body, color, pinned, checklist, items, folderId }` (전부 선택) | `memo` |
 | PATCH | `/api/memos/{id}` | 바꾼 칸만 (`items`는 배열 통째로) | `memo` (쓰는 대로 자동 저장 → 프론트가 0.5초 정도 모았다가 보낼게요) |
 | DELETE | `/api/memos/{id}` | — | — |
+| GET | `/api/memo-folders` | — | `[{ id, name }]` 본인 폴더만 |
+| POST | `/api/memo-folders` | `{ name }` 1~40자, 회원당 100개, 중복 이름 불가 | `{ id, name }` |
+| PATCH | `/api/memo-folders/{id}` | `{ name }` | `{ id, name }` |
+| DELETE | `/api/memo-folders/{id}` | — | 204, 메모는 미분류로 보존 |
+
+메모 응답의 `folderId`는 문자열 또는 null(미분류)입니다. PATCH에서 생략/null은 기존 폴더 유지, 빈 문자열 `""`은 미분류로 이동합니다. 폴더별 개수·전체·고정·미분류 조회와 폴더 선택은 기존 메모 목록을 기준으로 표시하며 가계부 연결은 유지합니다. DB 변경: `db/migrations/20261122_06_memo_folders.sql`.
 
 ```json
 { "id": "5", "title": "장보기", "body": "", "color": "노랑", "pinned": true, "checklist": true,

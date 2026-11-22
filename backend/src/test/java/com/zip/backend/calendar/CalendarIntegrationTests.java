@@ -172,6 +172,40 @@ class CalendarIntegrationTests {
         call(me, get("/api/trash-schedules").param("regionId", "abc"), null).andExpect(status().isNotFound());
     }
 
+    @Test void myTrashScheduleUsesHomeBeforeMemberAddressAndDoesNotSaveEvents() throws Exception {
+        jdbc.update("UPDATE users SET address = '서울 마포구' WHERE id IN (1, 2)");
+        jdbc.update("INSERT INTO user_settings (user_id, home_address, noti_on) VALUES (1, '서울 용산구 용산구', FALSE)");
+        jdbc.update("""
+            INSERT INTO trash_schedules (region_id, place, general_days, general_time) VALUES
+              (2, '마포 배출장', '월,수', '18:00:00'), (3, '용산 배출장', '화', '20:00:00')
+            """);
+
+        call(null, get("/api/trash-schedules/me"), null).andExpect(status().isUnauthorized());
+        call(me, get("/api/trash-schedules/me").param("regionId", "2"), null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.regionName").value("서울특별시 용산구"))
+            .andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.items[0].place").value("용산 배출장"))
+            .andExpect(jsonPath("$.items[0].general.days[0]").value(2))
+            .andExpect(jsonPath("$.items[0].general.startTime").value("20:00"));
+        call(other, get("/api/trash-schedules/me"), null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.regionName").value("서울특별시 마포구"))
+            .andExpect(jsonPath("$.items[0].place").value("마포 배출장"));
+        jdbc.update("UPDATE user_settings SET home_address = '  ' WHERE user_id = 1");
+        call(me, get("/api/trash-schedules/me"), null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.regionName").value("서울특별시 마포구"));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM events", Integer.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM notifications", Integer.class));
+    }
+
+    @Test void myTrashScheduleDistinguishesMissingRegionFromMissingSchedule() throws Exception {
+        call(me, get("/api/trash-schedules/me"), null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.regionName").isEmpty()).andExpect(jsonPath("$.items.length()").value(0));
+        jdbc.update("UPDATE users SET address = '서울 마포구' WHERE id = 1");
+        call(me, get("/api/trash-schedules/me"), null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.regionName").value("서울특별시 마포구"))
+            .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
     @Test void customPresetsUpdateAndDelete() throws Exception {
         call(me, get("/api/event-categories"), null);
         String id = JsonPath.read(call(me, post("/api/event-presets"), "{\"title\":\"화분 물 주기\",\"category\":\"집 관리\"}").andReturn().getResponse().getContentAsString(), "$.id");

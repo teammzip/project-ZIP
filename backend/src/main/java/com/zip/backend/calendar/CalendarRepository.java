@@ -242,6 +242,13 @@ public class CalendarRepository {
 
     // ---------- 쓰레기 배출표 ----------
 
+    public Optional<String> trashAddress(long userId) {
+        return jdbc.query("""
+            SELECT COALESCE(NULLIF(TRIM(s.home_address), ''), NULLIF(TRIM(u.address), ''))
+            FROM users u LEFT JOIN user_settings s ON s.user_id = u.id WHERE u.id = ?
+            """, rs -> rs.next() ? Optional.ofNullable(rs.getString(1)) : Optional.<String>empty(), userId);
+    }
+
     /** 배출표 한 종류: 배출 요일(0=일 ~ 6=토) · 시작 시각("18:00"). 배출이 없는 종류는 null */
     public record TrashKind(List<Integer> days, String startTime) {}
 

@@ -2,6 +2,31 @@
  * 메모 색은 컴포넌트가 --memo-bg(배경) · --memo-line(테두리) 로 넣어 줌 */
 
 /* ---------- 메모장: PC 는 왼쪽 목록 | 오른쪽 쓰기 ---------- */
+.folders { display: grid; gap: 10px; min-width: 0; }
+.folderActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.deleteSelection { margin-left: auto; }
+.draftBadge { color: var(--color-primary); font-size: 12px; }
+.selectionActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.selectionActions > span { margin-right: auto; font-size: 13px; }
+.selectableMemo { display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; gap: 8px; }
+.selectableMemo > input { width: 18px; height: 18px; accent-color: var(--color-primary); cursor: pointer; }
+.sideHead h2 { min-width: 0; overflow-wrap: anywhere; }
+.sideHead > button { flex-shrink: 0; }
+.folders nav { display: grid; gap: 4px; max-height: 260px; overflow: auto; }
+.folders nav button { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border: 1px solid var(--color-line); border-radius: 10px; background: transparent; text-align: left; }
+.folders nav button span { overflow-wrap: anywhere; min-width: 0; }
+.folders nav button[aria-pressed="true"] { background: var(--color-bg); border-color: var(--color-primary); }
+.folders button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.folderToolbar { display: flex; align-items: center; gap: 8px; }
+.folderToolbar > :first-child { flex: 1; }
+.folderSettings { display: grid; place-items: center; flex: none; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--color-muted); cursor: pointer; }
+.folderSettings:hover, .folderSettings[aria-pressed="true"] { background: var(--color-bg); color: var(--color-primary); }
+.folderRow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.folderRowManaging { grid-template-columns: minmax(0, 1fr) auto auto; }
+.folderRow > button:not(:first-child) { padding: 8px; font-size: 12px; color: var(--color-primary); }
+.folderSelect { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 18px; font-size: 14px; }
+.folderSelect select, .folderSelect input { min-width: 0; max-width: 100%; padding: 8px 12px; border: 1px solid var(--color-line); border-radius: 8px; background: #fff; font: inherit; }
+
 .app {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);

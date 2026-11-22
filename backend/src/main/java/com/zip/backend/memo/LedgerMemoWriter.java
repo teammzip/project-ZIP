@@ -27,7 +27,8 @@ public class LedgerMemoWriter {
         },id,user);
         if(rows.isEmpty()) throw new com.zip.backend.common.ApiException(404,"내 메모를 찾을 수 없어요.");
         var row=rows.get(0);
-        if(!source.equals(row.get("ledger_source")) || !(key.equals(row.get("ledger_key")) || java.util.Objects.toString(row.get("ledger_key"),"").startsWith("draft:"))) throw new com.zip.backend.common.ApiException(409,"다른 가계부 기록의 메모예요.");
+        String memoKey=java.util.Objects.toString(row.get("ledger_key"),"");
+        if(!source.equals(row.get("ledger_source")) || !(key.equals(memoKey) || memoKey.startsWith("draft:") || memoKey.startsWith("saved:"))) throw new com.zip.backend.common.ApiException(409,"다른 가계부 기록의 메모예요.");
         var existing=jdbc.queryForList("SELECT id FROM memos WHERE user_id=? AND ledger_source=? AND ledger_key=? AND id<>?",Long.class,user,source,key,id);
         if(!existing.isEmpty()) throw new com.zip.backend.common.ApiException(409,"이미 연결된 메모가 있어요. 기존 메모를 열어 주세요.");
         jdbc.update("UPDATE memos SET ledger_key=?,ledger_label=? WHERE id=? AND user_id=?",key,context,id,user);

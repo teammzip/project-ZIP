@@ -9,7 +9,7 @@ import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
 import styles from './life.module.css'
 import { useAuthStore } from '@/features/auth'
-import { returnedMemoDraft, openLedgerMemo, clearMemoDraft } from '../ledgerMemoNavigation'
+import { returnedMemoDraft, openLedgerMemo, clearMemoDraft, discardMemoDraft } from '../ledgerMemoNavigation'
 
 function localDate(timeZone: string) {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
@@ -104,7 +104,10 @@ export function MonthlyBillEditor({ month, timeZone, bill }: Props) {
         }}><span>메모 (선택)</span><b className={styles.quickAdd}>{memoId ? memoTitle?.trim() || '제목 없는 메모' : '메모 작성'}</b></button>
       </div>
       <Button type="submit" block disabled={busy || !amount || !dueDate || categoryUnavailable}>{busy ? '저장 중' : bill ? '저장' : '기록하기'}</Button>
-      {bill && <Button type="button" variant="line" disabled={busy} onClick={() => { setEditing(false); setError('') }}>취소</Button>}
+      {bill && <Button type="button" variant="line" disabled={busy} onClick={async () => {
+        try { if (resume) await discardMemoDraft(resume); setResume(undefined); setEditing(false); setError('') }
+        catch (cause) { setError(getErrorMessage(cause, '메모를 정리하지 못했어요. 다시 시도해 주세요.')) }
+      }}>취소</Button>}
     </form>}
     {addingCategory && <LedgerCategoryDialog scope="bill" onClose={() => setAddingCategory(false)} onAdded={setTag} onRenamed={(oldName, newName) => { if (selectedTag === oldName) setTag(newName) }} />}
     {error && <p role="alert" className={common.formError}>{error}</p>}

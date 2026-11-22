@@ -16,6 +16,11 @@ public class PlaceReviewController {
 
     private static long userId(Jwt jwt) { return Long.parseLong(jwt.getSubject()); }
 
+    @GetMapping("/api/places/reviews/mine")
+    public List<PlaceReviewRepository.MyReview> mine(@AuthenticationPrincipal Jwt jwt) {
+        return reviews.myReviews(userId(jwt));
+    }
+
     @GetMapping("/api/places/{id}/reviews")
     public List<Map<String, Object>> reviews(@AuthenticationPrincipal Jwt jwt, @PathVariable String id) { return reviews.reviews(userId(jwt), id); }
 

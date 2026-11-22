@@ -140,16 +140,47 @@ class LedgerIntegrationTests {
         String draft="{\"kind\":\"spend\",\"key\":\""+"a".repeat(32)+"\",\"label\":\"기타 지출 · 식비\"}";
         for(int i=0;i<2;i++) mvc.perform(post("/api/memos/ledger-draft").header("Authorization","Bearer "+token).contentType("application/json").content(draft)).andExpect(status().isOk());
         long id=jdbc.queryForObject("SELECT id FROM memos",Long.class);
+        mvc.perform(get("/api/memos").header("Authorization","Bearer "+token)).andExpect(jsonPath("$[0].draft").value(true));
         String longMemo="메".repeat(300);
         mvc.perform(patch("/api/memos/"+id).header("Authorization","Bearer "+token).contentType("application/json").content("{\"title\":\"점심 모임\",\"body\":\""+longMemo+"\"}")).andExpect(status().isOk());
+        mvc.perform(get("/api/memos").header("Authorization","Bearer "+token)).andExpect(jsonPath("$[0].draft").value(true));
+        mvc.perform(patch("/api/memos/"+id).header("Authorization","Bearer "+other).contentType("application/json").content("{\"complete\":true}")).andExpect(status().isNotFound());
+        mvc.perform(patch("/api/memos/"+id).header("Authorization","Bearer "+token).contentType("application/json").content("{\"complete\":true}")).andExpect(status().isOk()).andExpect(jsonPath("$.draft").value(false));
+        mvc.perform(post("/api/memos/ledger-draft").header("Authorization","Bearer "+token).contentType("application/json").content(draft)).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(Long.toString(id)));
         String registration=body(1000,"식비",null).replace("\"memo\":\"검증\"","\"memoId\":\""+id+"\"");
         mvc.perform(post("/api/ledger/spend").param("timeZone","UTC").header("Authorization","Bearer "+other).contentType("application/json").content(registration)).andExpect(status().isNotFound());
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM expenses",Integer.class));
         mvc.perform(post("/api/ledger/spend").param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content(registration)).andExpect(status().isCreated());
+        mvc.perform(delete("/api/memos/ledger-draft/"+"a".repeat(32)).header("Authorization","Bearer "+token)).andExpect(status().isNoContent());
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM memos",Integer.class));
         assertEquals(longMemo,jdbc.queryForObject("SELECT body FROM memos WHERE id=?",String.class,id));
         assertEquals(100,jdbc.queryForObject("SELECT memo FROM expenses",String.class).length());
         mvc.perform(get("/api/ledger/spend").param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token)).andExpect(jsonPath("$[0].memoTitle").value("점심 모임")).andExpect(jsonPath("$[0].memoId").value(Long.toString(id)));
-        mvc.perform(get("/api/memos").header("Authorization","Bearer "+token)).andExpect(jsonPath("$[0].ledgerContext").value("기타 지출 · "+date+" · 식비"));
+        mvc.perform(get("/api/memos").header("Authorization","Bearer "+token)).andExpect(jsonPath("$[0].draft").value(false)).andExpect(jsonPath("$[0].ledgerContext").value("기타 지출 · "+date+" · 식비"));
+    }
+    @Test void ledgerDraftsReuseFoldersByLedgerType() throws Exception {
+        String[][] cases={{"income","fixed","고정 수입"},{"income","other","기타 수입"},{"bill","fixed","고정 지출"},{"spend","fixed","기타 지출"}};
+        int key=1;
+        for(var entry:cases) {
+            for(int i=0;i<2;i++) {
+                String draft="{\"kind\":\""+entry[0]+"\",\"incomeType\":\""+entry[1]+"\",\"key\":\""+String.format("%032x",key++)+"\",\"label\":\"検証\"}";
+                mvc.perform(post("/api/memos/ledger-draft").header("Authorization","Bearer "+token).contentType("application/json").content(draft)).andExpect(status().isOk());
+            }
+            assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM memo_folders WHERE name=?",Integer.class,entry[2]));
+            assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM memos m JOIN memo_folders f ON m.folder_id=f.id WHERE f.name=? AND m.user_id=f.user_id",Integer.class,entry[2]));
+        }
+    }
+    @Test void discardingUnregisteredLedgerMemoDeletesOnlyOwnedDraft() throws Exception {
+        String key="b".repeat(32);
+        String draft="{\"kind\":\"income\",\"key\":\""+key+"\",\"label\":\"고정 수입\"}";
+        mvc.perform(post("/api/memos/ledger-draft").header("Authorization","Bearer "+token).contentType("application/json").content(draft)).andExpect(status().isOk());
+        long id=jdbc.queryForObject("SELECT id FROM memos",Long.class);
+        mvc.perform(patch("/api/memos/"+id).header("Authorization","Bearer "+token).contentType("application/json").content("{\"complete\":true}")).andExpect(status().isOk());
+        mvc.perform(delete("/api/memos/ledger-draft/"+key).header("Authorization","Bearer "+other)).andExpect(status().isNoContent());
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM memos",Integer.class));
+        for(int i=0;i<2;i++) mvc.perform(delete("/api/memos/ledger-draft/"+key).header("Authorization","Bearer "+token)).andExpect(status().isNoContent());
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM memos",Integer.class));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM memo_folders",Integer.class));
+        mvc.perform(delete("/api/memos/ledger-draft/"+key)).andExpect(status().isUnauthorized());
     }
 }

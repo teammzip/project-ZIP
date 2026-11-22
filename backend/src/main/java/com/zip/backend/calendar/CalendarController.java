@@ -92,4 +92,9 @@ public class CalendarController {
 
     @GetMapping("/api/trash-schedules")
     public List<Map<String, Object>> trash(@RequestParam(required = false) String regionId) { return calendar.trashSchedules(regionId); }
+
+    @GetMapping("/api/trash-schedules/me")
+    public CalendarService.MyTrashSchedule myTrash(@AuthenticationPrincipal Jwt jwt) {
+        return calendar.myTrashSchedule(userId(jwt));
+    }
 }

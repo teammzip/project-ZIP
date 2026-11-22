@@ -5,10 +5,9 @@ import type { ChatMsg, SpendCard } from './store'
 import type { TopicSuggestion } from './topics'
 
 /* AI 대화 서버 API (frontend/API.md 8장, DB: ai_conversations · ai_messages).
- * 브라우저는 우리 서버에만 묻고 Gemini 키는 서버에만 있어요. 가짜 API 모드이거나 서버를 쓸 수 없으면 모두 null 로 돌려줘서
- * 부른 쪽이 예전처럼 브라우저 안의 데모 답변으로 이어가요. */
+ * 브라우저는 우리 서버에만 묻고 Gemini 키는 서버에만 있어요. */
 export type EntryPoint = 'HOME_MODAL' | 'AI_PAGE'
-export type AiAnswer = { text: string; /** 하루 질문 한도를 넘었다는 안내 문구 (저장되지 않음) */ limited?: boolean }
+export type AiAnswer = { text: string; kind: 'reply' | 'gemini-quota' | 'unavailable' }
 
 type ServerMessage = { id: string; role: 'USER' | 'ASSISTANT'; text: string; card?: { type: string; data: unknown } }
 type ExchangeCard =
@@ -60,14 +59,16 @@ export async function askAi(conversationId: string | null, text: string, topic?:
   if (isMockApi || !conversationId) return null
   try {
     const { data } = await apiClient.post<{ reply: { text: string } }>(`/ai/conversations/${conversationId}/messages`, { text, topic })
-    return data.reply.text ? { text: data.reply.text } : null
+    return data.reply.text ? { text: data.reply.text, kind: 'reply' } : null
   } catch (error) {
-    if (axios.isAxiosError(error)) {
+    if (axios.isAxiosError<{ message?: string; code?: string }>(error)) {
       const status = error.response?.status
-      const message = (error.response?.data as { message?: string } | undefined)?.message
-      if (status === 429) return { text: message ?? '오늘 질문 한도를 모두 썼어요. 내일 다시 물어봐 주세요.', limited: true }
-      // AI 쪽 문제(사용량 소진 · 일시 오류 · 준비 안 됨)는 데모 답변으로 속이지 않고 그대로 알려 줌
-      if (status === 502 || status === 503) return { text: message ?? 'AI가 지금 답하지 못했어요. 잠시 뒤에 다시 시도해 주세요.', limited: true }
+      const { message, code } = error.response?.data ?? {}
+      if (status === 503 && code === 'AI_QUOTA') {
+        return { text: message ?? 'AI 사용량을 모두 썼어요. 잠시 뒤 다시 시도해 주세요.', kind: 'gemini-quota' }
+      }
+      if (status === 429) return { text: message ?? '오늘 질문 한도를 모두 썼어요. 내일 다시 물어봐 주세요.', kind: 'unavailable' }
+      if (status === 502 || status === 503) return { text: message ?? 'AI가 지금 답하지 못했어요. 잠시 뒤에 다시 시도해 주세요.', kind: 'unavailable' }
     }
     return null
   }

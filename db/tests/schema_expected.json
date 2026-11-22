@@ -52,6 +52,9 @@
       "table": "events"
     },
     {
+      "table": "memo_folders"
+    },
+    {
       "table": "memos"
     },
     {
@@ -1764,6 +1767,36 @@
       "collation": ""
     },
     {
+      "table": "memo_folders",
+      "column": "id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 1,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "memo_folders",
+      "column": "user_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "memo_folders",
+      "column": "name",
+      "type": "varchar(40)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
       "table": "memos",
       "column": "id",
       "type": "bigint unsigned",
@@ -1827,6 +1860,16 @@
       "table": "memos",
       "column": "ledger_label",
       "type": "varchar(120)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "memos",
+      "column": "folder_id",
+      "type": "bigint unsigned",
       "nullable": "YES",
       "auto": 0,
       "generated": 0,
@@ -4886,6 +4929,16 @@
       "columns": "id"
     },
     {
+      "table": "memo_folders",
+      "name": "PRIMARY",
+      "columns": "id"
+    },
+    {
+      "table": "memo_folders",
+      "name": "uk_memo_folders_user_name",
+      "columns": "user_id,name"
+    },
+    {
       "table": "memos",
       "name": "PRIMARY",
       "columns": "id"
@@ -5320,12 +5373,28 @@
       "delete_rule": "CASCADE"
     },
     {
+      "table": "memo_folders",
+      "name": "fk_memo_folders_user",
+      "column": "user_id",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
       "table": "memos",
       "name": "fk_memos_user_id",
       "column": "user_id",
       "target": "users",
       "target_column": "id",
       "delete_rule": "CASCADE"
+    },
+    {
+      "table": "memos",
+      "name": "fk_memos_folder",
+      "column": "folder_id",
+      "target": "memo_folders",
+      "target_column": "id",
+      "delete_rule": "SET NULL"
     },
     {
       "table": "bill_items",

@@ -224,7 +224,8 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 | PATCH `/api/events/{id}/done` | `{ done }` 완료 시각(`done_at`)은 완료로 바뀔 때만 적고 해제하면 지움 |
 | GET · POST `/api/event-categories`, PATCH · DELETE `/{id}` | 처음 쓸 때 기본 5개 + 미분류 생성. 이름 20자, 같은 이름 409, 미분류는 바꾸기 · 지우기 400 |
 | GET · POST `/api/event-presets`, PATCH · DELETE `/{id}` | 직접 만든 항목. 같은 카테고리에 같은 이름이 있으면 POST 는 그것을 돌려주고 PATCH 는 409 |
-| GET `/api/trash-schedules?regionId=` | 동네(시 · 군 · 구) 쓰레기 배출표 (읽기만). 장소별 `[{ place, general, food, recycle }]`, 종류마다 `{ days: [1,3,5], startTime: "18:00" }`(0=일 ~ 6=토) 또는 `null`(그 종류는 배출 요일 없음). 배출표가 없는 동네 · 없는 번호는 `[]`, 숫자가 아닌 번호는 404. 지금 화면은 안 씀(알림 전용) |
+| GET `/api/trash-schedules?regionId=` | 동네(시 · 군 · 구) 쓰레기 배출표 (읽기만). 장소별 `[{ place, general, food, recycle }]`, 종류마다 `{ days: [1,3,5], startTime: "18:00" }`(0=일 ~ 6=토) 또는 `null`(그 종류는 배출 요일 없음). 배출표가 없는 동네 · 없는 번호는 `[]`, 숫자가 아닌 번호는 404 |
+| GET `/api/trash-schedules/me` | 로그인 회원의 내 집 주소를 우선 사용하고 비어 있으면 회원 주소로 시·군·구를 찾아요. 응답은 `{ regionName, items }`. 지역 미확인은 `regionName: null`, 배출표 없음은 `items: []`예요. |
 
 - 기념일(`anniv`)은 시간 · 카테고리 · 완료가 없고, 매년 반복(`yearly`)은 기념일만 (DB CHECK 와 같음).
 - 카테고리 지우기는 일정 → 미분류, 기본 항목 삭제, 직접 만든 항목 → 미분류(겹치는 이름은 기존 것만 남김)를 한 트랜잭션에서 해요. MySQL 은 같은 표를 하위 질의로 읽으며 지우지 못해서(1093) 겹치는 이름을 먼저 읽어요.
@@ -250,7 +251,7 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 
 ## 쓰레기 배출표 · 배출일 알림
 
-`com.zip.backend.notification` (TrashReminderService · TrashReminderScheduler), 주소 → 동네는 `com.zip.backend.auth.RegionMatcher`, 배출표 API 는 위 [일정](#일정)의 `/api/trash-schedules`. **화면(달력 · 홈)에는 배출표를 그리지 않고 알림으로만 알려요** (2026-11-22 결정).
+`com.zip.backend.notification` (TrashReminderService · TrashReminderScheduler), 주소 → 동네는 `com.zip.backend.auth.RegionMatcher`. 일정 화면에서 **우리 동네 배출표 보기**를 펼칠 때 `GET /api/trash-schedules/me`로 읽기 전용 배출표를 조회해요.
 
 | 표 | 내용 | 넣는 법 |
 |---|---|---|

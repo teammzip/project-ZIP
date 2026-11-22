@@ -15,18 +15,48 @@ public class MemoRepository {
 
     public MemoRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
-    /** items: JSON 배열 글자 */
-    public record MemoRow(long id, String title, String body, String color, boolean pinned, boolean checklist, String items,
-        Instant createdAt, Instant updatedAt, String ledgerContext) {
-        public MemoRow(long id,String title,String body,String color,boolean pinned,boolean checklist,String items,Instant createdAt,Instant updatedAt) { this(id,title,body,color,pinned,checklist,items,createdAt,updatedAt,null); }
+    public record Folder(String id, String name) {}
+
+    public List<Folder> folders(long userId) {
+        return jdbc.query("SELECT id, name FROM memo_folders WHERE user_id = ? ORDER BY id", (rs, row) -> new Folder(Long.toString(rs.getLong(1)), rs.getString(2)), userId);
     }
 
-    private static final String SELECT = "SELECT id, title, body, color, is_pinned, is_checklist, items, created_at, updated_at, ledger_label FROM memos";
+    public boolean ownsFolder(long userId, long id) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM memo_folders WHERE id = ? AND user_id = ?", Integer.class, id, userId) == 1;
+    }
+
+    public long addFolder(long userId, String name) {
+        var keys = new GeneratedKeyHolder();
+        jdbc.update(connection -> {
+            var ps = connection.prepareStatement("INSERT INTO memo_folders (user_id, name) VALUES (?, ?)", new String[] {"id"});
+            ps.setLong(1, userId); ps.setString(2, name); return ps;
+        }, keys);
+        return keys.getKey().longValue();
+    }
+
+    public int renameFolder(long userId, long id, String name) {
+        return jdbc.update("UPDATE memo_folders SET name = ? WHERE id = ? AND user_id = ?", name, id, userId);
+    }
+
+    public int deleteFolder(long userId, long id) {
+        if (!ownsFolder(userId, id)) return 0;
+        jdbc.update("UPDATE memos SET folder_id = NULL WHERE user_id = ? AND folder_id = ?", userId, id);
+        return jdbc.update("DELETE FROM memo_folders WHERE id = ? AND user_id = ?", id, userId);
+    }
+
+    /** items: JSON 배열 글자 */
+    public record MemoRow(long id, String title, String body, String color, boolean pinned, boolean checklist, String items,
+        Instant createdAt, Instant updatedAt, String ledgerContext, Long folderId, boolean draft) {
+        public MemoRow(long id,String title,String body,String color,boolean pinned,boolean checklist,String items,Instant createdAt,Instant updatedAt,String ledgerContext,Long folderId) { this(id,title,body,color,pinned,checklist,items,createdAt,updatedAt,ledgerContext,folderId,false); }
+        public MemoRow(long id,String title,String body,String color,boolean pinned,boolean checklist,String items,Instant createdAt,Instant updatedAt) { this(id,title,body,color,pinned,checklist,items,createdAt,updatedAt,null,null); }
+    }
+
+    private static final String SELECT = "SELECT id, title, body, color, is_pinned, is_checklist, items, created_at, updated_at, ledger_label, folder_id, ledger_key FROM memos";
 
     private static MemoRow row(java.sql.ResultSet rs, int row) throws java.sql.SQLException {
         return new MemoRow(rs.getLong("id"), rs.getString("title"), rs.getString("body"), rs.getString("color"),
             rs.getBoolean("is_pinned"), rs.getBoolean("is_checklist"), rs.getString("items"),
-            rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(),rs.getString("ledger_label"));
+            rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(),rs.getString("ledger_label"), rs.getObject("folder_id", Long.class), java.util.Objects.toString(rs.getString("ledger_key"), "").startsWith("draft:"));
     }
 
     /** 내 메모: 고정 먼저, 그다음 최근 수정 순. keyword 가 있으면 제목 · 글에서 찾음 */
@@ -50,11 +80,12 @@ public class MemoRepository {
         var keys = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             var ps = connection.prepareStatement("""
-                INSERT INTO memos (user_id, title, body, color, is_pinned, is_checklist, items, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""", new String[] {"id"});
+                INSERT INTO memos (user_id, title, body, color, is_pinned, is_checklist, items, created_at, updated_at, folder_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", new String[] {"id"});
             ps.setLong(1, userId); ps.setString(2, m.title()); ps.setString(3, m.body()); ps.setString(4, m.color());
             ps.setBoolean(5, m.pinned()); ps.setBoolean(6, m.checklist()); ps.setString(7, m.items());
             ps.setTimestamp(8, Timestamp.from(m.createdAt())); ps.setTimestamp(9, Timestamp.from(m.updatedAt()));
+            ps.setObject(10, m.folderId());
             return ps;
         }, keys);
         return keys.getKey().longValue();
@@ -62,13 +93,17 @@ public class MemoRepository {
 
     public void update(long userId, MemoRow m) {
         jdbc.update("""
-            UPDATE memos SET title = ?, body = ?, color = ?, is_pinned = ?, is_checklist = ?, items = ?, updated_at = ?
+            UPDATE memos SET title = ?, body = ?, color = ?, is_pinned = ?, is_checklist = ?, items = ?, updated_at = ?, folder_id = ?
             WHERE id = ? AND user_id = ?""",
-            m.title(), m.body(), m.color(), m.pinned(), m.checklist(), m.items(), Timestamp.from(m.updatedAt()), m.id(), userId);
+            m.title(), m.body(), m.color(), m.pinned(), m.checklist(), m.items(), Timestamp.from(m.updatedAt()), m.folderId(), m.id(), userId);
     }
 
     public int delete(long userId, long id) {
         return jdbc.update("DELETE FROM memos WHERE id = ? AND user_id = ?", id, userId);
+    }
+
+    public void completeDraft(long userId, long id) {
+        jdbc.update("UPDATE memos SET ledger_key = CONCAT('saved:', SUBSTRING(ledger_key, 7)) WHERE id = ? AND user_id = ? AND ledger_key LIKE 'draft:%'", id, userId);
     }
 
     /** 내 메모 중 있는 번호만 */

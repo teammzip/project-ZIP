@@ -15,6 +15,8 @@ const toMemo = (m: ServerMemo): Memo => ({
   id: Number(m.id),
   title: m.title,
   ledgerContext: m.ledgerContext,
+  draft: m.draft,
+  folderId: m.folderId,
   body: m.body,
   color: m.color,
   pinned: m.pinned,
@@ -24,10 +26,12 @@ const toMemo = (m: ServerMemo): Memo => ({
   updatedAt: Date.parse(m.updatedAt),
 })
 
-const fields = (m: Memo) => ({ title: m.title, body: m.body, color: m.color, pinned: m.pinned, checklist: m.checklist, items: m.items })
+const fields = (m: Memo) => ({ title: m.title, body: m.body, color: m.color, pinned: m.pinned, checklist: m.checklist, items: m.items, folderId: m.folderId ?? '' })
 
 /** 화면에서 "이 기기 기록 초기화"처럼 서버에 보내면 안 되는 변경: 보내지 않고, 끝나면 서버 값을 다시 받음 */
 let externalChange: { mute: boolean; after: (() => void) | null } = { mute: false, after: null }
+let settleWrites: (() => Promise<void>) | null = null
+export async function settleMemoWrites() { await settleWrites?.() }
 export function withoutMemoSync(apply: () => void) {
   externalChange.mute = true
   try {
@@ -70,6 +74,12 @@ export function startMemoSync(userId: string, setTimer: typeof setTimeout = setT
     setTimer,
     clearTimer,
   })
+
+  const settle = async () => {
+    memos.flush()
+    await Promise.all(useMemoStore.getState().memos.map((memo) => memos.settled(memo.id)))
+  }
+  settleWrites = settle
 
   const saveHome = async () => {
     homeTimer = null
@@ -117,6 +127,7 @@ export function startMemoSync(userId: string, setTimer: typeof setTimeout = setT
   return () => {
     flush()
     memos.stop()
+    if (settleWrites === settle) settleWrites = null
     unsubscribeHome()
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onHide)
     if (typeof window !== 'undefined') {

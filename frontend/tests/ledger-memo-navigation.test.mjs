@@ -8,7 +8,20 @@ const code = ts.transpileModule(readFileSync(new URL('../src/features/life/ledge
 function setup() {
   const exports = {}, records = new Map(), destinations = []
   const location = { href: 'http://localhost:3000/my/budget/expense/spend', search: '', assign: (url) => destinations.push(url) }
-  vm.runInNewContext(code, { exports, URL, URLSearchParams, crypto: { randomUUID: () => 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' }, window: { location }, sessionStorage: { getItem: (key) => records.get(key) ?? null, setItem: (key, value) => records.set(key, value), removeItem: (key) => records.delete(key) } })
+  const mocks = {
+    '@/features/memo/store': { useMemoStore: { getState: () => ({ update: () => {} }) } },
+    '@/lib/apiMode': { isMockApi: true },
+    '@/lib/apiClient': {},
+    'react': {},
+    'react-router-dom': {},
+    '@/features/auth/store/authStore': {},
+    '@/features/memo/sync': {},
+  }
+  const require = (name) => {
+    assert(Object.hasOwn(mocks, name), `Unexpected import: ${name}`)
+    return mocks[name]
+  }
+  vm.runInNewContext(code, { exports, require, URL, URLSearchParams, crypto: { randomUUID: () => 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' }, window: { location }, sessionStorage: { getItem: (key) => records.get(key) ?? null, setItem: (key, value) => records.set(key, value), removeItem: (key) => records.delete(key) } })
   return { api: exports, records, location, destinations }
 }
 test('같은 탭으로 이동하며 입력과 출처를 보관하고 돌아오면 제목을 복원한다', () => {

@@ -85,6 +85,37 @@
   font-weight: 700;
 }
 
+.quotaMenu {
+  display: grid;
+  align-self: flex-start;
+  width: min(86%, 320px);
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #e3e6ec;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.quotaMenu button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f3f5f9;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.quotaMenu button:hover {
+  background: #eaeef5;
+}
+
+.quotaMenu button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
 .typing {
   display: flex;
   gap: 5px;

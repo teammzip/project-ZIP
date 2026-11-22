@@ -6,7 +6,7 @@ import styles from './MyLayout.module.css'
 
 /* 마이페이지: 일정 | 가계부 | 메모 | 알림 | 내 정보 를 위쪽 탭으로 오감 (할 일은 일정에 합쳐짐). 탭마다 주소가 따로 있음 */
 export function MyLayout() {
-  const { showDot } = useNotis()
+  const { unread } = useNotis()
   const tabs: TabItem[] = [
     { to: '/my/calendar', label: '일정' },
     { to: '/my/budget', label: '가계부' },
@@ -15,7 +15,7 @@ export function MyLayout() {
       to: '/my/noti',
       label: (
         <>
-          알림{showDot && <span className={styles.dot} aria-label="안 읽은 알림 있음" />}
+          알림{unread > 0 && <span className={styles.badge} aria-label={`안 읽은 알림 ${unread}개`}>{unread}</span>}
         </>
       ),
     },

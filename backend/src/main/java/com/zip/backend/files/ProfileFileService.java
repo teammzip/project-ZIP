@@ -37,6 +37,36 @@ public class ProfileFileService {
     public record Uploaded(String id, String name, String type, long size, String url) {}
     public record Content(Path path, String mimeType) {}
 
+    private static final String UNUSED = """
+        NOT EXISTS (SELECT 1 FROM place_review_photos r WHERE r.file_id = uploaded_files.id)
+        AND NOT EXISTS (SELECT 1 FROM post_attachments a WHERE a.file_id = uploaded_files.id)
+        AND NOT EXISTS (SELECT 1 FROM user_profiles p WHERE p.avatar_file_id = uploaded_files.id)
+        AND NOT EXISTS (SELECT 1 FROM ai_messages m WHERE m.attachment_id = uploaded_files.id)
+        """;
+
+    /** Idempotent: never delete another user's file or a registered attachment. */
+    @Transactional
+    public void discardUnused(long userId, long id) {
+        var urls = jdbc.queryForList("SELECT storage_url FROM uploaded_files WHERE id = ? AND user_id = ? AND deleted_at IS NULL FOR UPDATE",
+            String.class, id, userId);
+        if (urls.isEmpty()) return;
+        int changed = jdbc.update("UPDATE uploaded_files SET deleted_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL AND " + UNUSED,
+            java.sql.Timestamp.from(clock.instant()), id, userId);
+        if (changed > 0) deleteAfterCommit(urls);
+    }
+
+    /** Abandoned uploads survive seven days for retry; referenced files are never candidates. */
+    @Transactional
+    @org.springframework.scheduling.annotation.Scheduled(initialDelayString = "60000", fixedDelayString = "3600000")
+    public void cleanupUnusedUploads() {
+        var ids = jdbc.queryForList("SELECT id FROM uploaded_files WHERE deleted_at IS NULL AND created_at < ? AND " + UNUSED + " ORDER BY id LIMIT 100 FOR UPDATE",
+            Long.class, java.sql.Timestamp.from(clock.instant().minus(java.time.Duration.ofDays(7))));
+        for (long id : ids) {
+            long userId = jdbc.queryForObject("SELECT user_id FROM uploaded_files WHERE id = ?", Long.class, id);
+            discardUnused(userId, id);
+        }
+    }
+
     @Transactional
     public Uploaded upload(long userId, long sessionId, MultipartFile file) {
         auth.lockUser(userId);

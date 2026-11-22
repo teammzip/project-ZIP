@@ -104,7 +104,7 @@ public class TrashReminderService {
     /** "배출 정보가 없어요" 안내: (회원, 동네)마다 한 번만. 회원이 지운 안내도 다시 만들지 않음 */
     private int sendNoDataOnce(long userId, long regionId, List<RegionMatcher.District> districts, Instant now) {
         String name = districts.stream().filter(d -> d.id().equals(String.valueOf(regionId))).findFirst()
-            .map(d -> d.parentName().equals(d.name()) ? d.name() : d.parentName() + " " + d.name()).orElse("우리 동네");
+            .map(RegionMatcher.District::displayName).orElse("우리 동네");
         String body = name + "는 공공데이터에 배출 요일 정보가 없어 쓰레기 배출일 알림을 보내지 않아요. 배출 요일은 시 · 군 · 구청 안내를 확인해 주세요.";
         var at = Timestamp.from(now);
         return jdbc.update("""

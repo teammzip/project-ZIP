@@ -44,8 +44,37 @@ public class MemoService {
 
     public record Item(String text, Boolean done) {}
     /** 만들 때는 빈 칸이 기본값, 고칠 때는 보낸 칸만 바뀜 (null = 그대로) */
-    public record MemoInput(String title, String body, String color, Boolean pinned, Boolean checklist, List<Item> items) {}
+    public record MemoInput(String title, String body, String color, Boolean pinned, Boolean checklist, List<Item> items, String folderId, Boolean complete) {
+        public MemoInput(String title, String body, String color, Boolean pinned, Boolean checklist, List<Item> items, String folderId) { this(title,body,color,pinned,checklist,items,folderId,null); }
+        public MemoInput(String title, String body, String color, Boolean pinned, Boolean checklist, List<Item> items) { this(title,body,color,pinned,checklist,items,null); }
+    }
     public record HomeInput(List<String> ids) {}
+    public record FolderInput(String name) {}
+
+    public List<MemoRepository.Folder> folders(long userId) { return repository.folders(userId); }
+
+    @Transactional
+    public MemoRepository.Folder saveFolder(long userId, String folderId, FolderInput input) {
+        repository.lockUser(userId);
+        String name = input == null || input.name() == null ? "" : input.name().strip();
+        if (name.isEmpty() || name.length() > 40 || LINE_CONTROL.matcher(name).find()) throw new ApiException(400, "폴더 이름은 1~40자 한 줄로 입력해 주세요.");
+        try {
+            if (folderId == null) {
+                if (repository.folders(userId).size() >= 100) throw new ApiException(400, "폴더는 100개까지 만들 수 있어요.");
+                return new MemoRepository.Folder(Long.toString(repository.addFolder(userId, name)), name);
+            }
+            if (repository.renameFolder(userId, idOr400(folderId), name) == 0) throw new ApiException(404, "폴더를 찾을 수 없어요.");
+            return new MemoRepository.Folder(folderId, name);
+        } catch (org.springframework.dao.DuplicateKeyException duplicate) {
+            throw new ApiException(409, "같은 이름의 폴더가 있어요.");
+        }
+    }
+
+    @Transactional
+    public void deleteFolder(long userId, String folderId) {
+        repository.lockUser(userId);
+        if (repository.deleteFolder(userId, idOr400(folderId)) == 0) throw new ApiException(404, "폴더를 찾을 수 없어요.");
+    }
 
     public List<Map<String, Object>> list(long userId, String q) {
         var keyword = q == null || q.isBlank() ? null : q.strip();
@@ -55,6 +84,8 @@ public class MemoService {
 
     @Transactional
     public Map<String, Object> create(long userId, MemoInput input) {
+        repository.lockUser(userId);
+        validateFolder(userId, input);
         if (repository.count(userId) >= MEMOS_MAX) throw new ApiException(400, "메모는 " + MEMOS_MAX + "개까지 만들 수 있어요. 안 쓰는 메모를 지워 주세요.");
         var now = clock.instant().truncatedTo(ChronoUnit.SECONDS);
         var empty = new MemoRepository.MemoRow(0, "", "", "노랑", false, false, "[]", now, now);
@@ -64,11 +95,14 @@ public class MemoService {
 
     @Transactional
     public Map<String, Object> update(long userId, String memoId, MemoInput input) {
+        repository.lockUser(userId);
+        validateFolder(userId, input);
         var before = repository.find(userId, id(memoId)).orElseThrow(MemoService::notFound);
         if (input == null) throw new ApiException(400, "바꿀 내용을 보내 주세요.");
         var after = apply(before, input);
         repository.update(userId, new MemoRepository.MemoRow(after.id(), after.title(), after.body(), after.color(), after.pinned(), after.checklist(),
-            after.items(), after.createdAt(), clock.instant().truncatedTo(ChronoUnit.SECONDS)));
+            after.items(), after.createdAt(), clock.instant().truncatedTo(ChronoUnit.SECONDS), before.ledgerContext(), after.folderId()));
+        if (Boolean.TRUE.equals(input.complete())) repository.completeDraft(userId, before.id());
         return memo(repository.find(userId, before.id()).orElseThrow());
     }
 
@@ -135,7 +169,13 @@ public class MemoService {
             items = json.writeValueAsString(clean);
         }
         return new MemoRepository.MemoRow(m.id(), title, body, color, in.pinned() == null ? m.pinned() : in.pinned(),
-            in.checklist() == null ? m.checklist() : in.checklist(), items, m.createdAt(), m.updatedAt());
+            in.checklist() == null ? m.checklist() : in.checklist(), items, m.createdAt(), m.updatedAt(), m.ledgerContext(),
+            in.folderId() == null ? m.folderId() : in.folderId().isEmpty() ? null : idOr400(in.folderId()));
+    }
+
+    private void validateFolder(long userId, MemoInput input) {
+        if (input != null && input.folderId() != null && !input.folderId().isEmpty()
+            && !repository.ownsFolder(userId, idOr400(input.folderId()))) throw new ApiException(400, "내 폴더를 선택해 주세요.");
     }
 
     private List<Long> parseIds(String text) {
@@ -179,6 +219,8 @@ public class MemoService {
         result.put("createdAt", m.createdAt().toString());
         result.put("updatedAt", m.updatedAt().toString());
         result.put("ledgerContext",m.ledgerContext());
+        result.put("draft",m.draft());
+        result.put("folderId", m.folderId() == null ? null : Long.toString(m.folderId()));
         return result;
     }
 }
