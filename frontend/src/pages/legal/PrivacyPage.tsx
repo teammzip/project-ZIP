@@ -1,5 +1,5 @@
-import { LegalPage, PRIVACY } from '@/features/legal'
+import { LegalPage } from '@/features/legal'
 
 export function PrivacyPage() {
-  return <LegalPage doc={PRIVACY} />
+  return <LegalPage kind="PRIVACY" />
 }

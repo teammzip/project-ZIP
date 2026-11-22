@@ -1,0 +1,194 @@
+/* 장소 상세의 리뷰 */
+.root {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-line);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.count {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+.avg {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.stars {
+  letter-spacing: 1px;
+  color: #d5d9e0;
+}
+
+.starOn {
+  color: #ffb400;
+}
+
+.muted {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.form {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--color-bg);
+}
+
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pickStar {
+  padding: 0 2px;
+  font-size: 26px;
+  line-height: 1;
+  color: #d5d9e0;
+  cursor: pointer;
+}
+
+.pickStar.starOn {
+  color: #ffb400;
+}
+
+.pick .muted {
+  margin-left: 8px;
+}
+
+.body {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  background: var(--color-card);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.formFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.error {
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.list {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.item:last-child {
+  border-bottom: 0;
+}
+
+.itemHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.mine {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.text {
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.notice {
+  font-size: 13px;
+  color: var(--color-primary);
+}
+
+.formBtns {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.itemActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.linkBtn {
+  padding: 0;
+  font-size: 12px;
+  color: var(--color-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.linkBtn:disabled {
+  opacity: 0.5;
+}
+
+.danger {
+  color: var(--color-danger);
+}
+
+/* 지도 목록 · 내 리뷰의 작은 별점 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.badge i {
+  font-style: normal;
+  color: #ffb400;
+}
+
+.badge small {
+  font-weight: 400;
+  color: var(--color-muted);
+}

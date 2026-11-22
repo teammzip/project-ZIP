@@ -154,6 +154,12 @@
       "table": "place_reviews"
     },
     {
+      "table": "kakao_place_reviews"
+    },
+    {
+      "table": "place_review_reports"
+    },
+    {
       "table": "user_personal_info"
     },
     {
@@ -4235,6 +4241,226 @@
       "collation": ""
     },
     {
+      "table": "kakao_place_reviews",
+      "column": "id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 1,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "kakao_place_reviews",
+      "column": "kakao_place_id",
+      "type": "varchar(50)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "kakao_place_reviews",
+      "column": "user_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "kakao_place_reviews",
+      "column": "name",
+      "type": "varchar(60)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "kakao_place_reviews",
+      "column": "rating",
+      "type": "tinyint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "kakao_place_reviews",
+      "column": "body",
+      "type": "varchar(300)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "kakao_place_reviews",
+      "column": "created_at",
+      "type": "datetime",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 1,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "reporter_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "review_kind",
+      "type": "enum('place','kakao')",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "review_id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "place_key",
+      "type": "varchar(60)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "place_name_snapshot",
+      "type": "varchar(60)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "reason",
+      "type": "enum('abuse','false_info','privacy','ad_illegal','copyright','other')",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "detail",
+      "type": "varchar(200)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "status",
+      "type": "enum('received','hidden','dismissed')",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "target_author_snapshot",
+      "type": "varchar(12)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "target_text_snapshot",
+      "type": "varchar(300)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "target_rating_snapshot",
+      "type": "tinyint unsigned",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "created_at",
+      "type": "datetime",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "handled_by",
+      "type": "bigint unsigned",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "place_review_reports",
+      "column": "handled_at",
+      "type": "datetime",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
       "table": "user_personal_info",
       "column": "user_id",
       "type": "bigint unsigned",
@@ -4842,6 +5068,26 @@
       "columns": "place_id,user_id"
     },
     {
+      "table": "kakao_place_reviews",
+      "name": "PRIMARY",
+      "columns": "id"
+    },
+    {
+      "table": "kakao_place_reviews",
+      "name": "uk_kakao_place_reviews_place_user",
+      "columns": "kakao_place_id,user_id"
+    },
+    {
+      "table": "place_review_reports",
+      "name": "PRIMARY",
+      "columns": "id"
+    },
+    {
+      "table": "place_review_reports",
+      "name": "uk_place_review_reports_reporter_target",
+      "columns": "reporter_id,review_kind,review_id"
+    },
+    {
       "table": "user_personal_info",
       "name": "PRIMARY",
       "columns": "user_id"
@@ -5443,6 +5689,30 @@
       "delete_rule": "CASCADE"
     },
     {
+      "table": "kakao_place_reviews",
+      "name": "fk_kakao_place_reviews_user_id",
+      "column": "user_id",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "table": "place_review_reports",
+      "name": "fk_place_review_reports_reporter_id",
+      "column": "reporter_id",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "table": "place_review_reports",
+      "name": "fk_place_review_reports_handled_by",
+      "column": "handled_by",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "SET NULL"
+    },
+    {
       "table": "user_personal_info",
       "name": "fk_user_personal_info_user",
       "column": "user_id",
@@ -5579,6 +5849,22 @@
     {
       "table": "place_reviews",
       "name": "ck_place_review_rating"
+    },
+    {
+      "table": "kakao_place_reviews",
+      "name": "chk_kakao_place_reviews_id"
+    },
+    {
+      "table": "kakao_place_reviews",
+      "name": "chk_kakao_place_reviews_name"
+    },
+    {
+      "table": "kakao_place_reviews",
+      "name": "chk_kakao_place_reviews_rating"
+    },
+    {
+      "table": "place_review_reports",
+      "name": "chk_place_review_reports_place_key"
     },
     {
       "table": "home_contracts",

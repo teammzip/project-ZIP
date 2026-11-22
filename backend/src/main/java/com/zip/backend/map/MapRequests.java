@@ -31,7 +31,5 @@ public final class MapRequests {
     /** ★ 저장 창의 [저장]: 고른 리스트 id (비우면 저장 풂). 카카오 장소면 name · category 도 */
     public record PlaceListsInput(List<String> listIds, String name, String category) {}
 
-    public record Review(
-        @NotNull @Min(1) @Max(5) Integer rating,
-        @Size(max = 300) String body) {}
+
 }

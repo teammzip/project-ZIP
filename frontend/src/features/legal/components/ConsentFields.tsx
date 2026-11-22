@@ -1,6 +1,7 @@
 import { useId, useState, type ReactNode } from 'react'
 import type { Consent, ConsentErrors } from '../consent'
-import { POLICY, PRIVACY, PRIVACY_CONSENT, TERMS, type LegalDoc } from '../content'
+import { useLegalDoc, type LegalKind } from '../api'
+import { PRIVACY_CONSENT } from '../content'
 import { LegalDocView } from './LegalDocView'
 import styles from './Consent.module.css'
 
@@ -26,9 +27,9 @@ export function ConsentFields({ value, onChange, errors = {} }: Props) {
         <span>필수 약관 전체 동의</span>
       </label>
 
-      <Item title="서비스 이용약관" tag="필수 동의" label="서비스 이용약관에 동의합니다." doc={TERMS} checked={value.terms} onCheck={set('terms')} error={errors.terms} />
+      <Item title="서비스 이용약관" tag="필수 동의" label="서비스 이용약관에 동의합니다." kind="SERVICE" checked={value.terms} onCheck={set('terms')} error={errors.terms} />
 
-      <Item title="개인정보 처리방침" tag="안내 확인" label="개인정보 처리방침 안내를 확인했습니다." doc={PRIVACY} checked={value.privacy} onCheck={set('privacy')} error={errors.privacy}>
+      <Item title="개인정보 처리방침" tag="안내 확인" label="개인정보 처리방침 안내를 확인했습니다." kind="PRIVACY" checked={value.privacy} onCheck={set('privacy')} error={errors.privacy}>
         <p className={styles.notice}>가입할 때 수집하는 정보와 이용 목적, 보관 기간을 안내해 드려요.</p>
         <table className={styles.table}>
           <thead>
@@ -51,7 +52,7 @@ export function ConsentFields({ value, onChange, errors = {} }: Props) {
         <p className={styles.refuse}>{PRIVACY_CONSENT.refuse}</p>
       </Item>
 
-      <Item title="커뮤니티·AI 운영 정책" tag="필수 동의" label="커뮤니티·AI 운영 정책에 동의합니다." doc={POLICY} checked={value.policy} onCheck={set('policy')} error={errors.policy} />
+      <Item title="커뮤니티·AI 운영 정책" tag="필수 동의" label="커뮤니티·AI 운영 정책에 동의합니다." kind="POLICY" checked={value.policy} onCheck={set('policy')} error={errors.policy} />
 
       <div className={styles.item}>
         <label className={styles.chk}>
@@ -72,14 +73,16 @@ type ItemProps = {
   title: string
   tag: string
   label: string
-  doc: LegalDoc
+  /** 상세보기에 보일 약관 (서버 · 화면 문구) */
+  kind: LegalKind
   checked: boolean
   onCheck: (v: boolean) => void
   error?: string
   children?: ReactNode
 }
 
-function Item({ title, tag, label, doc, checked, onCheck, error, children }: ItemProps) {
+function Item({ title, tag, label, kind, checked, onCheck, error, children }: ItemProps) {
+  const doc = useLegalDoc(kind)
   const [open, setOpen] = useState(false)
   const boxId = useId()
   return (

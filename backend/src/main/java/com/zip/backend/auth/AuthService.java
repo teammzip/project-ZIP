@@ -162,9 +162,9 @@ public class AuthService {
         }
         if (consent) {
             if (repository.agreedAt(userId) != null) throw new ApiException(400, "이미 약관에 동의했어요.");
-            String address = request.address() == null ? "" : request.address().strip();
-            if (address.isEmpty()) throw new ApiException(400, "주소를 입력해 주세요.");
-            if (address.length() > 200) throw new ApiException(400, "주소는 200자 이내로 입력해 주세요.");
+            // 주소는 선택 (가입 뒤 주거 설문에서 받음)
+            String address = request.address() == null || request.address().isBlank() ? null : request.address().strip();
+            if (address != null && address.length() > 200) throw new ApiException(400, "주소는 200자 이내로 입력해 주세요.");
             if (!Boolean.TRUE.equals(request.agreeTerms()) || !Boolean.TRUE.equals(request.agreePrivacy())
                 || !Boolean.TRUE.equals(request.agreePolicy()) || !Boolean.TRUE.equals(request.ageOver14())) {
                 throw new ApiException(400, "필수 약관에 모두 동의해 주세요.");
@@ -177,7 +177,7 @@ public class AuthService {
             for (var term : terms) repository.recordAgreement(userId, term.id(), now);
         }
         if (nickname != null) repository.updateNickname(userId, nickname);
-        if (addressOnly || consent) {
+        if (addressOnly || (consent && request.address() != null && !request.address().isBlank())) {
             // users.region_id follows the address' 구·군 (null when none is found), used by the map and community.
             String regionId = RegionMatcher.match(request.address(), repository.districts()).orElse(null);
             if (!java.util.Objects.equals(regionId, user.regionId())) repository.updateRegion(userId, regionId);

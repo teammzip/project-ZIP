@@ -17,7 +17,8 @@ public final class SignupRequests {
         @NotBlank @Size(min = 2, max = 12) String nickname,
         @NotBlank @Size(max = 100) String email,
         @NotBlank @Size(max = 100) String emailVerificationToken,
-        @NotBlank @Size(max = 200) String address,
+        /** 선택: 집 주소는 가입 뒤 주거 설문에서 받아요 (보내면 예전처럼 저장 · 동네 연결) */
+        @Size(max = 200) String address,
         Boolean agreeTerms, Boolean agreePrivacy, Boolean agreePolicy, Boolean ageOver14,
         @Size(max = 20) String termsVersion) {}
 }

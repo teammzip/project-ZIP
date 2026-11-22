@@ -19,8 +19,8 @@
 | [알림](#6-알림-) | ✅ | `notifications` (읽음 · 삭제) |
 | [커뮤니티 · 첨부 · 신고](#7-커뮤니티--첨부--신고-) | ✅ | `posts` `post_likes` `comments` `uploaded_files` `post_attachments` `reports` |
 | [AI](#8-ai-) | ✅ | `ai_topics`(`guide` 포함) `ai_conversations` `ai_messages` `ai_usage_daily` (분야 목록 API 는 없고 프론트 고정) |
-| [지도](#9-지도-) | ✅ | `places` `place_categories` `place_reviews` `place_favorites` `kakao_place_favorites` `place_lists` `place_list_items` · `users.home_lat/home_lon` (리뷰 화면은 없음) |
-| [약관](#10-약관-) | 🔶 | `terms_documents` |
+| [지도](#9-지도-) | ✅ | `places` `place_categories` `place_reviews` `place_favorites` `kakao_place_favorites` `place_lists` `place_list_items` · `users.home_lat/home_lon` |
+| [약관](#10-약관-) | ✅ | `terms_documents` |
 | [관리자 · 이용 정지 · 경고](#11-관리자--이용-정지-) | ✅ | `user_sanctions`(`seen_at` 포함) `users.status` `reports` |
 | [메모](#12-메모-) | ✅ | `memos` |
 | [고객센터](#13-고객센터-) | ✅ | `support_inquiries` |
@@ -577,6 +577,15 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | GET | `/api/places?regionId=2&category=세탁방&lat=37.5496&lon=126.9137` | — | `[place]` (가까운 순. `lat` · `lon` = 지도 중심, 생략하면 우리 집) |
 | GET | `/api/places?regionId=2&q=빵집` | — | `[place]` (직접 추가한 검색어 칩: 이름 · 설명 · 종류에 글자 포함. 검색창은 `&wide=true` — 가게 이름 · 유명한 곳까지, 이름이 맞는 곳부터) |
 | POST | `/api/places/ai-search` | `{ q: "밤에 갈 수 있는 약국", regionId }` | `[{ place, reasons: ["약국", "24시간·심야 운영"], walkMin }]` (최대 5곳) |
+| GET | `/api/places/{id}/reviews` | — | `[{ id, rating, body, author: { id, nickname }, createdAt, reportedByMe }]` 최신순 (장소 상세 아래 리뷰). id = DB 장소 `12` 또는 카카오 장소 `kakao:123` |
+| POST | `/api/places/{id}/reviews` | `{ rating(1~5), body(300자, 선택), name(카카오 장소만, 60자) }` | — (한 사람당 한 장소 하나, 두 번이면 409. 카카오 장소는 `name` 없으면 400) |
+| PUT | `/api/places/{id}/reviews/mine` | `{ rating, body }` | — 내 리뷰 고치기 (없으면 404) |
+| DELETE | `/api/places/{id}/reviews/mine` | — | — 내 리뷰 지우기 (없으면 404) |
+| POST | `/api/places/{id}/reviews/{reviewId}/reports` | `{ reason, detail }` (사유는 커뮤니티 신고와 같음) | — 남의 리뷰 신고 (내 리뷰 400 · 같은 리뷰 두 번 409) |
+| GET | `/api/places/review-summary?ids=12,kakao:123` | — | `[{ id, rating, count }]` 지도 목록 별점 (100곳까지, 리뷰 없는 곳은 빠짐) |
+| GET | `/api/me/place-reviews` | — | `[{ id, placeId, placeName, rating, body, createdAt }]` 내가 쓴 리뷰 (지도 "내 리뷰" 탭) |
+| GET | `/api/admin/place-review-reports?status=` | — | 관리자 리뷰 신고 목록 `[{ id, reviewKind, reviewId, placeId, placeName, review: { author, text, rating, deleted }, reason, detail, reporter, status, createdAt }]` |
+| PATCH | `/api/admin/place-review-reports/{id}` | `{ status: HIDDEN \| DISMISSED }` | — HIDDEN = 리뷰 삭제 + 쓴 사람 알림, DISMISSED = 문제없음 (그 리뷰의 접수 중 신고 전부) |
 | GET | `/api/me/place-favorites` | — | `[placeId]` (DB 장소는 번호, 카카오 장소는 `"kakao:카카오장소id"`) |
 | PUT · DELETE | `/api/me/place-favorites/{placeId}` | 카카오 장소만 `{ name, category }` | — (★ 누르기 · 풀기) |
 | GET | `/api/me/place-favorites/kakao` | — | `[{ id: "kakao:…", name, category }]` (저장 목록에 보일 이름 · 종류) |
@@ -585,8 +594,6 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | PATCH · DELETE | `/api/me/place-lists/{id}` | `{ name, color }` | — (삭제하면 이 리스트에만 있던 장소는 저장도 풀림) |
 | PUT | `/api/me/place-favorites/{placeId}/lists` | `{ listIds, name?, category? }` | — (★ 저장 창의 [저장]: 고른 리스트들에 넣음, 비우면 저장 풂. 처음 저장하는 카카오 장소는 name · category 필요) |
 | GET · PUT | `/api/me/map-settings` | `{ categories: ["세탁방", …], keywords: ["빵집"] }` | 같은 모양 (칩에 보일 종류 · 직접 추가한 검색어) |
-| GET | `/api/places/{id}/reviews` | — | `[{ id, rating, body, author, createdAt }]` (확장 기능, 화면 없음) |
-| POST | `/api/places/{id}/reviews` | `{ rating, body }` | — (한 사람당 한 장소 하나) |
 
 ```json
 { "id": "3", "category": "세탁방", "name": "코인빨래방 합정점", "description": "도보 약 3분 · 24시간",
@@ -594,7 +601,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 ```
 - **종류 15개**: 세탁방 · 편의점 · 약국 · 마트 · 카페 · 병원 · 헬스장 · 은행 · 미용실 · 다이소 · 공원 · 식당 · 반찬가게 · 세탁소 · 주민센터. 처음 칩에는 앞의 4개만 보여요.
   - DB place_categories 기본 데이터에 15개 모두 반영돼 있어요. 여기에 `기타`(📍, 정렬 99)가 있어요: 검색어로 찾은 장소 중 15종류에 안 맞는 곳을 담고, 칩 · 종류 편집에는 보이지 않아요.
-- **카카오 로컬 API (2026-11-15 변경)**: 서버에 `KAKAO_REST_KEY`가 있으면 `category` · `q` 검색은 서버가 카카오에서 지도 중심 근처를 찾아 **저장하지 않고 그대로** 줘요. 카카오 장소의 `id`는 `kakao:카카오장소id`예요(카카오 운영 정책: 장소 정보 장기 저장 제한). **즐겨찾기는 카카오 장소 id와 표시용 이름 · 종류만** `kakao_place_favorites`에 저장하고 주소 · 좌표는 저장하지 않아요(한 사람당 200곳). 그래서 저장 탭에서 지금 검색 결과에 없는 카카오 장소는 지도 핀 없이 목록으로 보이고, 누르면 카카오맵 장소 페이지가 열려요. 리뷰는 안 돼요(400). 화면에 "장소 검색 © Kakao"를 표시해요. 무료 쿼터 보호: 같은 검색 10분 캐시, 사람당 1분 30번, 서버 하루 30000번(설정으로 변경). 한도 · 실패면 DB 장소만 주고 응답 헤더 `X-Place-Notice`(`user-limit` · `daily-limit` · `error`)로 알려 주면 프론트가 안내 문구를 띄워요. 종류 칩 · 검색어 칩은 반경 1km, 검색창(`wide=true`)은 반경 5km + 거리 제한 없는 정확도 검색을 합쳐 이름이 같은 곳 → 이름에 든 곳 순이에요. 15종류에 안 맞는 검색 결과는 `기타`예요. 분류 코드가 있는 종류(편의점 CS2 · 약국 PM9 · 마트 MT1 · 카페 CE7 · 병원 HP8 · 은행 BK9 · 식당 FD6)는 코드로, 나머지는 키워드(세탁방 → "빨래방" 등)로 찾아요. 키가 없거나 실패하면 DB 장소만. 카카오는 영업시간을 주지 않아 `openHours`는 비어 있고, 24시간 · 저렴 · 조용 조건은 설명 글자로만 걸러요. 장기적으로는 공공데이터(소상공인 상가정보)를 우리 DB에 적재해 외부 호출을 줄이는 방안을 검토해요.
+- **카카오 로컬 API (2026-11-15 변경)**: 서버에 `KAKAO_REST_KEY`가 있으면 `category` · `q` 검색은 서버가 카카오에서 지도 중심 근처를 찾아 **저장하지 않고 그대로** 줘요. 카카오 장소의 `id`는 `kakao:카카오장소id`예요(카카오 운영 정책: 장소 정보 장기 저장 제한). **즐겨찾기는 카카오 장소 id와 표시용 이름 · 종류만** `kakao_place_favorites`에 저장하고 주소 · 좌표는 저장하지 않아요(한 사람당 200곳). 그래서 저장 탭에서 지금 검색 결과에 없는 카카오 장소는 지도 핀 없이 목록으로 보이고, 누르면 카카오맵 장소 페이지가 열려요. 리뷰는 카카오 장소 id · 이름과 함께 `kakao_place_reviews` 에 따로 저장해요(주소 · 좌표 없음). 화면에 "장소 검색 © Kakao"를 표시해요. 무료 쿼터 보호: 같은 검색 10분 캐시, 사람당 1분 30번, 서버 하루 30000번(설정으로 변경). 한도 · 실패면 DB 장소만 주고 응답 헤더 `X-Place-Notice`(`user-limit` · `daily-limit` · `error`)로 알려 주면 프론트가 안내 문구를 띄워요. 종류 칩 · 검색어 칩은 반경 1km, 검색창(`wide=true`)은 반경 5km + 거리 제한 없는 정확도 검색을 합쳐 이름이 같은 곳 → 이름에 든 곳 순이에요. 15종류에 안 맞는 검색 결과는 `기타`예요. 분류 코드가 있는 종류(편의점 CS2 · 약국 PM9 · 마트 MT1 · 카페 CE7 · 병원 HP8 · 은행 BK9 · 식당 FD6)는 코드로, 나머지는 키워드(세탁방 → "빨래방" 등)로 찾아요. 키가 없거나 실패하면 DB 장소만. 카카오는 영업시간을 주지 않아 `openHours`는 비어 있고, 24시간 · 저렴 · 조용 조건은 설명 글자로만 걸러요. 장기적으로는 공공데이터(소상공인 상가정보)를 우리 DB에 적재해 외부 호출을 줄이는 방안을 검토해요.
 - **AI 장소 찾기**: 지금은 프론트가 예시 데이터 안에서 말을 읽어 골라요 (`features/map/aiFind.ts` — "빨래·이불 → 세탁방", "밤·24 → 24시간 운영 가산점" 같은 규칙). 서버가 생기면 AI + 지도 검색 API(예: 카카오 로컬)로 바꾸고, 화면에 보일 **추천 이유**(`reasons`)를 같이 주세요.
 - **도보 시간**: 프론트는 설명의 "도보 약 N분"을 읽어 써요. 서버는 `walkMin`(우리 집 기준)을 따로 주면 좋아요.
 - **우리 집 위치 (🏠, "우리 집으로" 버튼, 길찾기 출발점)**: 지금은 예시 좌표(`HOME`, `features/map/data/places.ts`)예요. 서버가 생기면 `GET /api/auth/me`의 주소를 좌표로 바꿔 `home: { lat, lon }`으로 같이 주세요 (users.home_lat/home_lon). home은 현재 User 타입에 없는 확장 제안이에요. 인증 GPS·설문 중심점은 집 위치와 구분하고 덮어쓰지 마세요.
@@ -607,9 +614,10 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 
 ---
 
-## 10. 약관 🔶
+## 10. 약관 ✅
 
-> **현재 서버**: `GET /api/terms` 는 있지만 약관 화면은 아직 프론트 `features/legal/content.ts` 의 글을 보여 줘요. 가입 동의는 서버 버전(`termsVersion`)으로 저장해요.
+> **2026-11-22 화면 연결**: 이용약관 · 개인정보 처리방침 화면과 가입 화면의 상세보기가 `GET /api/terms`(로그인 없이)의 지금 시행 중인 약관을 보여 줘요. 서버 본문은 빈 줄로 조항을 나누고 조항 첫 줄이 제목이에요(`features/legal/api.ts` `toLegalDoc`). 불러오는 중 · 실패 · 목업 모드에서는 같은 문구인 `content.ts` 를 보여 줘요. 가입 동의는 서버 버전(`termsVersion`)으로 저장해요.
+> 약관 문구를 고칠 때는 `content.ts` 를 고친 뒤 `node db/tools/terms-sync.cjs <새 마이그레이션 이름>` 으로 `schema.sql` · 기존 DB 를 맞춰요. `frontend/tests/legal-terms.test.mjs` 가 두 쪽이 같은지 확인해요.
 
 | 메서드 | 주소 | 받는 값 |
 |---|---|---|

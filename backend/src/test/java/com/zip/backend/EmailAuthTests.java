@@ -90,6 +90,15 @@ class EmailAuthTests {
             .andExpect(status().isOk());
     }
 
+    /** 주소는 가입 뒤 주거 설문에서 받으므로 가입에서는 없어도 돼요 */
+    @Test void signupWithoutAddress() throws Exception {
+        send("New@Zip.com", "SIGNUP", 204);
+        String token = verify("new@zip.com", lastCode.get(), "SIGNUP");
+        mvc.perform(post("/api/auth/signup").contentType("application/json").content(signupBody(token).replace("\"address\":\"서울 마포구 합정동\",", "")))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.user.address").value(""));
+        assertEquals(null, jdbc.queryForObject("SELECT address FROM users WHERE email = 'new@zip.com'", String.class));
+    }
+
     @Test void signupNeedsAValidToken() throws Exception {
         mvc.perform(post("/api/auth/signup").contentType("application/json").content(signupBody("not-a-real-token")))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("EMAIL_NOT_VERIFIED"));

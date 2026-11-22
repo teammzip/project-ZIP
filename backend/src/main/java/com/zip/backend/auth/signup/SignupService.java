@@ -58,8 +58,8 @@ public class SignupService {
         String nickname = request.nickname().strip();
         int length = nickname.codePointCount(0, nickname.length());
         if (length < 2 || length > 12) throw new ApiException(400, "닉네임은 2~12자로 입력해 주세요.");
-        String address = request.address().strip();
-        if (address.isEmpty()) throw new ApiException(400, "주소를 입력해 주세요.");
+        // 주소는 선택 (가입 뒤 주거 설문에서 받음). 비면 저장하지 않고 동네도 설문 · 동네 인증 때 정해요
+        String address = request.address() == null || request.address().isBlank() ? null : request.address().strip();
         String email = EmailAuthService.normalize(request.email());
 
         emailAuth.consume(email, request.emailVerificationToken(), "SIGNUP");
@@ -72,7 +72,7 @@ public class SignupService {
             throw new ApiException(409, "이미 사용 중인 아이디나 이메일이에요.", "USER_EXISTS");
         }
         for (var term : terms) accounts.recordAgreement(id, term.id(), now);
-        String regionId = RegionMatcher.match(address, accounts.districts()).orElse(null);
+        String regionId = address == null ? null : RegionMatcher.match(address, accounts.districts()).orElse(null);
         if (regionId != null) accounts.updateRegion(id, regionId);
 
         var expires = now.plus(Duration.ofSeconds(accessSeconds));
