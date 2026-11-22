@@ -24,7 +24,7 @@ export function showNearbyOnMap(result: NearbyMapResult) {
 }
 
 useAuthStore.subscribe((next, previous) => {
-  if (next.token !== previous.token) useNearbyMap.setState({ result: null })
+  if (next.sessionKey !== previous.sessionKey) useNearbyMap.setState({ result: null })
 })
 
 export function nearbyMapPlaces(places: NearbyPlace[]): NearbyMapResult['places'] {

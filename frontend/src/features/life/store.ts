@@ -112,7 +112,7 @@ function moveCategory(s: LifeData, from: string, to: string, extra: Partial<Life
 /** 반복 기념일 표시용 id("12@2027")에서 원본 id 만 */
 const baseId = (id: CalEvent['id']) => String(id).split('@')[0]
 
-const accountId = (auth: ReturnType<typeof useAuthStore.getState>) => auth.token ? auth.user?.id ?? null : null
+const accountId = (auth: ReturnType<typeof useAuthStore.getState>) => auth.sessionKey ? auth.user?.id ?? null : null
 let activeAccount = accountId(useAuthStore.getState())
 const accountKey = () => activeAccount === null ? null : `zip-life:user:${encodeURIComponent(activeAccount)}`
 

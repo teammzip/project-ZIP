@@ -15,7 +15,7 @@ type Props = {
 }
 export function BillPhotoQuestion({ entryPoint, onExchange }: Props) {
   const userId = useAuthStore((s) => s.user?.id)
-  const token = useAuthStore((s) => s.token)
+  const sessionKey = useAuthStore((s) => s.sessionKey)
   const client = useQueryClient()
   const { choice, resolving } = useBillingTimeZone()
   const preferred = choice?.source === 'device' ? undefined : choice?.timeZone
@@ -28,11 +28,11 @@ export function BillPhotoQuestion({ entryPoint, onExchange }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const send = async () => {
-    if (busy || draft || !photo || !ready || !userId || !token) return
+    if (busy || draft || !photo || !ready || !userId || !sessionKey) return
     if (!photo.size || photo.size > 2 * 1024 * 1024 || !['image/jpeg', 'image/png'].includes(photo.type)) { setError('2MB 이하의 JPG 또는 PNG 고지서를 선택해 주세요.'); return }
     if (!question.trim()) { setError('질문을 입력해 주세요.'); return }
-    const owner = { userId, token }
-    const current = () => useAuthStore.getState().user?.id === owner.userId && useAuthStore.getState().token === owner.token
+    const owner = { userId, sessionKey }
+    const current = () => useAuthStore.getState().user?.id === owner.userId && useAuthStore.getState().sessionKey === owner.sessionKey
     setBusy(true); setError('')
     try {
       const id = await createConversation(entryPoint, 'bill')
@@ -49,9 +49,9 @@ export function BillPhotoQuestion({ entryPoint, onExchange }: Props) {
     finally { setBusy(false) }
   }
   const decide = async (register: boolean) => {
-    if (!draft || busy || !token || !userId) return
-    const owner = { userId, token }
-    const current = () => useAuthStore.getState().user?.id === owner.userId && useAuthStore.getState().token === owner.token
+    if (!draft || busy || !sessionKey || !userId) return
+    const owner = { userId, sessionKey }
+    const current = () => useAuthStore.getState().user?.id === owner.userId && useAuthStore.getState().sessionKey === owner.sessionKey
     setBusy(true); setError('')
     try {
       const { data } = await apiClient.post<{ registered: boolean; reply: { text: string } }>(
@@ -71,8 +71,8 @@ export function BillPhotoQuestion({ entryPoint, onExchange }: Props) {
       {photo && <p role="status">선택한 사진: {photo.name}</p>}
       <label>질문<input value={question} maxLength={2000} disabled={busy} onChange={(e) => setQuestion(e.target.value)} /></label>
       <p className={common.note}>사진·QR을 읽어 금액과 납부 기한을 안내해요. 확인 후 등록에 동의하시면 {currentMonth} 고정 지출에 저장해요. QR에 링크만 있으면 고지서 전체 사진이 필요해요.</p>
-      <Button type="submit" disabled={busy || !photo || !ready || !token}>{busy ? '고지서를 읽는 중' : '고지서 읽기'}</Button>
-      {!token && <p>로그인 후 이용해 주세요.</p>}
+      <Button type="submit" disabled={busy || !photo || !ready || !sessionKey}>{busy ? '고지서를 읽는 중' : '고지서 읽기'}</Button>
+      {!sessionKey && <p>로그인 후 이용해 주세요.</p>}
     </form>}
     {draft && <section aria-label="고지서 등록 확인">
       <p>{draft.answer}</p>

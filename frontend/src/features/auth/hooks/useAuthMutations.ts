@@ -78,9 +78,9 @@ export function useUpdateMe() {
   const updateUser = useAuthStore((s) => s.updateUser)
   return useMutation({
     mutationFn: async (req: UpdateMeRequest) => {
-      const token = useAuthStore.getState().token
+      const sessionKey = useAuthStore.getState().sessionKey
       const user = await authApi.updateMe(req)
-      if (useAuthStore.getState().token !== token) throw new Error('로그인 상태가 바뀌었어요. 다시 시도해 주세요.')
+      if (useAuthStore.getState().sessionKey !== sessionKey) throw new Error('로그인 상태가 바뀌었어요. 다시 시도해 주세요.')
       updateUser({ ...user, firstLogin: useAuthStore.getState().user?.firstLogin ?? user.firstLogin })
       return user
     },
@@ -93,12 +93,14 @@ export function useWithdraw() {
 }
 
 export function useLogout() {
-  const clearAuth = useAuthStore((s) => s.clearAuth)
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => authApi.logout().catch(() => {}), // 서버 로그아웃이 실패해도 화면에서는 로그아웃
-    onSettled: () => {
-      clearAuth()
+    mutationFn: async () => {
+      const sessionKey = useAuthStore.getState().sessionKey
+      await authApi.logout().catch(() => {}) // 서버 로그아웃이 실패해도 화면에서는 로그아웃
+      const current = useAuthStore.getState()
+      if (current.sessionKey && current.sessionKey !== sessionKey) return
+      current.clearAuth()
       queryClient.clear() // 이전 사용자의 데이터가 남지 않게
     },
   })

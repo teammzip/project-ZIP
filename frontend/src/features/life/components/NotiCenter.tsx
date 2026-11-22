@@ -78,7 +78,7 @@ export function NotiCenter() {
             onRead={() => isUnread && run(markRead([n.id]))}
             onOpen={() => {
               if (isUnread) run(markRead([n.id]))
-              if (n.to) navigate(n.to) // 서버 알림: 누르면 그 글 · 문의로 (끌어다 놓을 때는 읽음만)
+              if (n.to) navigate(n.to) // 끌어다 놓을 때는 읽음만
             }}
             onDragState={(d, over) => {
               setDragging(d)

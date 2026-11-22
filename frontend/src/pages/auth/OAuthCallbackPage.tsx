@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { authApi, useAuthStore } from '@/features/auth'
-import { getErrorMessage } from '@/lib/apiClient'
+import { useAuthStore } from '@/features/auth'
+import type { User } from '@/features/auth/types'
+import { getErrorMessage, publicAuthClient } from '@/lib/apiClient'
 import styles from './AuthPage.module.css'
 import { readOAuthCallback } from '@/features/auth/oauthCallback'
 
@@ -26,18 +27,14 @@ export function OAuthCallbackPage() {
     window.history.replaceState(window.history.state, '', window.location.pathname)
     useAuthStore.getState().clearAuth()
 
-    // me() 요청에 토큰이 실리도록 먼저 임시로 저장
-    useAuthStore.setState({ token })
-    authApi
-      .me()
-      .then((user) => {
-        if (useAuthStore.getState().token !== token) return
+    publicAuthClient.get<User>('/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(({ data: user }) => {
+        if (useAuthStore.getState().sessionKey) return
         setAuth(user, token, true)
         navigate('/', { replace: true })
       })
       .catch((e) => {
-        if (useAuthStore.getState().token !== token) return
-        useAuthStore.getState().clearAuth()
+        if (useAuthStore.getState().sessionKey) return
         setRequestError(getErrorMessage(e))
       })
   }, [token, navigate, setAuth])

@@ -36,6 +36,7 @@ export function MonthlyBillActions({ bill, month, timeZone, housing = false }: {
     try {
       await task(); setTerminating(false); setNotice(message)
       await client.invalidateQueries({ queryKey: ['monthly-bills'] })
+      if (bill.id.startsWith('rent:')) await client.invalidateQueries({ queryKey: ['notifications'] })
     } catch (cause) { setError(getErrorMessage(cause, '처리하지 못했어요. 다시 시도해 주세요.')) }
     finally { pending.current = false; setBusy(false) }
   }

@@ -35,7 +35,7 @@ function view(result = {}, user = '1', kind = 'spend') {
       useNavigate: () => (to) => navigations.push(to),
     }
     if (name === '@tanstack/react-query') return { useQuery: (config) => { options.push(config); return { ...result, refetch() {} } }, useQueryClient: () => ({ invalidateQueries() {} }) }
-    if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: user ? { id: user } : null, token: user ? 'session' : null }) }
+    if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: user ? { id: user } : null, sessionKey: user ? 'session' : null }) }
     if (name === '../useBillingTimeZone') return { useBillingTimeZone: () => ({ choice: { source: 'address', timeZone: 'Asia/Seoul' }, resolving: false }) }
     if (name === '../useLocalMonth') return { useLocalMonth: () => ({ currentMonth: '2026-11', timeZone: 'Asia/Seoul' }) }
     if (name === '../monthlyPeriod') return { selectedMonth: (_, month) => month }

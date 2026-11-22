@@ -1,39 +1,39 @@
-import { apiClient } from '@/lib/apiClient'
+import { apiClient, publicAuthClient } from '@/lib/apiClient'
 import type { AuthApi, AuthResponse, FindIdResponse, User } from '../types'
 
 /* 실제 백엔드 API. 주소(엔드포인트)는 백엔드와 정한 뒤 여기만 고치면 됩니다. */
 export const realAuthApi: AuthApi = {
   async login(req) {
-    const { data } = await apiClient.post<AuthResponse>('/auth/login', req)
+    const { data } = await publicAuthClient.post<AuthResponse>('/auth/login', req)
     return data
   },
 
   async signup(req) {
-    const { data } = await apiClient.post<AuthResponse>('/auth/signup', req)
+    const { data } = await publicAuthClient.post<AuthResponse>('/auth/signup', req)
     return data
   },
 
   async sendEmailCode(email, purpose) {
-    await apiClient.post('/auth/email/send', { email, purpose })
+    await publicAuthClient.post('/auth/email/send', { email, purpose })
   },
 
   async verifyEmailCode(email, code, purpose) {
-    const { data } = await apiClient.post<{ verificationToken: string }>('/auth/email/verify', { email, code, purpose })
+    const { data } = await publicAuthClient.post<{ verificationToken: string }>('/auth/email/verify', { email, code, purpose })
     return data
   },
 
   async findId(req) {
-    const { data } = await apiClient.post<FindIdResponse>('/auth/find-id', req)
+    const { data } = await publicAuthClient.post<FindIdResponse>('/auth/find-id', req)
     return data
   },
 
   async verifyPasswordReset(req) {
-    const { data } = await apiClient.post<{ resetToken: string }>('/auth/password-reset/verify', req)
+    const { data } = await publicAuthClient.post<{ resetToken: string }>('/auth/password-reset/verify', req)
     return data
   },
 
   async resetPassword(req) {
-    await apiClient.post('/auth/password-reset', req)
+    await publicAuthClient.post('/auth/password-reset', req)
   },
 
   async changePassword(req) {
@@ -46,7 +46,7 @@ export const realAuthApi: AuthApi = {
   },
 
   async logout() {
-    await apiClient.post('/auth/logout')
+    await apiClient.post('/auth/logout', undefined, { withCredentials: true })
   },
 
   async startSocialLogin(provider) {

@@ -22,8 +22,8 @@ class ProfileInfoTests {
     @Autowired AuthService auth;
 
     @Test void readsOnlyCurrentUsersDatabaseInfo() throws Exception {
-        String first = auth.socialLogin("GOOGLE", "profile-a", "first@example.com", "회원하나");
-        String second = auth.socialLogin("GOOGLE", "profile-b", "second@example.com", "회원둘");
+        String first = auth.socialLogin("GOOGLE", "profile-a", "first@example.com", "회원하나").accessToken();
+        String second = auth.socialLogin("GOOGLE", "profile-b", "second@example.com", "회원둘").accessToken();
         Long id = jdbc.queryForObject("SELECT id FROM users WHERE email = 'first@example.com'", Long.class);
         jdbc.update("UPDATE users SET address = ? WHERE id = ?", "검증용 등록 주소", id);
         jdbc.update("INSERT INTO housing_surveys(user_id, birth_date) VALUES (?, ?)", id, java.sql.Date.valueOf("2000-02-29"));
@@ -51,7 +51,7 @@ class ProfileInfoTests {
     }
 
     @Test void editsPersonalInfoAndClearsBirthWithoutChangingHousingOrEmail() throws Exception {
-        String token = auth.socialLogin("GOOGLE", "edit-a", "edit@example.com", "기존이름");
+        String token = auth.socialLogin("GOOGLE", "edit-a", "edit@example.com", "기존이름").accessToken();
         Long id = jdbc.queryForObject("SELECT id FROM users WHERE email='edit@example.com'", Long.class);
         jdbc.update("INSERT INTO housing_surveys(user_id,birth_date) VALUES (?,?)", id, java.sql.Date.valueOf("1990-01-01"));
         save(token, "{\"nickname\":\"새이름\",\"birth\":\"2000-02-29\"}")
@@ -64,7 +64,7 @@ class ProfileInfoTests {
     }
 
     @Test void rejectsIdentityFieldsAndInvalidBirthWithoutChangingName() throws Exception {
-        String token = auth.socialLogin("GOOGLE", "invalid-a", "invalid@example.com", "기존이름");
+        String token = auth.socialLogin("GOOGLE", "invalid-a", "invalid@example.com", "기존이름").accessToken();
         for (String body : new String[] {
             "{\"nickname\":\"새이름\",\"birth\":\"2001-02-29\"}",
             "{\"nickname\":\"새이름\",\"birth\":\"9999-01-01\"}",

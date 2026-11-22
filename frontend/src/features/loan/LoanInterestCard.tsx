@@ -20,12 +20,12 @@ const NOT_BANK = '설정한 납부일에 가계부에만 기록되며 실제 은
 export function LoanInterestCard() {
   const { plan, charges } = useLoanInterest()
   const userId = useAuthStore((s) => s.user?.id)
-  const token = useAuthStore((s) => s.token)
+  const sessionKey = useAuthStore((s) => s.sessionKey)
   const client = useQueryClient()
   const home = useQuery({
-    queryKey: ['home-loan', userId, token],
+    queryKey: ['home-loan', userId, sessionKey],
     queryFn: loadHomeInfo,
-    enabled: !isMockApi && !!userId && !!token,
+    enabled: !isMockApi && !!userId && !!sessionKey,
     gcTime: 0,
     refetchOnWindowFocus: false,
     retry: false,

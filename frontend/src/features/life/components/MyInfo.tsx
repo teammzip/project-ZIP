@@ -73,9 +73,9 @@ export function LifeStats({ postCount }: { postCount: number }) {
 type LifeInfoProps = { onSaved?: () => void; showHomeAddress?: boolean }
 type SurveyLoanDraft = NonNullable<Awaited<ReturnType<typeof loadHomeInfo>>['loanDraft']>
 export function LifeInfoForm(props: LifeInfoProps) {
-  const token = useAuthStore((s) => s.token)
+  const sessionKey = useAuthStore((s) => s.sessionKey)
   const id = useAuthStore((s) => s.user?.id)
-  return isMockApi ? <LifeInfoFields {...props} /> : <ServerLifeInfoForm key={`${id}:${token}`} {...props} />
+  return isMockApi ? <LifeInfoFields {...props} /> : <ServerLifeInfoForm key={`${id}:${sessionKey}`} {...props} />
 }
 function ServerLifeInfoForm(props: LifeInfoProps) {
   const [ready, setReady] = useState(false)
@@ -198,7 +198,7 @@ export function LifeInfoFields({ onSaved, showHomeAddress = true, loanDraft }: L
           <option value="jeonse">전세</option>
         </select>
       </label>
-      <p className={common.note}>선택한 계약 유형에 맞는 항목만 표시돼요. 금액은 원 단위예요. 매월 납부일은 오늘 이전 날짜여도 저장할 수 있어요. 새 내역은 저장한 날 이후의 납부 건부터 생성해요. 오늘 이후 미납·예정 건에는 저장한 금액을 반영하고, 변경할 납부일이 이미 지났다면 해당 건의 기존 기한을 유지해요. 과거·납부 완료 기록은 유지하며 관리비는 계약 유형별로 구분해요.</p>
+      <p className={common.note}>입주한 달부터 계약이 끝나는 달까지, 가계부에서 선택한 달의 월세와 별도 관리비가 고정 지출에 반영돼요. 납부일이 지났어도 기록이 없으면 미납으로 등록하고, 기존 납부 여부는 유지해요. 전세 대출 이자는 대출 조건에 따라 반영돼요.</p>
       {showHomeAddress && <label>내 집 주소<input value={form.homeAddress} onChange={(e) => change('homeAddress', e.target.value)} maxLength={200} autoComplete="street-address" placeholder="도로명 주소와 상세주소를 입력해 주세요" /></label>}
       {monthly ? <>
         <label>보증금 (원)<AmountInput value={form.deposit} onValueChange={(value) => change('deposit', value)} max={9999990000} required /></label>

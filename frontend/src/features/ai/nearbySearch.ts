@@ -37,16 +37,16 @@ async function registeredLocation(signal: AbortSignal) {
 }
 
 export async function searchNearby(q: string, mode: NearbyMode, signal: AbortSignal) {
-  const token = useAuthStore.getState().token
+  const sessionKey = useAuthStore.getState().sessionKey
   const point = mode === 'current' ? await getCurrentMapPosition() : await registeredLocation(signal)
   signal.throwIfAborted()
-  if (useAuthStore.getState().token !== token) throw new Error('로그인 상태가 바뀌었어요. 다시 검색해 주세요.')
+  if (useAuthStore.getState().sessionKey !== sessionKey) throw new Error('로그인 상태가 바뀌었어요. 다시 검색해 주세요.')
   const places = await mapApi.nearby(q, point, signal).catch((error: unknown) => {
     if (isAxiosError(error) && error.response?.status === 404) {
       throw new Error('연결된 서버에서 근처 탐색을 사용할 수 없어요. 로컬에서 실행 중이라면 백엔드를 최신 코드로 다시 시작해 주세요.')
     }
     throw error
   })
-  if (useAuthStore.getState().token !== token) throw new Error('로그인 상태가 바뀌었어요. 다시 검색해 주세요.')
+  if (useAuthStore.getState().sessionKey !== sessionKey) throw new Error('로그인 상태가 바뀌었어요. 다시 검색해 주세요.')
   return { point, places }
 }

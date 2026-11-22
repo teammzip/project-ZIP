@@ -12,20 +12,20 @@ import { addressTimeZone, locationTimeZone } from './billingTimeZoneApi'
 /** DB의 집 주소를 우선 읽은 다음 주소 → 실제 위치 → 기기 순으로 확정한다. */
 export function useBillingTimeZone() {
   const user = useAuthStore((s) => s.user)
-  const token = useAuthStore((s) => s.token)
+  const sessionKey = useAuthStore((s) => s.sessionKey)
   const localHome = useLifeStore((s) => user ? s.settings.homeAddresses?.[user.id] ?? '' : '')
   const survey = useHousingSurveyStore((s) => s.survey)
   const remote = useQuery({
-    queryKey: ['billing-address', user?.id, token],
+    queryKey: ['billing-address', user?.id, sessionKey],
     queryFn: async ({ signal }) => (await apiClient.get<{ homeAddress: string }>('/me/settings', { signal })).data,
-    enabled: !isMockApi && !!user && !!token,
+    enabled: !isMockApi && !!user && !!sessionKey,
     staleTime: 60000, gcTime: 0, retry: false,
   })
   const address = registeredBillingAddress(user, remote.data?.homeAddress ?? localHome, survey)
   const label = address.label, lat = address.point?.lat, lon = address.point?.lon
-  const key = JSON.stringify([user?.id, token, label, lat, lon])
-  const authenticated = !!user && !!token
-  const waiting = !isMockApi && !!user && !!token && remote.isPending
+  const key = JSON.stringify([user?.id, sessionKey, label, lat, lon])
+  const authenticated = !!user && !!sessionKey
+  const waiting = !isMockApi && !!user && !!sessionKey && remote.isPending
   const [resolution, setResolution] = useState<{ key: string; choice?: BillingTimeZone }>({ key: '' })
   useEffect(() => {
     if (waiting || !authenticated) return

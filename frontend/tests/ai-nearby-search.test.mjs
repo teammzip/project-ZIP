@@ -10,7 +10,7 @@ const { outputText } = ts.transpileModule(source, { compilerOptions: { module: t
 
 const current = { lat: 35.16, lon: 129.06 }
 const saved = { lat: 37.55, lon: 126.93 }
-const auth = { user: { id: '1' }, token: 'test' }
+const auth = { user: { id: '1' }, sessionKey: 'test' }
 
 function setup(getCurrentMapPosition = async () => current, requestNearby = async () => []) {
   const calls = []

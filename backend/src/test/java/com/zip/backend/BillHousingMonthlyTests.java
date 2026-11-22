@@ -33,9 +33,18 @@ class BillHousingMonthlyTests {
         assertEquals("monthly",result.get("contractKind")); assertEquals(1,rows.size());
         assertEquals(550000L,rows.get(0).get("amount")); assertEquals("2026-11-30",rows.get(0).get("dueDate"));
         assertEquals(false,rows.get(0).get("paid"));
+        var past=housing(query(10)).get(0);
+        assertEquals(false,past.get("snapshot"));
+        assertEquals(false,past.get("paid"));
+        assertEquals(550000L,past.get("amount"));
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM rent_payments",Integer.class));
-        assertTrue(housing(query(10)).isEmpty());
         assertTrue(housing(service.monthly(2,YearMonth.of(2026,11),"UTC")).isEmpty());
+        jdbc.update("INSERT INTO rent_payments(user_id,period_ym,amount,due_date) VALUES (1,'2026-10',480000,'2026-10-15')");
+        var saved=housing(query(10)).get(0);
+        assertEquals(true,saved.get("snapshot"));
+        assertEquals(480000L,saved.get("amount"));
+        assertEquals("2026-10-15",saved.get("dueDate"));
+        assertEquals(false,saved.get("paid"));
     }
     @Test void outsideContractPeriodIsReportedButSavedHistoryRemainsVisible() {
         assertEquals(false,((Map<?,?>)query(11).get("contractPeriod")).get("outside"));

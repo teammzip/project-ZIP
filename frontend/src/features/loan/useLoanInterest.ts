@@ -16,11 +16,11 @@ export function useLoanInterest() {
 export function LoanInterestSync() {
   const { isJeonse } = useHousingContract()
   const userId = useAuthStore((s) => s.user?.id)
-  const token = useAuthStore((s) => s.token)
+  const sessionKey = useAuthStore((s) => s.sessionKey)
   const mockPlans = useLoanStore((s) => isMockApi ? s.plans : null)
   const syncDue = useLoanStore((s) => s.syncDue)
   useEffect(() => {
-    if (!userId || !token || !isJeonse) return
+    if (!userId || !sessionKey || !isJeonse) return
     const sync = isMockApi ? syncDue : () => { void loadHomeInfo().catch(() => {}) }
     const refresh = () => { if (document.visibilityState === 'visible') sync() }
     if (isMockApi) sync()
@@ -32,6 +32,6 @@ export function LoanInterestSync() {
       window.removeEventListener('focus', refresh)
       document.removeEventListener('visibilitychange', refresh)
     }
-  }, [userId, token, mockPlans, syncDue, isJeonse])
+  }, [userId, sessionKey, mockPlans, syncDue, isJeonse])
   return null
 }

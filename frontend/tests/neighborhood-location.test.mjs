@@ -26,7 +26,7 @@ const verifiedPoint = { lat: 35.16, lon: 129.06 }
 const survey = { userId: member.id, address: '서울특별시 마포구 합정동', addressPoint: surveyPoint }
 
 function setup(initialSaved) {
-  let auth = { user: member, token: 'test-token' }
+  let auth = { user: member, sessionKey: 'test-token' }
   const saved = new Map(Object.entries(initialSaved ?? {}))
   const listeners = []
   const authStore = (selector) => selector(auth)
@@ -52,7 +52,7 @@ function setup(initialSaved) {
     saved: () => Object.fromEntries(saved),
     login: (user) => {
       const previous = auth
-      auth = { user, token: user ? 'test-token' : null }
+      auth = { user, sessionKey: user ? 'test-token' : null }
       listeners.forEach((listener) => listener(auth, previous))
     },
   }

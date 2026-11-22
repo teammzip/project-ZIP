@@ -25,13 +25,12 @@ test('실패 이유와 토큰 없는 응답을 구분한다', () => {
 function callbackPage(me) {
   const events = []
   const effects = []
-  const auth = { token: 'previous-session', user: { id: 'previous-user' },
-    clearAuth() { events.push('clear'); this.token = null; this.user = null },
-    setAuth(user, token) { events.push('login'); auth.user = user; auth.token = token },
+  const auth = { sessionKey: 'previous-session', token: 'previous-token', user: { id: 'previous-user' },
+    clearAuth() { events.push('clear'); this.sessionKey = null; this.token = null; this.user = null },
+    setAuth(user, token) { events.push('login'); auth.user = user; auth.token = token; auth.sessionKey = 'new-session' },
   }
   const store = (selector) => selector(auth)
   store.getState = () => auth
-  store.setState = (patch) => Object.assign(auth, patch)
   const component = {}
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/pages/auth/OAuthCallbackPage.tsx', import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
@@ -41,13 +40,15 @@ function callbackPage(me) {
       if (name === 'react') return { useState: (initial) => [typeof initial === 'function' ? initial() : initial, () => {}], useRef: () => ({ current: false }), useEffect: (effect) => effects.push(effect) }
       if (name === 'react-router-dom') return { Link: 'a', useNavigate: () => () => events.push('navigate'), useLocation: () => ({ search: '', hash: '#token=current-session' }) }
       if (name === '@/features/auth/oauthCallback') return exports
-      if (name === '@/features/auth') return { useAuthStore: store, authApi: { me: () => {
+      if (name === '@/features/auth') return { useAuthStore: store }
+      if (name === '@/lib/apiClient') return { getErrorMessage: () => 'error', publicAuthClient: { get: async (path, options) => {
         events.push('me')
         assert.equal(auth.user, null)
-        assert.equal(auth.token, 'current-session')
-        return me()
+        assert.equal(auth.token, null)
+        assert.equal(path, '/auth/me')
+        assert.equal(options.headers.Authorization, 'Bearer current-session')
+        return { data: await me() }
       } } }
-      if (name === '@/lib/apiClient') return { getErrorMessage: () => 'error' }
       if (name.endsWith('.css')) return { default: {} }
       return require(name)
     },
@@ -69,7 +70,7 @@ test('콜백 조회 중 다른 세션으로 바뀌면 이전 응답을 적용하
   let resolve
   const page = callbackPage(() => new Promise((done) => { resolve = done }))
   page.start()
-  page.auth.token = 'another-session'; page.auth.user = { id: 'another-user' }
+  page.auth.sessionKey = 'another-session'; page.auth.user = { id: 'another-user' }
   resolve({ id: 'stale-user' })
   await new Promise((done) => setImmediate(done))
   assert.equal(page.auth.user.id, 'another-user')

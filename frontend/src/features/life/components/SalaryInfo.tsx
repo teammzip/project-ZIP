@@ -12,13 +12,13 @@ import common from '@/styles/common.module.css'
 import styles from './SalaryInfo.module.css'
 
 export function SalaryInfo({ startEditing = false }: { startEditing?: boolean }) {
-  const owner = useAuthStore((s) => s.user?.id), token = useAuthStore((s) => s.token)
+  const owner = useAuthStore((s) => s.user?.id), sessionKey = useAuthStore((s) => s.sessionKey)
   const storedSurvey = useHousingSurveyStore((s) => s.survey)
   const survey = owner && storedSurvey?.userId === owner ? storedSurvey : null
   const { choice, resolving } = useBillingTimeZone()
-  const query = useQuery({ queryKey: ['salary-settings', owner, token], queryFn: ({ signal }) => getSalary(signal), enabled: !isMockApi && !!owner && !!token, staleTime: 0, retry: false })
+  const query = useQuery({ queryKey: ['salary-settings', owner, sessionKey], queryFn: ({ signal }) => getSalary(signal), enabled: !isMockApi && !!owner && !!sessionKey, staleTime: 0, retry: false })
   return <section aria-label="수입 정보"><h4>수입 정보</h4>
-    {isMockApi ? <><p>{survey ? `${survey.incomePeriod === 'annual' ? '연 수입' : '월 수입'} ${won(survey.income)}` : '등록된 수입 정보가 없어요.'}</p><p className={common.note}>수입 정보 수정과 월급 자동 등록은 서버 연결 모드에서 사용할 수 있어요.</p></> : query.isError ? <div role="alert"><p>{getErrorMessage(query.error, '수입 정보를 불러오지 못했어요.')}</p><Button onClick={() => void query.refetch()}>다시 조회</Button></div> : query.data ? <SalaryForm key={`${owner}:${token}`} settings={query.data} timeZone={choice?.timeZone} resolving={resolving} startEditing={startEditing} /> : <p role="status">불러오는 중이에요.</p>}
+    {isMockApi ? <><p>{survey ? `${survey.incomePeriod === 'annual' ? '연 수입' : '월 수입'} ${won(survey.income)}` : '등록된 수입 정보가 없어요.'}</p><p className={common.note}>수입 정보 수정과 월급 자동 등록은 서버 연결 모드에서 사용할 수 있어요.</p></> : query.isError ? <div role="alert"><p>{getErrorMessage(query.error, '수입 정보를 불러오지 못했어요.')}</p><Button onClick={() => void query.refetch()}>다시 조회</Button></div> : query.data ? <SalaryForm key={`${owner}:${sessionKey}`} settings={query.data} timeZone={choice?.timeZone} resolving={resolving} startEditing={startEditing} /> : <p role="status">불러오는 중이에요.</p>}
   </section>
 }
 

@@ -22,7 +22,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Sql("/auth-fixture.sql")
+@Sql({"/auth-fixture.sql", "/home-info-fixture.sql"})
 class NoticeIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;

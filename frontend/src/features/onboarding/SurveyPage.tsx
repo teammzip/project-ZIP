@@ -107,8 +107,8 @@ export function SurveyPage() {
       incomePaymentDay: Number(f.incomePaymentDay || 25),
       answeredAt: new Date().toISOString(),
     }
-    const token = useAuthStore.getState().token
-    const sameSession = () => useAuthStore.getState().token === token && useAuthStore.getState().user?.id === user.id
+    const sessionKey = useAuthStore.getState().sessionKey
+    const sameSession = () => useAuthStore.getState().sessionKey === sessionKey && useAuthStore.getState().user?.id === user.id
     try {
       if (!isMockApi) {
         const zone = f.income === '' || f.incomePaymentDay === '' ? undefined : await resolveBillingTimeZone({
@@ -171,14 +171,14 @@ export function SurveyPage() {
   const skip = async () => {
     if (saving) return
     if (isMockApi) return close()
-    const token = useAuthStore.getState().token
+    const sessionKey = useAuthStore.getState().sessionKey
     setSaving(true)
     setError('')
     try {
       const { data } = await apiClient.put<typeof user>('/me/housing-onboarding', { action: 'skip' })
-      if (useAuthStore.getState().token === token) updateUser(data)
+      if (useAuthStore.getState().sessionKey === sessionKey) updateUser(data)
     } catch (cause) {
-      if (useAuthStore.getState().token === token) setError(getErrorMessage(cause, '설문을 건너뛰지 못했어요. 다시 시도해 주세요.'))
+      if (useAuthStore.getState().sessionKey === sessionKey) setError(getErrorMessage(cause, '설문을 건너뛰지 못했어요. 다시 시도해 주세요.'))
     } finally {
       setSaving(false)
     }
