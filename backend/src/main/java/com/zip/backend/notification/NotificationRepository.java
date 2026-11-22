@@ -70,8 +70,39 @@ public class NotificationRepository {
     }
 
     public void insert(long userId, String type, String title, String body, String link, Long refId, Instant at) {
+        insertAt(userId, type, title, body, link, refId, at, at);
+    }
+
+    /** notifyAt 이 미래면 그때부터 보여요 */
+    public void insertAt(long userId, String type, String title, String body, String link, Long refId, Instant notifyAt, Instant createdAt) {
         jdbc.update("""
             INSERT INTO notifications (user_id, noti_type, title, body, link_view, ref_id, notify_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, userId, type, title, body, link, refId, Timestamp.from(at), Timestamp.from(at));
+            """, userId, type, title, body, link, refId, Timestamp.from(notifyAt), Timestamp.from(createdAt));
+    }
+
+    /** 생활 알림 (지운 것 · 읽은 것 포함) — 다시 만들지 않으려고 */
+    public record LifeRow(long id, String type, Long refId, String link, String title, String body, boolean read, boolean deleted) {}
+
+    public List<LifeRow> lifeRows(long userId, List<String> types) {
+        var args = new ArrayList<Object>(List.of(userId));
+        args.addAll(types);
+        return jdbc.query("SELECT id, noti_type, ref_id, link_view, title, body, read_at, deleted_at FROM notifications WHERE user_id = ? AND noti_type IN ("
+            + Sql.marks(types) + ")", (rs, n) -> {
+                long ref = rs.getLong("ref_id");
+                return new LifeRow(rs.getLong("id"), rs.getString("noti_type"), rs.wasNull() ? null : ref, rs.getString("link_view"),
+                    rs.getString("title"), rs.getString("body"), rs.getTimestamp("read_at") != null, rs.getTimestamp("deleted_at") != null);
+            }, args.toArray());
+    }
+
+    public void updateText(long id, String title, String body) {
+        jdbc.update("UPDATE notifications SET title = ?, body = ? WHERE id = ?", title, body, id);
+    }
+
+    /** 더는 해당 없는 생활 알림 지우기 (내 것만) */
+    public void deleteIds(long userId, List<Long> ids) {
+        if (ids.isEmpty()) return;
+        var args = new ArrayList<Object>(List.of(userId));
+        args.addAll(ids);
+        jdbc.update("DELETE FROM notifications WHERE user_id = ? AND id IN (" + Sql.marks(ids) + ")", args.toArray());
     }
 }

@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 알림 (frontend/API.md 6장). 서버가 아는 일이 생기면 받는 사람에게 한 줄을 만들어요:
  * 내 글 댓글 · 내 댓글 답글 · 운영자 댓글 · 운영자가 지우거나 숨긴 글 · 댓글 · 경고 · 문의 답변.
- * 일정 · 쓰레기 배출 · 월세 알림은 아직 프론트가 직접 계산해요 (일정이 서버에 없어서).
+ * 일정 · 쓰레기 배출 · 월세 알림은 목록을 볼 때 LifeNotificationService 가 만들어 둬요.
  */
 @Service
 public class NotificationService {
@@ -31,10 +31,12 @@ public class NotificationService {
 
     private final NotificationRepository repository;
     private final Clock clock;
+    private final LifeNotificationService life;
 
-    public NotificationService(NotificationRepository repository, Clock clock) {
+    public NotificationService(NotificationRepository repository, Clock clock, LifeNotificationService life) {
         this.repository = repository;
         this.clock = clock;
+        this.life = life;
     }
 
     public record ReadInput(List<String> ids) {}
@@ -42,6 +44,7 @@ public class NotificationService {
     public Map<String, Object> list(long userId, String status) {
         var filter = status == null || status.isBlank() ? "all" : status;
         if (!STATUSES.contains(filter)) throw new ApiException(400, "status 는 all, unread, read 중 하나예요.");
+        life.sync(userId); // 일정 · 쓰레기 배출 · 월세 알림을 먼저 만들어 둠
         var now = clock.instant();
         var read = filter.equals("all") ? null : filter.equals("read");
         var items = repository.list(userId, read, now, LIST_MAX).stream().map(NotificationService::noti).toList();
