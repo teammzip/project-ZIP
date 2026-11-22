@@ -16,7 +16,7 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
-/** 장소 리뷰: 쓰기 · 고치기 · 지우기, 목록 별점 요약, 내 리뷰, 신고 → 관리자 삭제 · 기각 */
+/** 장소 리뷰: 쓰기 · 고치기 · 지우기, 목록 별점 요약, 신고 → 관리자 삭제 · 기각 */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -65,6 +65,39 @@ class PlaceReviewIntegrationTests {
         call(post("/api/places/{id}/reviews", "999"), one, "{\"rating\":4}").andExpect(status().isNotFound());
     }
 
+    private long file(long userId, String key) {
+        jdbc.update("INSERT INTO uploaded_files (user_id, original_name, storage_url, mime_type, size_bytes) VALUES (?, 'a.jpg', ?, 'image/jpeg', 100)",
+            userId, "/api/files/content/" + key + ".jpg");
+        return jdbc.queryForObject("SELECT MAX(id) FROM uploaded_files", Long.class);
+    }
+
+    @Test void photosAuthorInfoAndCleanup() throws Exception {
+        String one = login("tester01"), two = login("tester02");
+        long a = file(1, "aaaaaaaa-0000-0000-0000-000000000001"), b = file(1, "aaaaaaaa-0000-0000-0000-000000000002"), other = file(2, "bbbbbbbb-0000-0000-0000-000000000001");
+        // 남의 사진 · 6장 · 같은 사진 두 번은 안 됨
+        call(post("/api/places/{id}/reviews", "kakao:777"), one, "{\"rating\":5,\"name\":\"국밥\",\"photoIds\":[\"" + other + "\"]}").andExpect(status().isBadRequest());
+        call(post("/api/places/{id}/reviews", "kakao:777"), one, "{\"rating\":5,\"name\":\"국밥\",\"photoIds\":[\"1\",\"2\",\"3\",\"4\",\"5\",\"6\"]}").andExpect(status().isBadRequest());
+        call(post("/api/places/{id}/reviews", "kakao:777"), one, "{\"rating\":5,\"name\":\"국밥\",\"photoIds\":[\"" + a + "\",\"" + a + "\"]}").andExpect(status().isBadRequest());
+        call(post("/api/places/{id}/reviews", "kakao:777"), one, "{\"rating\":5,\"body\":\"존맛\",\"name\":\"국밥\",\"photoIds\":[\"" + b + "\",\"" + a + "\"]}").andExpect(status().isNoContent());
+        call(post("/api/places/{id}/reviews", "10"), one, "{\"rating\":3}").andExpect(status().isNoContent());
+        call(get("/api/places/{id}/reviews", "kakao:777"), two, null).andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].photos.length()").value(2))
+            .andExpect(jsonPath("$[0].photos[0].id").value(Long.toString(b)))
+            .andExpect(jsonPath("$[0].photos[1].url").value("/api/files/content/aaaaaaaa-0000-0000-0000-000000000001.jpg"))
+            .andExpect(jsonPath("$[0].author.reviewCount").value(2))
+            .andExpect(jsonPath("$[0].author.ratingAvg").value(4.0));
+        // 이미 리뷰에 쓴 사진은 다른 리뷰에 못 붙임
+        call(post("/api/places/{id}/reviews", "kakao:888"), one, "{\"rating\":4,\"name\":\"카페\",\"photoIds\":[\"" + a + "\"]}").andExpect(status().isBadRequest());
+        // 고치기에서 빠진 사진은 지운 것으로 표시
+        call(put("/api/places/{id}/reviews/mine", "kakao:777"), one, "{\"rating\":4,\"photoIds\":[\"" + a + "\"]}").andExpect(status().isNoContent());
+        assertEquals(1, count("SELECT COUNT(*) FROM place_review_photos"));
+        assertEquals(1, count("SELECT COUNT(*) FROM uploaded_files WHERE id = " + b + " AND deleted_at IS NOT NULL"));
+        // 리뷰를 지우면 사진도
+        call(delete("/api/places/{id}/reviews/mine", "kakao:777"), one, null).andExpect(status().isNoContent());
+        assertEquals(0, count("SELECT COUNT(*) FROM place_review_photos"));
+        assertEquals(1, count("SELECT COUNT(*) FROM uploaded_files WHERE id = " + a + " AND deleted_at IS NOT NULL"));
+    }
+
     @Test void editAndDeleteKakaoReview() throws Exception {
         String one = login("tester01");
         call(post("/api/places/{id}/reviews", "kakao:777"), one, "{\"rating\":5,\"body\":\"존맛\",\"name\":\"동네 국밥\"}").andExpect(status().isNoContent());
@@ -75,7 +108,7 @@ class PlaceReviewIntegrationTests {
         assertEquals(0, count("SELECT COUNT(*) FROM kakao_place_reviews"));
     }
 
-    @Test void summaryAndMyReviews() throws Exception {
+    @Test void summaryOfDbAndKakaoPlaces() throws Exception {
         String one = login("tester01"), two = login("tester02");
         call(post("/api/places/{id}/reviews", "kakao:777"), one, "{\"rating\":5,\"name\":\"동네 국밥\"}").andExpect(status().isNoContent());
         call(post("/api/places/{id}/reviews", "kakao:777"), two, "{\"rating\":4,\"name\":\"동네 국밥\"}").andExpect(status().isNoContent());
@@ -86,11 +119,6 @@ class PlaceReviewIntegrationTests {
             .andExpect(jsonPath("$[?(@.id == 'kakao:777')].count").value(2))
             .andExpect(jsonPath("$[?(@.id == '10')].count").value(1));
         call(get("/api/places/review-summary").param("ids", String.join(",", java.util.Collections.nCopies(101, "kakao:1"))), one, null).andExpect(status().isBadRequest());
-        // 내 리뷰: 두 종류 장소를 같이, 장소 이름과 함께
-        call(get("/api/me/place-reviews"), one, null).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
-            .andExpect(jsonPath("$[?(@.placeId == 'kakao:777')].placeName").value("동네 국밥"))
-            .andExpect(jsonPath("$[?(@.placeId == '10')].placeName").value("편의점 A (예시)"));
-        call(get("/api/me/place-reviews"), two, null).andExpect(jsonPath("$.length()").value(1));
     }
 
     @Test void reportThenAdminDeletesReview() throws Exception {

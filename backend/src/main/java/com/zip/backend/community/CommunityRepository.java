@@ -183,7 +183,7 @@ public class CommunityRepository {
             ids.toArray());
     }
 
-    /** 이 파일들 중 하나라도 다른 글에 붙어 있거나(exceptPost 는 지금 고치는 글) 프로필 사진으로 쓰이는지 */
+    /** 이 파일들 중 하나라도 다른 글에 붙어 있거나(exceptPost 는 지금 고치는 글) 프로필 사진 · 장소 리뷰 사진으로 쓰이는지 */
     public boolean filesInUse(List<Long> fileIds, Long exceptPost) {
         if (fileIds.isEmpty()) return false;
         var marks = Sql.marks(fileIds);
@@ -194,8 +194,10 @@ public class CommunityRepository {
             args.add(exceptPost);
         }
         args.addAll(fileIds);
+        args.addAll(fileIds);
         return jdbc.queryForObject("SELECT (SELECT COUNT(*) FROM post_attachments WHERE file_id IN (" + marks + ")" + otherPost
-            + ") + (SELECT COUNT(*) FROM user_profiles WHERE avatar_file_id IN (" + marks + "))", Long.class, args.toArray()) > 0;
+            + ") + (SELECT COUNT(*) FROM user_profiles WHERE avatar_file_id IN (" + marks + "))"
+            + " + (SELECT COUNT(*) FROM place_review_photos WHERE file_id IN (" + marks + "))", Long.class, args.toArray()) > 0;
     }
 
     public long insertPost(long userId, long regionId, String category, String title, String body) {

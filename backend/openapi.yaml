@@ -1137,7 +1137,19 @@ paths:
                     id: { type: string }
                     rating: { type: integer, minimum: 1, maximum: 5 }
                     body: { type: string }
-                    author: { $ref: '#/components/schemas/Author' }
+                    photos:
+                      type: array
+                      items: { type: object, properties: { id: { type: string }, url: { type: string } } }
+                    author:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        nickname: { type: string }
+                        avatarUrl: { type: string, nullable: true }
+                        avatarEmoji: { type: string, nullable: true }
+                        avatarColor: { type: string, nullable: true }
+                        reviewCount: { type: integer, description: 이 사람이 쓴 후기 수 }
+                        ratingAvg: { type: number, description: 이 사람의 별점 평균 }
                     createdAt: { type: string, format: date-time }
                     reportedByMe: { type: boolean, description: 내가 이미 신고한 리뷰 }
     post:
@@ -1154,6 +1166,7 @@ paths:
                 rating: { type: integer, minimum: 1, maximum: 5 }
                 body: { type: string, maxLength: 300, description: DB place_reviews.body VARCHAR(300) }
                 name: { type: string, maxLength: 60, description: 카카오 장소("kakao:…")만 필수 — 장소 이름 }
+                photoIds: { type: array, maxItems: 5, items: { type: string }, description: 'POST /api/files 로 먼저 올린 내 사진 id (JPEG · PNG)' }
       responses:
         '204': { description: 저장 완료 }
         '400': { description: 별점 · 내용 · 카카오 장소 이름 확인, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
@@ -1163,7 +1176,7 @@ paths:
       - $ref: '#/components/parameters/Id'
     put:
       tags: [지도]
-      summary: 내 리뷰 고치기 (별점 · 내용)
+      summary: 내 리뷰 고치기 (별점 · 내용 · 사진, 빠진 사진은 지움)
       requestBody:
         required: true
         content:
@@ -1174,6 +1187,7 @@ paths:
               properties:
                 rating: { type: integer, minimum: 1, maximum: 5 }
                 body: { type: string, maxLength: 300 }
+                photoIds: { type: array, maxItems: 5, items: { type: string }, description: 'POST /api/files 로 먼저 올린 내 사진 id (JPEG · PNG)' }
       responses:
         '204': { description: 고침 }
         '400': { description: 별점 · 내용 확인, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
@@ -1225,26 +1239,6 @@ paths:
                     id: { type: string }
                     rating: { type: number }
                     count: { type: integer }
-  /api/me/place-reviews:
-    get:
-      tags: [지도]
-      summary: 내가 쓴 장소 리뷰 (최신순)
-      responses:
-        '200':
-          description: 내 리뷰
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id: { type: string }
-                    placeId: { type: string, description: '"12" 또는 "kakao:123"' }
-                    placeName: { type: string }
-                    rating: { type: integer }
-                    body: { type: string }
-                    createdAt: { type: string, format: date-time }
   /api/me/place-favorites:
     get:
       tags: [지도]

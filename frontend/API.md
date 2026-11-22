@@ -577,13 +577,12 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | GET | `/api/places?regionId=2&category=세탁방&lat=37.5496&lon=126.9137` | — | `[place]` (가까운 순. `lat` · `lon` = 지도 중심, 생략하면 우리 집) |
 | GET | `/api/places?regionId=2&q=빵집` | — | `[place]` (직접 추가한 검색어 칩: 이름 · 설명 · 종류에 글자 포함. 검색창은 `&wide=true` — 가게 이름 · 유명한 곳까지, 이름이 맞는 곳부터) |
 | POST | `/api/places/ai-search` | `{ q: "밤에 갈 수 있는 약국", regionId }` | `[{ place, reasons: ["약국", "24시간·심야 운영"], walkMin }]` (최대 5곳) |
-| GET | `/api/places/{id}/reviews` | — | `[{ id, rating, body, author: { id, nickname }, createdAt, reportedByMe }]` 최신순 (장소 상세 아래 리뷰). id = DB 장소 `12` 또는 카카오 장소 `kakao:123` |
-| POST | `/api/places/{id}/reviews` | `{ rating(1~5), body(300자, 선택), name(카카오 장소만, 60자) }` | — (한 사람당 한 장소 하나, 두 번이면 409. 카카오 장소는 `name` 없으면 400) |
-| PUT | `/api/places/{id}/reviews/mine` | `{ rating, body }` | — 내 리뷰 고치기 (없으면 404) |
+| GET | `/api/places/{id}/reviews` | — | `[{ id, rating, body, photos: [{ id, url }], author: { id, nickname, avatarUrl, avatarEmoji, avatarColor, reviewCount, ratingAvg }, createdAt, reportedByMe }]` 최신순 (장소 상세 아래 리뷰). id = DB 장소 `12` 또는 카카오 장소 `kakao:123` |
+| POST | `/api/places/{id}/reviews` | `{ rating(1~5), body(300자, 선택), name(카카오 장소만, 60자), photoIds(선택, 5장까지 — 먼저 `POST /api/files` 로 올린 내 사진) }` | — (한 사람당 한 장소 하나, 두 번이면 409. 카카오 장소는 `name` 없으면 400) |
+| PUT | `/api/places/{id}/reviews/mine` | `{ rating, body, photoIds }` | — 내 리뷰 고치기 (빠진 사진은 서버가 지움, 없으면 404) |
 | DELETE | `/api/places/{id}/reviews/mine` | — | — 내 리뷰 지우기 (없으면 404) |
 | POST | `/api/places/{id}/reviews/{reviewId}/reports` | `{ reason, detail }` (사유는 커뮤니티 신고와 같음) | — 남의 리뷰 신고 (내 리뷰 400 · 같은 리뷰 두 번 409) |
 | GET | `/api/places/review-summary?ids=12,kakao:123` | — | `[{ id, rating, count }]` 지도 목록 별점 (100곳까지, 리뷰 없는 곳은 빠짐) |
-| GET | `/api/me/place-reviews` | — | `[{ id, placeId, placeName, rating, body, createdAt }]` 내가 쓴 리뷰 (지도 "내 리뷰" 탭) |
 | GET | `/api/admin/place-review-reports?status=` | — | 관리자 리뷰 신고 목록 `[{ id, reviewKind, reviewId, placeId, placeName, review: { author, text, rating, deleted }, reason, detail, reporter, status, createdAt }]` |
 | PATCH | `/api/admin/place-review-reports/{id}` | `{ status: HIDDEN \| DISMISSED }` | — HIDDEN = 리뷰 삭제 + 쓴 사람 알림, DISMISSED = 문제없음 (그 리뷰의 접수 중 신고 전부) |
 | GET | `/api/me/place-favorites` | — | `[placeId]` (DB 장소는 번호, 카카오 장소는 `"kakao:카카오장소id"`) |

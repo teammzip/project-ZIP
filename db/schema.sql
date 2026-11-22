@@ -879,6 +879,18 @@ CREATE TABLE IF NOT EXISTS `place_review_reports` (
   CONSTRAINT `chk_place_review_reports_place_key` CHECK (`place_key` REGEXP '^([1-9][0-9]{0,18}|kakao:[0-9]{1,50})$')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='장소 리뷰 신고: 운영 정책에 어긋나는 장소 리뷰를 신고한 기록. 운영자가 확인해 리뷰를 지우거나 기각합니다.';
 
+-- 장소 리뷰 사진: 리뷰 하나에 5장까지 (리뷰 표가 두 개라 종류 + 리뷰 id 로 가리킴). 파일은 리뷰 쓴 사람이 올린 사진만, 다른 글 · 리뷰 · 프로필과 같이 쓰지 않습니다. (20261122_05_place_review_photos.sql)
+CREATE TABLE IF NOT EXISTS `place_review_photos` (
+  `review_kind` ENUM('PLACE','KAKAO') NOT NULL COMMENT '리뷰 표 — PLACE: place_reviews / KAKAO: kakao_place_reviews',
+  `review_id` BIGINT UNSIGNED NOT NULL COMMENT '리뷰 아이디 (review_kind 표의 id)',
+  `file_id` BIGINT UNSIGNED NOT NULL COMMENT '사진 파일 (uploaded_files) — 리뷰 쓴 사람이 올린 사진만',
+  `sort_order` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '보여 줄 순서',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '붙인 일시',
+  PRIMARY KEY (`review_kind`, `review_id`, `file_id`),
+  UNIQUE KEY `uk_place_review_photos_file_id` (`file_id`),
+  CONSTRAINT `fk_place_review_photos_file_id` FOREIGN KEY (`file_id`) REFERENCES `uploaded_files` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='장소 리뷰 사진: 리뷰 하나에 사진 5장까지. 리뷰를 지우면 서버가 사진 연결과 파일도 지웁니다.';
+
 -- ----------------------------------------------------------------------------
 -- 집계용 VIEW: 홈의 "월별 수입" 그래프, "이번 달 지출 구성" 도넛, AI "이번 달 지출 요약"이 쓰는 계산
 -- ----------------------------------------------------------------------------

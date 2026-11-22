@@ -1,6 +1,7 @@
 package com.zip.backend.map;
 
 import com.zip.backend.common.ApiException;
+import com.zip.backend.files.ProfileFileService;
 import com.zip.backend.notification.NotificationService;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -29,33 +30,54 @@ public class PlaceReviewService {
     private static final Set<String> STATUSES = Set.of("RECEIVED", "HIDDEN", "DISMISSED");
     private static final Set<String> RESOLUTIONS = Set.of("HIDDEN", "DISMISSED");
 
+    static final int PHOTO_MAX = 5;
+
     private final PlaceReviewRepository repository;
     private final NotificationService notifications;
+    private final ProfileFileService files;
     private final Clock clock;
 
-    public PlaceReviewService(PlaceReviewRepository repository, NotificationService notifications, Clock clock) {
+    public PlaceReviewService(PlaceReviewRepository repository, NotificationService notifications, ProfileFileService files, Clock clock) {
         this.repository = repository;
         this.notifications = notifications;
+        this.files = files;
         this.clock = clock;
     }
 
-    /** 리뷰 쓰기 · 고치기 내용: 별점 1~5, 내용 300자(선택), 카카오 장소면 이름(60자) */
-    public record ReviewInput(Integer rating, String body, String name) {}
+    /** 리뷰 쓰기 · 고치기 내용: 별점 1~5, 내용 300자(선택), 카카오 장소면 이름(60자), 사진 파일 id(POST /api/files 로 먼저 올림, 5장까지) */
+    public record ReviewInput(Integer rating, String body, String name, List<String> photoIds) {}
 
     public record ReportInput(String reason, String detail) {}
 
     // ---------- 회원 ----------
 
-    /** 이 장소의 리뷰 (최신순). reportedByMe = 내가 이미 신고한 리뷰 */
+    /** 이 장소의 리뷰 (최신순). 작성자 프로필 · 후기 수 · 별점 평균, 사진, reportedByMe = 내가 이미 신고한 리뷰 */
     public List<Map<String, Object>> reviews(long userId, String placeId) {
         var target = existingTarget(placeId);
         var reported = Set.copyOf(repository.reportedByMe(userId, target));
-        return repository.reviews(target).stream().map(r -> {
+        var rows = repository.reviews(target);
+        var authorIds = rows.stream().map(PlaceReviewRepository.ReviewRow::authorId).distinct().toList();
+        var stats = repository.authorStats(authorIds);
+        var looks = repository.authorLooks(authorIds);
+        var photos = repository.photos(target.kind(), rows.stream().map(PlaceReviewRepository.ReviewRow::id).toList());
+        return rows.stream().map(r -> {
+            var stat = stats.getOrDefault(r.authorId(), new PlaceReviewRepository.AuthorStat(0, 0));
+            var look = looks.get(r.authorId());
+            var author = new LinkedHashMap<String, Object>();
+            author.put("id", Long.toString(r.authorId()));
+            author.put("nickname", r.authorNickname());
+            author.put("avatarUrl", look == null ? null : look.avatarUrl());
+            author.put("avatarEmoji", look == null ? null : look.avatarEmoji());
+            author.put("avatarColor", look == null ? null : look.avatarColor());
+            author.put("reviewCount", stat.count());
+            author.put("ratingAvg", stat.rating());
             var item = new LinkedHashMap<String, Object>();
             item.put("id", Long.toString(r.id()));
             item.put("rating", r.rating());
             item.put("body", r.body() == null ? "" : r.body());
-            item.put("author", Map.of("id", Long.toString(r.authorId()), "nickname", r.authorNickname()));
+            item.put("photos", photos.getOrDefault(r.id(), List.of()).stream()
+                .map(p -> Map.of("id", Long.toString(p.fileId()), "url", p.url())).toList());
+            item.put("author", author);
             item.put("createdAt", r.createdAt().toString());
             item.put("reportedByMe", reported.contains(r.id()));
             return (Map<String, Object>) item;
@@ -68,24 +90,58 @@ public class PlaceReviewService {
         var rating = rating(input);
         var body = body(input);
         var name = target.isKakao() ? kakaoName(input) : null;
+        var photoIds = validPhotos(userId, input.photoIds(), target.kind(), null);
+        long reviewId;
         try {
-            repository.addReview(target, userId, name, rating, body);
+            reviewId = repository.addReview(target, userId, name, rating, body);
         } catch (DuplicateKeyException duplicate) {
             throw new ApiException(409, "이미 이 장소에 리뷰를 썼어요. 내 리뷰를 고쳐 주세요.");
         }
+        repository.replacePhotos(target.kind(), reviewId, photoIds);
     }
 
-    /** 내 리뷰 고치기 (별점 · 내용) */
+    /** 내 리뷰 고치기 (별점 · 내용 · 사진). 빠진 사진 파일은 지워요 */
     @Transactional
     public void updateMyReview(long userId, String placeId, ReviewInput input) {
         var target = existingTarget(placeId);
-        if (repository.updateMyReview(target, userId, rating(input), body(input)) == 0) throw new ApiException(404, "이 장소에 쓴 내 리뷰가 없어요.");
+        var rating = rating(input);
+        var body = body(input);
+        long reviewId = repository.myReviewId(target, userId).orElseThrow(() -> new ApiException(404, "이 장소에 쓴 내 리뷰가 없어요."));
+        var photoIds = validPhotos(userId, input.photoIds(), target.kind(), reviewId);
+        repository.updateMyReview(target, userId, rating, body);
+        removeFiles(repository.replacePhotos(target.kind(), reviewId, photoIds));
     }
 
+    /** 내 리뷰 지우기 (사진 파일도) */
     @Transactional
     public void deleteMyReview(long userId, String placeId) {
         var target = existingTarget(placeId);
-        if (repository.deleteMyReview(target, userId) == 0) throw new ApiException(404, "이 장소에 쓴 내 리뷰가 없어요.");
+        long reviewId = repository.myReviewId(target, userId).orElseThrow(() -> new ApiException(404, "이 장소에 쓴 내 리뷰가 없어요."));
+        removeFiles(repository.replacePhotos(target.kind(), reviewId, List.of()));
+        repository.deleteMyReview(target, userId);
+    }
+
+    /** 사진: 5장까지 · 내가 올린 파일 · 사진 형식 · 다른 리뷰 · 글 · 프로필에 쓰이지 않은 파일 */
+    private List<Long> validPhotos(long userId, List<String> raw, String kind, Long reviewId) {
+        if (raw == null || raw.isEmpty()) return List.of();
+        if (raw.size() > PHOTO_MAX) throw new ApiException(400, "사진은 " + PHOTO_MAX + "장까지 붙일 수 있어요.");
+        var ids = new LinkedHashSet<Long>();
+        for (var value : raw) ids.add(positiveId(value, "사진을"));
+        if (ids.size() != raw.size()) throw new ApiException(400, "같은 사진을 두 번 붙일 수 없어요.");
+        var found = repository.files(ids);
+        for (long fileId : ids) {
+            var file = found.stream().filter(f -> f.id() == fileId).findFirst()
+                .filter(f -> f.userId() == userId && !f.deleted())
+                .orElseThrow(() -> new ApiException(400, "내가 올린 사진만 붙일 수 있어요."));
+            if (file.type() == null || !file.type().startsWith("image/")) throw new ApiException(400, "사진만 붙일 수 있어요.");
+        }
+        if (repository.filesInUse(ids, kind, reviewId)) throw new ApiException(400, "다른 곳에 쓰인 사진은 붙일 수 없어요. 다시 올려 주세요.");
+        return List.copyOf(ids);
+    }
+
+    /** 빠진 사진: 지운 것으로 표시하고 실제 파일은 커밋 뒤 삭제 */
+    private void removeFiles(List<Long> fileIds) {
+        files.deleteAfterCommit(repository.markFilesDeleted(fileIds, clock.instant()));
     }
 
     /** 지도 목록용 별점 요약. ids = "12,kakao:123,…" (100개까지). 리뷰 없는 곳은 빠져요 */
@@ -112,13 +168,6 @@ public class PlaceReviewService {
         var result = new ArrayList<Map<String, Object>>();
         found.forEach((key, s) -> result.add(Map.of("id", key, "rating", s.rating(), "count", s.count())));
         return result;
-    }
-
-    /** 내가 쓴 리뷰 모아 보기 (최신순) */
-    public List<Map<String, Object>> myReviews(long userId) {
-        return repository.myReviews(userId).stream().map(r -> Map.<String, Object>of(
-            "id", Long.toString(r.id()), "placeId", r.placeKey(), "placeName", r.placeName(), "rating", r.rating(),
-            "body", r.body() == null ? "" : r.body(), "createdAt", r.createdAt().toString())).toList();
     }
 
     /** 다른 사람 리뷰 신고 (사유는 커뮤니티 신고와 같음). 같은 리뷰는 한 번만 */
@@ -176,6 +225,7 @@ public class PlaceReviewService {
         var ref = repository.reportRef(positiveId(reportId, "신고를")).orElseThrow(() -> new ApiException(404, "신고를 찾을 수 없어요."));
         if (status.equals("HIDDEN")) {
             repository.storedReview(ref.kind(), ref.reviewId()).ifPresent(review -> {
+                removeFiles(repository.replacePhotos(ref.kind(), ref.reviewId(), List.of()));
                 repository.deleteReview(ref.kind(), ref.reviewId(), review.placeId());
                 notifications.send(review.authorId(), adminId, NotificationService.SYSTEM, "신고가 확인돼 내 장소 리뷰가 삭제됐어요",
                     "「" + review.placeName() + "」 " + NotificationService.preview(review.body() == null ? "" : review.body(), 40), null, null);
