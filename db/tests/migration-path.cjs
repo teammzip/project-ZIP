@@ -35,6 +35,8 @@ const incrementalMigrations = [
   '20261121_05_trash_schedule_places.sql',
   '20261121_06_trash_schedule_columns.sql',
   '20261121_07_notices.sql',
+  '20261122_01_terms_sync.sql',
+  '20261122_03_place_reviews.sql',
 ]
 
 // 표 구조는 안 바꾸고 데이터만 넣는 마이그레이션 (전국 지역 · 쓰레기 배출표, db/tools/trash_import.py 가 만듦).

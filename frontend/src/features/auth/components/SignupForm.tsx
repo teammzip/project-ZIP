@@ -15,7 +15,7 @@ type Props = {
 }
 
 /** 회원가입
- * 로그인 정보(아이디·비밀번호) · 회원 정보(닉네임·이메일 인증·주소) · 가입 약관 동의.
+ * 로그인 정보(아이디·비밀번호) · 회원 정보(닉네임·이메일 인증) · 가입 약관 동의. 집 주소는 가입 뒤 주거 설문에서 받아요.
  * 이메일 인증을 마치고 필수 항목을 모두 채우고 약관에 동의해야 "가입하기"가 파랗게 켜짐 (인증 전에는 누를 수 없음) */
 export function SignupForm({ onSuccess }: Props) {
   const signup = useSignup()
@@ -25,7 +25,7 @@ export function SignupForm({ onSuccess }: Props) {
     resolver: zodResolver(signupSchema),
     mode: 'onTouched',
     defaultValues: {
-      username: '', password: '', passwordConfirm: '', nickname: '', email: '', emailToken: '', address: '',
+      username: '', password: '', passwordConfirm: '', nickname: '', email: '', emailToken: '',
       agreeTerms: false, agreePrivacy: false, agreePolicy: false, ageOver14: false,
     },
   })
@@ -67,10 +67,6 @@ export function SignupForm({ onSuccess }: Props) {
         onToken={(t) => setValue('emailToken', t, { shouldValidate: true })}
         error={err('email') ?? (isSubmitted ? errors.emailToken?.message : undefined)}
       />
-      {/* TODO: 주소 검색(다음 우편번호 API 등) 붙이기. 동네 기능·쓰레기 배출 요일이 이 주소를 씀 */}
-      <Row id="su-addr" label="주소" hint={err('address')}>
-        <input id="su-addr" placeholder="예: 서울시 마포구 합정동 123-4" autoComplete="street-address" {...register('address')} />
-      </Row>
 
       <h2 className={styles.secTitle}>가입 약관 동의</h2>
       <ConsentFields

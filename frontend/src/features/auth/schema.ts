@@ -36,7 +36,6 @@ export const signupSchema = z
     email,
     /** 이메일 인증을 마치고 받은 값. 비어 있으면 가입 불가 */
     emailToken: z.string().min(1, '이메일 인증을 해 주세요.'),
-    address: z.string().trim().min(1, '주소를 입력해 주세요.').max(200, '주소는 200자 이내로 입력해 주세요.'),
     agreeTerms: z.boolean().refine((v) => v, '서비스 이용약관에 동의해 주세요.'),
     agreePrivacy: z.boolean().refine((v) => v, '개인정보 처리방침 안내를 확인해 주세요.'),
     agreePolicy: z.boolean().refine((v) => v, '커뮤니티·AI 운영 정책에 동의해 주세요.'),

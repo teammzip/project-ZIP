@@ -1,5 +1,5 @@
-import { LegalPage, TERMS } from '@/features/legal'
+import { LegalPage } from '@/features/legal'
 
 export function TermsPage() {
-  return <LegalPage doc={TERMS} />
+  return <LegalPage kind="SERVICE" />
 }

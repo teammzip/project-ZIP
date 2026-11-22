@@ -152,6 +152,8 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 
 ## 약관 점검
 
+**2026-11-22**: 화면이 `GET /api/terms` 를 보여 줘요. 문구를 고치면 `content.ts` → `node db/tools/terms-sync.cjs <마이그레이션 이름>` 으로 `schema.sql` 과 기존 DB 마이그레이션을 만들고, `frontend/tests/legal-terms.test.mjs` 가 화면 문구 = DB 기본 약관인지 확인해요. 주소는 가입 필수가 아니라 가입 후 주거 설문 · 내 정보에서 입력(선택)이에요 (가입 `address` · 소셜 첫 동의 `address` 는 선택).
+
 프론트 `frontend/src/features/legal/content.ts`와 `db/schema.sql`의 SERVICE/PRIVACY/POLICY 제목·본문·버전 `2026-10-18`·동의 방식(AGREE/CONFIRM)은 자동 대조합니다. 개인정보 처리방침은 CONFIRM, 나머지 두 문서는 AGREE입니다. 만 14세 이상 확인은 별도 회원 필드입니다.
 
 현재 본문에는 책임자·연락처·클라우드 업체/국가·AI 업체/국외 이전 항목 등의 `[ ]` 빈칸이 남아 있습니다. 문자 업체도 결정 후 실제 처리 내용을 반영해야 합니다. 외부 날씨·주소 검색은 이미 브라우저에서 호출하므로 제공 항목과 처리방침 설명을 점검해야 합니다. 재가입 차단용 banned_identities 및 신고 스냅샷의 탈퇴 후 보관 정책도 실제 구현과 맞춰야 합니다. 보관 기간·파기·휴면 계정·HTTPS에 대한 본문 약속은 구현 및 운영 절차로 확인해야 하며 이번에는 법적 적절성을 판정하거나 본문을 임의로 개정하지 않았습니다.
@@ -294,9 +296,13 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 | GET · POST · PATCH · DELETE `/api/me/place-lists` | 저장 리스트 `place_lists` · `place_list_items` (`db/migrations/20261115_03_place_lists.sql`). 처음 GET 에서 "내 장소"를 만들고 리스트에 안 든 저장 장소를 넣음. 이름 20자 · 회원 안 중복 409 · 20개까지 · 색 `#RRGGBB`. 삭제 시 이 리스트에만 있던 장소는 저장 해제 |
 | PUT `/api/me/place-favorites/{placeId}/lists` | `{ listIds, name?, category? }` 로 리스트 소속을 통째로 바꿈. 비우면 저장 해제, 다른 회원 리스트는 404 |
 | GET · PUT `/api/me/map-settings` | `user_settings.map_categories · map_keywords`. NULL이면 정렬 순서 앞 4종류 · 빈 검색어. 없는 종류, 종류와 같은 검색어(12자 이내)는 400 |
-| GET · POST `/api/places/{id}/reviews` | `place_reviews`. 한 사람당 한 장소 하나(두 번이면 409), 저장 후 `places.rating_avg · review_count` 갱신 |
+| GET · POST `/api/places/{id}/reviews` | `PlaceReviewService`. DB 장소는 `place_reviews`(저장 · 고치기 · 지우기 후 `places.rating_avg · review_count` 갱신), 카카오 장소(`kakao:…`)는 `kakao_place_reviews`(id · 이름 + 리뷰, `name` 필수). 한 사람당 한 장소 하나(두 번이면 409). 우리 서버에만 저장 |
+| PUT · DELETE `/api/places/{id}/reviews/mine` | 내 리뷰 고치기 · 지우기 (없으면 404) |
+| POST `/api/places/{id}/reviews/{reviewId}/reports` | 리뷰 신고 `place_review_reports` (사유는 커뮤니티 신고와 같음, 내 리뷰 400 · 중복 409, 당시 작성자 · 내용 · 별점 · 장소 이름 스냅샷) |
+| GET `/api/places/review-summary` · `/api/me/place-reviews` | 지도 목록 별점(100곳까지) · 내가 쓴 리뷰 |
+| GET · PATCH `/api/admin/place-review-reports` | 관리자 리뷰 신고: HIDDEN = 리뷰 삭제 + 작성자 SYSTEM 알림, DISMISSED = 문제없음. 관리자 화면 "리뷰 신고" 탭 |
 
-- **카카오 로컬 API**: `KAKAO_REST_KEY`(application-local.properties, Git 제외)가 있으면 `GET /api/places`의 `category` · `q` 검색을 카카오에서 지도 중심(`lat` · `lon`, 없으면 집) 반경 1km로 찾아 **DB에 저장하지 않고 그대로** 줘요(id는 `kakao:카카오장소id`). 카카오 운영 정책이 장소명 · 주소 · 좌표의 장기 저장을 제한하기 때문이에요. 즐겨찾기는 위 표처럼 id · 이름만 따로 저장하고(`db/migrations/20261115_kakao_place_favorites.sql`), 리뷰는 안 돼요(400). 무료 쿼터를 지키려고 `KakaoQuota`가 같은 검색(약 100m 안)을 10분 메모리 캐시하고, 한 사람당 1분 `KAKAO_PER_USER_PER_MINUTE`(기본 30)번 · 서버 전체 하루 `KAKAO_DAILY_LIMIT`(기본 30000, 한국 시간 자정 초기화)번까지만 불러요. 카카오가 429를 주면 그날은 멈춰요. 키가 없거나 한도 · 오류면 DB 장소로 대신하고 응답 헤더 `X-Place-Notice: user-limit | daily-limit | error`로 이유를 알려요. 카카오 콘솔에서 카카오맵(로컬) 사용 설정을 켜야 하고, 유료 추가 사용은 켜지 않아요. 예전 코드가 저장한 카카오 장소(`places.source='KAKAO'`)는 정리 대상이에요. 기존 DB는 `db/migrations/20261108_places_kakao.sql`을 한 번 적용해야 해요.
+- **카카오 로컬 API**: `KAKAO_REST_KEY`(application-local.properties, Git 제외)가 있으면 `GET /api/places`의 `category` · `q` 검색을 카카오에서 지도 중심(`lat` · `lon`, 없으면 집) 반경 1km로 찾아 **DB에 저장하지 않고 그대로** 줘요(id는 `kakao:카카오장소id`). 카카오 운영 정책이 장소명 · 주소 · 좌표의 장기 저장을 제한하기 때문이에요. 즐겨찾기는 위 표처럼 id · 이름만 따로 저장하고(`db/migrations/20261115_kakao_place_favorites.sql`), 리뷰는 카카오 장소 id · 이름과 함께 `kakao_place_reviews` 에 따로 저장해요(주소 · 좌표 없음). 무료 쿼터를 지키려고 `KakaoQuota`가 같은 검색(약 100m 안)을 10분 메모리 캐시하고, 한 사람당 1분 `KAKAO_PER_USER_PER_MINUTE`(기본 30)번 · 서버 전체 하루 `KAKAO_DAILY_LIMIT`(기본 30000, 한국 시간 자정 초기화)번까지만 불러요. 카카오가 429를 주면 그날은 멈춰요. 키가 없거나 한도 · 오류면 DB 장소로 대신하고 응답 헤더 `X-Place-Notice: user-limit | daily-limit | error`로 이유를 알려요. 카카오 콘솔에서 카카오맵(로컬) 사용 설정을 켜야 하고, 유료 추가 사용은 켜지 않아요. 예전 코드가 저장한 카카오 장소(`places.source='KAKAO'`)는 정리 대상이에요. 기존 DB는 `db/migrations/20261108_places_kakao.sql`을 한 번 적용해야 해요.
 - **walkMin**: `users.home_lat · home_lon`이 있으면 직선 거리 ÷ 분당 67m(올림, 최소 1분), 없으면 설명의 "도보 약 N분", 둘 다 없으면 99.
 - **조건 칩**(cheap · quiet)은 아직 표에 근거 칸이 없어 설명 글자로 걸러요. 프론트와 같은 방식이며 태그 칸을 만들면 바꿔야 합니다.
 - **테스트 데이터**: `db/seeds/map_places_demo.sql`이 프론트 예시와 같은 31곳(서울 마포구)을 넣어요. 다시 실행해도 중복되지 않습니다. 실제 장소 출처(공공데이터 · 카카오 로컬 등)는 미정입니다.

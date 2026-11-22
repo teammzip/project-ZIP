@@ -4,10 +4,16 @@ import { REPORT_REASONS, type ReportReason } from '../reports'
 import styles from './Community.module.css'
 
 type Props = {
-  /** 무엇을 신고하는지: '글' 또는 '댓글' (둘 다 받침이 있어 '을') */
+  /** 무엇을 신고하는지: '글' · '댓글' · '리뷰' (받침에 따라 '을' · '를') */
   what: string
   onClose: () => void
   onSubmit: (reason: ReportReason, detail: string) => void
+}
+
+/** 받침이 있으면 '을', 없으면 '를' */
+const objectParticle = (word: string) => {
+  const code = word.charCodeAt(word.length - 1) - 0xac00
+  return code >= 0 && code <= 11171 && code % 28 === 0 ? '를' : '을'
 }
 
 /** 신고 창: 사유 하나 고르기 + 자세한 내용(기타는 꼭 적기) */
@@ -26,7 +32,7 @@ export function ReportDialog({ what, onClose, onSubmit }: Props) {
   return (
     <Modal open onClose={onClose} title={`${what} 신고`}>
       <form className={styles.report} onSubmit={submit}>
-        <h3>🚨 이 {what}을 신고할까요?</h3>
+        <h3>🚨 이 {what}{objectParticle(what)} 신고할까요?</h3>
         <p>신고 사유를 골라 주세요. 운영자가 확인한 뒤 운영 정책에 따라 처리해요.</p>
         <div className={styles.reasons} role="radiogroup" aria-label="신고 사유">
           {REPORT_REASONS.map((r) => (

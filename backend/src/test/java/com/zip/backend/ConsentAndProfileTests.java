@@ -58,12 +58,20 @@ class ConsentAndProfileTests {
         assertNull(jdbc.queryForObject("SELECT address FROM users", String.class));
     }
 
-    @Test void everyAgreementAndAnAddressAreRequired() throws Exception {
+    @Test void everyAgreementIsRequired() throws Exception {
         String token = socialToken();
         updateMe(token, CONSENT.formatted("2026-10-18").replace("\"agreePolicy\":true", "\"agreePolicy\":false")).andExpect(status().isBadRequest());
         updateMe(token, CONSENT.formatted("2026-10-18").replace("\"ageOver14\":true", "\"ageOver14\":null")).andExpect(status().isBadRequest());
-        updateMe(token, CONSENT.formatted("2026-10-18").replace("서울 마포구 합정동", "   ")).andExpect(status().isBadRequest());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM user_term_agreements", Integer.class));
+    }
+
+    /** 주소는 가입 뒤 주거 설문에서 받으므로 첫 동의에서는 없어도 돼요 (동네는 비어 있음) */
+    @Test void firstConsentWithoutAddress() throws Exception {
+        String token = socialToken();
+        updateMe(token, CONSENT.formatted("2026-10-18").replace("\"address\":\"서울 마포구 합정동\",", "")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.agreedAt").isString()).andExpect(jsonPath("$.address").value(""));
+        assertEquals(3, jdbc.queryForObject("SELECT COUNT(*) FROM user_term_agreements", Integer.class));
+        assertEquals(null, jdbc.queryForObject("SELECT region_id FROM users", Long.class));
     }
 
     @Test void nicknameChangeNeedsNoConsentAndIsValidated() throws Exception {

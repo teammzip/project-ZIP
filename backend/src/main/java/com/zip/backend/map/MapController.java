@@ -44,15 +44,6 @@ public class MapController {
         return map.aiSearch(userId(jwt), request);
     }
 
-    @GetMapping("/api/places/{id}/reviews")
-    public List<Map<String, Object>> reviews(@PathVariable String id) { return map.reviews(id); }
-
-    @PostMapping("/api/places/{id}/reviews")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void addReview(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @Valid @RequestBody MapRequests.Review request) {
-        map.addReview(userId(jwt), id, request);
-    }
-
     @GetMapping("/api/me/place-favorites")
     public List<String> favorites(@AuthenticationPrincipal Jwt jwt) { return map.favorites(userId(jwt)); }
 

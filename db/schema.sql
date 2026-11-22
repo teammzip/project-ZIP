@@ -835,6 +835,50 @@ CREATE TABLE IF NOT EXISTS `place_reviews` (
   CONSTRAINT `ck_place_review_rating` CHECK (`rating` BETWEEN 1 AND 5)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='장소 리뷰: 사용자가 장소에 남기는 별점과 한 줄 리뷰(확장 기능).';
 
+-- 카카오 장소 리뷰: 카카오 검색 장소는 places 에 없으므로 리뷰를 따로 둡니다. 카카오 장소 id · 이름과 회원이 쓴 별점 · 리뷰만 저장하고 주소 · 좌표는 저장하지 않습니다. 한 사람이 한 장소에 하나만 남깁니다. (20261122_03_place_reviews.sql)
+CREATE TABLE IF NOT EXISTS `kakao_place_reviews` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '리뷰 아이디 — 자동 증가',
+  `kakao_place_id` VARCHAR(50) NOT NULL COMMENT '카카오 장소 id (숫자 문자열)',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '리뷰 쓴 사용자 아이디',
+  `name` VARCHAR(60) NOT NULL COMMENT '리뷰 쓸 때의 장소 이름 (표시 · 운영 확인용)',
+  `rating` TINYINT UNSIGNED NOT NULL COMMENT '별점 — 1~5',
+  `body` VARCHAR(300) NULL COMMENT '리뷰 내용',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_kakao_place_reviews_place_user` (`kakao_place_id`, `user_id`),
+  KEY `idx_kakao_place_reviews_user_id` (`user_id`),
+  CONSTRAINT `fk_kakao_place_reviews_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `chk_kakao_place_reviews_id` CHECK (`kakao_place_id` REGEXP '^[0-9]{1,50}$'),
+  CONSTRAINT `chk_kakao_place_reviews_name` CHECK (CHAR_LENGTH(TRIM(`name`)) > 0),
+  CONSTRAINT `chk_kakao_place_reviews_rating` CHECK (`rating` BETWEEN 1 AND 5)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='카카오 검색 장소 리뷰 (우리 회원이 쓴 별점 · 한 줄 리뷰. 장소는 id · 이름만, 주소 · 좌표 없음)';
+
+-- 장소 리뷰 신고: 운영 정책에 어긋나는 장소 리뷰(DB 장소 · 카카오 장소)를 신고한 기록. 사유는 커뮤니티 신고와 같고, 운영자가 리뷰를 지우면 HIDDEN, 문제없으면 DISMISSED. (20261122_03_place_reviews.sql)
+CREATE TABLE IF NOT EXISTS `place_review_reports` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '신고 아이디 — 자동 증가',
+  `reporter_id` BIGINT UNSIGNED NOT NULL COMMENT '신고한 사용자 아이디',
+  `review_kind` ENUM('PLACE','KAKAO') NOT NULL COMMENT '리뷰 표 — PLACE: place_reviews / KAKAO: kakao_place_reviews',
+  `review_id` BIGINT UNSIGNED NOT NULL COMMENT '신고한 리뷰 아이디 (review_kind 표의 id)',
+  `place_key` VARCHAR(60) NOT NULL COMMENT '장소 — DB 장소 번호 또는 "kakao:카카오장소id"',
+  `place_name_snapshot` VARCHAR(60) NOT NULL COMMENT '신고 당시 장소 이름',
+  `reason` ENUM('ABUSE','FALSE_INFO','PRIVACY','AD_ILLEGAL','COPYRIGHT','OTHER') NOT NULL COMMENT '신고 사유 — 커뮤니티 신고(reports.reason)와 같음',
+  `detail` VARCHAR(200) NULL COMMENT '자세한 내용',
+  `status` ENUM('RECEIVED','HIDDEN','DISMISSED') NOT NULL DEFAULT 'RECEIVED' COMMENT '처리 상태 — 접수 / 리뷰 삭제 / 기각',
+  `target_author_snapshot` VARCHAR(12) NULL COMMENT '신고 당시 리뷰 작성자 닉네임 — 삭제 후 표시용',
+  `target_text_snapshot` VARCHAR(300) NULL COMMENT '신고 당시 리뷰 내용 — 서버가 실제 리뷰에서 복사',
+  `target_rating_snapshot` TINYINT UNSIGNED NULL COMMENT '신고 당시 별점',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '신고 일시',
+  `handled_by` BIGINT UNSIGNED NULL COMMENT '처리한 운영자 아이디',
+  `handled_at` DATETIME NULL COMMENT '처리 일시',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_place_review_reports_reporter_target` (`reporter_id`, `review_kind`, `review_id`),
+  KEY `idx_place_review_reports_target` (`review_kind`, `review_id`),
+  KEY `idx_place_review_reports_status_created` (`status`, `created_at`, `id`),
+  CONSTRAINT `fk_place_review_reports_reporter_id` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_place_review_reports_handled_by` FOREIGN KEY (`handled_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `chk_place_review_reports_place_key` CHECK (`place_key` REGEXP '^([1-9][0-9]{0,18}|kakao:[0-9]{1,50})$')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='장소 리뷰 신고: 운영 정책에 어긋나는 장소 리뷰를 신고한 기록. 운영자가 확인해 리뷰를 지우거나 기각합니다.';
+
 -- ----------------------------------------------------------------------------
 -- 집계용 VIEW: 홈의 "월별 수입" 그래프, "이번 달 지출 구성" 도넛, AI "이번 달 지출 요약"이 쓰는 계산
 -- ----------------------------------------------------------------------------
@@ -946,10 +990,11 @@ INSERT IGNORE INTO `terms_documents` (`doc_type`, `version`, `title`, `content`,
 1. 할 일, 일정, 쓰레기 배출 일정 관리
 2. 가계부(수입, 고정 지출, 기타 지출) 및 월세·공과금 관리
 3. AI 대화 및 생활 꿀팁, 동네 지도 정보, 커뮤니티
+쓰레기 배출 일정(요일·시작 시각·배출 장소)은 행정안전부 「전국생활쓰레기배출정보표준데이터」(공공데이터포털, data.go.kr)를 이용하며, 지방자치단체 사정에 따라 실제와 다를 수 있으니 정확한 내용은 사는 곳의 시·군·구청 안내를 확인해 주세요.
 서비스의 내용은 운영상 필요에 따라 변경될 수 있으며, 중요한 변경은 사전에 알립니다.
 
 제3조 (회원가입과 계정)
-① 만 14세 이상인 이용자는 아이디, 닉네임, 이메일, 주소를 입력하고 이 약관과 개인정보 수집·이용에 동의하여 가입할 수 있습니다.
+① 만 14세 이상인 이용자는 아이디, 닉네임, 이메일을 입력하고 이 약관과 개인정보 수집·이용에 동의하여 가입할 수 있습니다. 집 주소는 가입 후 주거 설문이나 내 정보에서 입력할 수 있습니다.
 ② 이용자는 계정 정보를 직접 관리해야 하며, 타인에게 양도하거나 대여할 수 없습니다.
 ③ 허위 정보를 입력한 경우 서비스 이용이 제한될 수 있습니다.
 
@@ -975,7 +1020,8 @@ INSERT IGNORE INTO `terms_documents` (`doc_type`, `version`, `title`, `content`,
 제9조 (약관의 변경)
 약관을 변경하는 경우 시행 7일 전(이용자에게 불리한 변경은 30일 전)에 서비스 내 공지로 알립니다.', 'AGREE', 1, '2026-10-18 00:00:00'),
   ('PRIVACY', '2026-10-18', 'ZIP 개인정보 처리방침', '1. 처리하는 개인정보 항목
-· 회원가입(필수): 아이디, 비밀번호, 닉네임, 이메일, 주소
+· 회원가입(필수): 아이디, 비밀번호, 닉네임, 이메일
+· 주거 설문·내 정보(선택): 집 주소
 · 소셜 로그인(필수): 카카오·구글·네이버가 전달하는 식별값, 이메일, 이름(닉네임)
 · 서비스 이용 중 이용자가 입력하는 정보: 할 일, 일정, 가계부(수입·지출·월세·공과금) 기록, 커뮤니티 글·댓글, AI 대화 내용, AI에 첨부한 사진
 · 자동 수집: 접속 기록, 기기·브라우저 정보, 로그인 유지를 위한 정보(브라우저 저장소)
@@ -1024,8 +1070,8 @@ INSERT IGNORE INTO `terms_documents` (`doc_type`, `version`, `title`, `content`,
 브라우저 설정에서 저장된 정보를 지울 수 있으며, 지우면 다시 로그인해야 합니다.
 
 10. 개인정보 보호책임자
-· 책임자: [이름 / 직책]
-· 연락처: [이메일]
+· 책임자: 김정기
+· 연락처: zhakupyong18@gmail.com
 개인정보 침해에 대한 신고·상담은 개인정보침해신고센터(국번 없이 118, privacy.kisa.or.kr)에도 할 수 있습니다.
 
 11. 처리방침의 변경

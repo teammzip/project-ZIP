@@ -46,6 +46,8 @@ mysql -u root -p --default-character-set=utf8mb4 zip --execute="source db/migrat
 | `20261121_05_trash_schedule_places.sql` | 쓰레기 배출표를 시작 시각 · 배출장소 형식으로 (안내 문구 칸 삭제, 처음 실행 때 기존 예시 행 삭제) | ⭕ |
 | `20261121_06_trash_schedule_columns.sql` | 쓰레기 배출표를 원본 CSV 모양으로: 동네 · 장소 한 줄에 생활쓰레기 · 음식물 · 재활용 배출 요일 · 시작 시각 (이전 모양이면 표를 지우고 새로 만듦). 적용 후 `20261122_01` · `02` 로 데이터를 넣음 | ⭕ |
 | `20261121_07_notices.sql` | 관리자 공지사항 표 (고정 · 팝업) | ⭕ |
+| `20261122_01_terms_sync.sql` | 약관 3종 본문을 화면 문구와 똑같이 (쓰레기 배출 공공데이터 출처, 주소는 가입 후 입력, 예전 문구 정리). 버전 · 동의 기록은 그대로 | ⭕ |
+| `20261122_03_place_reviews.sql` | 장소 리뷰 표 두 개: 카카오 검색 장소 리뷰 `kakao_place_reviews`(카카오 장소 id · 이름 + 회원 별점 · 한 줄 리뷰, 주소 · 좌표 없음) · 리뷰 신고 `place_review_reports` | ⭕ |
 | `20261122_01_regions_nationwide.sql` | **데이터** — 전국 시도 16 · 시군구 233 (`regions`, 없는 것만 추가 · 지역 번호 그대로) | ⭕ |
 | `20261122_02_trash_schedules_nationwide.sql` | **데이터** — 쓰레기 배출표 6,218줄 (`trash_schedules` 를 모두 지우고 다시 넣음, 01 다음에 실행). 마지막에 `파일 줄 수 6218 · 넣은 줄 수 6218 · 지역 없음 0` 이면 정상 | ⭕ |
 

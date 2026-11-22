@@ -29,7 +29,6 @@ export function useSignup() {
         nickname: v.nickname,
         email: v.email,
         emailVerificationToken: v.emailToken,
-        address: v.address,
         agreeTerms: v.agreeTerms,
         agreePrivacy: v.agreePrivacy,
         agreePolicy: v.agreePolicy,

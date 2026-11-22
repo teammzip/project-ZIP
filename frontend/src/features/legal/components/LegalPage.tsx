@@ -1,13 +1,15 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import logo from '@/assets/images/logo-zip.png'
 import { Button } from '@/components/ui'
-import type { LegalDoc } from '../content'
+import { useLegalDoc, type LegalKind } from '../api'
 import { LegalDocView } from './LegalDocView'
 import styles from './Legal.module.css'
 
 /** /terms, /privacy 화면: 로그인 전후 모두 볼 수 있음 */
-export function LegalPage({ doc }: { doc: LegalDoc }) {
+export function LegalPage({ kind }: { kind: LegalKind }) {
   const navigate = useNavigate()
+  // 서버의 지금 시행 중인 약관 (불러오는 중 · 실패면 화면에 있는 같은 문구)
+  const doc = useLegalDoc(kind)
   return (
     <main className={styles.page}>
       <article className={styles.pageCard}>
