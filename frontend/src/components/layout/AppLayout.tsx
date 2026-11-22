@@ -7,6 +7,7 @@ import { useAuthStore, useLogout } from '@/features/auth'
 import { useCalendarServerSync, useNotis } from '@/features/life'
 import { useMemoServerSync } from '@/features/memo'
 import { WarnNotice } from '@/features/moderation'
+import { NoticePopup } from '@/features/notice'
 import { Avatar } from '@/features/profile'
 import { cx } from '@/lib/cx'
 import { DOW } from '@/lib/date'
@@ -46,6 +47,8 @@ export function AppLayout() {
         <main className={cx(styles.main, showFab && styles.mainFab)}>
           <Outlet />
         </main>
+        {/* 관리자가 "팝업으로 보여 주기"를 고른 공지 (일주일 동안 보지 않기 · 닫기) */}
+        <NoticePopup />
       </div>
       <BottomNav />
       {showFab && (
@@ -199,7 +202,7 @@ function MenuPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   }, [open, onClose])
 
   if (!open) return null
-  const tiles: NavItem[] = [...SIDEBAR_ITEMS, { to: '/my/noti', label: '알림', icon: 'bell' }]
+  const tiles: NavItem[] = [...SIDEBAR_ITEMS, { to: '/my/noti', label: '알림', icon: 'bell' }, { to: '/my/settings/notices', label: '공지사항', icon: 'notice' }]
 
   return (
     <>

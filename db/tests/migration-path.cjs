@@ -34,6 +34,7 @@ const incrementalMigrations = [
   '20261121_04_post_list_indexes.sql',
   '20261121_05_trash_schedule_places.sql',
   '20261121_06_trash_schedule_columns.sql',
+  '20261121_07_notices.sql',
 ]
 
 module.exports = { legacyMigrations, incrementalMigrations }

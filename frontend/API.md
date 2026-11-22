@@ -24,6 +24,7 @@
 | [관리자 · 이용 정지 · 경고](#11-관리자--이용-정지-) | ✅ | `user_sanctions`(`seen_at` 포함) `users.status` `reports` |
 | [메모](#12-메모-) | ✅ | `memos` |
 | [고객센터](#13-고객센터-) | ✅ | `support_inquiries` |
+| [공지사항](#14-공지사항-) | ✅ | `notices` (+ 새 공지 알림 `notifications`) |
 
 ---
 
@@ -457,7 +458,12 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 - `read`는 `read_at`이 있으면 `true`. `unreadCount`가 메뉴·종의 빨간 점이 돼요.
 - 알림 화면은 **안 읽음 / 읽음**으로 나눠 보고(`status`), "모두 읽음"은 `ids: []`, 읽은 알림은 골라서 **삭제**해요. 지운 알림은 다시 안 나와야 해요 (줄을 지우거나 `deleted_at`을 두고 목록에서 빼기).
 - 설정에서 알림을 끄면(`notiOn: false`) 만들지 않거나 빈 목록을 주세요.
-- 일정·쓰레기·월세 알림은 아직 프론트가 직접 계산하고(`features/life/derive.ts`의 `buildNotis`), 그 읽음은 `zip-life`의 `notiRead`, 지운 것은 `notiDeleted`에 저장해요. 서버 알림(id 앞에 `s`)의 읽음 · 지우기는 이 API를 써요. 일정이 서버로 옮겨지면 일정 알림도 서버가 만들게 바꿀 수 있어요.
+- **생활 알림 (2026-11-21 서버화)**: 일정 · 월세 알림도 서버가 만들어요(쓰레기 배출은 위 `TRASH` — 아침 7시 알림이 따로 만들어요). `GET /api/notifications` 를 부를 때 그 회원의 앞으로 3일 치를 만들어 두고(이미 만든 것 · 읽은 것 · 지운 것은 다시 안 만듦), 일정을 지우거나 · 완료하거나 · 날짜를 바꾸면 아직 안 읽은 알림을 정리하거나 고쳐요.
+  - `EVENT`: 오늘 ~ 3일 뒤 일정(완료 제외, 기념일 · 매년 반복 포함), 3일 전 오전 9시부터. `title` = 일정 제목, `body` = "11월 24일 (화) · 14:30"(종일 · 기념일)
+  - `RENT`: 월세 계약(계약 정보가 없으면 월세로 봄)이고 월세가 있으면 납부일 3일 전 오전 9시
+  - `link` 는 `calendar:2026-11-24` · `budget:2026-11-25` 처럼 열 화면 + 날짜예요(프론트는 일정 화면 그 날 · 고정 지출 화면으로). 시간대는 한국 시간이에요.
+  - 프론트는 서버 모드에서 브라우저 계산(`buildNotis`)을 하지 않아요(목업 모드에서만).
+- 공지 알림: 관리자가 공지를 올릴 때 `notify: true` 면 `SYSTEM`, `link: notice`, `refId` = 공지 번호 (14장).
 - **홈 알림 칸**: 메모 옆에 알림이 세로로 쌓여요(넓은 화면 4개 · 좁은 화면 3개, 나머지는 "+N개 더 있어요"). "닫기"는 **그날 하루만 숨김**이라 브라우저에만 저장해요(`zip-home-noti-closed`, "닫은 알림 다시 보기"로 되살림). 읽음 처리와는 달라서 서버 API는 필요 없어요.
 
 ---
@@ -717,6 +723,28 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 
 ---
 
+## 14. 공지사항 ✅
+
+> **2026-11-21 백엔드 구현 · 프론트 연결**: 회원은 내 정보 → 고객센터 → **공지사항**(`/my/settings/notices`), 관리자는 관리자 화면 **공지 관리** 탭에서 써요. 목업 모드는 이 브라우저(`zip-notices`)에 저장해요.
+
+| 메서드 | 주소 | 보내는 값 | 받는 값 |
+|---|---|---|---|
+| GET | `/api/notices` | — | `[notice]` (고정 먼저, 새 것부터, 최대 100개, `body` 없음) |
+| GET | `/api/notices/popups` | — | `[notice]` 앱을 열면 띄울 팝업 공지 (`body` 포함, 새 것부터 최대 5개) |
+| GET | `/api/notices/{id}` | — | `notice` (`body` 포함). 없으면 404 |
+| POST | `/api/admin/notices` | `{ title, body, pinned, popup, notify }` | 201 `notice` (관리자만. `notify: true` 면 알림을 켠 일반 회원 모두에게 알림) |
+| PATCH | `/api/admin/notices/{id}` | `{ title, body, pinned, popup }` | `notice` (관리자만) |
+| DELETE | `/api/admin/notices/{id}` | — | 204 (관리자만) |
+
+```json
+{ "id": "3", "title": "11월 점검 안내", "body": "…", "pinned": true, "popup": false, "author": "운영자", "createdAt": "2026-11-21T02:00:00Z", "updatedAt": "2026-11-21T02:00:00Z" }
+```
+- 제목 1~100자, 내용 1~5,000자(앞뒤 공백 제거). 비면 · 넘으면 400.
+- **팝업**(`popup: true`): 회원이 앱을 열면 모달로 떠요. 아래 **일주일 동안 보지 않기**(이 브라우저에 회원별로 7일 기억)와 **닫기**(이번 방문만, 다음에 앱을 열면 다시 뜸)가 있어요. 여러 개면 새 것부터 하나씩. 관리자가 팝업을 끄면 더는 안 떠요.
+- 로그인 회원만 볼 수 있어요(비로그인 401). 일반 회원이 `/api/admin/notices` 를 부르면 403.
+
+---
+
 ## 현재 DB 반영 상태와 연동 주의사항
 
 DB 저장 공간은 다음과 같이 반영되어 있어요. 실제 API 구현과 프론트 연동은 별도예요.
@@ -736,7 +764,7 @@ DB 저장 공간은 다음과 같이 반영되어 있어요. 실제 API 구현�
 
 - 본인 확인은 이메일 인증만 써요(`password_resets.method = EMAIL`). 휴대전화 인증은 없앴어요.
 - 첨부 MIME·5개/2MB, 소유권, JSON 내부 원소, 관리자 역할, 동네 인증 유효기간은 서버가 검사해요.
-- DB 구조 감사는 53테이블 + VIEW 2개 (세부 수치는 `db/tests/schema_expected.json`) 기준이에요. API 구현이나 권한 테스트 통과를 뜻하지 않아요.
+- DB 구조 감사는 54테이블 + VIEW 2개 (세부 수치는 `db/tests/schema_expected.json`) 기준이에요. API 구현이나 권한 테스트 통과를 뜻하지 않아요.
 
 ## 브라우저 저장 (localStorage)
 
