@@ -1,0 +1,273 @@
+.wrap, .list {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 내 정보 화면처럼 넓은 화면에서는 가운데 860px */
+.wrap {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.head, .meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.head { justify-content: space-between; }
+.head h2 { font-size: 20px; }
+.link { color: var(--color-primary); font-size: 14px; font-weight: 700; }
+.meta { color: var(--color-muted); font-size: 13px; }
+
+.item {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.item:hover, .item[aria-current] { border-color: var(--color-primary); background: #f8f9ff; }
+.item:focus-visible, .link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+.item strong { font-size: 15px; }
+
+.pin { padding: 2px 8px; border-radius: 99px; color: #76520d; background: #fff2cf; font-size: 12px; font-weight: 700; }
+.content { margin-top: 12px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; font-size: 14px; }
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.count { color: var(--color-muted); font-size: 12px; }
+
+/* 관리자: 넓은 화면은 왼쪽 목록 · 오른쪽 쓰기 */
+.admin {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+@media (min-width: 960px) {
+  .admin { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+}
+
+/* 공지 팝업: 위 배너(로봇 · 로고 · 공지사항) · 가운데 정렬 본문 · 아래 어두운 바.
+ * 회원 화면 팝업(Modal 안)과 관리자 미리보기가 같은 .card 를 써요. */
+.popup.popup {
+  width: min(500px, 100%);
+  padding: 0;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #fff;
+}
+
+/* 배너 */
+.banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 148px;
+  padding: 0 28px 0 150px;
+  overflow: hidden; /* 로봇은 배너 아래 선에서 잘리게 */
+  background-position: center;
+  background-size: cover;
+  border-bottom: 3px solid var(--color-primary);
+}
+.bannerRobot {
+  position: absolute;
+  left: 14px;
+  bottom: -34px;
+  height: 176px;
+  filter: drop-shadow(0 6px 12px rgba(31, 36, 48, 0.2));
+  pointer-events: none;
+}
+.bannerText {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  text-align: center;
+}
+.bannerLogo { height: 30px; }
+.bannerTag { color: #4a5470; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; }
+.bannerRule {
+  display: flex;
+  align-items: center;
+  width: 150px;
+  height: 10px;
+  margin: 2px 0;
+  background: linear-gradient(var(--color-primary), var(--color-primary)) center / 100% 1px no-repeat;
+}
+.bannerRule i {
+  width: 7px;
+  height: 7px;
+  margin: 0 auto;
+  background: var(--color-primary);
+  transform: rotate(45deg);
+}
+.bannerTitle {
+  color: #1b2a4a;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.bannerCount {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  padding: 2px 9px;
+  border-radius: 99px;
+  color: #fff;
+  background: rgba(31, 36, 48, 0.55);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* 본문: 가운데 정렬 */
+.cardBody {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  max-height: min(52vh, 420px);
+  padding: 26px 28px 22px;
+  overflow-y: auto;
+  text-align: center;
+}
+.cardTitle {
+  color: var(--color-text);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.45;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.cardDate { color: var(--color-muted); font-size: 12px; }
+.cardText {
+  margin-top: 14px;
+  color: #3b4252;
+  font-size: 14px;
+  line-height: 1.95;
+  white-space: pre-wrap;
+  word-break: keep-all; /* 한글은 띄어쓰기에서 줄바꿈 */
+  overflow-wrap: anywhere;
+}
+.cardMore { margin-top: 14px; color: var(--color-primary); font-size: 12px; font-weight: 700; }
+a.cardMore:hover { text-decoration: underline; }
+
+/* 공지가 여러 개: 넓은 창에서 왼쪽 목록 · 오른쪽 내용, 좁은 창에서 위 탭 · 아래 내용 */
+.popup.popupWide { width: min(720px, 100%); }
+.multi {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  min-height: 0;
+}
+.pList {
+  display: flex;
+  flex-direction: column;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  border-right: 1px solid var(--color-line);
+  background: #f7f9fc;
+}
+.pListHead {
+  padding: 14px 16px 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.pItem {
+  display: grid;
+  gap: 3px;
+  padding: 12px 16px;
+  border-left: 3px solid transparent;
+  text-align: left;
+}
+.pItem strong {
+  overflow: hidden;
+  color: #3b4252;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.pItem time { color: var(--color-muted); font-size: 11px; }
+.pItem:hover { background: #eef3fb; }
+.pItemOn, .pItemOn:hover { border-left-color: var(--color-primary); background: #fff; }
+.pItemOn strong { color: var(--color-primary); font-weight: 800; }
+.pItem:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+
+@media (max-width: 600px) {
+  .multi { grid-template-columns: 1fr; }
+  .pList {
+    flex-direction: row;
+    gap: 6px;
+    max-height: none;
+    padding: 10px 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-line);
+  }
+  .pListHead { display: none; }
+  .pItem {
+    flex: none;
+    max-width: 180px;
+    padding: 7px 12px;
+    border: 1px solid var(--color-line);
+    border-radius: 99px;
+    background: #fff;
+  }
+  .pItem strong { -webkit-line-clamp: 1; font-size: 12px; }
+  .pItem time { display: none; }
+  .pItemOn, .pItemOn:hover { border-color: var(--color-primary); background: #eaf2fe; }
+}
+
+/* 아래 어두운 바 */
+.cardFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 8px;
+  background: #23283a;
+}
+.cardFoot button { height: 44px; padding: 0 12px; font-size: 13px; }
+.cardSkip { color: #b8bfd0; }
+.cardSkip:hover { color: #fff; }
+.cardClose { color: #fff; font-weight: 700; }
+.cardClose span { margin-left: 4px; font-size: 12px; }
+.cardMore:focus-visible, .cardFoot button:focus-visible { outline: 2px solid #8fb8ff; outline-offset: -4px; }
+
+/* 좁은 화면: 로봇을 작게 */
+@media (max-width: 420px) {
+  .banner { height: 128px; padding: 0 18px 0 118px; }
+  .bannerRobot { left: 6px; bottom: -28px; height: 146px; }
+  .bannerTitle { font-size: 22px; }
+  .bannerRule { width: 120px; }
+}
+
+/* 관리자 미리보기: 앱 화면 위에 뜬 것처럼 어두운 배경 위에 카드 */
+.previewStage {
+  display: grid;
+  place-items: center;
+  padding: 24px 12px;
+  border-radius: 14px;
+  background: rgba(31, 36, 48, 0.45);
+}
+.previewStage .card { width: min(500px, 100%); box-shadow: var(--shadow-modal); }
+.previewNote { color: var(--color-muted); font-size: 12px; }
+
+.reopen { justify-self: start; }

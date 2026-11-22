@@ -65,6 +65,16 @@ export function ProfileMenu({ open, onClose }: Props) {
             role="menuitem"
             onClick={() => {
               onClose()
+              navigate('/my/settings/notices')
+            }}
+          >
+            공지사항
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onClose()
               navigate('/my/settings')
             }}
           >

@@ -106,6 +106,9 @@
       "table": "support_inquiries"
     },
     {
+      "table": "notices"
+    },
+    {
       "table": "ai_topics"
     },
     {
@@ -3202,6 +3205,86 @@
       "collation": ""
     },
     {
+      "table": "notices",
+      "column": "id",
+      "type": "bigint unsigned",
+      "nullable": "NO",
+      "auto": 1,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "notices",
+      "column": "title",
+      "type": "varchar(100)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "notices",
+      "column": "body",
+      "type": "text",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "notices",
+      "column": "is_pinned",
+      "type": "tinyint(1)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "notices",
+      "column": "is_popup",
+      "type": "tinyint(1)",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "notices",
+      "column": "created_by",
+      "type": "bigint unsigned",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "notices",
+      "column": "created_at",
+      "type": "datetime",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "notices",
+      "column": "updated_at",
+      "type": "datetime",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
       "table": "ai_topics",
       "column": "id",
       "type": "bigint unsigned",
@@ -4624,6 +4707,11 @@
       "columns": "id"
     },
     {
+      "table": "notices",
+      "name": "PRIMARY",
+      "columns": "id"
+    },
+    {
       "table": "ai_topics",
       "name": "PRIMARY",
       "columns": "id"
@@ -5167,6 +5255,14 @@
       "delete_rule": "SET NULL"
     },
     {
+      "table": "notices",
+      "name": "fk_notices_created_by",
+      "column": "created_by",
+      "target": "users",
+      "target_column": "id",
+      "delete_rule": "SET NULL"
+    },
+    {
       "table": "uploaded_files",
       "name": "fk_uploaded_files_user_id",
       "column": "user_id",
@@ -5423,6 +5519,10 @@
     {
       "table": "salary_settings",
       "name": "chk_salary_settings_day"
+    },
+    {
+      "table": "notices",
+      "name": "ck_notices_title"
     },
     {
       "table": "trash_schedules",

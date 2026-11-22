@@ -89,6 +89,7 @@ export const router = createBrowserRouter([
                   { path: 'noti', lazy: page(() => import('@/pages/my/NotiPage'), 'NotiPage') },
                   { path: 'settings', lazy: page(() => import('@/pages/my/SettingsPage'), 'SettingsPage') },
                   { path: 'settings/support/*', lazy: page(() => import('@/pages/my/SupportPage'), 'SupportPage') },
+                  { path: 'settings/notices/*', lazy: page(() => import('@/pages/my/NoticePage'), 'NoticePage') },
                 ],
               },
             ],
