@@ -1,7 +1,7 @@
 const fs = require('node:fs')
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { legacyMigrations, incrementalMigrations } = require('./migration-path.cjs')
+const { legacyMigrations, incrementalMigrations, dataMigrations } = require('./migration-path.cjs')
 
 const read = path => fs.readFileSync(path, 'utf8').replace(/\r\n/g, '\n')
 function tables(sql) {
@@ -24,7 +24,15 @@ const migrations = [...legacyMigrations, ...incrementalMigrations]
 test('all supported migration files are included in the validation path', () => {
   const deprecated = new Set(['20261101_event_anniversary.sql'])
   const files = fs.readdirSync('db/migrations').filter(name => name.endsWith('.sql') && !deprecated.has(name)).sort()
-  assert.deepEqual([...legacyMigrations, ...incrementalMigrations].sort(), files)
+  assert.deepEqual([...legacyMigrations, ...incrementalMigrations, ...dataMigrations].sort(), files)
+})
+
+test('data migrations only change rows, not table structure', () => {
+  // 데이터 마이그레이션은 구조 비교에서 빠지므로, 실제로 표 구조를 안 바꾸는지 따로 확인 (임시 표는 허용)
+  for (const name of dataMigrations) {
+    const sql = read(`db/migrations/${name}`).replace(/(CREATE|DROP) TEMPORARY TABLE/g, '')
+    assert(!/^\s*(CREATE|ALTER|DROP|RENAME|TRUNCATE)\b/im.test(sql), `${name}: structure change`)
+  }
 })
 
 test('foreign keys reference existing compatible columns and SET NULL allows NULL', () => {

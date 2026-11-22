@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 
-/** 쓰레기 배출일 아침 알림을 매분 확인 (7시 전에는 아무것도 안 함). 끄기: zip.trash.reminder.enabled=false (테스트) */
+/** 쓰레기 배출일 알림을 매분 확인 (기본은 그날 0시부터, 설정한 시각 전에는 아무것도 안 함). 끄기: zip.trash.reminder.enabled=false (테스트) */
 @Configuration
 @EnableScheduling
 @ConditionalOnProperty(name = "zip.trash.reminder.enabled", havingValue = "true", matchIfMissing = true)

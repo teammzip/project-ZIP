@@ -18,9 +18,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * 쓰레기 배출일 아침 알림. 회원이 등록한 집 주소(user_settings.home_address)에서 시군구를 찾고(RegionMatcher),
- * 그 동네 쓰레기 배출표(trash_schedules)에 오늘 요일이 있으면 아침 7시(한국 시간)에 알림(TRASH)을 하나 만든다.
- * 서버가 7시에 꺼져 있었으면 켜진 뒤 그날 안에 만든다(알릴 시각은 그날 7시). 같은 날 두 번 만들지 않는다.
+ * 쓰레기 배출일 알림. 회원이 등록한 집 주소(user_settings.home_address)에서 시군구를 찾고(RegionMatcher),
+ * 그 동네 쓰레기 배출표(trash_schedules)에 오늘 요일이 있으면 그날 0시(자정, 한국 시간)에 알림(TRASH)을 하나 만든다.
+ * 서버가 0시에 꺼져 있었으면 켜진 뒤 그날 안에 만든다(알릴 시각은 그날 0시). 시각은 zip.trash.reminder-hour 로 바꿀 수 있음. 같은 날 두 번 만들지 않는다.
  */
 @Service
 public class TrashReminderService {
@@ -42,7 +42,7 @@ public class TrashReminderService {
     private LocalDate checkedDate;
     private final Set<String> checked = new HashSet<>();
 
-    public TrashReminderService(JdbcTemplate jdbc, AuthRepository auth, @Value("${zip.trash.reminder-hour:7}") int hour) {
+    public TrashReminderService(JdbcTemplate jdbc, AuthRepository auth, @Value("${zip.trash.reminder-hour:0}") int hour) {
         this.jdbc = jdbc;
         this.auth = auth;
         this.hour = hour;

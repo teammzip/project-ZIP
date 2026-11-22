@@ -81,7 +81,42 @@ class MapFavoriteIntegrationTests {
         save(token, "kakao:abc", "{\"name\":\"다이소\",\"category\":\"다이소\"}").andExpect(status().isNotFound());
         save(token, "999", null).andExpect(status().isNotFound());
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM kakao_place_favorites", Integer.class));
-        mvc.perform(get("/api/places/{id}/reviews", "kakao:12345").header("Authorization", "Bearer " + token)).andExpect(status().isBadRequest());
+    }
+
+    private ResultActions review(String token, String placeId, String body) throws Exception {
+        return mvc.perform(post("/api/places/{id}/reviews", placeId).header("Authorization", "Bearer " + token)
+            .contentType("application/json").content(body));
+    }
+
+    @Test void kakaoPlaceReviewsAreSavedWithIdAndNameOnly() throws Exception {
+        String one = login("tester01");
+        String two = login("tester02");
+        mvc.perform(get("/api/places/{id}/reviews", "kakao:12345").header("Authorization", "Bearer " + one))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        review(one, "kakao:12345", "{\"rating\":5,\"body\":\"여기 존맛\",\"name\":\"동네 국밥\"}").andExpect(status().isNoContent());
+        review(two, "kakao:12345", "{\"rating\":4,\"name\":\"동네 국밥\"}").andExpect(status().isNoContent());
+        // 한 사람당 한 곳에 하나
+        review(one, "kakao:12345", "{\"rating\":1,\"name\":\"동네 국밥\"}").andExpect(status().isConflict());
+        mvc.perform(get("/api/places/{id}/reviews", "kakao:12345").header("Authorization", "Bearer " + two))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[?(@.author.nickname == '회원하나')].body").value("여기 존맛"))
+            .andExpect(jsonPath("$[?(@.author.nickname == '회원둘')].body").value(""));
+        // 다른 카카오 장소에는 안 보임
+        mvc.perform(get("/api/places/{id}/reviews", "kakao:99").header("Authorization", "Bearer " + one))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM kakao_place_reviews WHERE kakao_place_id = '12345' AND name = '동네 국밥'", Integer.class));
+    }
+
+    @Test void invalidKakaoPlaceReviewsAreRejected() throws Exception {
+        String token = login("tester01");
+        review(token, "kakao:12345", "{\"rating\":5}").andExpect(status().isBadRequest());
+        review(token, "kakao:12345", "{\"rating\":5,\"name\":\"   \"}").andExpect(status().isBadRequest());
+        review(token, "kakao:12345", "{\"rating\":5,\"name\":\"" + "가".repeat(61) + "\"}").andExpect(status().isBadRequest());
+        review(token, "kakao:12345", "{\"rating\":6,\"name\":\"국밥\"}").andExpect(status().isBadRequest());
+        review(token, "kakao:12345", "{\"rating\":5,\"name\":\"국밥\",\"body\":\"" + "가".repeat(301) + "\"}").andExpect(status().isBadRequest());
+        review(token, "kakao:abc", "{\"rating\":5,\"name\":\"국밥\"}").andExpect(status().isNotFound());
+        mvc.perform(get("/api/places/{id}/reviews", "kakao:abc").header("Authorization", "Bearer " + token)).andExpect(status().isNotFound());
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM kakao_place_reviews", Integer.class));
     }
 
     @Test void kakaoFavoritesAreLimitedPerUser() throws Exception {

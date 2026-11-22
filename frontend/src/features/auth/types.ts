@@ -66,10 +66,11 @@ export type SignupRequest = ConsentRequest & {
   email: string
   /** 이메일 인증을 마치고 받은 값 (POST /auth/email/verify 응답) */
   emailVerificationToken: string
-  address: string
+  /** 선택 — 집 주소는 가입 뒤 주거 설문에서 받아요 */
+  address?: string
 }
 
-/** PATCH /auth/me — 닉네임 수정, 또는 소셜 첫 가입 때 주소·동의 받기 */
+/** PATCH /auth/me — 닉네임 수정, 또는 소셜 첫 가입 때 동의 받기 (주소는 선택) */
 export type UpdateMeRequest = Partial<ConsentRequest> & {
   nickname?: string
   address?: string

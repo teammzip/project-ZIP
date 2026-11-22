@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button, Modal } from '@/components/ui'
+import { useAuthStore } from '@/features/auth'
 import { RegionVerifyDialog, useRegionVerify } from '@/features/life'
 import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
@@ -10,6 +11,8 @@ import { walkMin, type PlaceItem } from '../data/places'
 import type { NearbyMapResult } from '../nearbyMap'
 import { placeColors } from '../placeIcons'
 import { PlaceIcon } from './PlaceIcon'
+import { PlaceReviews, RatingBadge, Stars } from './PlaceReviews'
+import { useMyReviews, useReviewSummaries, type MyReview, type ReviewSummary } from '../reviews'
 import { SaveSheet } from './SaveSheet'
 import { openSaveSheet, useFavNote } from '../saveSheet'
 import { useMapStore } from '../store'
@@ -102,7 +105,10 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
   const asked = params.get('cat')
   // 서버 모드는 종류 목록을 받기 전이라 비어 있을 수 있어서, 그때는 주소의 종류를 그대로 믿음 (아래에서 칩에도 켬)
   const [cat, setCat] = useState(() => (asked && (data.kinds.includes(asked) || !data.kinds.length) ? asked : ALL))
-  const [tab, setTab] = useState<'near' | 'fav'>('near')
+  const [tab, setTab] = useState<'near' | 'fav' | 'reviews'>('near')
+  const me = useAuthStore((s) => s.user)
+  const myReviews = useMyReviews(me ? { id: me.id, nickname: me.nickname } : undefined, tab === 'reviews')
+  const reviewedIds = new Set((myReviews.data ?? []).map((r) => r.placeId))
   const [filter, setFilter] = useState('near')
   const [selId, setSelId] = useState<string | null>(null)
   const [selectedLocationKey, setSelectedLocationKey] = useState('')
@@ -134,6 +140,7 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
   const base = (() => {
     if (found) return found.items.map((r) => r.p)
     if (tab === 'fav') return places.filter((p) => favs.includes(p.id))
+    if (tab === 'reviews') return places.filter((p) => reviewedIds.has(p.id))
     if (cat === ALL) return places
     if (cat.startsWith(CUSTOM)) {
       const kw = cat.slice(CUSTOM.length)
@@ -147,6 +154,8 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
   const savedKakao = tab === 'fav' && !found
     ? favs.filter((id) => isKakaoPlace(id) && favNames[id] && !list.some((p) => p.id === id)).map((id) => ({ id, ...favNames[id] }))
     : []
+  // 목록 별점 (ZIP 회원 리뷰 평균 · 수)
+  const summaries = useReviewSummaries([...list.map((p) => p.id), ...savedKakao.map((k) => k.id)])
   const activeSelectedId = selectedLocationKey === selectionKey ? selId : null
   // 검색 결과는 불러온 목록에 없을 수 있어서 함께 찾음
   const pool = found ? [...found.items.map((r) => r.p), ...places] : places
@@ -449,6 +458,18 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
                 >
                   <i aria-hidden="true">★</i> 내가 저장한 곳 <b className={styles.tabCount}>{favs.length}</b>
                 </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'reviews' && !found}
+                  className={cx(styles.tab, tab === 'reviews' && !found && styles.tabOn)}
+                  onClick={() => {
+                    clearSearch()
+                    setTab('reviews')
+                  }}
+                >
+                  <i aria-hidden="true">✍</i> 내 리뷰
+                </button>
               </div>}
 
               {!nearby && <h2 className={styles.listTitle}>
@@ -458,10 +479,12 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
                   </>
                 ) : tab === 'fav' ? (
                   '내가 저장한 곳'
+                ) : tab === 'reviews' ? (
+                  '내가 쓴 리뷰'
                 ) : (
                   <>이 주변 {cat === ALL ? '장소' : cat.startsWith(CUSTOM) ? cat.slice(CUSTOM.length) : cat}</>
                 )}
-                <small>{list.length + savedKakao.length}곳</small>
+                <small>{tab === 'reviews' && !found ? `${myReviews.data?.length ?? 0}개` : `${list.length + savedKakao.length}곳`}</small>
               </h2>}
 
               {!found && tab === 'near' && (
@@ -495,7 +518,23 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
                 </div>
               )}
 
-              {tab === 'fav' && !found ? (
+              {tab === 'reviews' && !found ? (
+                // 내가 쓴 리뷰: 지금 불러온 장소면 눌러서 상세(고치기 · 지우기), 아니면 카카오맵 링크
+                myReviews.isLoading ? (
+                  <p className={styles.empty} role="status">내 리뷰를 불러오고 있어요.</p>
+                ) : myReviews.isError ? (
+                  <p className={styles.empty}>내 리뷰를 불러오지 못했어요.</p>
+                ) : !myReviews.data?.length ? (
+                  <p className={styles.empty}>아직 쓴 리뷰가 없어요. 장소를 눌러 아래에서 리뷰를 남겨 보세요.</p>
+                ) : (
+                  <ol className={styles.list}>
+                    {myReviews.data.map((r) => {
+                      const p = places.find((x) => x.id === r.placeId)
+                      return <MyReviewRow key={r.id} r={r} onClick={p ? () => select(p) : undefined} />
+                    })}
+                  </ol>
+                )
+              ) : tab === 'fav' && !found ? (
                 // 내가 저장한 곳: 내가 만든 리스트별로 세로로 (리스트 제목 → 그 리스트 장소들). 한 장소가 여러 리스트에 보일 수 있음
                 (lists.length ? lists : [{ id: 'all', name: '내 장소', color: '#03c75a', placeIds: favs }]).map((l) => {
                   const ids = l.placeIds.filter((id) => favs.includes(id))
@@ -513,10 +552,10 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
                       </h3>
                       <ol className={styles.list}>
                         {rows.map((p, i) => (
-                          <PlaceRow key={p.id} p={p} rank={i + 1} onClick={() => select(p)} />
+                          <PlaceRow key={p.id} p={p} rank={i + 1} summary={summaries.get(p.id)} onClick={() => select(p)} />
                         ))}
                         {kakaoRows.map((k) => (
-                          <SavedKakaoRow key={k.id} id={k.id} n={k.n} cat={k.cat} />
+                          <SavedKakaoRow key={k.id} id={k.id} n={k.n} cat={k.cat} summary={summaries.get(k.id)} />
                         ))}
                       </ol>
                     </section>
@@ -525,11 +564,11 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
               ) : (
                 <ol className={styles.list}>
                   {list.map((p, i) => (
-                    <PlaceRow key={p.id} p={p} rank={i + 1} why={found?.items.find((r) => r.p.id === p.id)?.why} distanceMeters={distances.get(p.id)} onClick={() => select(p)} />
+                    <PlaceRow key={p.id} p={p} rank={i + 1} why={found?.items.find((r) => r.p.id === p.id)?.why} distanceMeters={distances.get(p.id)} summary={summaries.get(p.id)} onClick={() => select(p)} />
                   ))}
                 </ol>
               )}
-              {!found && !list.length && !savedKakao.length && <p className={styles.empty}>{tab === 'fav' ? '아직 저장한 곳이 없어요. 장소 오른쪽의 [☆ 저장]을 누르면 여기에 모여요.' : data.server ? '이 조건의 장소가 아직 없어요.' : '이 조건의 장소가 예시 데이터에 없어요.'}</p>}
+              {!found && tab !== 'reviews' && !list.length && !savedKakao.length && <p className={styles.empty}>{tab === 'fav' ? '아직 저장한 곳이 없어요. 장소 오른쪽의 [☆ 저장]을 누르면 여기에 모여요.' : data.server ? '이 조건의 장소가 아직 없어요.' : '이 조건의 장소가 예시 데이터에 없어요.'}</p>}
               <p className={styles.note}>{!data.server ? '장소는 예시 데이터예요.' : list.some((p) => isKakaoPlace(p.id)) || savedKakao.length ? '장소 검색 © Kakao.' : '장소는 서버(DB)에서 불러왔어요.'} 지도 © OpenStreetMap</p>
             </>
           )}
@@ -599,7 +638,7 @@ function ActionIcon({ name, filled }: { name: 'star' | 'route' | 'info' | 'map';
 }
 
 /** 목록 한 줄: 왼쪽 썸네일, 순위 · 이름 · 종류 · 도보, 특징 칩 (AI 추천이면 추천 이유) */
-function PlaceRow({ p, rank, why, distanceMeters, onClick }: { p: PlaceItem; rank: number; why?: string[]; distanceMeters?: number; onClick: () => void }) {
+function PlaceRow({ p, rank, why, distanceMeters, summary, onClick }: { p: PlaceItem; rank: number; why?: string[]; distanceMeters?: number; summary?: ReviewSummary; onClick: () => void }) {
   return (
     <li>
       <div className={styles.row} role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => e.key === 'Enter' && onClick()}>
@@ -610,6 +649,7 @@ function PlaceRow({ p, rank, why, distanceMeters, onClick }: { p: PlaceItem; ran
           <span className={styles.rowName}>
             <i>{rank}</i>
             <b>{p.n}</b>
+            {summary && <RatingBadge rating={summary.rating} count={summary.count} />}
           </span>
           <small>
             {p.cat} · {distanceMeters === undefined ? walkText(p) : `직선 ${distanceMeters.toLocaleString('ko-KR')}m`}
@@ -705,7 +745,7 @@ function dragScroll(el: HTMLDivElement | null) {
 }
 
 /** 저장 탭의 카카오 장소 (이름 · 종류만 있음): 누르면 카카오맵 장소 페이지, ★ 로 저장 취소 */
-function SavedKakaoRow({ id, n, cat }: { id: string; n: string; cat: string }) {
+function SavedKakaoRow({ id, n, cat, summary }: { id: string; n: string; cat: string; summary?: ReviewSummary }) {
   return (
     <li>
       <div className={styles.row}>
@@ -716,6 +756,7 @@ function SavedKakaoRow({ id, n, cat }: { id: string; n: string; cat: string }) {
           <span className={styles.rowMain}>
             <span className={styles.rowName}>
               <b>{n}</b>
+              {summary && <RatingBadge rating={summary.rating} count={summary.count} />}
             </span>
             <small>{cat} · 카카오맵에서 보기 ↗</small>
           </span>
@@ -735,7 +776,43 @@ function SavedKakaoRow({ id, n, cat }: { id: string; n: string; cat: string }) {
   )
 }
 
-/** 장소 상세: 이름 · 종류 · 도보, 특징, 저장 · 길찾기 · 큰 지도 */
+/** 내가 쓴 리뷰 한 줄: 장소 이름 · 별점 · 날짜 · 내용. 지금 불러온 장소면 눌러서 상세로(고치기 · 지우기), 아니면 카카오맵 링크 */
+function MyReviewRow({ r, onClick }: { r: MyReview; onClick?: () => void }) {
+  const date = new Date(r.createdAt)
+  const kakao = isKakaoPlace(r.placeId)
+  const main = (
+    <span className={styles.rowMain}>
+      <span className={styles.rowName}>
+        <b>{r.placeName}</b>
+        <Stars value={r.rating} size={12} />
+      </span>
+      <small>
+        {Number.isNaN(date.getTime()) ? '' : `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}.`}
+        {onClick ? ' · 눌러서 고치기 · 지우기' : kakao ? ' · 카카오맵에서 보기 ↗' : ''}
+      </small>
+      {r.body && <span className={styles.rowTag}>{r.body}</span>}
+    </span>
+  )
+  return (
+    <li>
+      {onClick ? (
+        <div className={styles.row} role="button" tabIndex={0} onClick={onClick} onKeyDown={(e) => e.key === 'Enter' && onClick()}>
+          {main}
+        </div>
+      ) : kakao ? (
+        <div className={styles.row}>
+          <a className={styles.rowLink} href={`https://place.map.kakao.com/${r.placeId.slice('kakao:'.length)}`} target="_blank" rel="noopener noreferrer">
+            {main}
+          </a>
+        </div>
+      ) : (
+        <div className={styles.row}>{main}</div>
+      )}
+    </li>
+  )
+}
+
+/** 장소 상세: 이름 · 종류 · 도보, 특징, 저장 · 길찾기 · 큰 지도, 리뷰 */
 function PlaceDetail({ p, distanceMeters, onBack }: { p: PlaceItem; distanceMeters?: number; onBack: () => void }) {
   return (
     <div className={styles.detail}>
@@ -770,6 +847,7 @@ function PlaceDetail({ p, distanceMeters, onBack }: { p: PlaceItem; distanceMete
           <span>{kakaoId(p) ? '더 알아보기' : '큰 지도'}</span>
         </a>
       </div>
+      <PlaceReviews placeId={p.id} placeName={p.n} />
     </div>
   )
 }

@@ -34,6 +34,16 @@ const incrementalMigrations = [
   '20261121_04_post_list_indexes.sql',
   '20261121_05_trash_schedule_places.sql',
   '20261121_06_trash_schedule_columns.sql',
+  '20261121_07_notices.sql',
+  '20261122_01_terms_sync.sql',
+  '20261122_03_place_reviews.sql',
 ]
 
-module.exports = { legacyMigrations, incrementalMigrations }
+// 표 구조는 안 바꾸고 데이터만 넣는 마이그레이션 (전국 지역 · 쓰레기 배출표, db/tools/trash_import.py 가 만듦).
+// 구조 비교 · 19번 업그레이드 묶음에는 넣지 않음 — 구조 변화가 없고, 배출표 파일이 커서(약 850KB) 묶음이 너무 커짐
+const dataMigrations = [
+  '20261122_01_regions_nationwide.sql',
+  '20261122_02_trash_schedules_nationwide.sql',
+]
+
+module.exports = { legacyMigrations, incrementalMigrations, dataMigrations }

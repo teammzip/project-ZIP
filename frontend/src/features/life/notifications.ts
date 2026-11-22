@@ -8,8 +8,8 @@ import { relTime } from '@/lib/date'
 import { buildMockRentNoti, buildNotis, type Noti } from './derive'
 import { useLifeStore } from './store'
 
-/* 서버 모드에서는 일정과 월세 알림을 서버에서 받아요. 모의 모드에서는 브라우저에서 계산해요.
- * 서버 알림 id 는 앞에 's' 를 붙여 구분하고, 읽음 · 지우기는 서버 알림이면 /api/notifications, 아니면 이 브라우저(zip-life)에 저장해요. */
+/* 서버 알림은 id 앞에 's'를 붙이고 읽음 · 삭제를 서버에 저장해요.
+ * 목업 모드의 일정 · 월세 알림은 브라우저에서 계산하고 읽음 · 삭제를 zip-life에 저장해요. */
 
 type ServerNoti = {
   id: string
@@ -26,10 +26,11 @@ const KEY = ['notifications'] as const
 const SERVER = 's'
 const ICONS: Record<ServerNoti['type'], string> = { EVENT: '📌', TRASH: '♻️', RENT: '💸', BILL: '🧾', COMMUNITY: '💬', SYSTEM: '📢' }
 
-/** 서버 알림을 누르면 열 화면 */
+/** 일정은 알림의 날짜, 월세는 납부 대상 월, 공지는 공지 번호로 이동해요. */
 const linkTo = (n: ServerNoti) =>
   n.link === 'community' ? (n.refId ? `/community?post=${n.refId}` : '/community')
   : n.link === 'support' ? `/my/settings/support${n.refId ? `/${n.refId}` : ''}`
+  : n.link === 'notice' ? `/my/settings/notices${n.refId ? `/${n.refId}` : ''}`
   : n.type === 'EVENT' && n.link && /^calendar:\d{4}-\d{2}-\d{2}$/.test(n.link)
     ? `/my/calendar?date=${n.link.slice(9)}`
   : n.link === 'budget' && n.type === 'RENT' && n.refId && /^\d{4}(0[1-9]|1[0-2])$/.test(n.refId)

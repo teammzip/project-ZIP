@@ -19,11 +19,12 @@
 | [알림](#6-알림-) | ✅ | `notifications` (읽음 · 삭제) |
 | [커뮤니티 · 첨부 · 신고](#7-커뮤니티--첨부--신고-) | ✅ | `posts` `post_likes` `comments` `uploaded_files` `post_attachments` `reports` |
 | [AI](#8-ai-) | ✅ | `ai_topics`(`guide` 포함) `ai_conversations` `ai_messages` `ai_usage_daily` (분야 목록 API 는 없고 프론트 고정) |
-| [지도](#9-지도-) | ✅ | `places` `place_categories` `place_reviews` `place_favorites` `kakao_place_favorites` `place_lists` `place_list_items` · `users.home_lat/home_lon` (리뷰 화면은 없음) |
-| [약관](#10-약관-) | 🔶 | `terms_documents` |
+| [지도](#9-지도-) | ✅ | `places` `place_categories` `place_reviews` `place_favorites` `kakao_place_favorites` `place_lists` `place_list_items` · `users.home_lat/home_lon` |
+| [약관](#10-약관-) | ✅ | `terms_documents` |
 | [관리자 · 이용 정지 · 경고](#11-관리자--이용-정지-) | ✅ | `user_sanctions`(`seen_at` 포함) `users.status` `reports` |
 | [메모](#12-메모-) | ✅ | `memos` |
 | [고객센터](#13-고객센터-) | ✅ | `support_inquiries` |
+| [공지사항](#14-공지사항-) | ✅ | `notices` (+ 새 공지 알림 `notifications`) |
 
 ---
 
@@ -441,7 +442,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 
 ## 6. 알림 ✅
 
-> **서버 알림**은 **내 글 댓글 · 내 댓글 답글 · 운영자 댓글**(`COMMUNITY`, `link: community` · `refId` = 글 번호), **운영자가 지운 · 신고로 숨긴 내 글 · 댓글 · 경고 · 문의 답변**(`SYSTEM`, 문의는 `link: support`), **쓰레기 배출일 · 월세 납부 안내**예요. 알림을 끈 회원(`user_settings.noti_on = 0`)에게는 새 알림을 만들지 않아요. 화면은 서버 알림과 브라우저에서 계산한 일정 알림을 함께 보여 줘요. 자세한 서버 규칙은 [backend/IMPLEMENTATION.md](../backend/IMPLEMENTATION.md#알림).
+> 서버는 댓글과 답글(`COMMUNITY`), 관리 조치와 문의 답변 및 공지(`SYSTEM`), 일정 · 쓰레기 배출일 · 월세 납부 안내를 저장해요. 알림을 끈 회원(`user_settings.noti_on = 0`)에게는 새 알림을 만들지 않아요. 자세한 서버 규칙은 [backend/IMPLEMENTATION.md](../backend/IMPLEMENTATION.md#알림)에 있어요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
@@ -454,13 +455,14 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
   "link": "budget", "refId": "202610", "notifyAt": "2026-10-12T00:00:00Z", "read": false }
 ```
 - `type`: `EVENT` · `TRASH` · `RENT` · `BILL` · `COMMUNITY` · `SYSTEM` (`notifications.noti_type`)
-- `TRASH`(쓰레기 배출일): 서버가 만들어요(`notification/TrashReminderService`). 내 집 주소(`homeAddress`)에서 시군구를 찾고, 그 동네 배출표(`trash_schedules`)에 오늘 요일이 있으면 **아침 7시(한국 시간)** 에 하루 한 번 `{ title: "오늘은 쓰레기 배출일이에요", body: "생활쓰레기 · 음식물 · 18:00부터 · 내 집 혹은 내 점포 앞" }`. 알림을 끄면(`notiOn: false`) 안 만들고, 서버가 7시에 꺼져 있었으면 켜진 뒤 그날 안에 만들어요(`notifyAt`은 그날 7시). 장소가 여러 곳인 군 지역은 장소 대신 "배출장소는 사는 곳마다 달라요". `link`는 없어요.
-- `EVENT`(일정 알림)은 목록에서 동기화해요. `calendar:YYYY-MM-DD` 링크는 해당 날짜의 일정을 열어요.
+- `TRASH`(쓰레기 배출일): `TrashReminderService`가 내 집 주소(`homeAddress`)로 찾은 배출표(`trash_schedules`)를 보고 배출일에 한 번 저장해요. 기본 알림 시각은 **배출일 0시(한국 시간)** 예요. 서버가 그 시각에 꺼져 있었으면 켜진 뒤 그날 안에 저장하고 `notifyAt`은 해당 알림 시각을 유지해요. 장소가 여러 곳인 군 지역은 "배출장소는 사는 곳마다 달라요"로 안내해요.
+- `EVENT`(일정 알림): 목록 조회 시 오늘부터 3일 뒤까지의 일정과 기념일을 동기화해요. 일정 3일 전 오전 9시부터 표시하고 `calendar:YYYY-MM-DD` 링크로 해당 날짜를 열어요. 일정이 바뀌면 안 읽은 알림을 갱신하거나 정리해요.
 - `RENT`(월세 납부 안내)는 스케줄러가 계약 기간 안의 이번 달 `rent_payments` 미납 기록을 확인해 납부 3일 전부터 당일까지 한 번 저장해요. 가계부의 저장된 시간대(없으면 한국 시간)로 날짜를 판단해요. `refId`는 납부 대상 연월(`YYYYMM`)이고 알림을 누르면 그 달의 가계부 고정 지출을 열어요. 기존 `budget:YYYY-MM-DD` 링크도 같은 달의 발송 이력으로 봐요. 월세를 납부하면 해당 월의 안 읽은 알림은 목록에서 숨겨요.
 - `read`는 `read_at`이 있으면 `true`. `unreadCount`가 메뉴·종의 빨간 점이 돼요.
 - 알림 화면은 **안 읽음 / 읽음**으로 나눠 보고(`status`), "모두 읽음"은 `ids: []`, 읽은 알림은 골라서 **삭제**해요. 지운 알림은 다시 안 나와야 해요 (줄을 지우거나 `deleted_at`을 두고 목록에서 빼기).
 - 설정에서 알림을 끄면(`notiOn: false`) 만들지 않거나 빈 목록을 주세요.
 - 모의 모드에서 계산하는 일정·월세 알림의 읽음과 삭제는 `zip-life`에 저장해요. 서버 모드에서는 위 API를 사용해요.
+- 공지 알림: 관리자가 공지를 올릴 때 `notify: true` 면 `SYSTEM`, `link: notice`, `refId` = 공지 번호 (14장).
 - **홈 알림 칸**: 메모 옆에 알림이 세로로 쌓여요(넓은 화면 4개 · 좁은 화면 3개, 나머지는 "+N개 더 있어요"). "닫기"는 **그날 하루만 숨김**이라 브라우저에만 저장해요(`zip-home-noti-closed`, "닫은 알림 다시 보기"로 되살림). 읽음 처리와는 달라서 서버 API는 필요 없어요.
 
 ---
@@ -574,6 +576,15 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | GET | `/api/places?regionId=2&category=세탁방&lat=37.5496&lon=126.9137` | — | `[place]` (가까운 순. `lat` · `lon` = 지도 중심, 생략하면 우리 집) |
 | GET | `/api/places?regionId=2&q=빵집` | — | `[place]` (직접 추가한 검색어 칩: 이름 · 설명 · 종류에 글자 포함. 검색창은 `&wide=true` — 가게 이름 · 유명한 곳까지, 이름이 맞는 곳부터) |
 | POST | `/api/places/ai-search` | `{ q: "밤에 갈 수 있는 약국", regionId }` | `[{ place, reasons: ["약국", "24시간·심야 운영"], walkMin }]` (최대 5곳) |
+| GET | `/api/places/{id}/reviews` | — | `[{ id, rating, body, author: { id, nickname }, createdAt, reportedByMe }]` 최신순 (장소 상세 아래 리뷰). id = DB 장소 `12` 또는 카카오 장소 `kakao:123` |
+| POST | `/api/places/{id}/reviews` | `{ rating(1~5), body(300자, 선택), name(카카오 장소만, 60자) }` | — (한 사람당 한 장소 하나, 두 번이면 409. 카카오 장소는 `name` 없으면 400) |
+| PUT | `/api/places/{id}/reviews/mine` | `{ rating, body }` | — 내 리뷰 고치기 (없으면 404) |
+| DELETE | `/api/places/{id}/reviews/mine` | — | — 내 리뷰 지우기 (없으면 404) |
+| POST | `/api/places/{id}/reviews/{reviewId}/reports` | `{ reason, detail }` (사유는 커뮤니티 신고와 같음) | — 남의 리뷰 신고 (내 리뷰 400 · 같은 리뷰 두 번 409) |
+| GET | `/api/places/review-summary?ids=12,kakao:123` | — | `[{ id, rating, count }]` 지도 목록 별점 (100곳까지, 리뷰 없는 곳은 빠짐) |
+| GET | `/api/me/place-reviews` | — | `[{ id, placeId, placeName, rating, body, createdAt }]` 내가 쓴 리뷰 (지도 "내 리뷰" 탭) |
+| GET | `/api/admin/place-review-reports?status=` | — | 관리자 리뷰 신고 목록 `[{ id, reviewKind, reviewId, placeId, placeName, review: { author, text, rating, deleted }, reason, detail, reporter, status, createdAt }]` |
+| PATCH | `/api/admin/place-review-reports/{id}` | `{ status: HIDDEN \| DISMISSED }` | — HIDDEN = 리뷰 삭제 + 쓴 사람 알림, DISMISSED = 문제없음 (그 리뷰의 접수 중 신고 전부) |
 | GET | `/api/me/place-favorites` | — | `[placeId]` (DB 장소는 번호, 카카오 장소는 `"kakao:카카오장소id"`) |
 | PUT · DELETE | `/api/me/place-favorites/{placeId}` | 카카오 장소만 `{ name, category }` | — (★ 누르기 · 풀기) |
 | GET | `/api/me/place-favorites/kakao` | — | `[{ id: "kakao:…", name, category }]` (저장 목록에 보일 이름 · 종류) |
@@ -582,8 +593,6 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | PATCH · DELETE | `/api/me/place-lists/{id}` | `{ name, color }` | — (삭제하면 이 리스트에만 있던 장소는 저장도 풀림) |
 | PUT | `/api/me/place-favorites/{placeId}/lists` | `{ listIds, name?, category? }` | — (★ 저장 창의 [저장]: 고른 리스트들에 넣음, 비우면 저장 풂. 처음 저장하는 카카오 장소는 name · category 필요) |
 | GET · PUT | `/api/me/map-settings` | `{ categories: ["세탁방", …], keywords: ["빵집"] }` | 같은 모양 (칩에 보일 종류 · 직접 추가한 검색어) |
-| GET | `/api/places/{id}/reviews` | — | `[{ id, rating, body, author, createdAt }]` (확장 기능, 화면 없음) |
-| POST | `/api/places/{id}/reviews` | `{ rating, body }` | — (한 사람당 한 장소 하나) |
 
 ```json
 { "id": "3", "category": "세탁방", "name": "코인빨래방 합정점", "description": "도보 약 3분 · 24시간",
@@ -591,7 +600,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 ```
 - **종류 15개**: 세탁방 · 편의점 · 약국 · 마트 · 카페 · 병원 · 헬스장 · 은행 · 미용실 · 다이소 · 공원 · 식당 · 반찬가게 · 세탁소 · 주민센터. 처음 칩에는 앞의 4개만 보여요.
   - DB place_categories 기본 데이터에 15개 모두 반영돼 있어요. 여기에 `기타`(📍, 정렬 99)가 있어요: 검색어로 찾은 장소 중 15종류에 안 맞는 곳을 담고, 칩 · 종류 편집에는 보이지 않아요.
-- **카카오 로컬 API (2026-11-15 변경)**: 서버에 `KAKAO_REST_KEY`가 있으면 `category` · `q` 검색은 서버가 카카오에서 지도 중심 근처를 찾아 **저장하지 않고 그대로** 줘요. 카카오 장소의 `id`는 `kakao:카카오장소id`예요(카카오 운영 정책: 장소 정보 장기 저장 제한). **즐겨찾기는 카카오 장소 id와 표시용 이름 · 종류만** `kakao_place_favorites`에 저장하고 주소 · 좌표는 저장하지 않아요(한 사람당 200곳). 그래서 저장 탭에서 지금 검색 결과에 없는 카카오 장소는 지도 핀 없이 목록으로 보이고, 누르면 카카오맵 장소 페이지가 열려요. 리뷰는 안 돼요(400). 화면에 "장소 검색 © Kakao"를 표시해요. 무료 쿼터 보호: 같은 검색 10분 캐시, 사람당 1분 30번, 서버 하루 30000번(설정으로 변경). 한도 · 실패면 DB 장소만 주고 응답 헤더 `X-Place-Notice`(`user-limit` · `daily-limit` · `error`)로 알려 주면 프론트가 안내 문구를 띄워요. 종류 칩 · 검색어 칩은 반경 1km, 검색창(`wide=true`)은 반경 5km + 거리 제한 없는 정확도 검색을 합쳐 이름이 같은 곳 → 이름에 든 곳 순이에요. 15종류에 안 맞는 검색 결과는 `기타`예요. 분류 코드가 있는 종류(편의점 CS2 · 약국 PM9 · 마트 MT1 · 카페 CE7 · 병원 HP8 · 은행 BK9 · 식당 FD6)는 코드로, 나머지는 키워드(세탁방 → "빨래방" 등)로 찾아요. 키가 없거나 실패하면 DB 장소만. 카카오는 영업시간을 주지 않아 `openHours`는 비어 있고, 24시간 · 저렴 · 조용 조건은 설명 글자로만 걸러요. 장기적으로는 공공데이터(소상공인 상가정보)를 우리 DB에 적재해 외부 호출을 줄이는 방안을 검토해요.
+- **카카오 로컬 API (2026-11-15 변경)**: 서버에 `KAKAO_REST_KEY`가 있으면 `category` · `q` 검색은 서버가 카카오에서 지도 중심 근처를 찾아 **저장하지 않고 그대로** 줘요. 카카오 장소의 `id`는 `kakao:카카오장소id`예요(카카오 운영 정책: 장소 정보 장기 저장 제한). **즐겨찾기는 카카오 장소 id와 표시용 이름 · 종류만** `kakao_place_favorites`에 저장하고 주소 · 좌표는 저장하지 않아요(한 사람당 200곳). 그래서 저장 탭에서 지금 검색 결과에 없는 카카오 장소는 지도 핀 없이 목록으로 보이고, 누르면 카카오맵 장소 페이지가 열려요. 리뷰는 카카오 장소 id · 이름과 함께 `kakao_place_reviews` 에 따로 저장해요(주소 · 좌표 없음). 화면에 "장소 검색 © Kakao"를 표시해요. 무료 쿼터 보호: 같은 검색 10분 캐시, 사람당 1분 30번, 서버 하루 30000번(설정으로 변경). 한도 · 실패면 DB 장소만 주고 응답 헤더 `X-Place-Notice`(`user-limit` · `daily-limit` · `error`)로 알려 주면 프론트가 안내 문구를 띄워요. 종류 칩 · 검색어 칩은 반경 1km, 검색창(`wide=true`)은 반경 5km + 거리 제한 없는 정확도 검색을 합쳐 이름이 같은 곳 → 이름에 든 곳 순이에요. 15종류에 안 맞는 검색 결과는 `기타`예요. 분류 코드가 있는 종류(편의점 CS2 · 약국 PM9 · 마트 MT1 · 카페 CE7 · 병원 HP8 · 은행 BK9 · 식당 FD6)는 코드로, 나머지는 키워드(세탁방 → "빨래방" 등)로 찾아요. 키가 없거나 실패하면 DB 장소만. 카카오는 영업시간을 주지 않아 `openHours`는 비어 있고, 24시간 · 저렴 · 조용 조건은 설명 글자로만 걸러요. 장기적으로는 공공데이터(소상공인 상가정보)를 우리 DB에 적재해 외부 호출을 줄이는 방안을 검토해요.
 - **AI 장소 찾기**: 지금은 프론트가 예시 데이터 안에서 말을 읽어 골라요 (`features/map/aiFind.ts` — "빨래·이불 → 세탁방", "밤·24 → 24시간 운영 가산점" 같은 규칙). 서버가 생기면 AI + 지도 검색 API(예: 카카오 로컬)로 바꾸고, 화면에 보일 **추천 이유**(`reasons`)를 같이 주세요.
 - **도보 시간**: 프론트는 설명의 "도보 약 N분"을 읽어 써요. 서버는 `walkMin`(우리 집 기준)을 따로 주면 좋아요.
 - **우리 집 위치 (🏠, "우리 집으로" 버튼, 길찾기 출발점)**: 지금은 예시 좌표(`HOME`, `features/map/data/places.ts`)예요. 서버가 생기면 `GET /api/auth/me`의 주소를 좌표로 바꿔 `home: { lat, lon }`으로 같이 주세요 (users.home_lat/home_lon). home은 현재 User 타입에 없는 확장 제안이에요. 인증 GPS·설문 중심점은 집 위치와 구분하고 덮어쓰지 마세요.
@@ -604,9 +613,10 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 
 ---
 
-## 10. 약관 🔶
+## 10. 약관 ✅
 
-> **현재 서버**: `GET /api/terms` 는 있지만 약관 화면은 아직 프론트 `features/legal/content.ts` 의 글을 보여 줘요. 가입 동의는 서버 버전(`termsVersion`)으로 저장해요.
+> 이용약관 · 개인정보 처리방침 화면과 가입 화면의 상세보기는 공개 API `GET /api/terms`에서 시행 중인 약관을 보여 줘요. 서버 본문은 빈 줄로 조항을 나누고 조항 첫 줄을 제목으로 사용해요(`features/legal/api.ts`의 `toLegalDoc`). 불러오는 중 · 실패 · 목업 모드에서는 `content.ts`의 문구를 보여 줘요. 가입 동의는 배포된 `LEGAL_VERSION`을 `termsVersion`으로 보내므로 DB 시행 버전과 함께 갱신해요.
+> 약관 문구를 고칠 때는 `content.ts` 를 고친 뒤 `node db/tools/terms-sync.cjs <새 마이그레이션 이름>` 으로 `schema.sql` · 기존 DB 를 맞춰요. `frontend/tests/legal-terms.test.mjs` 가 두 쪽이 같은지 확인해요.
 
 | 메서드 | 주소 | 받는 값 |
 |---|---|---|
@@ -720,6 +730,28 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 
 ---
 
+## 14. 공지사항 ✅
+
+> **2026-11-21 백엔드 구현 · 프론트 연결**: 회원은 내 정보 → 고객센터 → **공지사항**(`/my/settings/notices`), 관리자는 관리자 화면 **공지 관리** 탭에서 써요. 목업 모드는 이 브라우저(`zip-notices`)에 저장해요.
+
+| 메서드 | 주소 | 보내는 값 | 받는 값 |
+|---|---|---|---|
+| GET | `/api/notices` | — | `[notice]` (고정 먼저, 새 것부터, 최대 100개, `body` 없음) |
+| GET | `/api/notices/popups` | — | `[notice]` 앱을 열면 띄울 팝업 공지 (`body` 포함, 새 것부터 최대 5개) |
+| GET | `/api/notices/{id}` | — | `notice` (`body` 포함). 없으면 404 |
+| POST | `/api/admin/notices` | `{ title, body, pinned, popup, notify }` | 201 `notice` (관리자만. `notify: true` 면 알림을 켠 일반 회원 모두에게 알림) |
+| PATCH | `/api/admin/notices/{id}` | `{ title, body, pinned, popup }` | `notice` (관리자만) |
+| DELETE | `/api/admin/notices/{id}` | — | 204 (관리자만) |
+
+```json
+{ "id": "3", "title": "11월 점검 안내", "body": "…", "pinned": true, "popup": false, "author": "운영자", "createdAt": "2026-11-21T02:00:00Z", "updatedAt": "2026-11-21T02:00:00Z" }
+```
+- 제목 1~100자, 내용 1~5,000자(앞뒤 공백 제거). 비면 · 넘으면 400.
+- **팝업**(`popup: true`): 회원이 앱을 열면 모달로 떠요. 아래 **일주일 동안 보지 않기**(이 브라우저에 회원별로 7일 기억)와 **닫기**(이번 방문만, 다음에 앱을 열면 다시 뜸)가 있어요. 여러 개면 새 것부터 하나씩. 관리자가 팝업을 끄면 더는 안 떠요.
+- 로그인 회원만 볼 수 있어요(비로그인 401). 일반 회원이 `/api/admin/notices` 를 부르면 403.
+
+---
+
 ## 현재 DB 반영 상태와 연동 주의사항
 
 DB 저장 공간은 다음과 같이 반영되어 있어요. 실제 API 구현과 프론트 연동은 별도예요.
@@ -739,7 +771,7 @@ DB 저장 공간은 다음과 같이 반영되어 있어요. 실제 API 구현�
 
 - 본인 확인은 이메일 인증만 써요(`password_resets.method = EMAIL`). 휴대전화 인증은 없앴어요.
 - 첨부 MIME·5개/2MB, 소유권, JSON 내부 원소, 관리자 역할, 동네 인증 유효기간은 서버가 검사해요.
-- DB 구조 감사는 53테이블 + VIEW 2개 (세부 수치는 `db/tests/schema_expected.json`) 기준이에요. API 구현이나 권한 테스트 통과를 뜻하지 않아요.
+- DB 구조 감사는 54테이블 + VIEW 2개 (세부 수치는 `db/tests/schema_expected.json`) 기준이에요. API 구현이나 권한 테스트 통과를 뜻하지 않아요.
 
 ## 브라우저 저장 (localStorage)
 

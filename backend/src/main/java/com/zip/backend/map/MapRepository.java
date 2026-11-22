@@ -3,7 +3,6 @@ package com.zip.backend.map;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -28,8 +27,6 @@ public class MapRepository {
         String address, String phone, String openHours, Double rating, int reviewCount) {}
 
     public record Point(double lat, double lon) {}
-
-    public record ReviewRow(long id, int rating, String body, long authorId, String authorNickname, Instant createdAt) {}
 
     private static final String PLACE_SQL = """
         SELECT p.*, c.name AS category_name FROM places p
@@ -194,30 +191,5 @@ public class MapRepository {
         // 값은 MapService 에서 제어 문자를 막은 뒤라 따옴표 · 역슬래시만 이스케이프하면 돼요.
         return items.stream().map(s -> "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
             .reduce((a, b) -> a + "," + b).map(s -> "[" + s + "]").orElse("[]");
-    }
-
-    public List<ReviewRow> reviews(long placeId) {
-        return jdbc.query("""
-            SELECT r.id, r.rating, r.body, r.created_at, u.id AS author_id, u.nickname FROM place_reviews r
-            JOIN users u ON u.id = r.user_id WHERE r.place_id = ? ORDER BY r.created_at DESC, r.id DESC
-            """, (rs, row) -> new ReviewRow(rs.getLong("id"), rs.getInt("rating"), rs.getString("body"),
-                rs.getLong("author_id"), rs.getString("nickname"), rs.getTimestamp("created_at").toInstant()), placeId);
-    }
-
-    /** 한 사람당 한 장소에 하나 (uk_place_reviews_place_id_user_id). 이미 있으면 false */
-    public boolean addReview(long placeId, long userId, int rating, String body) {
-        try {
-            jdbc.update("INSERT INTO place_reviews (place_id, user_id, rating, body) VALUES (?, ?, ?, ?)",
-                placeId, userId, rating, body);
-        } catch (DuplicateKeyException duplicate) {
-            return false;
-        }
-        jdbc.update("""
-            UPDATE places SET
-            rating_avg = (SELECT ROUND(AVG(rating), 1) FROM place_reviews WHERE place_id = ?),
-            review_count = (SELECT COUNT(*) FROM place_reviews WHERE place_id = ?)
-            WHERE id = ?
-            """, placeId, placeId, placeId);
-        return true;
     }
 }

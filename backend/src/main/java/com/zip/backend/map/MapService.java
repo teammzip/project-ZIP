@@ -388,21 +388,6 @@ public class MapService {
         return Map.of("categories", List.copyOf(categories), "keywords", List.copyOf(keywords));
     }
 
-    public List<Map<String, Object>> reviews(String placeId) {
-        return repository.reviews(existingPlace(placeId).id()).stream().map(r -> Map.<String, Object>of(
-            "id", Long.toString(r.id()), "rating", r.rating(), "body", r.body() == null ? "" : r.body(),
-            "author", Map.of("id", Long.toString(r.authorId()), "nickname", r.authorNickname()),
-            "createdAt", r.createdAt().toString())).toList();
-    }
-
-    @Transactional
-    public void addReview(long userId, String placeId, MapRequests.Review request) {
-        var body = request.body() == null || request.body().isBlank() ? null : request.body().trim();
-        if (!repository.addReview(existingPlace(placeId).id(), userId, request.rating(), body)) {
-            throw new ApiException(409, "이미 이 장소에 리뷰를 썼어요.");
-        }
-    }
-
     private long region(String regionId) {
         long id;
         try { id = Long.parseLong(regionId); }
@@ -413,7 +398,7 @@ public class MapService {
 
     private static long id(String placeId) {
         if (placeId != null && placeId.startsWith(KAKAO_ID)) {
-            throw new ApiException(400, "카카오 검색 장소는 리뷰를 쓸 수 없어요.");
+            throw new ApiException(400, "카카오 검색 장소는 여기서 쓸 수 없어요.");
         }
         try {
             long id = Long.parseLong(placeId);

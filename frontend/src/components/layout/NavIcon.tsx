@@ -1,5 +1,5 @@
 /* 메뉴 아이콘. 색은 currentColor 를 따라감 */
-export type IconName = 'home' | 'photo' | 'ai' | 'map' | 'community' | 'my' | 'bell' | 'menu' | 'close'
+export type IconName = 'home' | 'photo' | 'ai' | 'map' | 'community' | 'my' | 'bell' | 'notice' | 'menu' | 'close'
 
 const PATHS: Record<IconName, React.ReactNode> = {
   home: <path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" />,
@@ -24,6 +24,7 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   bell: <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />,
+  notice: <path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />,
   menu: <path d="M3 6h18M3 12h18M3 18h18" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
 }

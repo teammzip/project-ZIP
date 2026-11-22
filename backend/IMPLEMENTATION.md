@@ -47,7 +47,7 @@ VITE_API_BASE_URL=/api
 VITE_PROXY_TARGET=http://localhost:8080
 ```
 
-현재 연결 가능한 화면 흐름은 **기존 DB 계정 로그인 → 내 정보 조회 → 비밀번호 변경/로그아웃**입니다. 비밀번호 변경 성공 시 프론트도 인증 상태를 비우고 다시 로그인하게 합니다. 약관 화면은 여전히 정적 본문을 사용하며 API 조회 연결은 후속 작업입니다.
+기존 DB 계정으로 로그인해 내 정보를 조회하고 비밀번호를 바꾸거나 로그아웃할 수 있습니다. 비밀번호 변경 성공 시 프론트도 인증 상태를 비우고 다시 로그인하게 합니다. 약관 화면은 `GET /api/terms`에서 시행 중인 본문을 가져옵니다.
 
 ### Windows에서 해시 생성 입력이 실패하는 경우
 
@@ -151,9 +151,11 @@ point는 null 또는 lat/lon 한 쌍이며 위도 ±90, 경도 ±180, 소수점 
 node --experimental-strip-types --test db/tests/legal-content.test.mjs
 ```
 
-H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 않습니다. 사용자 DB에는 DDL/DML을 실행하지 않았습니다. 운영 전에는 MySQL에서 HTTP 연결, 동시 로그인/비밀번호 변경, 로그인 시도 제한, HTTPS와 비밀키 운영을 검증해야 합니다. 문자·소셜 인증과 약관 버전별 동의 저장은 아직 구현되지 않았습니다.
+H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 않습니다. 운영 전에는 MySQL에서 HTTP 연결, 동시 로그인/비밀번호 변경, 로그인 시도 제한, HTTPS와 비밀키 운영을 검증해야 합니다.
 
 ## 약관 점검
+
+**2026-11-22**: 화면이 `GET /api/terms` 를 보여 줘요. 문구를 고치면 `content.ts` → `node db/tools/terms-sync.cjs <마이그레이션 이름>` 으로 `schema.sql` 과 기존 DB 마이그레이션을 만들고, `frontend/tests/legal-terms.test.mjs` 가 화면 문구 = DB 기본 약관인지 확인해요. 주소는 가입 필수가 아니라 가입 후 주거 설문 · 내 정보에서 입력(선택)이에요 (가입 `address` · 소셜 첫 동의 `address` 는 선택).
 
 프론트 `frontend/src/features/legal/content.ts`와 `db/schema.sql`의 SERVICE/PRIVACY/POLICY 제목·본문·버전 `2026-10-18`·동의 방식(AGREE/CONFIRM)은 자동 대조합니다. 개인정보 처리방침은 CONFIRM, 나머지 두 문서는 AGREE입니다. 만 14세 이상 확인은 별도 회원 필드입니다.
 
@@ -240,8 +242,19 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 - 알림을 만드는 곳 (`NotificationService.send`): 댓글(글쓴이) · 답글(답글을 받은 댓글 작성자, 글쓴이와 같으면 하나만) · 운영자 댓글 → `COMMUNITY`. 운영자가 지운 글 · 댓글(사유 포함) · 신고 처리로 숨긴 글 · 댓글 · 경고 · 문의 답변 → `SYSTEM`.
 - 받는 사람이 한 사람(내가 내 글에 댓글)이면 만들지 않고, `user_settings.noti_on = 0` 이면 만들지 않아요. 미리보기는 줄바꿈을 빼고 40자.
 - 알릴 시각은 초 단위로 내림해서 저장해요 (MySQL DATETIME 반올림으로 "미래 알림"처럼 숨지 않게).
-- 일정 알림은 목록 조회 전에 `LifeNotificationService`가 최대 3일 뒤 일정까지 갱신해요. 월세 알림은 `RentReminderScheduler`가 1분마다 확인해요. 납부 기한이 0~3일 남은 이번 달 미납 월세 기록을 사용하고, 회원 잠금으로 납부 처리 · 계약 변경과 중복 생성을 막아요. `link_view`는 `budget`, `ref_id`는 납부 대상 연월(`YYYYMM`)이에요. 기존 날짜 링크와 삭제 이력도 같은 달로 대조해요. 납부가 확인되면 목록에서 안 읽은 해당 알림을 숨겨요.
-- **검증**: `NotificationIntegrationTests` 4개 + 격리 MySQL 에서 실제 백엔드로 댓글 · 문의 답변 알림 · 읽음 · 지우기 확인.
+- **일정 알림** (`LifeNotificationService`): 목록을 볼 때 오늘부터 3일 뒤까지 갱신해요. 회원 행 잠금으로 같은 회원의 동시 요청을 처리하고, 종류 · `ref_id` · `link_view`로 읽거나 지운 이력까지 대조해요. 일정이 바뀌면 안 읽은 알림을 정리하거나 제목과 내용을 갱신해요.
+- **월세 알림** (`RentReminderScheduler`): 1분마다 납부 기한이 0~3일 남은 이번 달 미납 월세 기록을 확인해요. 회원 잠금으로 중복 생성을 막고 납부 처리 · 계약 변경과 같은 순서로 처리해요. `link_view`는 `budget`, `ref_id`는 납부 대상 연월(`YYYYMM`)이에요. 기존 날짜 링크와 삭제 이력도 같은 달로 대조해요. 납부가 확인되면 목록에서 안 읽은 해당 알림을 숨겨요.
+- **쓰레기 배출 알림** (`TrashReminderService`): 기본 시각은 배출일 0시(한국 시간)예요. 당일 알림 발송을 스케줄러에서 확인해요.
+- **검증**: `NotificationIntegrationTests`, `LifeNotificationIntegrationTests`, `RentReminderTests`, `TrashReminderTests`에서 생성 · 갱신 · 읽음 · 삭제와 종류별 생성 경로를 확인해요.
+
+## 공지사항
+
+`com.zip.backend.notice` (NoticeController · NoticeService · NoticeRepository). 표는 `notices` (`db/migrations/20261121_07_notices.sql`). 규칙은 `frontend/API.md` 14장.
+
+- 회원은 목록(고정 먼저 · 새 것부터) · 내용만, 관리자(`/api/admin/**`)만 쓰기 · 고치기 · 지우기.
+- `popup: true` 공지는 `GET /api/notices/popups` 로 내용까지 내려가요(새 것부터 5개). 안 보기 · 닫기는 화면이 브라우저에 기억해요.
+- `notify: true` 로 쓰면 알림을 켠 일반 회원 모두에게 `SYSTEM` 알림(`link: notice`, `refId` = 공지 번호)을 한 번에(INSERT … SELECT) 만들어요.
+- **검증**: `NoticeIntegrationTests` 4개 + 격리 MySQL 8.0 에서 이모지 제목 · 5,000자 내용 · 고정 순서 · 알림 대상(알림 끈 회원 · 관리자 제외) · 고치기 · 지우기 확인.
 
 ## 메모
 
@@ -288,9 +301,13 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 | GET · POST · PATCH · DELETE `/api/me/place-lists` | 저장 리스트 `place_lists` · `place_list_items` (`db/migrations/20261115_03_place_lists.sql`). 처음 GET 에서 "내 장소"를 만들고 리스트에 안 든 저장 장소를 넣음. 이름 20자 · 회원 안 중복 409 · 20개까지 · 색 `#RRGGBB`. 삭제 시 이 리스트에만 있던 장소는 저장 해제 |
 | PUT `/api/me/place-favorites/{placeId}/lists` | `{ listIds, name?, category? }` 로 리스트 소속을 통째로 바꿈. 비우면 저장 해제, 다른 회원 리스트는 404 |
 | GET · PUT `/api/me/map-settings` | `user_settings.map_categories · map_keywords`. NULL이면 정렬 순서 앞 4종류 · 빈 검색어. 없는 종류, 종류와 같은 검색어(12자 이내)는 400 |
-| GET · POST `/api/places/{id}/reviews` | `place_reviews`. 한 사람당 한 장소 하나(두 번이면 409), 저장 후 `places.rating_avg · review_count` 갱신 |
+| GET · POST `/api/places/{id}/reviews` | `PlaceReviewService`. DB 장소는 `place_reviews`(저장 · 고치기 · 지우기 후 `places.rating_avg · review_count` 갱신), 카카오 장소(`kakao:…`)는 `kakao_place_reviews`(id · 이름 + 리뷰, `name` 필수). 한 사람당 한 장소 하나(두 번이면 409). 우리 서버에만 저장 |
+| PUT · DELETE `/api/places/{id}/reviews/mine` | 내 리뷰 고치기 · 지우기 (없으면 404) |
+| POST `/api/places/{id}/reviews/{reviewId}/reports` | 리뷰 신고 `place_review_reports` (사유는 커뮤니티 신고와 같음, 내 리뷰 400 · 중복 409, 당시 작성자 · 내용 · 별점 · 장소 이름 스냅샷) |
+| GET `/api/places/review-summary` · `/api/me/place-reviews` | 지도 목록 별점(100곳까지) · 내가 쓴 리뷰 |
+| GET · PATCH `/api/admin/place-review-reports` | 관리자 리뷰 신고: HIDDEN = 리뷰 삭제 + 작성자 SYSTEM 알림, DISMISSED = 문제없음. 관리자 화면 "리뷰 신고" 탭 |
 
-- **카카오 로컬 API**: `KAKAO_REST_KEY`(application-local.properties, Git 제외)가 있으면 `GET /api/places`의 `category` · `q` 검색을 카카오에서 지도 중심(`lat` · `lon`, 없으면 집) 반경 1km로 찾아 **DB에 저장하지 않고 그대로** 줘요(id는 `kakao:카카오장소id`). 카카오 운영 정책이 장소명 · 주소 · 좌표의 장기 저장을 제한하기 때문이에요. 즐겨찾기는 위 표처럼 id · 이름만 따로 저장하고(`db/migrations/20261115_kakao_place_favorites.sql`), 리뷰는 안 돼요(400). 무료 쿼터를 지키려고 `KakaoQuota`가 같은 검색(약 100m 안)을 10분 메모리 캐시하고, 한 사람당 1분 `KAKAO_PER_USER_PER_MINUTE`(기본 30)번 · 서버 전체 하루 `KAKAO_DAILY_LIMIT`(기본 30000, 한국 시간 자정 초기화)번까지만 불러요. 카카오가 429를 주면 그날은 멈춰요. 키가 없거나 한도 · 오류면 DB 장소로 대신하고 응답 헤더 `X-Place-Notice: user-limit | daily-limit | error`로 이유를 알려요. 카카오 콘솔에서 카카오맵(로컬) 사용 설정을 켜야 하고, 유료 추가 사용은 켜지 않아요. 예전 코드가 저장한 카카오 장소(`places.source='KAKAO'`)는 정리 대상이에요. 기존 DB는 `db/migrations/20261108_places_kakao.sql`을 한 번 적용해야 해요.
+- **카카오 로컬 API**: `KAKAO_REST_KEY`(application-local.properties, Git 제외)가 있으면 `GET /api/places`의 `category` · `q` 검색을 카카오에서 지도 중심(`lat` · `lon`, 없으면 집) 반경 1km로 찾아 **DB에 저장하지 않고 그대로** 줘요(id는 `kakao:카카오장소id`). 카카오 운영 정책이 장소명 · 주소 · 좌표의 장기 저장을 제한하기 때문이에요. 즐겨찾기는 위 표처럼 id · 이름만 따로 저장하고(`db/migrations/20261115_kakao_place_favorites.sql`), 리뷰는 카카오 장소 id · 이름과 함께 `kakao_place_reviews` 에 따로 저장해요(주소 · 좌표 없음). 무료 쿼터를 지키려고 `KakaoQuota`가 같은 검색(약 100m 안)을 10분 메모리 캐시하고, 한 사람당 1분 `KAKAO_PER_USER_PER_MINUTE`(기본 30)번 · 서버 전체 하루 `KAKAO_DAILY_LIMIT`(기본 30000, 한국 시간 자정 초기화)번까지만 불러요. 카카오가 429를 주면 그날은 멈춰요. 키가 없거나 한도 · 오류면 DB 장소로 대신하고 응답 헤더 `X-Place-Notice: user-limit | daily-limit | error`로 이유를 알려요. 카카오 콘솔에서 카카오맵(로컬) 사용 설정을 켜야 하고, 유료 추가 사용은 켜지 않아요. 예전 코드가 저장한 카카오 장소(`places.source='KAKAO'`)는 정리 대상이에요. 기존 DB는 `db/migrations/20261108_places_kakao.sql`을 한 번 적용해야 해요.
 - **walkMin**: `users.home_lat · home_lon`이 있으면 직선 거리 ÷ 분당 67m(올림, 최소 1분), 없으면 설명의 "도보 약 N분", 둘 다 없으면 99.
 - **조건 칩**(cheap · quiet)은 아직 표에 근거 칸이 없어 설명 글자로 걸러요. 프론트와 같은 방식이며 태그 칸을 만들면 바꿔야 합니다.
 - **테스트 데이터**: `db/seeds/map_places_demo.sql`이 프론트 예시와 같은 31곳(서울 마포구)을 넣어요. 다시 실행해도 중복되지 않습니다. 실제 장소 출처(공공데이터 · 카카오 로컬 등)는 미정입니다.

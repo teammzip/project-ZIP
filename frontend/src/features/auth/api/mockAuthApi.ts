@@ -132,7 +132,7 @@ export const mockAuthApi: AuthApi = {
       email,
       password: req.password,
       nickname: req.nickname,
-      address: req.address,
+      address: req.address ?? '',
       provider: 'email',
       role: 'USER',
       agreedAt: new Date().toISOString(),
@@ -197,7 +197,7 @@ export const mockAuthApi: AuthApi = {
     const email = `${provider}-demo@zip.local`
     let account = accounts.find((a) => a.email === email)
     if (!account) {
-      // 소셜로 처음 들어오면 아직 동의·주소가 없음 → 앱이 /welcome 동의 화면으로 보냄
+      // 소셜로 처음 들어오면 아직 동의가 없음 → 앱이 /welcome 동의 화면으로 보냄 (주소는 주거 설문에서)
       account = { id: crypto.randomUUID(), email, password: '', nickname: `${SOCIAL_NAMES[provider]} 사용자`, address: '', provider, agreedAt: null, firstLogin: true }
       saveAccounts([...accounts, account])
     }

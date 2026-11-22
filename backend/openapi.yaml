@@ -1139,7 +1139,7 @@ paths:
       - $ref: '#/components/parameters/Id'
     get:
       tags: [지도]
-      summary: (확장 기능 · 화면 없음) 장소 리뷰 목록
+      summary: 장소 리뷰 목록 (DB 장소 · 카카오 장소 "kakao:…" 모두, 최신순)
       responses:
         '200':
           description: 리뷰
@@ -1155,9 +1155,10 @@ paths:
                     body: { type: string }
                     author: { $ref: '#/components/schemas/Author' }
                     createdAt: { type: string, format: date-time }
+                    reportedByMe: { type: boolean, description: 내가 이미 신고한 리뷰 }
     post:
       tags: [지도]
-      summary: (확장 기능 · 화면 없음) 장소 리뷰 쓰기 (한 사람당 한 장소 하나, 두 번이면 409)
+      summary: 장소 리뷰 쓰기 (한 사람당 한 장소 하나, 두 번이면 409). 카카오 장소는 id · 이름과 리뷰만 kakao_place_reviews 에 저장
       requestBody:
         required: true
         content:
@@ -1168,9 +1169,98 @@ paths:
               properties:
                 rating: { type: integer, minimum: 1, maximum: 5 }
                 body: { type: string, maxLength: 300, description: DB place_reviews.body VARCHAR(300) }
+                name: { type: string, maxLength: 60, description: 카카오 장소("kakao:…")만 필수 — 장소 이름 }
       responses:
         '204': { description: 저장 완료 }
+        '400': { description: 별점 · 내용 · 카카오 장소 이름 확인, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '409': { description: 이미 리뷰를 씀, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/places/{id}/reviews/mine:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    put:
+      tags: [지도]
+      summary: 내 리뷰 고치기 (별점 · 내용)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                body: { type: string, maxLength: 300 }
+      responses:
+        '204': { description: 고침 }
+        '400': { description: 별점 · 내용 확인, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: 내 리뷰 없음, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    delete:
+      tags: [지도]
+      summary: 내 리뷰 지우기
+      responses:
+        '204': { description: 지움 }
+        '404': { description: 내 리뷰 없음, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/places/{id}/reviews/{reviewId}/reports:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+      - { name: reviewId, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [지도]
+      summary: 리뷰 신고 (place_review_reports). 사유는 커뮤니티 신고와 같음
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, enum: [ABUSE, FALSE_INFO, PRIVACY, AD_ILLEGAL, COPYRIGHT, OTHER] }
+                detail: { type: string, maxLength: 200, description: 기타(OTHER)는 필수 }
+      responses:
+        '204': { description: 신고 접수 }
+        '400': { description: 사유 · 내용 확인, 내 리뷰, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: 리뷰 없음, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: 이미 신고함, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/places/review-summary:
+    get:
+      tags: [지도]
+      summary: 지도 목록 별점 (ZIP 회원 리뷰 평균 · 수). 리뷰 없는 곳은 빠짐
+      parameters:
+        - { name: ids, in: query, required: true, schema: { type: string }, description: '장소 id 쉼표 구분, 100곳까지 (예: 12,kakao:123)' }
+      responses:
+        '200':
+          description: 별점 요약
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    rating: { type: number }
+                    count: { type: integer }
+  /api/me/place-reviews:
+    get:
+      tags: [지도]
+      summary: 내가 쓴 장소 리뷰 (최신순)
+      responses:
+        '200':
+          description: 내 리뷰
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    placeId: { type: string, description: '"12" 또는 "kakao:123"' }
+                    placeName: { type: string }
+                    rating: { type: integer }
+                    body: { type: string }
+                    createdAt: { type: string, format: date-time }
   /api/me/place-favorites:
     get:
       tags: [지도]
@@ -1370,6 +1460,33 @@ paths:
         - { name: reason, in: query, schema: { type: string, maxLength: 60 }, description: 삭제 사유 }
       responses:
         '204': { description: 삭제 완료 }
+  /api/admin/place-review-reports:
+    get:
+      tags: [관리자]
+      summary: 장소 리뷰 신고 목록 (최신순 500건)
+      parameters:
+        - { name: status, in: query, required: false, schema: { type: string, enum: [RECEIVED, HIDDEN, DISMISSED] } }
+      responses:
+        '200': { description: 리뷰 신고 (review.deleted = 리뷰가 지금 없음) }
+  /api/admin/place-review-reports/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    patch:
+      tags: [관리자]
+      summary: 리뷰 신고 처리 — HIDDEN 은 리뷰 삭제 + 작성자 알림, DISMISSED 는 문제없음 (그 리뷰의 접수 중 신고 전부)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [HIDDEN, DISMISSED] }
+      responses:
+        '204': { description: 처리 완료 }
+        '400': { description: status 확인, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: 신고 없음, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /api/admin/reports:
     get:
       tags: [관리자 · 이용 정지]

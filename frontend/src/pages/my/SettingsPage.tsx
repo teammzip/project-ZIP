@@ -170,6 +170,11 @@ export function SettingsPage() {
         </Card>
 
         <Card title="고객센터">
+          <Link to="/my/settings/notices" className={styles.row}>
+            <span className={styles.ico}>📢</span>
+            <span className={styles.grow}>공지사항<small>서비스 안내와 소식을 확인할 수 있어요.</small></span>
+            <i className={styles.chev} aria-hidden="true" />
+          </Link>
           <Link to="/my/settings/support" className={styles.row}>
             <span className={styles.ico}>🎧</span>
             <span className={styles.grow}>문의하기 · 내 문의 내역<small>문의 내용과 답변을 확인할 수 있어요.</small></span>
