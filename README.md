@@ -3,11 +3,9 @@
 혼자 사는 사람을 위한 생활 관리 웹 서비스예요.
 일정 · 할 일 · 월세 · 공과금 · 쓰레기 배출 · 가계부를 한곳에서 관리하고, 동네 지도 · 커뮤니티 · AI 도우미를 제공해요.
 
-> **지금 단계:** 화면은 다 만들었고, **백엔드 API(로그인·구글 로그인·약관 동의·프로필·고정 지출·개인 설정·지도·파일)가 일부 구현**돼 있어요. 프론트는 기본이 가짜 API(브라우저 저장)이고 `VITE_USE_MOCK=false`일 때 실제 서버를 써요. 고정 지출·설정 화면은 아직 서버와 연결 전이고, AI 답변·배출 요일은 예시예요.
+> **지금 단계:** 화면과 백엔드 API가 거의 다 만들어져 서로 연결돼 있어요. 프론트는 기본이 가짜 API(브라우저 저장)이고 `VITE_USE_MOCK=false`일 때 실제 서버를 써요. 무엇이 되고 무엇이 남았는지는 아래 [지금 상태](#지금-상태)를 보세요.
 
 ---
-
-문서별 현재 상태와 과거 자료 구분은 [문서 점검표](DOCUMENTATION_AUDIT.md)를 참고하세요.
 
 ## 바로 실행하기
 
@@ -32,7 +30,8 @@ npm run dev      # → 브라우저에서 http://localhost:3000
 
 준비물: Java 17, MySQL 8, `db/schema.sql`로 만든 DB.
 
-1. `backend/application-local.properties.example`을 참고해 `backend/application-local.properties`를 만들고 `DB_URL` · `DB_USERNAME` · `DB_PASSWORD` · `JWT_SECRET`(Base64, 32바이트 이상)을 채워요. 이 파일은 깃에 올라가지 않아요.
+1. `backend/application-local.properties.example`을 참고해 `backend/application-local.properties`를 만들고 `DB_URL` · `DB_USERNAME` · `DB_PASSWORD` · `JWT_SECRET`(Base64, 32바이트 이상)을 채워요. MySQL 포트와 DB 이름은 각자 환경에 맞게 `DB_URL`에 적어요. 메일 인증은 `MAIL_*`, 지도 · 동네 인증은 `KAKAO_REST_KEY` 값이 필요해요(example 참고). 이 파일은 깃에 올라가지 않아요.
+   - 이미 쓰던 DB는 새로 받은 코드에 맞게 [db/migrations](db/migrations/README.md)의 새 파일을 적용해요. 새 DB는 `db/schema.sql`만 실행하면 돼요.
 2. (선택) 소셜 로그인: 키가 있는 공급자만 켜져요. 값은 `backend/application-local.properties`나 아래 파일에 넣어요(깃에 올라가지 않아요).
 
    | 공급자 | 파일 | 키 이름 | 콘솔에 등록할 리디렉션 URI |
@@ -54,7 +53,7 @@ npm run dev      # → 브라우저에서 http://localhost:3000
 frontend/      ★ 실제 앱 (React + TypeScript)
 backend/       서버 API (Spring Boot, Gradle)
 db/            DB 설계: 표 만드는 SQL(schema.sql) + 마이그레이션 + 검증 SQL + 한글 설명서(README.md)
-secrets/       로컬 비밀값(구글 키 등). 깃에 올리지 않아요
+secrets/       (선택) 로컬 비밀값(구글 키 등). 깃에 올리지 않아요
 ```
 
 **백엔드 기술 스택**: Java 17 · Spring Boot 4.1.2 · **Gradle**(빌드 도구, Maven 은 쓰지 않음) · Spring Data JPA 의존성 + JdbcTemplate 방식 · MySQL · Spring Security + JWT · OAuth2 클라이언트(구글 로그인).
@@ -63,15 +62,22 @@ secrets/       로컬 비밀값(구글 키 등). 깃에 올리지 않아요
 
 ## 지금 상태
 
-| ✅ 된 것 | ⏳ 남은 것 |
+**서버까지 연결된 기능**: 회원가입 · 로그인(구글 · 네이버 · 카카오) · 이메일 인증 · 아이디/비밀번호 찾기 · 탈퇴, 프로필 · 설정 · 동네 인증 · 주거 설문 · 내 집 정보, 일정 · 기념일, 메모, 가계부(수입 · 지출 · 월급) · 고정 지출 · 고지서 사진 인식(AI), 알림, 커뮤니티(글 · 댓글 · 공감 · 첨부 · 신고 · 인기 글), 지도(장소 · 저장 리스트 · AI 검색), AI 대화, 고객센터, 관리자(회원 · 경고 · 정지 · 신고 · 게시글 · 문의).
+
+**남은 것**
+- 쓰레기 배출 요일: 서버 API는 있는데 화면은 아직 고정표
+- 약관: 서버 API는 있는데 화면은 아직 프론트 문구, 법률 검토 후 `[ ]` 칸 채우기
+- 회원가입 주소 검색, 토큰 재발급
+- 장소 리뷰 화면 (서버 API만 있음)
+
+**문서 안내**
+| 보고 싶은 것 | 문서 |
 |---|---|
-| 모든 화면 (홈 · 사진 · AI · 동네 · 커뮤니티 · 마이페이지) | 프론트 화면을 서버에 연결 (고정 지출·설정 등) |
-| 회원가입 · 로그인 · 아이디/비밀번호 찾기 · 탈퇴 (화면 동작) | 서버 회원가입 · 이메일 인증 · 아이디/비번 찾기 · 토큰 재발급 |
-| PC · 모바일 화면, 모바일 인트로 | AI 화면의 사진 질문 · 분야별 답변을 실제 AI로 |
-| 이용약관 · 개인정보 처리방침 (초안) | 약관 법률 검토, `[ ]` 칸 채우기 |
-| DB 설계 (44테이블·358컬럼 + VIEW 2개, MySQL 8.0.16+ 설계 / 9.6.0 실행 검증, `db/`) · API 약속 (`frontend/API.md`, DB 기준으로 전 영역 정리) | 남은 백엔드 API(커뮤니티·관리자·일정 등)·권한·동시성 구현 및 프론트 연동 |
-| 관리자 화면 · 이용 정지 (React `/admin`) | 관리자 기능을 서버로 옮기기 |
-| 백엔드: AI 대화(Gemini + DB 저장) · 로그인 · 구글/네이버/카카오 소셜 로그인 · 약관 동의 · 회원 탈퇴 · 프로필 · 고정 지출 · 설정 · 지도 · 파일 (테스트 포함) | 나머지 영역 |
+| 프론트 · 백엔드 · DB 에서 누가 언제 무엇을 했는지 (PR 마다 한 줄씩 추가) | [CHANGELOG.md](CHANGELOG.md) |
+| 프론트 ↔ 서버 API 전체와 기능별 상태 | [frontend/API.md](frontend/API.md) |
+| 프론트 폴더 · 실행 | [frontend/README.md](frontend/README.md) |
+| 백엔드 실행 · 기능별 구현 설명 | [backend/README.md](backend/README.md) · [backend/IMPLEMENTATION.md](backend/IMPLEMENTATION.md) |
+| DB 표 설명 · 기존 DB 바꾸기 · DB 검증 | [db/README.md](db/README.md) · [db/migrations/README.md](db/migrations/README.md) · [db/tests/README.md](db/tests/README.md) |
 
 ---
 

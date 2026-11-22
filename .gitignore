@@ -50,3 +50,5 @@ secrets/
 # IDE 설정 (IntelliJ/PyCharm 등, 개인 PC 설정이라 올리지 않음)
 .idea/
 *.iml
+
+TODO.md

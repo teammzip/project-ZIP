@@ -35,6 +35,19 @@ class RegionMatcherTests {
         assertEquals(Optional.of("4"), match("충북 청주시 상당구"));
     }
 
+    // 2026-07-01 광주 · 전남 통합: 새 이름 · 짧은 이름 · 예전 이름 모두 전남광주통합특별시의 구로 찾아야 함
+    @Test void mergedGwangjuJeonnamMatchesNewAndOldNames() {
+        var districts = List.of(
+            new RegionMatcher.District("7", "동구", "전남광주통합특별시"),
+            new RegionMatcher.District("5", "동구", "대전광역시"),
+            new RegionMatcher.District("8", "광주시", "경기도"));
+        assertEquals(Optional.of("7"), RegionMatcher.match("전남광주통합특별시 동구 충장로", districts));
+        assertEquals(Optional.of("7"), RegionMatcher.match("전남광주 동구", districts));
+        assertEquals(Optional.of("7"), RegionMatcher.match("광주광역시 동구", districts));
+        assertEquals(Optional.of("5"), RegionMatcher.match("대전 동구", districts));
+        assertEquals(Optional.of("8"), RegionMatcher.match("경기 광주시 오포읍", districts));
+    }
+
     @Test void unknownOrPartialNamesDoNotMatch() {
         assertEquals(Optional.empty(), match("서울 서대문구"));
         assertEquals(Optional.empty(), match("마포구청역 근처"));

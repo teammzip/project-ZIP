@@ -17,6 +17,11 @@ public class MapRepository {
 
     public MapRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
+    /** 같은 회원의 요청을 한 줄로 (트랜잭션 맨 처음에) */
+    public void lockUser(long userId) {
+        jdbc.queryForList(com.zip.backend.common.Sql.LOCK_USER, Long.class, userId);
+    }
+
     public record Category(long id, String name, String icon) {}
 
     public record PlaceRow(long id, String category, String name, String description, double lat, double lon,

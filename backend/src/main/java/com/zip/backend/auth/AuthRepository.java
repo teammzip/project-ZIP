@@ -281,6 +281,24 @@ public class AuthRepository {
         jdbc.update("DELETE FROM users WHERE id = ?", userId);
     }
 
+    /** 남의 글 중 이 회원이 공감 · 댓글을 단 글 (탈퇴하면 그 공감 · 댓글과 그 아래 답글이 함께 지워져요) */
+    public List<Long> postsTouchedBy(long userId) {
+        return jdbc.queryForList("SELECT post_id FROM post_likes WHERE user_id = ? UNION SELECT post_id FROM comments WHERE user_id = ?",
+            Long.class, userId, userId);
+    }
+
+    /** 공감 수 · 댓글 수(보이는 것)를 실제 행으로 다시 셈 */
+    public void recountPosts(List<Long> postIds) {
+        for (int from = 0; from < postIds.size(); from += 500) {
+            var chunk = postIds.subList(from, Math.min(from + 500, postIds.size()));
+            jdbc.update("""
+                UPDATE posts SET
+                  like_count = (SELECT COUNT(*) FROM post_likes l WHERE l.post_id = posts.id),
+                  comment_count = (SELECT COUNT(*) FROM comments c WHERE c.post_id = posts.id AND c.status = 'VISIBLE')
+                WHERE id IN (""" + com.zip.backend.common.Sql.marks(chunk) + ")", chunk.toArray());
+        }
+    }
+
     public void changePassword(long userId, String hash, Instant now) {
         jdbc.update("UPDATE users SET password_hash = ?, password_changed_at = ?, login_failures=0, login_failure_since=NULL WHERE id = ?",
             hash, Timestamp.from(now), userId);

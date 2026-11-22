@@ -12,7 +12,7 @@ SET @map_neg_region=LAST_INSERT_ID();
 INSERT INTO regions (parent_id,name,level) VALUES (@map_neg_parent,'가상동네B',2);
 SET @map_neg_other_region=LAST_INSERT_ID();
 INSERT INTO region_neighbors (region_id,neighbor_region_id) VALUES (@map_neg_region,@map_neg_other_region);
-INSERT INTO trash_schedules (region_id,weekday,waste_type,description) VALUES (@map_neg_region,1,'GENERAL','가상 안내');
+INSERT INTO trash_schedules (region_id,place,general_days,general_time) VALUES (@map_neg_region,'가상 집 앞','월','18:00');
 INSERT INTO place_categories (name) VALUES (CONCAT('검증',@map_neg_tag));
 SET @map_neg_category=LAST_INSERT_ID();
 INSERT INTO places (region_id,category_id,name,lat,lon) VALUES (@map_neg_region,@map_neg_category,'가상 장소',0,0);
@@ -35,8 +35,8 @@ SELECT DATABASE() AS db,@map_neg_user AS member_id,@map_neg_parent AS parent_reg
 INSERT INTO regions (parent_id,name,level) VALUES (@map_neg_parent,'가상동네A',2);
 -- L02: 1062 / PRIMARY (region_neighbors)
 INSERT INTO region_neighbors (region_id,neighbor_region_id) VALUES (@map_neg_region,@map_neg_other_region);
--- L03: 1062 / uk_trash_schedules_region_weekday_type
-INSERT INTO trash_schedules (region_id,weekday,waste_type,description) VALUES (@map_neg_region,1,'GENERAL','중복 안내');
+-- L03: 3819 / ck_trash_day_time (배출 요일이 있는데 시작 시각이 없음)
+INSERT INTO trash_schedules (region_id,place,general_days,general_time) VALUES (@map_neg_region,'가상 집 앞','월',NULL);
 -- L04: 1062 / uk_place_categories_name
 INSERT INTO place_categories (name) VALUES (CONCAT('검증',@map_neg_tag));
 -- L05: 1062 / PRIMARY (place_favorites)

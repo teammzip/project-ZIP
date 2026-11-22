@@ -248,8 +248,10 @@ public class AuthService {
         var user = repository.findById(userId).orElseThrow(() -> new ApiException(401, "로그인 정보가 없어요."));
         if ("ADMIN".equals(user.role())) throw new ApiException(403, "관리자 계정은 탈퇴할 수 없어요.");
         var urls = repository.uploadedFileUrls(userId);
+        var touchedPosts = repository.postsTouchedBy(userId);
         repository.recordWithdrawal(userId, now);
         repository.deleteUser(userId);
+        repository.recountPosts(touchedPosts); // 지워진 공감 · 댓글만큼 남의 글 숫자도 맞춤
         files.deleteAfterCommit(urls);
     }
 

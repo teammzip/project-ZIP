@@ -1,14 +1,12 @@
 # ZIP 데이터베이스 설계
 
-Git 공개 전 확인 사항과 검토 범위는 [보안 검토 문서](SECURITY.md)를 참고하세요. 실제 사용자 데이터·DB 백업·인증정보는 저장소에 포함하지 않습니다.
+실제 사용자 데이터·DB 백업·인증정보는 저장소에 포함하지 않습니다.
 
-**2026-11-07 기준** [schema.sql](schema.sql)은 현재 프로젝트의 React 데이터 모델과 [백엔드 API 약속](../frontend/API.md)을 반영한 MySQL **8.0.16 이상** 설계입니다. 테이블 **44개**, 집계 VIEW **2개**입니다. 서버 API는 별도 구현 대상이며, 브라우저에 저장된 데이터가 이 SQL만으로 DB에 들어오지는 않습니다.
+[schema.sql](schema.sql)은 현재 프로젝트의 React 데이터 모델과 [백엔드 API 약속](../frontend/API.md)을 반영한 MySQL **8.0.16 이상** 설계입니다. 테이블 **53개**, 집계 VIEW **2개**입니다.
 
-## 1. 이번에 반영한 변경
+## 1. 기능별 DB 위치
 
-최신 프로젝트의 신고·위치·주거 설문·대출·개인 카테고리·집 주소 변경을 반영했습니다. 현재 기준은 **44테이블·352컬럼·기본키/UNIQUE 70개·외래키 61개·CHECK 17개·VIEW 2개**입니다.
-
-[위치·신고 저장 계약](LATEST_REQUIREMENTS.md), [주거·대출 저장 계약](HOUSING_AND_LOAN.md), [개인 카테고리·월별 납부·집 주소](LIFE_CATEGORIES.md), [백엔드 착수 전 점검](PRE_BACKEND_REVIEW.md)을 함께 확인하세요. 이전 문서에 날짜별 구조 수치가 나오면 당시 이력이며 이 문서의 현재 기준과 구분합니다.
+현재 기준은 **53테이블 · VIEW 2개**예요(세부 수치는 `tests/schema_expected.json`). 언제 누가 무엇을 바꿨는지는 루트 [CHANGELOG.md](../CHANGELOG.md#db)에 있어요.
 
 | 기능 | DB 반영 |
 |---|---|
@@ -45,7 +43,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 ### 기존 DB
 
-20261102까지 적용된 DB는 [20261107_life_categories.sql](migrations/20261107_life_categories.sql)을 한 번 적용합니다. 이미 최신 컬럼·타입이 있으면 재실행하지 않습니다. [적용 여부 확인·검증 순서](LIFE_CATEGORIES.md)를 따르세요. 20261102 이전 44개 표 DB는 먼저 [20261102_requirements_hardening.sql](migrations/20261102_requirements_hardening.sql)의 사전 검사를 마친 뒤 순서대로 적용합니다. 테이블 수만으로 적용 버전을 판단하지 않습니다.
+20261102까지 적용된 DB는 [20261107_life_categories.sql](migrations/20261107_life_categories.sql)을 한 번 적용합니다. 이미 최신 컬럼·타입이 있으면 재실행하지 않습니다. 20261102 이전 44개 표 DB는 먼저 [20261102_requirements_hardening.sql](migrations/20261102_requirements_hardening.sql)의 사전 검사를 마친 뒤 순서대로 적용합니다. 테이블 수만으로 적용 버전을 판단하지 않습니다.
 
 기념일 정식 컬럼까지 적용한 41개 테이블 DB는 [주거·대출 마이그레이션](migrations/20261101_housing_and_loan.sql)을 추가 적용합니다. 기념일 중복 파일에 대한 주의사항과 전체 순서는 migrations/README.md를 확인하세요.
 
@@ -60,6 +58,16 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 [일정 기본 데이터](seeds/event_defaults.sql)는 현재 회원들에 기본 카테고리 5개+미분류와 항목 30개를 복사합니다. 새 DB 생성 직후에는 회원이 없으므로 자동으로 개인 행을 만들지 않습니다.
 
 서버의 가입 트랜잭션에서 해당 SQL의 SELECT를 **새 회원 ID로 제한**하여 user_settings·user_profiles 생성과 함께 실행하세요. 전체 회원에 반복 실행하면 사용자가 이름을 바꾸거나 지운 기본 항목이 다시 생길 수 있으므로 초기화용으로만 사용합니다.
+
+### 전국 지역 · 쓰레기 배출표
+
+전국 시도 · 시군구(`regions` 249행)와 쓰레기 배출표(`trash_schedules` 6,218행)는 저장소 루트의 시드 두 개로 넣습니다. 백엔드가 자동으로 넣지 않으니 각자 DB 에 한 번 실행하세요(여러 번 실행해도 같음, 각자 DB 의 지역 번호는 그대로).
+
+1. [`migrations/20261121_06_trash_schedule_columns.sql`](migrations/20261121_06_trash_schedule_columns.sql) — 배출표 구조 (동네 · 장소 한 줄에 생활쓰레기 · 음식물 · 재활용 요일 · 시작 시각)
+2. [`../regions_nationwide.sql`](../regions_nationwide.sql) — 전국 시도 16 · 시군구 233 (없는 것만 추가)
+3. [`../trash_schedules_nationwide.sql`](../trash_schedules_nationwide.sql) — 배출표를 모두 지우고 다시 넣음. 마지막에 `파일 줄 수 6218 · 넣은 줄 수 6218 · 지역 없음 0` 이면 정상
+
+시드는 공공데이터포털 「전국생활쓰레기배출정보표준데이터」 CSV(`db/data/`, 저장소에 안 올림)를 `python db/tools/trash_import.py` 로 바꿔 만든 파일이에요. 표 구조는 아래 [`trash_schedules`](#trash_schedules--쓰레기-배출-요일표) 항목을 보세요.
 
 ## 3. 화면과 DB 연결 규칙
 
@@ -157,6 +165,15 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `places` | 장소 |
 | `place_favorites` | 장소 즐겨찾기 |
 | `place_reviews` | 장소 리뷰 |
+| `kakao_place_favorites` | 카카오 검색 장소 즐겨찾기 (id · 이름만) |
+| `place_lists` · `place_list_items` | 지도 저장 리스트와 그 안의 장소 |
+| `home_contracts` | 내 집 계약 (월세/전세 · 보증금 · 관리비 · 자동 등록 시간대) |
+| `user_personal_info` | 회원 개인 정보 (생년월일, 주거 계약과 분리) |
+| `salary_settings` · `salary_records` | 월급 자동 등록 설정과 월별 1건 기록 |
+| `bill_document_keys` · `bill_photo_imports` | 고지서 중복 등록 방지 해시 (문서 · 사진) |
+| `bill_photo_drafts` | 고지서 사진 인식 결과 (사용자 확인 전 임시, 30분) |
+
+> 2026-11-15 이후 추가된 위 7줄(표 10개)과 일부 칸(`users.housing_survey_status` 등, 고정 지출의 `due_date` · `memo` · `deleted_at` 등)은 아래 5장 컬럼 설명에 아직 없어요. 정확한 칸은 [`schema.sql`](schema.sql)을 보세요.
 
 ## 5. 전체 컬럼과 제약조건
 
@@ -907,20 +924,26 @@ AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 
 
 ### `trash_schedules` — 쓰레기 배출 요일표
 
-쓰레기 배출 일정: 동네별 요일 배출표.
+쓰레기 배출 일정: 동네(시군구) · 배출장소별 생활쓰레기 · 음식물 · 재활용 배출 요일과 시작 시각. 출처: 전국생활쓰레기배출정보표준데이터
 
 | 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
 |---|---|---|---|---|
 | `id` | BIGINT UNSIGNED | 필수 | — | 배출일정 아이디 — 자동 증가 / 자동 번호 |
-| `region_id` | BIGINT UNSIGNED | 필수 | — | 동네 아이디 |
-| `weekday` | TINYINT UNSIGNED | 필수 | — | 배출 요일 — 0=일 ~ 6=토 |
-| `waste_type` | ENUM('GENERAL','RECYCLE','FOOD') | 필수 | — | 배출 종류 — 일반쓰레기 / 재활용 / 음식물 |
-| `description` | VARCHAR(100) | 필수 | — | 배출 안내 — 예: 저녁 6시 ~ 자정, 종량제 봉투 사용 |
+| `region_id` | BIGINT UNSIGNED | 필수 | — | 동네 아이디 — 시군구 |
+| `place` | VARCHAR(100) | 필수 | — | 배출장소 — 예: 내 집 혹은 내 점포 앞 |
+| `general_days` | SET('일','월','화','수','목','금','토') | 필수 | '' | 생활쓰레기 배출 요일 — 예: 월,수,금 (없으면 빈 값) |
+| `general_time` | TIME | 선택 | NULL | 생활쓰레기 배출 시작 시각 — 배출 요일이 없으면 비움 |
+| `food_days` | SET('일','월','화','수','목','금','토') | 필수 | '' | 음식물쓰레기 배출 요일 |
+| `food_time` | TIME | 선택 | NULL | 음식물쓰레기 배출 시작 시각 |
+| `recycle_days` | SET('일','월','화','수','목','금','토') | 필수 | '' | 재활용품 배출 요일 |
+| `recycle_time` | TIME | 선택 | NULL | 재활용품 배출 시작 시각 |
 
 - 기본키: `id`
-- UNIQUE `uk_trash_schedules_region_weekday_type`: `region_id`, `weekday`, `waste_type`
+- 인덱스 `idx_trash_schedules_region_id`: `region_id`
 - 외래키 `fk_trash_schedules_region_id`: `region_id` → `regions` (`id`), ON DELETE CASCADE
-- CHECK: CONSTRAINT `ck_trash_weekday` CHECK (`weekday` BETWEEN 0 AND 6)
+- CHECK: CONSTRAINT `ck_trash_any_day` CHECK (세 종류 중 하나는 배출 요일이 있음)
+- CHECK: CONSTRAINT `ck_trash_day_time` CHECK (종류마다 배출 요일이 있으면 시각도 있고, 없으면 시각도 없음)
+- 데이터: `db/data/생활쓰레기배출정보.csv` → `python db/tools/trash_import.py` → `regions_nationwide.sql(저장소 루트)` · `trash_schedules_nationwide.sql(저장소 루트)`
 
 ### `place_categories` — 장소 분류
 
@@ -1014,7 +1037,7 @@ INSERT IGNORE는 기존 고유 키의 행을 갱신하지 않습니다. 장소 �
 - 개인 데이터 소유권, 관리자 권한, 파일 MIME·소유권·최대 5개/합계 2MB는 서버에서 검사합니다. FK는 같은 사용자 소유인지까지 보장하지 않습니다.
 - 비밀번호·토큰 해시 생성, 이메일 인증 만료·사용 횟수·일회 사용, 로그인 세션 회수는 서버 로직입니다.
 - 좌표 범위·좌표 쌍, JSON 원소 형식·개수·소유권, 금액·날짜·태그·수입 분류 일치 여부를 검사합니다.
-- 재가입 차단과 회원 상태, 제재 기간 만료·해제는 트랜잭션과 조회 시 검사를 통해 일관되게 처리합니다.
+- 회원 상태와 제재 기간 만료·해제는 트랜잭션과 조회 시 검사를 통해 일관되게 처리합니다.
 - 외부 저장소 파일은 FK 삭제로 제거되지 않으므로 실제 파일 정리가 필요합니다. 프로필·게시글에 연결된 파일을 임의로 재사용하지 않도록 검사합니다.
 - 데이터베이스 ID는 API에서 문자열로, DATETIME은 합의된 시간대(권장 UTC 저장 후 ISO 변환)로 반환합니다. 일정 날짜·시간과 납부 연월은 한국의 달력 날짜를 유지합니다.
 - 알림·좋아요·댓글 건수 등 파생값, 보고서 대상의 존재 여부는 서버가 관리합니다.

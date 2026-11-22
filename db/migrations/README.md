@@ -1,64 +1,71 @@
-> 2026-11-07 최신 변경: [생활 카테고리·월별 납부·집 주소 가이드](../LIFE_CATEGORIES.md). 기존 DB는 `20261102` 다음 `20261107_life_categories.sql`을 적용합니다. 최신 감사 기준: 44테이블 / 358컬럼 / 71키 / 62FK / 15CHECK / 2VIEW. 아래 이전 날짜의 수치는 당시 이력입니다.
+# DB 마이그레이션 — 쓰던 DB를 새 코드에 맞추기
 
-# DB 마이그레이션 적용 안내 (2026-11-07)
-
-## 적용 순서
-
-### 2026-11-15 커뮤니티 운영 (글 · 댓글 삭제 기록 · 목록 키)
-
-`20261115_04_community_admin.sql`을 한 번 실행합니다. `posts` · `comments`에 `deleted_by`(지운 사람, users FK · SET NULL)와 `delete_reason`(운영자가 지운 사유, 200자)을 추가하고, 목록 속도용 키 `idx_posts_status_created_at`(전체 동네 글 목록) · `idx_reports_created_at`(관리자 신고 목록)을 만듭니다. 파일 앞의 사전 확인 세 값이 모두 0이어야 하고, ALTER라 다시 실행하면 실패합니다. 기존 데이터는 그대로이고 새 칸은 비어 있어요. 격리 MySQL 8.0에서 새 DB(schema.sql)와 마이그레이션 적용 DB의 두 표 구조가 같음을 확인했습니다. 새 DB는 최신 schema.sql만 실행합니다.
-
-### 2026-11-15 지도 저장 리스트
-
-`20261115_kakao_place_favorites.sql`까지 적용된 DB에 `20261115_03_place_lists.sql`을 한 번 실행합니다. `place_lists`(회원이 만든 장소 묶음: 내 장소 · 맛집 …)와 `place_list_items`(리스트에 넣은 장소, `place_key` = DB 장소 번호 또는 `kakao:카카오장소id`) 두 표를 추가합니다. 이메일 인증 파일과는 서로 영향이 없어 순서는 상관없습니다. 다시 실행해도 안전합니다. 새 DB는 최신 schema.sql만 실행합니다. 감사 기준(schema_expected.json)에는 아직 반영하지 않았습니다(+2표).
-
-### 2026-11-15 휴대전화 인증 → 이메일 인증
-
-20261115_kakao_place_favorites까지 적용된 DB에 `20261115_02_email_verification.sql`을 한 번 실행합니다. users에서 phone·phone_verified_at을 지우고 email은 비어도 되는 채로 두고 email_verified_at을 추가합니다. phone_verifications를 지우고 email_verifications를 만들고, password_resets.method에서 PHONE을 빼고, banned_identities(재가입 차단)를 삭제합니다. 파일 앞의 사전 확인 SQL 두 개가 모두 0이어야 합니다. ALTER·DROP이라 다시 실행하면 실패합니다. 새 DB는 최신 schema.sql만 실행합니다.
-
-### 2026-11-15 카카오 장소 즐겨찾기
-
-20261108까지 적용된 DB에 `20261115_kakao_place_favorites.sql`을 한 번 실행합니다. `kakao_place_favorites` 표 하나를 추가합니다(카카오 장소 id · 이름만, 주소 · 좌표 없음). 다시 실행해도 안전합니다. 새 DB는 최신 schema.sql만 실행합니다. 위 표 수 · 컬럼 수 감사 기준에는 아직 반영하지 않았습니다(+1표 · 5컬럼).
-
-### 2026-11-08 지도 카카오 출처
-
-20261107까지 적용된 DB에 `20261108_places_kakao.sql`을 한 번 실행합니다. `places.source`에 `KAKAO`를 추가하고 `(source, source_id)` UNIQUE를 만듭니다. 파일 안의 사전 확인 SQL이 0줄인지 먼저 봅니다. 새 DB는 최신 schema.sql만 실행합니다.
-
-전체 경로: `20261031_current_project.sql` → `20261031_02_event_anniversaries.sql` → `20261101_housing_and_loan.sql` → `20261102_requirements_hardening.sql` → `20261107_life_categories.sql`. 이미 적용한 파일은 다시 실행하지 않습니다.
-
-### 2026-11-07 개인 카테고리·집 주소
-
-20261102까지 적용된 DB에 20261107 파일을 한 번 실행합니다. home_address/ledger_category_settings와 tag/name/color 타입을 먼저 확인하고 일부만 반영됐으면 전체를 재실행하지 않습니다. 상세 절차는 [생활 기능 적용 가이드](../LIFE_CATEGORIES.md)를 따릅니다. 적용 후 정상 24번 → 예외 25번 → 구조 감사 15번 순서로 검증합니다. 새 DB는 최신 schema.sql만 실행합니다.
-
-### 2026-11-02 최신 요구사항·예외 보완
-
-기존 44개 테이블에 `20261102_requirements_hardening.sql`을 한 번 추가 적용합니다. 새 DB에는 최신 schema.sql만 실행합니다. 기존 35개부터라면 20261031_current_project → 20261031_02_event_anniversaries → 20261101_housing_and_loan → 20261102_requirements_hardening 순서입니다.
-
-사전 검사 SQL과 zip_test 적용 사본은 [최신 테스트 가이드](../tests/LATEST_REQUIREMENTS_GUIDE.md) 및 21_latest_requirements_upgrade.sql에 있습니다. 운영 적용은 백업과 쓰기 중단 후 원본 파일의 대상 DB를 확인합니다. 중복 신고·잘못된 좌표/JSON/별점/요일을 자동 삭제하거나 보정하지 않습니다. 제약조건 추가가 실패할 수 있으므로 모든 사전 위반을 먼저 확인하고, 부분 실패 후 전체 파일을 무조건 재실행하지 않습니다. DDL은 암묵 커밋되며 롤백 파일은 제공하지 않습니다.
-
-새 위치 컬럼은 NULL, 신고 스냅샷도 NULL로 시작합니다. 기존 주소 좌표·작성자 정보를 추정하여 채우지 않습니다. 기존 reports 중복은 UNIQUE 생성 전에 이력 보존 방안을 정해야 합니다.
-
-### 2026-11-01 주거 설문·대출 추가
-
-최신 schema.sql은 44개 테이블입니다. 새 DB에는 schema.sql만 실행합니다. 기존 41개 테이블 DB에는 기념일 정식 컬럼을 확인한 뒤 `20261101_housing_and_loan.sql`을 한 번 실행합니다. 기존 35개 테이블이라면 아래 두 10월 마이그레이션 다음에 이 파일을 실행합니다. 모든 작업 전 백업하고 쓰기를 중지합니다. 금액 타입 확장으로 테이블 잠금/재구성이 발생할 수 있으므로 복제한 테스트 DB에서 먼저 확인합니다.
-
-**`20261101_event_anniversary.sql`은 이름이 다른 중복 경로이므로 실행하지 마세요.** 정식 컬럼은 `is_anniversary`, `repeat_yearly`입니다. 이미 `is_anniv`, `is_yearly`로 적용한 DB는 SHOW CREATE TABLE events로 확인하고 별도 정리해야 합니다. 정식 컬럼이 없다면 이전 컬럼을 정식 이름으로 RENAME COLUMN하고 기념일 CHECK를 추가하는 방식으로 데이터를 보존합니다. 두 쌍이 모두 있으면 값을 비교해 충돌을 해결한 뒤 정식 컬럼으로 이관하며, 확인 없이 이전 컬럼을 삭제하지 않습니다. 새 주거 마이그레이션은 이 충돌을 자동으로 해결하지 않습니다.
+- **새 DB**: [`../schema.sql`](../schema.sql)만 실행하면 끝이에요. 아래 파일은 필요 없어요.
+- **이미 쓰던 DB**: 아래 표에서 **아직 적용하지 않은 파일부터 위에서 아래로** 한 번씩 실행해요. 실행 전에 꼭 백업(mysqldump)하고, 대상 DB를 고른 연결에서 실행해요.
+- 어디까지 적용됐는지 모르겠으면 `SHOW CREATE TABLE 표이름` 으로 그 파일이 만드는 칸 · 표 · 키가 있는지 보고 판단해요.
+- MySQL 의 ALTER · CREATE 는 바로 확정(암묵 커밋)돼서 되돌릴 수 없어요. 중간에 실패하면 **파일 전체를 무조건 다시 돌리지 말고**, 어디까지 들어갔는지 확인한 뒤 남은 부분만 실행해요. "다시 실행"이 ⭕ 인 파일은 이미 있는 것을 건너뛰어서 통째로 다시 돌려도 돼요.
 
 ```powershell
-mysql -u root -p --default-character-set=utf8mb4 --execute="source db/migrations/20261101_housing_and_loan.sql"
+mysql -u root -p --default-character-set=utf8mb4 zip --execute="source db/migrations/파일이름.sql"
 ```
 
-아래는 이전 41개 테이블까지의 적용 순서입니다.
+## 파일 순서
 
-- 새 DB: 최신 `../schema.sql`만 실행합니다.
-- 기존 35개 테이블 DB: `20261031_current_project.sql` → `20261031_02_event_anniversaries.sql` 순서로 실행합니다. 파일명 사전순으로 자동 실행하지 않습니다.
-- 첫 번째 마이그레이션까지 적용한 DB: `20261031_02_event_anniversaries.sql`만 실행합니다.
-- 기념일 컬럼까지 적용된 DB: 두 파일 모두 다시 실행하지 않습니다.
+| 파일 | 하는 일 | 다시 실행 |
+|---|---|:---:|
+| `20261031_current_project.sql` | 처음 35개 표 설계 → 10-31 설계로 전환 (아래 주의 1) | ❌ |
+| `20261031_02_event_anniversaries.sql` | 일정에 기념일 · 매년 반복 칸 (`is_anniversary` · `repeat_yearly`) | ❌ |
+| `20261101_housing_and_loan.sql` | 주거 설문 · 전세 대출 · 월별 이자 표, 금액 칸 확장 (아래 주의 2) | ❌ |
+| `20261102_requirements_hardening.sql` | 신고 중복 방지 · 신고 당시 내용 · 위치 출처 칸 (아래 주의 3) | ❌ |
+| `20261107_life_categories.sql` | 개인 분류 설정 · 집 주소 · 분류 칸 길이 | ❌ |
+| `20261108_places_kakao.sql` | 장소 출처에 `KAKAO` 추가 · (출처, 원본 id) 중복 방지 (적용 전 파일 안 사전 확인 SQL 이 0줄이어야 함) | ❌ |
+| `20261115_kakao_place_favorites.sql` | 카카오 검색 장소 즐겨찾기 표 | ⭕ |
+| `20261115_02_email_verification.sql` | 휴대전화 인증 → 이메일 인증, 재가입 차단 표 삭제 (아래 주의 4) | ❌ |
+| `20261115_03_place_lists.sql` | 지도 저장 리스트 표 2개 | ⭕ |
+| `20261115_04_community_admin.sql` | 글 · 댓글의 지운 사람 · 사유, 전체 글 · 신고 목록 키 (파일 앞 사전 확인 세 값이 0이어야 함) | ❌ |
+| `20261115_user_personal_info.sql` | 회원 개인 정보 표 (생년월일) | ⭕ |
+| `20261115_home_contracts.sql` | 내 집 계약 표 | ⭕ |
+| `20261118_01_bill_monthly_registration.sql` | 고정 지출 납부 기한 칸 · 고지서 사진 중복 방지 표 | ❌ |
+| `20261118_02_bill_monthly_memo.sql` | 고정 지출 월별 메모 칸 | ❌ |
+| `20261118_03_bill_document_keys.sql` | 고지서 내용 중복 방지 표 (원문은 저장 안 함) | ⭕ |
+| `20261118_04_bill_monthly_delete.sql` | 고정 지출 월별 삭제 칸 · 지출 집계 VIEW 갱신 | ❌ |
+| `20261118_05_contract_auto_register.sql` | 계약 자동 등록 시간대 칸 (적용 후 서버 재시작) | ❌ |
+| `20261118_06_bill_photo_drafts.sql` | 고지서 사진 인식 임시 결과 표 (30분 후 만료) | ⭕ |
+| `20261118_07_contract_payment_changes.sql` | 월세 납부 기한 · 이자 납부 시각 칸 (아래 주의 5) | ⭕ |
+| `20261118_08_contract_payment_effective_from.sql` | 내 집 정보 납부 조건의 반영 시작일 칸 (적용 후 서버 재시작) | ⭕ |
+| `20261118_09_management_contract_kind.sql` | 관리비가 어느 계약(월세 · 전세) 것인지 칸 (과거에 섞여 저장된 행의 유형은 복원 못 함) | ⭕ |
+| `20261119_01_bill_termination.sql` | 고정 지출 해지 적용일 칸 (적용 후 서버 재시작) | ⭕ |
+| `20261119_02_ledger_memos.sql` | 메모의 가계부 연결 칸 3개 | ⭕ |
+| `20261119_03_salary_income.sql` | 월급 자동 등록 표 2개 | ⭕ |
+| `20261120_01_community_post_views.sql` | 글 조회 수 · 인기 글 키 | ⭕ |
+| `20261121_01_housing_onboarding.sql` | 주거 설문 진행 상태 · 설문 중 임시 저장 칸 (아래 주의 6) | ❌ |
+| `20261121_02_salary_record_deletion.sql` | 월급 기록이 지운 수입을 비워 둘 수 있게 (지운 달 재생성 방지) | ⭕ |
+| `20261121_03_ledger_category_label_case.sql` | 가계부 분류 이름의 영문 대소문자 구분 | ⭕ |
+| `20261121_04_post_list_indexes.sql` | 홈 꿀팁 · 동네 글 목록 · 관리자 회원 목록 인덱스 4개 (부하 테스트에서 느린 곳) | ⭕ |
+| `20261121_05_trash_schedule_places.sql` | 쓰레기 배출표를 시작 시각 · 배출장소 형식으로 (안내 문구 칸 삭제, 처음 실행 때 기존 예시 행 삭제) | ⭕ |
+| `20261121_06_trash_schedule_columns.sql` | 쓰레기 배출표를 원본 CSV 모양으로: 동네 · 장소 한 줄에 생활쓰레기 · 음식물 · 재활용 배출 요일 · 시작 시각 (이전 모양이면 표를 지우고 새로 만듦). 적용 후 `regions_nationwide.sql(저장소 루트)` → `trash_schedules_nationwide.sql(저장소 루트)` 실행 | ⭕ |
 
-기념일 추가 파일은 기존 일정의 두 플래그를 0으로 초기화하며, 일정·금액·완료 기록을 삭제하지 않습니다. 적용 후 `SHOW CREATE TABLE events`로 `is_anniversary`, `repeat_yearly`, `ck_events_anniversary_flags`를 확인합니다. `(0,0)`, `(1,0)`, `(1,1)`은 허용하고 `(0,1)`은 거부해야 합니다. 실제 MySQL 실행 검증은 별도 수행해야 합니다.
+`20261101_event_anniversary.sql` 은 **실행하지 마세요**(폐기). 같은 기능을 다른 칸 이름(`is_anniv` · `is_yearly`)으로 만드는 옛 파일이에요. 이미 실행한 DB 는 그 두 칸을 정식 이름으로 `RENAME COLUMN` 하고 기념일 CHECK 를 추가해요 — 확인 없이 지우지 마세요.
+
+## 꼭 알아야 할 주의
+
+1. **20261031_current_project** — 옛 `todos` 를 `events` 로 옮겨요(새 번호 = 적용 직전 events 최대 번호 + 옛 todos 번호, 만든 날짜를 일정 날짜로). 옛 표는 `todos_legacy_20261031` 로 남겨 두니 행 수를 비교해 보세요. 옛 수입은 월급 · 이자 · 연금 · 임대 수입 · 기타 고정 수입을 FIXED, 나머지를 OTHER 로 나눠요.
+2. **20261101_housing_and_loan** — 금액 칸 타입을 넓혀서 표가 잠기거나 다시 만들어질 수 있어요. 복사한 DB 에서 먼저 해 보세요.
+3. **20261102_requirements_hardening** — 중복 신고 · 잘못된 좌표/JSON/별점/요일을 자동으로 지우거나 고치지 않아요. 제약 추가가 실패하면 위반 행을 먼저 확인해요(사전 검사 SQL 은 [`../tests/21_latest_requirements_upgrade.sql`](../tests/21_latest_requirements_upgrade.sql)). 새 위치 · 신고 스냅샷 칸은 비어서 시작해요.
+4. **20261115_02_email_verification** — 회원의 휴대전화 번호 칸과 휴대전화 인증 · 재가입 차단 표를 지워요(데이터도 사라짐). 파일 앞 사전 확인 SQL 두 개가 모두 0이어야 해요.
+5. **20261118_07_contract_payment_changes** — 1175(Safe Update) · 1060(중복 칸)으로 멈췄으면 파일 전체를 같은 연결에서 다시 실행하면 돼요(있는 칸은 건너뜀). 옛 월세의 납부 기한은 지금 설정의 납부일로 채워요(실제 과거 날짜 복원 아님). 적용 후 `SHOW COLUMNS` 로 `due_date`=DATE, `paid_at`=DATETIME 인지 확인해요.
+6. **20261121_01_housing_onboarding** — 파일 전체를 한 연결에서 실행해요(중간에 Safe Update 를 잠깐 끄고 원래대로 돌림). 계약이 있는 회원은 COMPLETED, 로그인한 적 있는 나머지는 SKIPPED, 새 회원은 PENDING 이 돼요.
+
+## 마이그레이션을 새로 만들 때
+
+1. `db/schema.sql` 을 같은 모양으로 고치고, 이 폴더에 `날짜_번호_내용.sql` 을 추가해요. 가능하면 `information_schema` 로 이미 있는지 보고 건너뛰게 써요(다시 실행 ⭕).
+2. [`../tests/migration-path.cjs`](../tests/migration-path.cjs) 목록과 [`../tests/19_migration_upgrade.sql`](../tests/19_migration_upgrade.sql) 끝에 같은 파일을 순서대로 넣어요.
+3. 저장소 최상위에서 비교 자료를 갱신하고 검사해요.
 
 ```powershell
-mysql -u root -p --default-character-set=utf8mb4 --execute="source db/migrations/20261031_02_event_anniversaries.sql"
+node db/tests/generate-schema-audit.cjs                                   # schema_expected.json · 15/20번 감사 SQL 갱신
+node --test --test-reporter=spec db/tests/schema-assets.test.cjs          # 빠진 파일 · 새 DB 와 업그레이드 DB 구조 비교
+node db/tests/run-isolated-mysql.cjs                                      # 격리 MySQL 9.6 에서 전체 실행 검증
 ```
 
 ## 첫 번째 마이그레이션
@@ -121,3 +128,4 @@ MySQL DDL은 암묵 커밋됩니다. 중간 실패 시 백업과 실제 스키�
 
 DDL은 암묵 커밋되므로 백업 후 적용하며 전체 파일을 무조건 재실행하지 않습니다. 정적·격리 MySQL 검사 절차는 ../tests/README.md의 마이그레이션 자동 검사 항목을 참고합니다.
 - 20261121_04_login_lockout.sql: 비밀번호 로그인 실패와 잠금 시작 시각을 저장합니다. 기존 DB에 적용 후 백엔드를 재시작합니다.
+이 표에 파일 한 줄도 추가해 주세요.

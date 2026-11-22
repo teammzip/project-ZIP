@@ -166,5 +166,7 @@ CREATE TABLE events (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT NOT NU
     category_id BIGINT, is_done BOOLEAN DEFAULT FALSE NOT NULL, done_at TIMESTAMP, is_anniversary BOOLEAN DEFAULT FALSE NOT NULL, repeat_yearly BOOLEAN DEFAULT FALSE NOT NULL,
     CHECK (repeat_yearly = FALSE OR is_anniversary = TRUE),
     FOREIGN KEY (category_id) REFERENCES event_categories (id) ON DELETE SET NULL, FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE);
-CREATE TABLE trash_schedules (id BIGINT AUTO_INCREMENT PRIMARY KEY, region_id BIGINT NOT NULL, weekday TINYINT NOT NULL, waste_type VARCHAR(10) NOT NULL,
-    description VARCHAR(100) NOT NULL, UNIQUE (region_id, weekday, waste_type), FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE CASCADE);
+-- 쓰레기 배출표: db/schema.sql 과 같은 모양 (동네 · 장소 한 줄에 종류별 배출 요일 · 시작 시각). H2 는 SET 이 없어서 요일은 '월,수,금' 글자로
+CREATE TABLE trash_schedules (id BIGINT AUTO_INCREMENT PRIMARY KEY, region_id BIGINT NOT NULL, place VARCHAR(100) NOT NULL,
+    general_days VARCHAR(20) DEFAULT '' NOT NULL, general_time TIME, food_days VARCHAR(20) DEFAULT '' NOT NULL, food_time TIME,
+    recycle_days VARCHAR(20) DEFAULT '' NOT NULL, recycle_time TIME, FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE CASCADE);

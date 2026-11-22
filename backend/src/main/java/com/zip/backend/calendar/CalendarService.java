@@ -69,8 +69,8 @@ public class CalendarService {
     @Transactional
     public Map<String, Object> createEvent(long userId, EventInput input) {
         if (input == null) throw new ApiException(400, "일정 내용을 보내 주세요.");
-        if (repository.countEvents(userId) >= EVENTS_MAX) throw new ApiException(400, "일정은 " + String.format("%,d", EVENTS_MAX) + "개까지 만들 수 있어요.");
         repository.ensureDefaults(userId);
+        if (repository.countEvents(userId) >= EVENTS_MAX) throw new ApiException(400, "일정은 " + String.format("%,d", EVENTS_MAX) + "개까지 만들 수 있어요.");
         var blank = new CalendarRepository.EventRow(0, null, null, null, null, false, "USER", false, false);
         var values = values(userId, blank, input, true);
         long id = repository.insertEvent(userId, values, now());
@@ -241,8 +241,19 @@ public class CalendarService {
     // ---------- 쓰레기 배출표 ----------
 
     public List<Map<String, Object>> trashSchedules(String regionId) {
-        return repository.trashSchedules(id(regionId, "동네")).stream()
-            .map(t -> Map.<String, Object>of("weekday", t.weekday(), "wasteType", t.wasteType(), "description", t.description())).toList();
+        // [{ place, general: { days: [1,3,5], startTime: "18:00" } | null, food, recycle }]
+        return repository.trashSchedules(id(regionId, "동네")).stream().map(t -> {
+            var row = new java.util.LinkedHashMap<String, Object>();
+            row.put("place", t.place());
+            row.put("general", trashKind(t.general()));
+            row.put("food", trashKind(t.food()));
+            row.put("recycle", trashKind(t.recycle()));
+            return (Map<String, Object>) row;
+        }).toList();
+    }
+
+    private static Map<String, Object> trashKind(CalendarRepository.TrashKind kind) {
+        return kind == null ? null : Map.of("days", kind.days(), "startTime", kind.startTime());
     }
 
     // ---------- 공통 ----------

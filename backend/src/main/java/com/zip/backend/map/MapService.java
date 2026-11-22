@@ -264,6 +264,7 @@ public class MapService {
     /** 리스트 목록 + 각 리스트의 장소 키. 리스트가 하나도 없으면 "내 장소"를 만들고, 리스트에 안 든 저장 장소는 첫 리스트에 넣음 */
     @Transactional
     public List<Map<String, Object>> placeLists(long userId) {
+        repository.lockUser(userId); // 두 기기가 처음 동시에 열어도 "내 장소"는 하나
         var lists = repository.placeLists(userId);
         var saved = favorites(userId);
         var items = repository.placeListItems(userId);
