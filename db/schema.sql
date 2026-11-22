@@ -706,7 +706,7 @@ CREATE TABLE IF NOT EXISTS `ai_usage_daily` (
 -- 쓰레기 배출 일정: 원본 CSV(전국생활쓰레기배출정보표준데이터)와 같은 모양. 한 줄 = 동네(시군구) · 배출장소, 종류마다 배출 요일 · 시작 시각.
 -- 쓰레기 배출일 아침 알림(notification/TrashReminderService)이 집 주소의 동네 줄에서 오늘 요일이 든 종류를 찾아 알려줘요.
 -- 같은 동네에 장소마다 요일이 다르면 줄이 여러 개예요 (마을 · 거점마다 장소가 다른 군 지역). 배출이 없는 종류는 요일 빈 값 · 시각 NULL.
--- 데이터: db/data/생활쓰레기배출정보.csv → db/tools/trash_import.py → trash_schedules_nationwide.sql(저장소 루트)
+-- 데이터: db/data/생활쓰레기배출정보.csv → db/tools/trash_import.py → db/migrations/20261121_08_trash_schedules_nationwide.sql
 CREATE TABLE IF NOT EXISTS `trash_schedules` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '배출일정 아이디 — 자동 증가',
   `region_id` BIGINT UNSIGNED NOT NULL COMMENT '동네 아이디 — 시군구',
@@ -918,7 +918,7 @@ UPDATE `place_categories` SET `icon` = '🥘' WHERE `name` = '반찬가게';
 UPDATE `place_categories` SET `icon` = '👔' WHERE `name` = '세탁소';
 UPDATE `place_categories` SET `icon` = '🏛️' WHERE `name` = '주민센터';
 
--- 쓰레기 배출표는 여기서 넣지 않아요 (예전 마포구 예시 6행은 삭제). 전국 데이터는 regions_nationwide.sql(저장소 루트) → trash_schedules_nationwide.sql(저장소 루트) 순서로 넣어요.
+-- 쓰레기 배출표는 여기서 넣지 않아요 (예전 마포구 예시 6행은 삭제). 전국 데이터는 db/migrations/ 의 20261121_07(지역) → 20261121_08(배출표) 순서로 넣어요.
 
 -- 약관 본문: frontend/src/features/legal/content.ts의 제목·본문·LEGAL_VERSION과 동일
 -- 이미 동의한 이전 버전은 보존하며, 본문 변경 시 프론트와 함께 새 버전을 추가합니다.

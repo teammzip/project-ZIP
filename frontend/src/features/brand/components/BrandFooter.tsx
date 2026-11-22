@@ -36,6 +36,8 @@ export function BrandFooter() {
           </button>
           {open && <p className={styles.companyInfo}>자취생 생활 도우미 ZIP · 프론트엔드 · 백엔드 · 풀스택</p>}
           <p>ZIP은 팀 프로젝트로 만든 서비스예요. 지금은 입력한 정보가 이 브라우저에만 저장되고, AI 답변 · 장소 정보는 예시예요.</p>
+          {/* 공공데이터 출처 표시: 쓰레기 배출 일정 (이용약관 제2조에도 같은 안내) */}
+          <p>쓰레기 배출 정보: 행정안전부 「전국생활쓰레기배출정보표준데이터」 (<a href="https://www.data.go.kr/data/15025450/standard.do" target="_blank" rel="noopener noreferrer">공공데이터포털</a>)</p>
         </div>
 
         <a className={styles.social} href={REPO} target="_blank" rel="noopener noreferrer" aria-label="ZIP 깃허브 (새 창)" title="GitHub">

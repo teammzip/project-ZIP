@@ -2,7 +2,7 @@
 -- 바뀌는 것: 안내 문구(description) 삭제 · 배출 시작 시각(start_time) · 배출장소(place) 추가 ·
 --   같은 동네 · 종류 · 요일에 시각이나 장소가 다르면 여러 줄을 둘 수 있게 중복 방지 키를 바꿈.
 -- 주의: 처음 실행할 때(description 칸이 아직 있을 때) 기존 배출표 행을 모두 지운다. 지금까지는 마포구 예시 6행뿐이었고,
---   실제 데이터는 trash_schedules_nationwide.sql(저장소 루트) 로 다시 넣는다. 다시 실행하면 이미 바뀐 부분은 건너뛴다.
+--   실제 데이터는 다음 마이그레이션 20261121_08_trash_schedules_nationwide.sql 로 다시 넣는다. 다시 실행하면 이미 바뀐 부분은 건너뛴다.
 
 -- 1) 예시 행 삭제: 예전 형식(description)일 때만. 새 칸을 NOT NULL 로 추가하려면 표가 비어 있어야 함
 SET @trash_ddl = IF(

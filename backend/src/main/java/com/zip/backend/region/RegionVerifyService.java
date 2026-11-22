@@ -93,7 +93,7 @@ public class RegionVerifyService {
             .filter(d -> notBlank(d.region_1depth_name()))
             .orElseThrow(() -> new ApiException(400, "이 위치의 동네 이름을 찾지 못했어요."));
         String sido = cut(doc.region_1depth_name().strip());
-        // 세종특별자치시처럼 시 · 군 · 구가 없는 곳은 카카오가 2단계를 비워 보냄 → 시 · 도 이름을 시 · 군 · 구 자리에도 씀 (db/seeds/regions_nationwide.sql 과 같은 규칙)
+        // 세종특별자치시처럼 시 · 군 · 구가 없는 곳은 카카오가 2단계를 비워 보냄 → 시 · 도 이름을 시 · 군 · 구 자리에도 씀 (db/migrations/20261121_07_regions_nationwide.sql 과 같은 규칙)
         // 구가 있는 시는 카카오가 "성남시 분당구"처럼 보냄 → 앞의 시 이름만 씀. 동네 목록(regions.ts) · 쓰레기 배출표가 시 단위라서
         String gu = notBlank(doc.region_2depth_name()) ? cut(doc.region_2depth_name().strip().split("\\s+")[0]) : sido;
 

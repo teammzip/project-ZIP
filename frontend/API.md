@@ -453,7 +453,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
   "link": "budget", "refId": null, "notifyAt": "2026-10-12T09:00:00+09:00", "read": false }
 ```
 - `type`: `EVENT` · `TRASH` · `RENT` · `BILL` · `COMMUNITY` · `SYSTEM` (`notifications.noti_type`)
-- `TRASH`(쓰레기 배출일): 서버가 만들어요(`notification/TrashReminderService`). 내 집 주소(`homeAddress`)에서 시군구를 찾고, 그 동네 배출표(`trash_schedules`)에 오늘 요일이 있으면 **아침 7시(한국 시간)** 에 하루 한 번 `{ title: "오늘은 쓰레기 배출일이에요", body: "생활쓰레기 · 음식물 · 18:00부터 · 내 집 혹은 내 점포 앞" }`. 알림을 끄면(`notiOn: false`) 안 만들고, 서버가 7시에 꺼져 있었으면 켜진 뒤 그날 안에 만들어요(`notifyAt`은 그날 7시). 장소가 여러 곳인 군 지역은 장소 대신 "배출장소는 사는 곳마다 달라요". `link`는 없어요.
+- `TRASH`(쓰레기 배출일): 서버가 만들어요(`notification/TrashReminderService`). 내 집 주소(`homeAddress`)에서 시군구를 찾고, 그 동네 배출표(`trash_schedules`)에 오늘 요일이 있으면 **그날 0시(자정, 한국 시간)** 에 하루 한 번 `{ title: "오늘은 쓰레기 배출일이에요", body: "생활쓰레기 · 음식물 · 18:00부터 · 내 집 혹은 내 점포 앞" }`. 알림을 끄면(`notiOn: false`) 안 만들고, 서버가 0시에 꺼져 있었으면 켜진 뒤 그날 안에 만들어요(`notifyAt`은 그날 0시). 장소가 여러 곳인 군 지역은 장소 대신 "배출장소는 사는 곳마다 달라요". `link`는 없어요.
 - `read`는 `read_at`이 있으면 `true`. `unreadCount`가 메뉴·종의 빨간 점이 돼요.
 - 알림 화면은 **안 읽음 / 읽음**으로 나눠 보고(`status`), "모두 읽음"은 `ids: []`, 읽은 알림은 골라서 **삭제**해요. 지운 알림은 다시 안 나와야 해요 (줄을 지우거나 `deleted_at`을 두고 목록에서 빼기).
 - 설정에서 알림을 끄면(`notiOn: false`) 만들지 않거나 빈 목록을 주세요.
