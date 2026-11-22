@@ -1,6 +1,6 @@
 # DB 마이그레이션 — 쓰던 DB를 새 코드에 맞추기
 
-- **새 DB**: [`../schema.sql`](../schema.sql)을 실행한 뒤, 데이터 마이그레이션 `20261122_01` · `20261122_02`(전국 지역 · 쓰레기 배출표)만 실행해요. 나머지 파일은 필요 없어요.
+- **새 DB**: [`../schema.sql`](../schema.sql)을 실행한 뒤, 데이터 마이그레이션 `20261122_01_regions` · `20261122_02` · `20261122_04`(전국 지역 · 쓰레기 배출표 · 주변 동네)만 실행해요. 나머지 파일은 필요 없어요.
 - **이미 쓰던 DB**: 아래 표에서 **아직 적용하지 않은 파일부터 위에서 아래로** 한 번씩 실행해요. 실행 전에 꼭 백업(mysqldump)하고, 대상 DB를 고른 연결에서 실행해요.
 - 어디까지 적용됐는지 모르겠으면 `SHOW CREATE TABLE 표이름` 으로 그 파일이 만드는 칸 · 표 · 키가 있는지 보고 판단해요.
 - MySQL 의 ALTER · CREATE 는 바로 확정(암묵 커밋)돼서 되돌릴 수 없어요. 중간에 실패하면 **파일 전체를 무조건 다시 돌리지 말고**, 어디까지 들어갔는지 확인한 뒤 남은 부분만 실행해요. "다시 실행"이 ⭕ 인 파일은 이미 있는 것을 건너뛰어서 통째로 다시 돌려도 돼요.
@@ -50,6 +50,7 @@ mysql -u root -p --default-character-set=utf8mb4 zip --execute="source db/migrat
 | `20261122_03_place_reviews.sql` | 장소 리뷰 표 두 개: 카카오 검색 장소 리뷰 `kakao_place_reviews`(카카오 장소 id · 이름 + 회원 별점 · 한 줄 리뷰, 주소 · 좌표 없음) · 리뷰 신고 `place_review_reports` | ⭕ |
 | `20261122_01_regions_nationwide.sql` | **데이터** — 전국 시도 16 · 시군구 233 (`regions`, 없는 것만 추가 · 지역 번호 그대로) | ⭕ |
 | `20261122_02_trash_schedules_nationwide.sql` | **데이터** — 쓰레기 배출표 6,218줄 (`trash_schedules` 를 모두 지우고 다시 넣음, 01 다음에 실행). 마지막에 `파일 줄 수 6218 · 넣은 줄 수 6218 · 지역 없음 0` 이면 정상 | ⭕ |
+| `20261122_04_region_neighbors_nationwide.sql` | **데이터** — 주변 동네 1,286줄 (`region_neighbors` 를 모두 지우고 다시 넣음, 01 다음에 실행). 육지 경계가 맞닿은 시 · 군 · 구끼리, OpenStreetMap 경계로 `db/tools/region_neighbors_import.py` 가 만듦. 마지막에 `파일 줄 수 1286 · 넣은 줄 수 1286 · 지역 없음 0` 이면 정상 | ⭕ |
 
 `20261101_event_anniversary.sql` 은 **실행하지 마세요**(폐기). 같은 기능을 다른 칸 이름(`is_anniv` · `is_yearly`)으로 만드는 옛 파일이에요. 이미 실행한 DB 는 그 두 칸을 정식 이름으로 `RENAME COLUMN` 하고 기념일 CHECK 를 추가해요 — 확인 없이 지우지 마세요.
 

@@ -16,7 +16,20 @@ export function useNeighborhoodLocation() {
   const location = useQuery({
     queryKey: ['weather-place', user?.id, region],
     // 날씨 파일(zod 포함)은 좌표를 찾을 때만 받아 옴 → 홈 첫 로딩을 가볍게
-    queryFn: async ({ signal }) => (await import('@/features/weather/api')).resolveWeatherPlace(region, signal),
+    // 회원 주소에 지번 번지('합정동 123-4')가 있으면 못 찾아서, 번지를 뺀 주소 → 시 · 군 · 구 순서로 다시 찾음
+    queryFn: async ({ signal }) => {
+      const [{ resolveWeatherPlace }, { addressCandidates }] = await Promise.all([import('@/features/weather/api'), import('@/features/weather/addressRegion')])
+      let lastError: unknown = new Error('동네를 찾기 어려워요.')
+      for (const query of addressCandidates(region)) {
+        try {
+          return await resolveWeatherPlace(query, signal)
+        } catch (error) {
+          if (signal.aborted) throw error
+          lastError = error
+        }
+      }
+      throw lastError
+    },
     enabled: !!region && !selection.point, staleTime: Infinity, retry: false,
   })
   const place = selection.point ? { name: region, latitude: selection.point.lat, longitude: selection.point.lon } : location.data

@@ -12,6 +12,16 @@ import type { Post, PostDraft } from './types'
 
 const KEY = ['community'] as const
 
+/** 서버 모드 "주변 동네" 탭 안내: 내 동네와 이웃 동네 이름 (주거 설문 · 내 정보 주소로 정해진 동네 기준 — 글 목록 near 와 같은 기준) */
+export function useServerNeighbors(enabled: boolean) {
+  return useQuery({
+    queryKey: [...KEY, 'neighbors'],
+    queryFn: communityApi.neighbors,
+    enabled: !isMockApi && enabled,
+    staleTime: 60_000,
+  })
+}
+
 /** 서버 모드 글 목록 (동네 범위 · 주제 · 검색은 서버가 걸러 줌, 20개씩 더 보기) */
 export function useServerPosts(scope: Scope, cat: string, q: string) {
   return useInfiniteQuery({

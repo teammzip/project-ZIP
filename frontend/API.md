@@ -285,7 +285,7 @@ PUT `/api/me/home-info/loan`은 전세 대출 카드에서 사용한다. 본문�
   - `yearly: true`면 **매년 반복**이에요. 서버는 한 줄만 저장하고, 프론트가 달력 · 목록 · 알림에 해당 연도 날짜로 펼쳐 보여요(윤년 2/29는 평년에 2/28). 펼친 일정의 id는 `"<id>@<연도>"`지만 서버에는 원래 `id`로만 요청해요.
   - 기념일은 "남은 일" 수에 안 들어가고, 홈 요약 카드 **다가오는 기념일**(오늘 포함 가장 가까운 것, D-day)과 알림(3일 전부터)에 쓰여요.
   - ✅ DB 칸은 `events.is_anniversary` · `repeat_yearly`예요 (`anniv` → `is_anniversary`, `yearly` → `repeat_yearly`로 매핑. `db/migrations/20261031_02_event_anniversaries.sql` 참고).
-- 쓰레기 배출은 일정으로 저장하지 않고, 프론트가 `trash_schedules` 요일표로 달력에 그려요.
+- 쓰레기 배출은 일정으로 저장하지 않아요. **화면(달력 · 홈)에는 그리지 않고, 서버가 배출일 0시에 알림(`TRASH`, 6장)으로만 알려요** (2026-11-22 결정). 이 API 는 읽기 전용으로 남겨 둔 것이고 지금 화면은 부르지 않아요.
   - `days` 0=일 ~ 6=토, `general`(생활쓰레기) · `food`(음식물) · `recycle`(재활용). DB 는 원본 CSV 한 줄과 같은 모양(`general_days` · `general_time` …)
   - `startTime`은 배출 시작 시각(종료 시각은 저장하지 않음), `place`는 배출장소예요. 같은 동네에 장소 · 요일이 다른 줄이 여럿일 수 있어요. 데이터는 전국생활쓰레기배출정보표준데이터(공공데이터포털)를 `db/tools/trash_import.py`로 바꿔 넣어요. 마을 단위 장소는 `마을 내 생활 폐기물 배출장` 한 문구로 합쳐져 있어요.
   - 시작 시각 `00:00`은 실제 자정 배출과 "시간 제한 없음"이 섞여 있어요(원본 데이터 한계).
@@ -455,7 +455,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
   "link": "budget", "refId": "202610", "notifyAt": "2026-10-12T00:00:00Z", "read": false }
 ```
 - `type`: `EVENT` · `TRASH` · `RENT` · `BILL` · `COMMUNITY` · `SYSTEM` (`notifications.noti_type`)
-- `TRASH`(쓰레기 배출일): `TrashReminderService`가 내 집 주소(`homeAddress`)로 찾은 배출표(`trash_schedules`)를 보고 배출일에 한 번 저장해요. 기본 알림 시각은 **배출일 0시(한국 시간)** 예요. 서버가 그 시각에 꺼져 있었으면 켜진 뒤 그날 안에 저장하고 `notifyAt`은 해당 알림 시각을 유지해요. 장소가 여러 곳인 군 지역은 "배출장소는 사는 곳마다 달라요"로 안내해요.
+- `TRASH`(쓰레기 배출일): 서버가 만들어요(`notification/TrashReminderService`). 내 집 주소(`homeAddress`, 없으면 회원 주소 `address` — 가입 · 주거 설문에서 정함)에서 시군구를 찾고, 그 동네 배출표(`trash_schedules`)에 오늘 요일이 있으면 **그날 0시(자정, 한국 시간)** 에 하루 한 번 `{ title: "오늘은 쓰레기 배출일이에요", body: "생활쓰레기 · 음식물 · 18:00부터 · 내 집 혹은 내 점포 앞" }`. 알림을 끄면(`notiOn: false`) 안 만들고, 서버가 0시에 꺼져 있었으면 켜진 뒤 그날 안에 만들어요(`notifyAt`은 그날 0시). 장소가 여러 곳인 군 지역은 장소 대신 "배출장소는 사는 곳마다 달라요". `link`는 없어요. 배출표가 아예 없는 시군구(13곳)면 `{ title: "우리 동네는 쓰레기 배출 정보가 없어요" }` 안내를 (회원, 동네)마다 **한 번만** 보내고 그 뒤로는 보내지 않아요(지워도 다시 안 옴, `refId` = 동네 번호).
 - `EVENT`(일정 알림): 목록 조회 시 오늘부터 3일 뒤까지의 일정과 기념일을 동기화해요. 일정 3일 전 오전 9시부터 표시하고 `calendar:YYYY-MM-DD` 링크로 해당 날짜를 열어요. 일정이 바뀌면 안 읽은 알림을 갱신하거나 정리해요.
 - `RENT`(월세 납부 안내)는 스케줄러가 계약 기간 안의 이번 달 `rent_payments` 미납 기록을 확인해 납부 3일 전부터 당일까지 한 번 저장해요. 가계부의 저장된 시간대(없으면 한국 시간)로 날짜를 판단해요. `refId`는 납부 대상 연월(`YYYYMM`)이고 알림을 누르면 그 달의 가계부 고정 지출을 열어요. 기존 `budget:YYYY-MM-DD` 링크도 같은 달의 발송 이력으로 봐요. 월세를 납부하면 해당 월의 안 읽은 알림은 목록에서 숨겨요.
 - `read`는 `read_at`이 있으면 `true`. `unreadCount`가 메뉴·종의 빨간 점이 돼요.
@@ -475,6 +475,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 |---|---|---|---|
 | GET | `/api/posts?scope=here\|near\|all&category=TIP&q=&page=0` | — | `{ items: [post], hasNext }` |
 | GET | `/api/posts/popular` | — | `[post]` (내 동네 공개 글, 조회 수순 최대 3개) |
+| GET | `/api/posts/neighbors` | — | `{ region: { id, name, sido } \| null, neighbors: [{ id, name, sido }] }` — "주변 동네" 탭 안내. 내 동네(`users.region_id`, 주거 설문 · 내 정보 주소로 정해짐)와 이웃 동네(`region_neighbors`, 같은 시 · 도 먼저 · 이름 순). `scope=near` 글 목록과 같은 기준. 동네가 없으면 `region: null` |
 | POST | `/api/posts/{id}/views` | — | 204 (공개 글 상세를 열 때 조회 수 1 증가) |
 | GET | `/api/posts/home-tips` | — | `[post]` (기존 관리자 지정 글 API) |
 | GET | `/api/posts/{id}` | — | `post` (댓글 포함) |
@@ -496,7 +497,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
   "attachments": [{ "id": "40", "name": "before.jpg", "type": "image/jpeg", "size": 183000, "url": "https://…" }],
   "comments": [{ "id": "8", "author": { "id": "1", "nickname": "지기" }, "body": "감사해요!", "mine": true, "createdAt": "…" }] }
 ```
-- `scope`: `here`(우리 동네) · `near`(주변 동네, `region_neighbors`) · `all`(전체). 동네는 글쓴이의 `users.region_id`.
+- `scope`: `here`(우리 동네) · `near`(주변 동네, `region_neighbors` — 육지 경계가 맞닿은 시 · 군 · 구, 전국) · `all`(전체). 동네는 글쓴이의 `users.region_id`.
 - `category`: `FREE` 자유 · `TIP` 꿀팁 · `QUESTION` 질문 · `TOWN` 동네 (프론트는 한글 이름으로 보여요)
 - `mine`: 토큰의 사용자가 쓴 글·댓글이면 `true` → 수정·삭제 버튼이 보여요. `liked`도 토큰 기준.
 - 숨김(`HIDDEN`)·삭제(`DELETED`) 글과 댓글은 목록에 넣지 마세요. `like_count`·`comment_count`는 서버가 맞춰 주세요.
