@@ -7,6 +7,7 @@ CREATE TABLE users (
     signup_provider VARCHAR(10) DEFAULT 'EMAIL', role VARCHAR(10) DEFAULT 'USER',
     status VARCHAR(12) DEFAULT 'ACTIVE', last_login_at TIMESTAMP,
     housing_survey_status VARCHAR(12) NOT NULL DEFAULT 'PENDING', housing_loan_draft TEXT, housing_salary_draft TEXT,
+    login_failures TINYINT NOT NULL DEFAULT 0, login_failure_since TIMESTAMP(3),
     region_id BIGINT, password_changed_at TIMESTAMP, region_verified_at TIMESTAMP,
     home_lat DECIMAL(9,6), home_lon DECIMAL(9,6), age_confirmed_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

@@ -1,0 +1,3 @@
+ALTER TABLE users
+  ADD COLUMN login_failures TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  ADD COLUMN login_failure_since DATETIME(3) NULL;

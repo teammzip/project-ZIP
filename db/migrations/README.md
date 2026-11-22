@@ -68,4 +68,64 @@ node --test --test-reporter=spec db/tests/schema-assets.test.cjs          # 빠�
 node db/tests/run-isolated-mysql.cjs                                      # 격리 MySQL 9.6 에서 전체 실행 검증
 ```
 
+## 첫 번째 마이그레이션
+
+대상은 기존 schema.sql의 35개 테이블 설계입니다. 새 DB는 ../schema.sql만 실행합니다. 수정된 React 코드나 브라우저 localStorage를 이 SQL이 가져오지는 않습니다.
+
+1. 기존 DB를 백업하고 애플리케이션의 쓰기를 중단합니다.
+2. MySQL 8.0.16 이상인지, 기존 테이블·컬럼이 35개 표 버전인지 확인합니다. 이미 일부 변경을 적용했다면 파일을 그대로 재실행하지 않습니다.
+3. 프로젝트 루트에서 다음 명령을 한 번 실행합니다.
+
+```powershell
+mysql -u root -p --default-character-set=utf8mb4 --execute="source db/migrations/20261031_current_project.sql"
+```
+
+4. todos_legacy_20261031의 행 수와 이전된 events를 비교합니다. 이전 ID는 적용 직전 events의 최대 ID + 원본 todos.id입니다. 생성 날짜를 일정 날짜로 사용하며 기존 일정·완료 시각을 덮어쓰지 않습니다. 보관 표는 자동 삭제하지 않습니다.
+5. 기존 수입은 월급·이자·연금·임대 수입·기타 고정 수입을 FIXED, 나머지를 OTHER로 분류했습니다. 실제 기록을 표본 확인하세요.
+6. 기존 고정 지출은 공과금 태그로 유지합니다. 개인 설정의 JSON과 프로필은 기존 값이 없으므로 NULL/기본값을 API에서 처리합니다.
+7. 기존 제재의 재가입 차단 해시는 서버의 HMAC 키로 별도 채워야 합니다. 해당 작업 전 회원 삭제를 허용하지 않습니다.
+8. 새 기능 API의 소유권 검사·정지 해제·카테고리 삭제 시 항목 이동 등을 구현한 뒤 서비스를 재개합니다.
+
+MySQL DDL은 암묵 커밋됩니다. 중간 실패 시 백업과 실제 스키마를 확인하고 실패 지점부터 복구해야 합니다. 이 파일은 재실행용·자동 롤백용이 아닙니다. 이전 할 일 ID를 참조하는 외부 시스템이 있다면 위 ID 변환을 함께 적용해야 합니다.
+
+# 2026-11-01 기념일 칸 (실행하지 않음)
+
+기념일 칸의 정식 이름은 `is_anniversary` · `repeat_yearly`이고, `20261031_02_event_anniversaries.sql`이 추가합니다. `20261101_event_anniversary.sql`(`is_anniv` · `is_yearly`)은 이름이 다른 중복 경로라 **DEPRECATED**입니다. 위쪽 안내대로 실행하지 마세요.
+# 2026-11-18 월별 고정 지출 납부 기한·사진 등록
+
+고지서 내용 식별 중복 차단에는 `20261118_03_bill_document_keys.sql`도 적용합니다. 기존 데이터를 변경하지 않고 회원별 문서 식별 해시·항목 연결 테이블을 추가합니다. 발행처·식별번호·청구 월 원문은 저장하지 않습니다.
+
+이어 `20261118_02_bill_monthly_memo.sql`을 적용하면 고정 지출 양식의 선택 메모를 저장합니다. 현재 로컬 DB에는 적용했습니다. 신규 DB는 schema.sql에 포함되어 있습니다.
+
+기존 `bill_items`·`bill_payments`가 있는 DB에서 `20261118_01_bill_monthly_registration.sql`을 한 번 실행합니다.
+`bill_payments.due_date DATE NULL`과 사진 중복 방지용 `bill_photo_imports`를 추가합니다. 기존 금액·납부 상태는 변경하지 않습니다.
+신규 DB는 최신 schema.sql을 사용합니다. 현재 작업에서 연결된 로컬 DB에는 적용했습니다. 같은 DB에 ALTER를 재실행하지 마세요.
+검증/다른 개발자 적용은 루트 MONTHLY_BILLS_WRITE_VERIFICATION.md를 따릅니다. 사진 원본은 저장하지 않고 회원별 SHA-256을 저장합니다.
+
+- 20261118_04_bill_monthly_delete.sql: 선택 월 삭제 시각 및 삭제 기록 제외 지출 집계 뷰. 자동 검증은 FIXED_EXPENSE_DELETE_VERIFICATION.md 참고.
+
+- 20261118_05_contract_auto_register.sql: 계약 자동 등록용 확정 시간대. 기존 home_contracts에 한 번 적용 후 서버 재시작.
+
+- 20261118_06_bill_photo_drafts.sql: 고지서 사진·QR 인식 후 사용자 동의를 기다리는 임시 결과 테이블. AI 고지서 기능 사용 전 실제 연결 DB에 적용합니다. 30분 후 만료되며 사진 원본·QR 원문은 저장하지 않습니다.
+
+- 20261118_07_contract_payment_changes.sql: 월세 due_date, 이자 paid_at 추가. 금액·납부일 변경 시 오늘 이후 미납·예정 기록 갱신에 필요합니다. 과거 월세에 없던 납부일은 현재 user_settings.rent_day로 보완하므로 과거 실제 납부일을 복원하는 것은 아닙니다. 기존 이자는 납부 완료 증빙이 없어 paid_at=NULL로 유지합니다.
+
+  1175(Safe Update) 또는 1060(중복 컬럼)으로 중단했다면 수정된 07 파일 전체를 대상 DB가 선택된 동일 연결에서 다시 실행합니다. 이미 존재하는 컬럼은 건너뛰고, 납부일이 NULL인 월세만 보완합니다. 보완 UPDATE 동안 해당 세션의 SQL_SAFE_UPDATES만 해제한 후 원래 값으로 복원합니다. UPDATE 중 다른 오류로 중단되면 마지막 복원문을 별도 실행하거나 연결을 종료합니다. Workbench 전역 설정 변경이나 기존 컬럼 삭제는 필요하지 않습니다. 컬럼 존재 확인은 타입까지 검증하지 않으므로 적용 후 SHOW COLUMNS로 due_date=DATE, paid_at=DATETIME인지 확인합니다.
+- 20261118_08_contract_payment_effective_from.sql: 내 집 정보 저장일을 신규 계약 납부 내역의 반영 시작일로 기록합니다. 이미 지난 월세·관리비·이자를 조회/스케줄러가 새로 만드는 것을 막습니다. 기존 기록은 변경하지 않으며 컬럼이 있으면 건너뜁니다. 적용 후 백엔드를 재시작합니다. 검증은 RECURRING_PAYMENT_DAY_VERIFICATION.md 참고.
+- 20261118_09_management_contract_kind.sql: bill_items.home_contract_kind를 추가하고 현재 내 집 정보와 연결된 관리비의 유형을 기록합니다. 월세·전세 전환 후 각 유형의 관리비만 조회합니다. 기존 컬럼은 건너뛰며 UPDATE 동안 해당 세션의 Safe Update만 해제·복원합니다. 기존에 하나의 관리비 항목으로 여러 계약 유형 기록을 섞어 저장한 경우 과거 각 행의 유형은 복원할 수 없습니다. 상세 검증은 MANAGEMENT_CONTRACT_FIX_VERIFICATION.md 참고.
+- 20261119_01_bill_termination.sql: 일반 고정 지출의 사용자 지정 해지 적용일(termination_date)을 추가합니다. 컬럼이 있으면 건너뜁니다. 기존 납부 데이터는 변경하지 않습니다. 적용 후 서버 재시작.
+
+- 20261121_02_salary_record_deletion.sql: 월급 내역 삭제 후 해당 달의 재생성을 방지합니다.
+- 20261121_03_ledger_category_label_case.sql: 회원별 거래 분류명 수정 시 영문 대소문자를 정확하게 저장합니다.
+
+## 2026-11-21 주거 설문·월급 삭제·분류 이름
+
+기존 DB는 20261120_01까지 적용한 뒤 아래 순서로 각각 한 번 적용합니다. 신규 DB는 최신 schema.sql을 사용합니다.
+
+1. 20261121_01_housing_onboarding.sql: 설문 상태와 대출·월급 초안 컬럼 추가. 기존 계약 회원은 COMPLETED, 로그인 이력이 있는 나머지 회원은 SKIPPED, 신규 회원은 PENDING으로 보완합니다. 상태 보완 블록은 동일 세션에서 실행하며 SQL_SAFE_UPDATES를 복원합니다.
+2. 20261121_02_salary_record_deletion.sql: salary_records.income_id를 NULL 허용으로 변경해 월급 삭제 후 해당 월의 중복 자동 등록 방지 기록을 유지합니다.
+3. 20261121_03_ledger_category_label_case.sql: ledger_categories.name에 utf8mb4_bin을 사용해 대소문자가 다른 이름을 구분합니다.
+
+DDL은 암묵 커밋되므로 백업 후 적용하며 전체 파일을 무조건 재실행하지 않습니다. 정적·격리 MySQL 검사 절차는 ../tests/README.md의 마이그레이션 자동 검사 항목을 참고합니다.
+- 20261121_04_login_lockout.sql: 비밀번호 로그인 실패와 잠금 시작 시각을 저장합니다. 기존 DB에 적용 후 백엔드를 재시작합니다.
 이 표에 파일 한 줄도 추가해 주세요.

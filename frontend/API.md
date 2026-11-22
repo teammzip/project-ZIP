@@ -100,6 +100,7 @@
 
 ### 로그인
 - `loginId`는 **아이디 또는 이메일** (`users.login_id` 또는 `users.email`로 찾기).
+- 일반 로그인은 첫 실패부터 15분 안에 비밀번호가 5회 틀리면 해당 계정의 비밀번호 로그인을 15분간 잠가요. 아이디와 이메일로 시도해도 같은 횟수를 사용해요. 실패 메시지에는 해당 계정의 누적 횟수가 표시되며, 다섯 번째 실패부터 잠금 중에는 `423 LOGIN_LOCKED`와 해제 시각을 반환해요. 가입 이메일을 인증하고 비밀번호를 재설정하면 즉시 해제돼요.
 - `remember`(로그인 유지)가 `true`면 세션 만료를 길게 (`auth_sessions.remember`). 성공하면 `users.last_login_at` 갱신.
 - 정지된 계정이면 403 + `{ "message": "이용이 정지된 계정이에요. (10/24 18:00 해제) 사유: …" }`.
 - **재발급 토큰**(`auth_sessions.refresh_token_hash`)은 httpOnly 쿠키로 주는 걸 추천해요. `POST /api/auth/refresh` → `{ accessToken }`은 **추가 제안**이며 현재 realAuthApi/apiClient에 재발급 호출·자동 재시도는 없어요. 쿠키 방식·세션 연결·로그아웃/정지 시 access token 무효화 정책을 합의하고 구현해야 해요. (지금 프론트는 401이면 로그아웃)
