@@ -44,6 +44,7 @@ mysql -u root -p --default-character-set=utf8mb4 zip --execute="source db/migrat
 | `20261121_04_post_list_indexes.sql` | 홈 꿀팁 · 동네 글 목록 · 관리자 회원 목록 인덱스 4개 (부하 테스트에서 느린 곳) | ⭕ |
 | `20261121_05_trash_schedule_places.sql` | 쓰레기 배출표를 시작 시각 · 배출장소 형식으로 (안내 문구 칸 삭제, 처음 실행 때 기존 예시 행 삭제) | ⭕ |
 | `20261121_06_trash_schedule_columns.sql` | 쓰레기 배출표를 원본 CSV 모양으로: 동네 · 장소 한 줄에 생활쓰레기 · 음식물 · 재활용 배출 요일 · 시작 시각 (이전 모양이면 표를 지우고 새로 만듦). 적용 후 `regions_nationwide.sql(저장소 루트)` → `trash_schedules_nationwide.sql(저장소 루트)` 실행 | ⭕ |
+| `20261121_07_notices.sql` | 관리자 공지사항 표 (고정 · 팝업) | ⭕ |
 
 `20261101_event_anniversary.sql` 은 **실행하지 마세요**(폐기). 같은 기능을 다른 칸 이름(`is_anniv` · `is_yearly`)으로 만드는 옛 파일이에요. 이미 실행한 DB 는 그 두 칸을 정식 이름으로 `RENAME COLUMN` 하고 기념일 CHECK 를 추가해요 — 확인 없이 지우지 마세요.
 

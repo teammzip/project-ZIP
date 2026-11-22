@@ -2,11 +2,11 @@
 
 실제 사용자 데이터·DB 백업·인증정보는 저장소에 포함하지 않습니다.
 
-[schema.sql](schema.sql)은 현재 프로젝트의 React 데이터 모델과 [백엔드 API 약속](../frontend/API.md)을 반영한 MySQL **8.0.16 이상** 설계입니다. 테이블 **53개**, 집계 VIEW **2개**입니다.
+[schema.sql](schema.sql)은 현재 프로젝트의 React 데이터 모델과 [백엔드 API 약속](../frontend/API.md)을 반영한 MySQL **8.0.16 이상** 설계입니다. 테이블 **54개**, 집계 VIEW **2개**입니다.
 
 ## 1. 기능별 DB 위치
 
-현재 기준은 **53테이블 · VIEW 2개**예요(세부 수치는 `tests/schema_expected.json`). 언제 누가 무엇을 바꿨는지는 루트 [CHANGELOG.md](../CHANGELOG.md#db)에 있어요.
+현재 기준은 **54테이블 · VIEW 2개**예요(세부 수치는 `tests/schema_expected.json`). 언제 누가 무엇을 바꿨는지는 루트 [CHANGELOG.md](../CHANGELOG.md#db)에 있어요.
 
 | 기능 | DB 반영 |
 |---|---|
@@ -172,8 +172,9 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 | `salary_settings` · `salary_records` | 월급 자동 등록 설정과 월별 1건 기록 |
 | `bill_document_keys` · `bill_photo_imports` | 고지서 중복 등록 방지 해시 (문서 · 사진) |
 | `bill_photo_drafts` | 고지서 사진 인식 결과 (사용자 확인 전 임시, 30분) |
+| `notices` | 관리자 공지사항 (고정 · 쓴 관리자) |
 
-> 2026-11-15 이후 추가된 위 7줄(표 10개)과 일부 칸(`users.housing_survey_status` 등, 고정 지출의 `due_date` · `memo` · `deleted_at` 등)은 아래 5장 컬럼 설명에 아직 없어요. 정확한 칸은 [`schema.sql`](schema.sql)을 보세요.
+> 2026-11-15 이후 추가된 위 8줄(표 11개)과 일부 칸(`users.housing_survey_status` 등, 고정 지출의 `due_date` · `memo` · `deleted_at` 등)은 아래 5장 컬럼 설명에 아직 없어요. 정확한 칸은 [`schema.sql`](schema.sql)을 보세요.
 
 ## 5. 전체 컬럼과 제약조건
 
