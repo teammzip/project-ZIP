@@ -170,6 +170,9 @@ class EmailAuthTests {
 
     @Test void findIdAndPasswordReset() throws Exception {
         jdbc.update("INSERT INTO users (id, login_id, password_hash, email, nickname) VALUES (1, 'tester01', ?, 't@zip.com', '테스터')", passwords.encode("abcd123!"));
+        jdbc.update("UPDATE users SET login_failures=5, login_failure_since=CURRENT_TIMESTAMP WHERE id=1");
+        mvc.perform(post("/api/auth/login").contentType("application/json").content("{\"loginId\":\"tester01\",\"password\":\"abcd123!\"}"))
+            .andExpect(status().is(423));
         send("nobody@zip.com", "FIND_ID", 404);
 
         send("t@zip.com", "FIND_ID", 204);

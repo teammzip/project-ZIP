@@ -74,6 +74,29 @@ class AuthIntegrationTests {
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM auth_sessions", Integer.class));
     }
 
+    @Test void passwordFailuresLockBothLoginIdentifiersAndExpireWithoutExtension() throws Exception {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            String identifier = attempt % 2 == 0 ? "tester01" : "t@zip.com";
+            mvc.perform(post("/api/auth/login").contentType("application/json")
+                .content("{\"loginId\":\"" + identifier + "\",\"password\":\"wrong\"}"))
+                .andExpect(status().is(attempt == 4 ? 423 : 400))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("누적 실패 " + (attempt + 1) + "/5회")));
+        }
+        assertEquals(5, jdbc.queryForObject("SELECT login_failures FROM users WHERE id=1", Integer.class));
+        var since = jdbc.queryForObject("SELECT login_failure_since FROM users WHERE id=1", java.sql.Timestamp.class);
+        mvc.perform(post("/api/auth/login").contentType("application/json")
+            .content("{\"loginId\":\"t@zip.com\",\"password\":\"abcd123!\"}"))
+            .andExpect(status().is(423)).andExpect(jsonPath("$.code").value("LOGIN_LOCKED"));
+        mvc.perform(post("/api/auth/login").contentType("application/json")
+            .content("{\"loginId\":\"tester01\",\"password\":\"wrong\"}"))
+            .andExpect(status().is(423)).andExpect(jsonPath("$.code").value("LOGIN_LOCKED"));
+        assertEquals(since, jdbc.queryForObject("SELECT login_failure_since FROM users WHERE id=1", java.sql.Timestamp.class));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM auth_sessions", Integer.class));
+        jdbc.update("UPDATE users SET login_failure_since=? WHERE id=1", java.sql.Timestamp.from(Instant.now().minusSeconds(901)));
+        login();
+        assertEquals(0, jdbc.queryForObject("SELECT login_failures FROM users WHERE id=1", Integer.class));
+    }
+
     @Test void passwordChangeRevokesAllSessions() throws Exception {
         String first = login();
         String second = login();

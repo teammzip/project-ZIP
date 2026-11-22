@@ -26,6 +26,23 @@ public class AuthService {
     private final com.zip.backend.files.ProfileFileService files;
     private final com.zip.backend.region.RegionVerifyService regionVerify;
     private static final DateTimeFormatter LIFTS_AT = DateTimeFormatter.ofPattern("M월 d일 HH:mm").withZone(ZoneId.of("Asia/Seoul"));
+    private static final Duration LOGIN_FAILURE_WINDOW = Duration.ofMinutes(15);
+    private static final int LOGIN_FAILURE_LIMIT = 5;
+
+    private static class InvalidLogin extends ApiException {
+        InvalidLogin(int failures) {
+            super(400, "아이디(이메일) 또는 비밀번호가 맞지 않아요."
+                + (failures > 0 ? " (누적 실패 " + failures + "/" + LOGIN_FAILURE_LIMIT + "회)" : ""));
+        }
+    }
+
+    private static class LockedLogin extends ApiException {
+        LockedLogin(Instant since) {
+            super(423, "로그인이 잠겼어요. (누적 실패 " + LOGIN_FAILURE_LIMIT + "/" + LOGIN_FAILURE_LIMIT + "회) "
+                + LIFTS_AT.format(since.plus(LOGIN_FAILURE_WINDOW))
+                + " 이후 다시 시도하거나, 비밀번호 찾기에서 이메일 인증 후 비밀번호를 재설정해 주세요.", "LOGIN_LOCKED");
+        }
+    }
 
     public AuthService(AuthRepository repository, PasswordEncoder passwords, TokenService tokens, Clock clock,
         com.zip.backend.files.ProfileFileService files, com.zip.backend.region.RegionVerifyService regionVerify,
@@ -43,16 +60,27 @@ public class AuthService {
         this.dummyHash = passwords.encode("unused-account-timing-pad");
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = {InvalidLogin.class, LockedLogin.class})
     public Map<String, Object> login(AuthRequests.Login request) {
         var user = repository.findForLogin(request.loginId().trim().toLowerCase(Locale.ROOT)).orElse(null);
         String hash = user == null || user.passwordHash() == null ? dummyHash : user.passwordHash();
         boolean matches = passwords.matches(request.password(), hash);
-        if (!matches || user == null || user.passwordHash() == null) {
-            throw new ApiException(400, "아이디(이메일) 또는 비밀번호가 맞지 않아요.");
-        }
+        if (user == null || user.passwordHash() == null) throw new InvalidLogin(0);
         var now = clock.instant();
+        var since = user.loginFailureSince();
+        boolean withinWindow = since != null && now.isBefore(since.plus(LOGIN_FAILURE_WINDOW));
+        boolean locked = withinWindow && user.loginFailures() >= LOGIN_FAILURE_LIMIT;
+        if (!matches) {
+            if (locked) throw new LockedLogin(since);
+            int failures = withinWindow ? user.loginFailures() + 1 : 1;
+            boolean reachedLimit = failures == LOGIN_FAILURE_LIMIT;
+            repository.recordLoginFailure(user.id(), failures, !withinWindow || reachedLimit ? now : since);
+            if (reachedLimit) throw new LockedLogin(now);
+            throw new InvalidLogin(failures);
+        }
         if (repository.suspended(user, now)) throw suspendedError(user.id(), now);
+        if (locked) throw new LockedLogin(since);
+        if (user.loginFailures() > 0) repository.clearLoginFailures(user.id());
         boolean remember = Boolean.TRUE.equals(request.remember());
         var expires = now.plus(Duration.ofSeconds(remember ? rememberSeconds : accessSeconds));
         long sessionId = repository.createSession(user.id(), tokens.sessionHash(), remember, now, expires);

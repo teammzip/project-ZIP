@@ -932,6 +932,10 @@ ALTER TABLE salary_records MODIFY COLUMN income_id BIGINT UNSIGNED NULL;
 ALTER TABLE ledger_categories MODIFY COLUMN name VARCHAR(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL
   COMMENT '분류 이름 — 회원별 표시 목록은 설정 JSON에서 관리';
 
+-- 20261121_04_login_lockout.sql
+ALTER TABLE users
+  ADD COLUMN login_failures TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  ADD COLUMN login_failure_since DATETIME(3) NULL;
 -- 20261121_04_post_list_indexes.sql
 -- 적용할 DB를 선택한 후 실행. 홈 꿀팁 · 동네 글 목록 · 관리자 회원 목록을 빠르게 하는 인덱스 4개. 데이터는 바꾸지 않는다. 이미 있으면 건너뛴다.
 

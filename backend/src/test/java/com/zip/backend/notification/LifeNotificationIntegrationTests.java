@@ -111,7 +111,7 @@ class LifeNotificationIntegrationTests {
 
     /** 쓰레기 배출 알림은 TrashReminderService(아침 7시)가 만들고, 생활 알림은 건드리지 않음 */
     @Test void trashReminderRowsAreLeftAlone() throws Exception {
-        jdbc.update("INSERT INTO notifications (user_id, noti_type, title, body, link_view, ref_id, notify_at) VALUES (1, 'TRASH', '오늘은 쓰레기 배출일이에요', '생활쓰레기', NULL, 2, CURRENT_TIMESTAMP)");
+        jdbc.update("INSERT INTO notifications (user_id, noti_type, title, body, link_view, ref_id, notify_at) VALUES (1, 'TRASH', '오늘은 쓰레기 배출일이에요', '생활쓰레기', NULL, 2, TIMESTAMP '2020-01-01 07:00:00')");
         notis().andExpect(jsonPath("$.items[?(@.type == 'TRASH')].title").value("오늘은 쓰레기 배출일이에요"));
         jdbc.update("UPDATE user_settings SET noti_on = FALSE WHERE user_id = 1");
         notis();

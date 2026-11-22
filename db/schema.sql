@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `housing_survey_status` VARCHAR(12) NOT NULL DEFAULT 'PENDING',
   `housing_loan_draft` TEXT NULL,
   `housing_salary_draft` TEXT NULL,
+  `login_failures` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  `login_failure_since` DATETIME(3) NULL,
   `last_login_at` DATETIME NULL COMMENT '마지막 로그인 일시',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '가입 일시',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '정보 수정 일시',

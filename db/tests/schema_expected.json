@@ -386,6 +386,26 @@
     },
     {
       "table": "users",
+      "column": "login_failures",
+      "type": "tinyint unsigned",
+      "nullable": "NO",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "users",
+      "column": "login_failure_since",
+      "type": "datetime(3)",
+      "nullable": "YES",
+      "auto": 0,
+      "generated": 0,
+      "charset": "",
+      "collation": ""
+    },
+    {
+      "table": "users",
       "column": "last_login_at",
       "type": "datetime",
       "nullable": "YES",
