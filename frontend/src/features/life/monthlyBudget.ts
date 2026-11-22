@@ -30,8 +30,8 @@ export function summarizeMonthlyBudget(month: string, income: number, fixed: Exp
 }
 
 export async function loadMonthlyBudget() {
-  const { user, token } = useAuthStore.getState()
-  if (!user || !token) throw new Error('로그인 후 가계부를 조회해 주세요.')
+  const { user, sessionKey } = useAuthStore.getState()
+  if (!user || !sessionKey) throw new Error('로그인 후 가계부를 조회해 주세요.')
   const { incomes, spends, bills, settings, rentPaid } = useLifeStore.getState()
   const timeZone = koreanAddressTimeZone(settings.homeAddresses?.[user.id] || user.address) ?? deviceTimeZone()
   const today = new Intl.DateTimeFormat('sv-SE', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
@@ -52,7 +52,7 @@ export async function loadMonthlyBudget() {
     readMonthlyBills(month, timeZone),
   ])
   const current = useAuthStore.getState()
-  if (current.user?.id !== user.id || current.token !== token) throw new Error('로그인 상태가 변경됐어요.')
+  if (current.user?.id !== user.id || current.sessionKey !== sessionKey) throw new Error('로그인 상태가 변경됐어요.')
   const fixed = [...(monthlyBills.housingItems ?? []), ...monthlyBills.items]
     .filter((bill) => bill.paid)
     .map((bill) => ({ cat: bill.tag, amount: bill.amount }))

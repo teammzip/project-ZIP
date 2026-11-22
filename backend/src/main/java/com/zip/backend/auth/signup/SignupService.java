@@ -2,15 +2,11 @@ package com.zip.backend.auth.signup;
 
 import com.zip.backend.auth.AuthRepository;
 import com.zip.backend.auth.AuthService;
+import com.zip.backend.auth.AuthSessions;
 import com.zip.backend.auth.RegionMatcher;
-import com.zip.backend.auth.TokenService;
 import com.zip.backend.auth.emailcheck.EmailAuthService;
 import com.zip.backend.common.ApiException;
 import java.time.Clock;
-import java.time.Duration;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,20 +20,18 @@ public class SignupService {
     private final AuthService auth;
     private final EmailAuthService emailAuth;
     private final PasswordEncoder passwords;
-    private final TokenService tokens;
+    private final AuthSessions sessions;
     private final Clock clock;
-    private final long accessSeconds;
 
     public SignupService(SignupRepository signups, AuthRepository accounts, AuthService auth, EmailAuthService emailAuth,
-        PasswordEncoder passwords, TokenService tokens, Clock clock, @Value("${zip.auth.access-seconds}") long accessSeconds) {
+        PasswordEncoder passwords, AuthSessions sessions, Clock clock) {
         this.signups = signups;
         this.accounts = accounts;
         this.auth = auth;
         this.emailAuth = emailAuth;
         this.passwords = passwords;
-        this.tokens = tokens;
+        this.sessions = sessions;
         this.clock = clock;
-        this.accessSeconds = accessSeconds;
     }
 
     /**
@@ -45,7 +39,7 @@ public class SignupService {
      * if anything below fails the whole transaction rolls back and the token stays usable.
      */
     @Transactional
-    public Map<String, Object> signup(SignupRequests.Signup request) {
+    public AuthSessions.Login signup(SignupRequests.Signup request) {
         if (!Boolean.TRUE.equals(request.agreeTerms()) || !Boolean.TRUE.equals(request.agreePrivacy())
             || !Boolean.TRUE.equals(request.agreePolicy()) || !Boolean.TRUE.equals(request.ageOver14())) {
             throw new ApiException(400, "필수 약관에 모두 동의해 주세요.");
@@ -75,11 +69,8 @@ public class SignupService {
         String regionId = address == null ? null : RegionMatcher.match(address, accounts.districts()).orElse(null);
         if (regionId != null) accounts.updateRegion(id, regionId);
 
-        var expires = now.plus(Duration.ofSeconds(accessSeconds));
-        long sessionId = accounts.createSession(id, tokens.sessionHash(), false, now, expires);
-        var user = new LinkedHashMap<>(auth.me(id));
-        user.put("firstLogin", true);
-        var response = Map.<String, Object>of("accessToken", tokens.issue(id, sessionId, now, expires), "user", user);
+        var session = sessions.create(id, true, now);
+        var response = new AuthSessions.Login(session, auth.me(id));
         accounts.recordLogin(id, now);
         return response;
     }

@@ -17,17 +17,17 @@ type HomeResponse = {
   managementBill: { id: string; name: string; defaultAmount: number; tag: string; paid: boolean; month: string } | null
 }
 let revision = 0
-let pendingLoad: { id: string; token: string; revision: number; promise: Promise<HomeResponse> } | null = null
-let pendingWrite: { token: string; promise: Promise<HomeResponse> } | null = null
+let pendingLoad: { id: string; sessionKey: string; revision: number; promise: Promise<HomeResponse> } | null = null
+let pendingWrite: { sessionKey: string; promise: Promise<HomeResponse> } | null = null
 
 function session() {
-  const { user, token } = useAuthStore.getState()
-  if (!user || !token) throw new Error('로그인 후 이용해 주세요.')
-  return { id: user.id, token }
+  const { user, sessionKey } = useAuthStore.getState()
+  if (!user || !sessionKey) throw new Error('로그인 후 이용해 주세요.')
+  return { id: user.id, sessionKey }
 }
 function apply(data: HomeResponse, owner: ReturnType<typeof session>, request: number) {
   const current = useAuthStore.getState()
-  if (current.token !== owner.token || current.user?.id !== owner.id || request !== revision) throw new Error('로그인 상태 또는 내 집 정보가 변경됐어요. 다시 불러와 주세요.')
+  if (current.sessionKey !== owner.sessionKey || current.user?.id !== owner.id || request !== revision) throw new Error('로그인 상태 또는 내 집 정보가 변경됐어요. 다시 불러와 주세요.')
   const settings = useLifeStore.getState().settings
   useLifeStore.getState().saveSettings({ ...settings, ...(data.contract ? { rent: Number(data.settings.rent), rentDay: data.settings.rentDay,
     moveIn: data.settings.moveIn, contractEnd: data.settings.contractEnd } : {}),
@@ -53,8 +53,8 @@ function apply(data: HomeResponse, owner: ReturnType<typeof session>, request: n
 
 export async function loadHomeInfo() {
   const owner = session()
-  if (pendingWrite?.token === owner.token) return pendingWrite.promise
-  if (pendingLoad?.id === owner.id && pendingLoad.token === owner.token && pendingLoad.revision === revision) return pendingLoad.promise
+  if (pendingWrite?.sessionKey === owner.sessionKey) return pendingWrite.promise
+  if (pendingLoad?.id === owner.id && pendingLoad.sessionKey === owner.sessionKey && pendingLoad.revision === revision) return pendingLoad.promise
   const request = ++revision
   const promise = apiClient.get<HomeResponse>('/me/home-info').then(({ data }) => {
     apply(data, owner, request)
@@ -65,13 +65,13 @@ export async function loadHomeInfo() {
 }
 async function writeHomeInfo(path: string, input: HomeInput | { loan: LoanTerms | null }) {
   const owner = session()
-  if (pendingWrite?.token === owner.token) throw new Error('내 집 정보를 저장하고 있어요. 잠시 후 다시 시도해 주세요.')
+  if (pendingWrite?.sessionKey === owner.sessionKey) throw new Error('내 집 정보를 저장하고 있어요. 잠시 후 다시 시도해 주세요.')
   const request = ++revision
   const promise = apiClient.put<HomeResponse>(path, input).then(({ data }) => {
     apply(data, owner, request)
     return data
   }).finally(() => { if (pendingWrite?.promise === promise) pendingWrite = null })
-  pendingWrite = { token: owner.token, promise }
+  pendingWrite = { sessionKey: owner.sessionKey, promise }
   return promise
 }
 

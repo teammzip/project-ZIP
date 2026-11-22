@@ -45,7 +45,7 @@ class GoogleLoginIntegrationTests {
     }
 
     @Test void firstGoogleLoginCreatesAccountThatNeedsConsent() throws Exception {
-        String token = auth.socialLogin("GOOGLE", "sub-1", "Kim@Gmail.com", "김지기");
+        String token = auth.socialLogin("GOOGLE", "sub-1", "Kim@Gmail.com", "김지기").accessToken();
         mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
             .andExpect(status().isOk()).andExpect(jsonPath("$.provider").value("google"))
             .andExpect(jsonPath("$.nickname").value("김지기")).andExpect(jsonPath("$.email").value("kim@gmail.com"))
@@ -99,6 +99,13 @@ class GoogleLoginIntegrationTests {
         assertEquals("no-referrer", response.getHeader("Referrer-Policy"));
         String token = url.substring(url.indexOf("token=") + 6);
         mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
+        var refreshCookie = response.getCookie("zip_refresh");
+        assertNotNull(refreshCookie);
+        assertTrue(refreshCookie.isHttpOnly());
+        assertTrue(refreshCookie.getMaxAge() > 0);
+        long sessionId = jdbc.queryForObject("SELECT id FROM auth_sessions", Long.class);
+        mvc.perform(post("/api/auth/refresh").header("X-Zip-Session", sessionId).cookie(refreshCookie))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.accessToken").isString());
     }
 
     @Test void unverifiedGoogleEmailIsNotStored() throws Exception {

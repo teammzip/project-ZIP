@@ -148,24 +148,19 @@ public class BillRepository {
             var month=row.month();
             var dueMonth=changeDue?month.plusMonths(offset):YearMonth.from(row.due());
             var date=changeDue?dueMonth.atDay(Math.min(due.getDayOfMonth(),dueMonth.lengthOfMonth())):row.due();
-            if(home!=null && (!within(home,month) || !within(home,dueMonth))) continue;
+            if(home!=null && (!home.includes(month) || !home.includes(dueMonth))) continue;
             if(date.isBefore(today)) throw BillInput.bad("변경한 납부일이 오늘 이전인 미납 기록이 있어요. 오늘 이후 날짜를 선택해 주세요.");
             monthlyDetails(id,month,changeAmount?amount:row.amount(),date);
         }
     }
     private record FuturePayment(YearMonth month,java.time.LocalDate due,long amount) {}
 
-    private static boolean within(Housing home,YearMonth month) {
-        return (home.moveIn()==null || !month.isBefore(YearMonth.parse(home.moveIn())))
-            && (home.end()==null || !month.isAfter(YearMonth.parse(home.end())));
-    }
-
     public void propagateAmount(long user,long id,long amount,java.time.LocalDate today) {
         var home=housing(user);
         var rows=jdbc.query("SELECT period_ym,due_date FROM bill_payments WHERE bill_item_id=? AND paid_at IS NULL AND deleted_at IS NULL AND due_date>=?",
             (rs,n)->new DatedMonth(YearMonth.parse(rs.getString(1)),YearMonth.from(rs.getDate(2).toLocalDate())),id,java.sql.Date.valueOf(today));
         for(var row:rows) {
-            if(home!=null && (!within(home,row.month()) || !within(home,row.dueMonth()))) continue;
+            if(home!=null && (!home.includes(row.month()) || !home.includes(row.dueMonth()))) continue;
             jdbc.update("UPDATE bill_payments SET amount=? WHERE bill_item_id=? AND period_ym=? AND paid_at IS NULL AND deleted_at IS NULL",amount,id,row.month().toString());
         }
     }
@@ -179,7 +174,22 @@ public class BillRepository {
         jdbc.update("INSERT INTO bill_photo_imports(user_id,image_hash,bill_item_id) VALUES (?,?,?)", userId, hash, id);
     }
 
-    public record Housing(String kind, boolean included, Long managementId, long rent, int rentDay, String moveIn, String end) {}
+    public record Housing(String kind, boolean included, Long managementId, long rent, int rentDay, String moveIn, String end) {
+        boolean includes(YearMonth month) {
+            return (moveIn==null || !month.isBefore(YearMonth.parse(moveIn)))
+                && (end==null || !month.isAfter(YearMonth.parse(end)));
+        }
+
+        boolean canRegister(YearMonth month, YearMonth current, java.time.LocalDate effective) {
+            if (month.isAfter(current) || !includes(month)) return false;
+            if ("monthly".equals(kind) && moveIn!=null && end!=null) return true;
+            return month.equals(current) && (effective==null || !month.isBefore(YearMonth.from(effective)));
+        }
+
+        boolean manages(Item item) {
+            return (managementId!=null && managementId==item.id()) || kind.equals(item.homeContractKind());
+        }
+    }
     public Housing housing(long user) {
         return jdbc.query("""
             SELECT c.*, s.rent_amount, s.rent_day, s.move_in_ym, s.contract_end_ym
@@ -236,28 +246,26 @@ public class BillRepository {
         int day="jeonse".equals(home.kind())?jdbc.query("SELECT payment_day FROM housing_loans WHERE user_id=? AND is_active=1",(rs,n)->rs.getInt(1),user).stream().findFirst().orElse(15):home.rentDay();
         return month.atDay(Math.min(day,month.lengthOfMonth()));
     }
-    public void autoRegister(long user,YearMonth month) {
+    public void autoRegister(long user,YearMonth month,YearMonth current) {
         var home=housing(user);
-        var effective=paymentEffectiveFrom(user);
-        var rentDue=month.atDay(Math.min(home==null?15:home.rentDay(),month.lengthOfMonth()));
-        if(home==null || (home.moveIn()!=null && month.isBefore(YearMonth.parse(home.moveIn())))
-            || (home.end()!=null && month.isAfter(YearMonth.parse(home.end())))) return;
-        if("monthly".equals(home.kind()) && home.rent()>0 && rent(user,month)==null && (effective==null || !rentDue.isBefore(effective)))
-            jdbc.update("INSERT INTO rent_payments(user_id,period_ym,amount,due_date) VALUES (?,?,?,?)",user,month.toString(),home.rent(),java.sql.Date.valueOf(month.atDay(Math.min(home.rentDay(),month.lengthOfMonth()))));
-        if(!home.included() && home.managementId()!=null && payment(home.managementId(),month)==null) {
+        if(home==null || !home.canRegister(month,current,paymentEffectiveFrom(user))) return;
+        if("monthly".equals(home.kind()) && home.rent()>0 && rent(user,month)==null) {
+            var due=month.atDay(Math.min(home.rentDay(),month.lengthOfMonth()));
+            jdbc.update("INSERT INTO rent_payments(user_id,period_ym,amount,due_date,paid_at) VALUES (?,?,?,?,NULL)",
+                user,month.toString(),home.rent(),java.sql.Date.valueOf(due));
+        }
+        if(!home.included() && home.managementId()!=null && payment(home.managementId(),month)==null
+            && list(user,month).stream().noneMatch(row -> row.payment()!=null && home.manages(row.item()))) {
             var item=find(user,home.managementId());
             if(item.active() && item.defaultAmount()>0) {
                 var due=managementDue(user,month,home);
-                if(effective==null || !due.isBefore(effective)) {
-                    insertPayment(item.id(),month,item.defaultAmount(),null);
-                    jdbc.update("UPDATE bill_payments SET due_date=? WHERE bill_item_id=? AND period_ym=?",java.sql.Date.valueOf(due),item.id(),month.toString());
-                    jdbc.update("UPDATE bill_payments SET memo=? WHERE bill_item_id=? AND period_ym=?","내 집 정보에서 자동 등록",item.id(),month.toString());
-                }
+                jdbc.update("INSERT INTO bill_payments(bill_item_id,period_ym,amount,due_date,paid_at,memo) VALUES (?,?,?,?,NULL,?)",
+                    item.id(),month.toString(),item.defaultAmount(),java.sql.Date.valueOf(due),"내 집 정보에서 자동 등록");
             }
         }
         if("jeonse".equals(home.kind()) && interest(user,month).isEmpty()) {
             var expected=expectedInterest(user,month);
-            if(expected!=null && (effective==null || !expected.date().isBefore(effective))) jdbc.update("""
+            if(expected!=null) jdbc.update("""
                 INSERT INTO loan_interest_charges(loan_id,charge_date,principal,annual_rate,amount)
                 SELECT id,?,principal,annual_rate,? FROM housing_loans WHERE id=? AND user_id=? AND is_active=1
                 """,java.sql.Date.valueOf(expected.date()),expected.amount(),expected.id(),user);

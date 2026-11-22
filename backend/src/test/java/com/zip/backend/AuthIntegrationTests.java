@@ -1,6 +1,7 @@
 package com.zip.backend;
 
 import com.zip.backend.auth.TokenService;
+import jakarta.servlet.http.Cookie;
 import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,12 +36,75 @@ class AuthIntegrationTests {
         jdbc.update("INSERT INTO user_term_agreements (user_id, terms_id, agreed_at) SELECT 1, id, CURRENT_TIMESTAMP FROM terms_documents WHERE version = '2026-10-18'");
     }
 
-    private String login() throws Exception {
-        String body = mvc.perform(post("/api/auth/login").contentType("application/json")
-            .content("{\"loginId\":\"tester01\",\"password\":\"abcd123!\",\"remember\":true}"))
+    private org.springframework.mock.web.MockHttpServletResponse loginResponse(boolean remember) throws Exception {
+        return mvc.perform(post("/api/auth/login").contentType("application/json")
+            .content("{\"loginId\":\"tester01\",\"password\":\"abcd123!\",\"remember\":" + remember + "}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.user.id").value("1"))
-            .andReturn().getResponse().getContentAsString();
-        return com.jayway.jsonpath.JsonPath.read(body, "$.accessToken");
+            .andReturn().getResponse();
+    }
+
+    private String accessToken(org.springframework.mock.web.MockHttpServletResponse response) throws Exception {
+        return com.jayway.jsonpath.JsonPath.read(response.getContentAsString(), "$.accessToken");
+    }
+
+    private String login() throws Exception {
+        return accessToken(loginResponse(true));
+    }
+
+    @Test void refreshRotatesTheCookieWithoutExtendingTheSessionAndLogoutRevokesBothTokens() throws Exception {
+        var login = loginResponse(true);
+        var cookie = login.getCookie("zip_refresh");
+        assertNotNull(cookie);
+        assertTrue(cookie.isHttpOnly());
+        assertEquals("/api/auth", cookie.getPath());
+        assertTrue(cookie.getMaxAge() > 6 * 86400);
+        assertTrue(login.getHeader("Set-Cookie").contains("SameSite=Lax"));
+        assertEquals("no-store", login.getHeader("Cache-Control"));
+        assertFalse(login.getContentAsString().contains(cookie.getValue()));
+
+        var jwt = decoder.decode(accessToken(login));
+        assertEquals(900, java.time.Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt()).getSeconds());
+        var sid = jwt.getClaimAsString("sid");
+        var expiry = jdbc.queryForObject("SELECT expires_at FROM auth_sessions WHERE id = ?", java.sql.Timestamp.class, sid);
+        var hash = jdbc.queryForObject("SELECT refresh_token_hash FROM auth_sessions WHERE id = ?", String.class, sid);
+        String raw = cookie.getValue().split("\\.")[1];
+        byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(raw.getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+        assertEquals(java.util.HexFormat.of().formatHex(digest), hash);
+
+        mvc.perform(post("/api/auth/refresh").cookie(cookie)).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/refresh").header("X-Zip-Session", "1234").cookie(cookie))
+            .andExpect(status().isUnauthorized());
+        var renewed = mvc.perform(post("/api/auth/refresh").header("X-Zip-Session", sid).cookie(cookie).secure(true))
+            .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+            .andReturn().getResponse();
+        var next = renewed.getCookie("zip_refresh");
+        assertTrue(next.getSecure());
+        assertNotEquals(cookie.getValue(), next.getValue());
+        assertEquals(expiry, jdbc.queryForObject("SELECT expires_at FROM auth_sessions WHERE id = ?", java.sql.Timestamp.class, sid));
+        assertNotEquals(hash, jdbc.queryForObject("SELECT refresh_token_hash FROM auth_sessions WHERE id = ?", String.class, sid));
+        assertEquals(sid, decoder.decode(accessToken(renewed)).getClaimAsString("sid"));
+        mvc.perform(post("/api/auth/refresh").header("X-Zip-Session", sid).cookie(cookie))
+            .andExpect(status().isUnauthorized()).andExpect(header().doesNotExist("Set-Cookie"));
+
+        mvc.perform(post("/api/auth/logout").header("Authorization", "Bearer " + accessToken(renewed)).cookie(next))
+            .andExpect(status().isNoContent()).andExpect(cookie().maxAge("zip_refresh", 0));
+        mvc.perform(post("/api/auth/refresh").header("X-Zip-Session", sid).cookie(next))
+            .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + accessToken(renewed)))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test void temporaryCookieRefreshesUntilTheSessionExpires() throws Exception {
+        var login = loginResponse(false);
+        Cookie temporary = login.getCookie("zip_refresh");
+        assertEquals(-1, temporary.getMaxAge());
+        var sid = decoder.decode(accessToken(login)).getClaimAsString("sid");
+        var renewed = mvc.perform(post("/api/auth/refresh").header("X-Zip-Session", sid).cookie(temporary))
+            .andExpect(status().isOk()).andExpect(cookie().maxAge("zip_refresh", -1)).andReturn();
+        jdbc.update("UPDATE auth_sessions SET expires_at = ? WHERE id = ?", java.sql.Timestamp.from(Instant.now().minusSeconds(2)), sid);
+        mvc.perform(post("/api/auth/refresh").header("X-Zip-Session", sid)
+            .cookie(renewed.getResponse().getCookie("zip_refresh"))).andExpect(status().isUnauthorized());
     }
 
     @Test void loginMeLogoutInvalidatesToken() throws Exception {
@@ -99,11 +163,14 @@ class AuthIntegrationTests {
 
     @Test void passwordChangeRevokesAllSessions() throws Exception {
         String first = login();
-        String second = login();
+        var second = loginResponse(true);
+        String access = accessToken(second);
         mvc.perform(patch("/api/auth/me/password").header("Authorization", "Bearer " + first)
             .contentType("application/json").content("{\"currentPassword\":\"abcd123!\",\"newPassword\":\"newpass1!\"}"))
             .andExpect(status().isNoContent());
-        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + second)).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + access)).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/refresh").header("X-Zip-Session", decoder.decode(access).getClaimAsString("sid"))
+            .cookie(second.getCookie("zip_refresh"))).andExpect(status().isUnauthorized());
         assertTrue(passwords.matches("newpass1!", jdbc.queryForObject("SELECT password_hash FROM users WHERE id = 1", String.class)));
     }
 
@@ -120,10 +187,13 @@ class AuthIntegrationTests {
     }
 
     @Test void suspensionBlocksExistingTokenAndLogin() throws Exception {
-        String token = login();
+        var login = loginResponse(true);
+        String token = accessToken(login);
         jdbc.update("INSERT INTO user_sanctions (user_id, sanction_type, starts_at) VALUES (1, 'BAN', ?)", java.sql.Timestamp.from(Instant.now().minusSeconds(60)));
         mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
             .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("SUSPENDED"));
+        mvc.perform(post("/api/auth/refresh").header("X-Zip-Session", decoder.decode(token).getClaimAsString("sid"))
+            .cookie(login.getCookie("zip_refresh"))).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("SUSPENDED"));
         mvc.perform(post("/api/auth/login").contentType("application/json")
             .content("{\"loginId\":\"tester01\",\"password\":\"abcd123!\"}"))
             .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("SUSPENDED"));

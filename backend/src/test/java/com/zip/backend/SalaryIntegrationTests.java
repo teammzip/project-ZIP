@@ -28,7 +28,7 @@ class SalaryIntegrationTests {
     String token;
     long owner;
     @BeforeEach void seed() {
-        token=auth.socialLogin("GOOGLE","salary-user","salary@example.com","월급검증");
+        token=auth.socialLogin("GOOGLE","salary-user","salary@example.com","월급검증").accessToken();
         owner=jdbc.queryForObject("SELECT user_id FROM auth_sessions ORDER BY id LIMIT 1",Long.class);
     }
     @Autowired tools.jackson.databind.json.JsonMapper json;
@@ -131,7 +131,7 @@ class SalaryIntegrationTests {
         for(String body:new String[]{"{\"amount\":12,\"incomePeriod\":\"annual\",\"paymentDay\":0}","{\"amount\":11,\"incomePeriod\":\"annual\",\"paymentDay\":25}","{\"amount\":-1,\"incomePeriod\":\"monthly\",\"paymentDay\":25}","{\"amount\":1.5,\"incomePeriod\":\"monthly\",\"paymentDay\":25}","{\"amount\":12,\"incomePeriod\":\"weekly\",\"paymentDay\":25}"})
             mvc.perform(put("/api/me/salary").param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content(body)).andExpect(status().isBadRequest());
         jdbc.update("INSERT INTO salary_settings(user_id,amount,income_period,payment_day,start_month) VALUES (?,1000000,'monthly',1,'2026-08')",owner);
-        String other=auth.socialLogin("GOOGLE","salary-other","salary-other@example.com","다른월급");
+        String other=auth.socialLogin("GOOGLE","salary-other","salary-other@example.com","다른월급").accessToken();
         mvc.perform(get("/api/me/salary").header("Authorization","Bearer "+other)).andExpect(status().isOk()).andExpect(jsonPath("$.amount").value(0));
     }
 }

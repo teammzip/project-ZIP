@@ -1,13 +1,11 @@
 package com.zip.backend.notification;
 
 import com.zip.backend.common.Sql;
-import java.math.BigDecimal;
 import java.sql.Time;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -22,14 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 생활 알림 (일정 · 월세). 알림 목록을 볼 때 그 회원의 앞으로 며칠 치를 만들어 둬요 (frontend/API.md 6장).
- * <ul>
- *   <li>일정: 오늘 ~ 3일 뒤 일정(완료한 것 빼고, 기념일 · 매년 반복 포함). 3일 전 오전 9시부터 보여요</li>
- *   <li>월세: 월세 계약(또는 계약 정보 없음) + 월세가 있으면 납부일 3일 전 오전 9시</li>
- * </ul>
- * 쓰레기 배출 알림은 TrashReminderService 가 배출일 0시(자정)에 따로 만들어요 (여기서는 건드리지 않음).
- * 한 번 만든 알림은 (종류, 관련 번호, link) 로 알아봐서 다시 만들지 않아요 — 읽거나 지운 알림도 되살아나지 않아요.
- * link 는 눌렀을 때 열 화면 + 날짜 ("calendar:2026-11-24", "budget:2026-11-25") 예요.
+ * 알림 목록을 볼 때 오늘부터 3일 뒤까지의 일정 알림을 준비해요.
+ * 월세와 쓰레기 배출 알림은 각각의 스케줄러가 만들어요.
  * 일정을 지우거나 · 완료하거나 · 날짜를 바꾸면, 아직 안 읽은 그 알림은 지우고(또는 제목 · 내용을 고치고) 새 날짜로 다시 만들어요.
  */
 @Service
@@ -38,7 +30,7 @@ public class LifeNotificationService {
     /** 며칠 앞까지 알려 줄지 */
     static final int AHEAD_DAYS = 3;
     static final LocalTime NOTIFY_AT = LocalTime.of(9, 0);
-    static final String EVENT = "EVENT", RENT = "RENT";
+    static final String EVENT = "EVENT";
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("M월 d일 (E)", Locale.KOREAN);
 
     private final JdbcTemplate jdbc;
@@ -66,10 +58,9 @@ public class LifeNotificationService {
         var wanted = new LinkedHashMap<String, Want>();
         if (notifications.wantsNotifications(userId)) {
             for (var w : events(userId, today, now)) wanted.putIfAbsent(w.key(), w);
-            for (var w : rent(userId, today, now)) wanted.putIfAbsent(w.key(), w);
         }
 
-        var existing = notifications.lifeRows(userId, List.of(EVENT, RENT));
+        var existing = notifications.lifeRows(userId, List.of(EVENT));
         var have = new HashSet<String>();
         var stale = new ArrayList<Long>();
         for (var row : existing) {
@@ -78,7 +69,7 @@ public class LifeNotificationService {
             if (row.read() || row.deleted()) continue; // 읽거나 지운 알림은 그대로 둠
             var want = wanted.get(key);
             if (want == null) {
-                // 아직 지나지 않은 알림인데 더는 해당 없음 (일정 삭제 · 완료 · 날짜 변경, 월세 변경, 알림 끔)
+                // 아직 지나지 않은 알림인데 더는 해당 없음 (일정 삭제 · 완료 · 날짜 변경, 알림 끔)
                 var on = dayOf(row.link());
                 if (on != null && !on.isBefore(today)) stale.add(row.id());
             } else if (!Objects.equals(want.title(), row.title()) || !Objects.equals(want.body(), row.body())) {
@@ -110,28 +101,6 @@ public class LifeNotificationService {
                 out.add(new Want(EVENT, rs.getLong("id"), "calendar:" + on, rs.getString("title"), DAY.format(on) + " · " + when, notifyAt(on.minusDays(AHEAD_DAYS), now)));
             }
         }, userId, java.sql.Date.valueOf(today), java.sql.Date.valueOf(end));
-        return out;
-    }
-
-    /** 월세: 납부일이 오늘 ~ 3일 뒤면 (납부일 3일 전 오전 9시). 전세 계약이면 없음 */
-    private List<Want> rent(long userId, LocalDate today, Instant now) {
-        var settings = jdbc.queryForList("SELECT rent_amount, rent_day FROM user_settings WHERE user_id = ?", userId);
-        if (settings.isEmpty()) return List.of();
-        var amount = (BigDecimal) settings.get(0).get("rent_amount");
-        int day = ((Number) settings.get(0).get("rent_day")).intValue();
-        if (amount == null || amount.signum() <= 0 || day < 1) return List.of();
-        // 월세가 있을 때만 계약 유형을 봄 (계약 정보가 없으면 월세로 봐요 — 화면과 같음)
-        var kind = jdbc.queryForList("SELECT contract_kind FROM home_contracts WHERE user_id = ?", String.class, userId);
-        if (!kind.isEmpty() && !"monthly".equals(kind.get(0))) return List.of();
-        var out = new ArrayList<Want>();
-        var end = today.plusDays(AHEAD_DAYS);
-        for (var month = YearMonth.from(today); !month.atDay(1).isAfter(end); month = month.plusMonths(1)) {
-            var on = month.atDay(Math.min(day, month.lengthOfMonth()));
-            if (on.isBefore(today) || on.isAfter(end)) continue;
-            var won = amount.stripTrailingZeros().toPlainString();
-            out.add(new Want(RENT, null, "budget:" + on, on.equals(today) ? "오늘은 월세 납부일이에요" : "월세 납부일이 다가와요",
-                DAY.format(on) + " · " + won + "만원", notifyAt(on.minusDays(AHEAD_DAYS), now)));
-        }
         return out;
     }
 

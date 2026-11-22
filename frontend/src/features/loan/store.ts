@@ -13,8 +13,8 @@ type LoanState = {
 }
 
 const currentUserId = () => {
-  const { user, token } = useAuthStore.getState()
-  return token && user?.role !== 'ADMIN' ? user?.id : undefined
+  const { user, sessionKey } = useAuthStore.getState()
+  return sessionKey && user?.role !== 'ADMIN' ? user?.id : undefined
 }
 
 /** 브라우저용 가계부 자동 기록. 실제 계좌 출금은 수행하지 않는다. */

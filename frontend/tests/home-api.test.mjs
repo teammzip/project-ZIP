@@ -5,7 +5,7 @@ import vm from 'node:vm'
 import ts from 'typescript'
 
 function setup() {
-  let auth = { user: { id: 'a' }, token: 'token-a' }
+  let auth = { user: { id: 'a' }, sessionKey: 'token-a' }
   const life = { settings: { region: '동네', rent: 10, rentDay: 15, moveIn: '', contractEnd: '', notiOn: true }, bills: [] }
   const survey = { survey: { userId: 'a', birth: '1990-01-01' } }
   const loans = { plans: [], charges: [] }
@@ -30,7 +30,7 @@ function setup() {
     if (name === './store') return { useLifeStore: { getState: () => life, setState: (update) => Object.assign(life, update(life)) } }
     throw new Error(name)
   } })
-  return { ...exports, life, survey, loans, client, response, calls, changeAccount: () => { auth = { user: { id: 'b' }, token: 'token-b' } } }
+  return { ...exports, life, survey, loans, client, response, calls, changeAccount: () => { auth = { user: { id: 'b' }, sessionKey: 'token-b' } } }
 }
 
 test('서버 계약을 설정·가계부에 반영하고 개인 생년월일은 보존한다', async () => {

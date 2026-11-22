@@ -2,16 +2,18 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Modal } from '@/components/ui'
 import { useLifeStore } from '@/features/life/store'
-import { useNeighborhoodLocation } from '@/features/life/useNeighborhoodLocation'
 import { RegionVerifyDialog, useRegionVerify } from '@/features/life'
 import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
 import home from '@/features/life/components/home.module.css'
 import { fetchForecast, koreaTime, probabilityText, temperatureText, upcomingHours, weatherDescription } from './api'
 import styles from './WeatherCard.module.css'
+import { useWeatherLocation } from './useWeatherLocation'
 
 export function WeatherCard() {
-  const location = useNeighborhoodLocation()
+  // 날씨는 주거 설문 주소 기준 (없으면 우리 동네). 지도는 우리 동네 기준 그대로
+  const location = useWeatherLocation()
+  const fromSurvey = location.source === 'survey'
   const { region, place } = location
   const [open, setOpen] = useState(false)
   const [verifyOpen, setVerifyOpen] = useState(false)
@@ -56,13 +58,21 @@ export function WeatherCard() {
     <Modal open={open && !verifyOpen} onClose={close} title="오늘 날씨" className={styles.dialog}>
       <div className={styles.detail}>
         <header><h3>오늘 날씨</h3><p>{day.replaceAll('-', '.')} · 한국 시간</p></header>
-        <RegionForm key={region} region={region} />
-        <div>
-          <Button variant="line" onClick={() => setVerifyOpen(true)} aria-haspopup="dialog">
-            {verified ? '현 위치 다시 인증' : '현 위치 인증'}
-          </Button>
-          <p className={styles.updated}>위치를 인증하면 현재 동네의 날씨로 변경돼요.</p>
-        </div>
+        {fromSurvey
+          ? <p className={styles.updated}><b>주거 설문에서 고른 주소</b>({region}) 기준 날씨예요. 설문 주소를 바꾸면 날씨 지역도 바뀌어요.</p>
+          : <>
+            <RegionForm key={region} region={region} />
+            <div>
+              <Button variant="line" onClick={() => setVerifyOpen(true)} aria-haspopup="dialog">
+                {verified ? '현 위치 다시 인증' : '현 위치 인증'}
+              </Button>
+              <p className={styles.updated}>
+                {'surveyFailed' in location && location.surveyFailed
+                  ? '설문 주소의 위치를 찾지 못해 우리 동네 날씨를 보여 드려요.'
+                  : '주거 설문에서 주소를 고르면 그 지역 날씨로 보여 드려요. 위치를 인증하면 현재 동네의 날씨로 변경돼요.'}
+              </p>
+            </div>
+          </>}
         {!region && <p className={common.empty}>우리 동네를 저장하면 날씨를 보여드려요.</p>}
         {region && !data && !error && <p role="status">날씨를 불러오는 중이에요.</p>}
         {region && error && <p className={common.formError} role="alert">{typeof error === 'string' ? error : '날씨를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.'}{data && ' 아래는 마지막으로 받은 정보예요.'}</p>}
@@ -88,7 +98,7 @@ export function WeatherCard() {
           </section>
         </>}
         {region && <Button variant="line" onClick={retry} disabled={loading}>{loading ? '불러오는 중…' : error ? '다시 시도' : '새로고침'}</Button>}
-        <p className={styles.updated}>{location.source === 'verified' ? '인증한 위치' : '선택한 동네 중심'}의 예보이며 실제 날씨와 다를 수 있어요.</p>
+        <p className={styles.updated}>{fromSurvey ? '설문 주소 중심' : location.source === 'verified' ? '인증한 위치' : '선택한 동네 중심'}의 예보이며 실제 날씨와 다를 수 있어요.</p>
         <footer className={styles.attribution}>날씨: <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> · 지역: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap 기여자</a></footer>
       </div>
     </Modal>

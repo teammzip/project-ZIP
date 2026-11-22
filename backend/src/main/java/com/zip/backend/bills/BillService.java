@@ -37,24 +37,31 @@ public class BillService {
         var through = month.equals(current) ? asOf : month.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant().minusNanos(1);
         var housing = repository.housing(userId);
         var effective=repository.paymentEffectiveFrom(userId);
-        boolean outside=housing!=null && ((housing.moveIn()!=null && month.isBefore(YearMonth.parse(housing.moveIn())))
-            || (housing.end()!=null && month.isAfter(YearMonth.parse(housing.end()))));
-        var items = repository.list(userId, month).stream()
+        boolean outside=housing!=null && !housing.includes(month);
+        boolean canRegister=housing!=null && housing.canRegister(month,current,effective);
+        var rows=repository.list(userId,month);
+        boolean managementRecorded=housing!=null && rows.stream().anyMatch(row -> row.payment()!=null && housing.manages(row.item()));
+        var items = rows.stream()
             .filter(row -> row.payment()!=null || row.item().terminationDate()==null || asOf.atZone(zone).toLocalDate().isBefore(row.item().terminationDate()))
             .filter(row -> row.item().homeContractKind()==null || (housing!=null && row.item().homeContractKind().equals(housing.kind())))
-            .filter(row -> row.payment()!=null || housing==null || housing.managementId()==null || row.item().id()!=housing.managementId()
-                || effective==null || !repository.managementDue(userId,month,housing).isBefore(effective))
-            .filter(row -> row.payment()!=null || housing==null || (!housing.included() && !outside)
-                || housing.managementId()==null || row.item().id()!=housing.managementId())
             .filter(row -> !row.item().createdAt().isAfter(asOf))
-            .filter(row -> row.payment() != null || (row.item().active() && month.equals(current)
-                && !month.isBefore(YearMonth.from(row.item().createdAt().atZone(zone)))))
+            .filter(row -> {
+                if (row.payment()!=null) return true;
+                if (!row.item().active()) return false;
+                if (housing!=null && housing.manages(row.item())) {
+                    return canRegister && !managementRecorded && !housing.included() && housing.managementId()!=null
+                        && housing.managementId()==row.item().id() && row.item().defaultAmount()>0;
+                }
+                return month.equals(current) && !month.isBefore(YearMonth.from(row.item().createdAt().atZone(zone)));
+            })
             .map(row -> {
                 var payment = row.payment();
                 if (payment != null && payment.paidAt() != null && payment.paidAt().isAfter(asOf)) payment = new BillRepository.Payment(payment.amount(), null, payment.dueDate(), payment.memo());
                 var entry=response(row.item(), payment, month);
                 entry.put("active", row.item().active() && (row.item().terminationDate()==null || asOf.atZone(zone).toLocalDate().isBefore(row.item().terminationDate())));
-                entry.put("homeManaged", row.item().homeContractKind()!=null || (housing!=null && housing.managementId()!=null && row.item().id()==housing.managementId()));
+                boolean management=housing!=null && housing.manages(row.item());
+                entry.put("homeManaged", row.item().homeContractKind()!=null || management);
+                if (payment==null && management) entry.put("dueDate",repository.managementDue(userId,month,housing).toString());
                 return entry;
             }).toList();
         var result = new LinkedHashMap<String, Object>();
@@ -69,37 +76,32 @@ public class BillService {
         contractPeriod.put("from", housing==null?null:housing.moveIn());
         contractPeriod.put("through", housing==null?null:housing.end());
         contractPeriod.put("outside", outside);
-        contractPeriod.put("currentOutside", housing!=null && ((housing.moveIn()!=null && current.isBefore(YearMonth.parse(housing.moveIn())))
-            || (housing.end()!=null && current.isAfter(YearMonth.parse(housing.end())))));
+        contractPeriod.put("currentOutside", housing!=null && !housing.includes(current));
         result.put("contractPeriod", contractPeriod);
-        result.put("housingItems", housingItems(userId,month,current,asOf,housing));
+        result.put("housingItems", housingItems(userId,month,current,asOf,housing,canRegister));
         return result;
     }
 
-    private List<Map<String,Object>> housingItems(long user, YearMonth month, YearMonth current, Instant asOf, BillRepository.Housing housing) {
+    private List<Map<String,Object>> housingItems(long user, YearMonth month, YearMonth current, Instant asOf, BillRepository.Housing housing, boolean canRegister) {
         var rows=new java.util.ArrayList<Map<String,Object>>();
         // 현재 선택한 계약 유형으로 조회를 통일한다. 반대 유형의 과거 기록은 DB에 보존한다.
         boolean monthly=housing!=null && "monthly".equals(housing.kind());
         boolean jeonse=housing!=null && "jeonse".equals(housing.kind());
-        var effective=repository.paymentEffectiveFrom(user);
-        var rentDue=month.atDay(Math.min(housing==null?15:housing.rentDay(),month.lengthOfMonth()));
         var rent=monthly?repository.rent(user,month):null;
-        boolean inTerm=housing!=null && (housing.moveIn()==null || month.compareTo(YearMonth.parse(housing.moveIn()))>=0)
-            && (housing.end()==null || month.compareTo(YearMonth.parse(housing.end()))<=0);
-        if(rent!=null || (month.equals(current) && inTerm && monthly && housing.rent()>0 && (effective==null || !rentDue.isBefore(effective)))) {
+        if(rent!=null || (monthly && canRegister && housing.rent()>0)) {
             var paid=rent==null?null:rent.paidAt();
             if(paid!=null && paid.isAfter(asOf)) paid=null;
-            // 과거 계약의 납부일/관리비 포함 여부는 현재 설정으로 추정하지 않는다.
-            var date=rent!=null && rent.dueDate()!=null?rent.dueDate():housing==null || !month.equals(current)?null:month.atDay(Math.min(housing.rentDay(),month.lengthOfMonth()));
+            // 기존 기록에 기한이 없으면 현재 설정으로 과거 기한을 덮어 쓰지 않는다.
+            var date=rent!=null && rent.dueDate()!=null?rent.dueDate():rent!=null && !month.equals(current)?null:month.atDay(Math.min(housing.rentDay(),month.lengthOfMonth()));
             rows.add(housingRow("rent:"+month,"월세"+(housing!=null && month.equals(current) && housing.included()?" · 관리비 포함":""),"월세",
                 rent==null?housing.rent():rent.amount(),date,paid,rent!=null,"rent",rent==null?"계약 기준 예정 금액":"저장된 월세 기록"));
         }
         var interest=jeonse?repository.interest(user,month):java.util.List.<BillRepository.Interest>of();
         for(var charge:interest) rows.add(housingRow("interest:"+charge.id()+":"+month,"전세 대출 이자","대출 이자",
             charge.amount(),charge.date(),charge.paidAt()!=null && !charge.paidAt().isAfter(asOf)?charge.paidAt():null,true,"interest","대출 이자 기록"));
-        if(interest.isEmpty() && month.equals(current) && inTerm && "jeonse".equals(housing.kind())) {
+        if(interest.isEmpty() && canRegister && jeonse) {
             var estimate=repository.expectedInterest(user,month);
-            if(estimate!=null && (effective==null || !estimate.date().isBefore(effective))) rows.add(housingRow("interest:"+estimate.id()+":"+month,"전세 대출 이자","대출 이자",
+            if(estimate!=null) rows.add(housingRow("interest:"+estimate.id()+":"+month,"전세 대출 이자","대출 이자",
                 estimate.amount(),estimate.date(),null,false,"interest","대출 조건 기준 예정 금액 · 실제 납부 확인 전"));
         }
         return rows;
@@ -140,16 +142,26 @@ public class BillService {
 
     @Transactional
     public void autoRegister(long userId,long sessionId,String timeZone) {
+        autoRegister(userId,sessionId,timeZone,null);
+    }
+    @Transactional
+    public void autoRegister(long userId,long sessionId,String timeZone,YearMonth selectedMonth) {
         lock(userId,sessionId);
-        autoRegisterForUser(userId,timeZone);
+        registerContractExpenses(userId,timeZone,selectedMonth);
     }
     @Transactional
     public void autoRegisterForUser(long userId,String timeZone) {
+        auth.lockUser(userId);
+        registerContractExpenses(userId,timeZone,null);
+    }
+    private void registerContractExpenses(long userId,String timeZone,YearMonth selectedMonth) {
         ZoneId zone;
         try { zone=ZoneId.of(timeZone); } catch(RuntimeException error) { throw BillInput.bad("올바른 지역 시간대를 보내 주세요."); }
-        auth.lockUser(userId);
-        repository.rememberZone(userId,zone.getId());
-        repository.autoRegister(userId,YearMonth.from(clock.instant().atZone(zone)));
+        YearMonth current=YearMonth.from(clock.instant().atZone(zone));
+        YearMonth month=selectedMonth==null?current:selectedMonth;
+        if(month.isAfter(current)) throw BillInput.bad("미래 월은 등록할 수 없어요.");
+        if(month.equals(current)) repository.rememberZone(userId,zone.getId());
+        repository.autoRegister(userId,month,current);
     }
     @Transactional
     public void autoRegisterSavedZone(long userId) {

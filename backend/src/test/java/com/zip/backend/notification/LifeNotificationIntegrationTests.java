@@ -20,7 +20,7 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
-/** 생활 알림 (일정 · 쓰레기 배출 · 월세): 목록을 볼 때 서버가 만들고, 한 번만 만들고, 바뀌면 정리 */
+/** 일정 알림을 동기화하고 다른 종류의 알림은 각자의 생성 경로를 따른다. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -91,25 +91,25 @@ class LifeNotificationIntegrationTests {
         assertEquals(List.of(), titles());
     }
 
-    @Test void rentFollowsSettingsAndContract() throws Exception {
-        jdbc.update("UPDATE user_settings SET rent_amount = 55, rent_day = ? WHERE user_id = 1", tomorrow.getDayOfMonth());
-        notis().andExpect(jsonPath("$.items[?(@.type == 'RENT')].title").value("월세 납부일이 다가와요"))
-            .andExpect(jsonPath("$.items[?(@.type == 'RENT')].link").value("budget:" + tomorrow));
-        assertEquals(1, rows("RENT"));
-
-        // 전세로 바꾸면 아직 안 읽은 월세 알림은 정리
-        jdbc.update("INSERT INTO home_contracts (user_id, contract_kind) VALUES (1, 'jeonse')");
-        notis();
-        assertEquals(0, rows("RENT"));
-
-        // 알림을 끄면 생활 알림을 만들지 않음
-        jdbc.update("UPDATE home_contracts SET contract_kind = 'monthly' WHERE user_id = 1");
-        jdbc.update("UPDATE user_settings SET noti_on = FALSE WHERE user_id = 1");
+    @Test void listingDoesNotGenerateRentAndHidesAnUnreadReminderAfterPayment() throws Exception {
+        var month = java.time.YearMonth.from(today).toString();
+        jdbc.update("UPDATE user_settings SET rent_amount = 55, rent_day = ? WHERE user_id = 1", today.getDayOfMonth());
+        jdbc.update("INSERT INTO home_contracts (user_id, contract_kind) VALUES (1, 'monthly')");
+        jdbc.update("INSERT INTO rent_payments(user_id,period_ym,amount,due_date) VALUES (1,?,550000,?)",month,today);
         assertEquals(List.of(), titles());
         assertEquals(0, rows("RENT"));
+
+        jdbc.update("""
+            INSERT INTO notifications (user_id,noti_type,title,link_view,notify_at)
+            VALUES (1,'RENT','기존 월세 알림',?,TIMESTAMP '2020-01-01 07:00:00')
+            ""","budget:"+today);
+        assertEquals(List.of("기존 월세 알림"), titles());
+        jdbc.update("UPDATE rent_payments SET paid_at=CURRENT_TIMESTAMP WHERE user_id=1");
+        notis().andExpect(jsonPath("$.items").isEmpty()).andExpect(jsonPath("$.unreadCount").value(0));
+        assertEquals(1, rows("RENT"), "숨긴 알림도 같은 달의 발송 이력에 남음");
     }
 
-    /** 쓰레기 배출 알림은 TrashReminderService(아침 7시)가 만들고, 생활 알림은 건드리지 않음 */
+    /** 쓰레기 배출 알림은 TrashReminderService(기본 0시)가 만들고, 생활 알림은 건드리지 않음 */
     @Test void trashReminderRowsAreLeftAlone() throws Exception {
         jdbc.update("INSERT INTO notifications (user_id, noti_type, title, body, link_view, ref_id, notify_at) VALUES (1, 'TRASH', '오늘은 쓰레기 배출일이에요', '생활쓰레기', NULL, 2, TIMESTAMP '2020-01-01 07:00:00')");
         notis().andExpect(jsonPath("$.items[?(@.type == 'TRASH')].title").value("오늘은 쓰레기 배출일이에요"));

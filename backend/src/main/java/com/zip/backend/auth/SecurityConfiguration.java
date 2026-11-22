@@ -61,12 +61,13 @@ public class SecurityConfiguration {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, AuthRepository repository, Clock clock,
         ObjectProvider<ClientRegistrationRepository> socialClients, OAuthLoginHandler oauthHandler) throws Exception {
-        http.csrf(csrf -> csrf.disable()) // Only Authorization bearer tokens; no cookie authentication.
+        // Protected APIs use bearer auth. Refresh requires a same-origin custom header and a SameSite cookie.
+        http.csrf(csrf -> csrf.disable())
             .formLogin(form -> form.disable()).httpBasic(basic -> basic.disable())
             // IF_REQUIRED: a short-lived session holds only the OAuth "state" during social login (dropped afterwards).
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup", "/api/auth/email/send",
+                .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup", "/api/auth/refresh", "/api/auth/email/send",
                     "/api/auth/email/verify", "/api/auth/find-id", "/api/auth/password-reset/verify", "/api/auth/password-reset").permitAll()
                 .requestMatchers("/api/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/terms").permitAll()

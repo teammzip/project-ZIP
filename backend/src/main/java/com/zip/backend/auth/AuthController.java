@@ -2,6 +2,8 @@ package com.zip.backend.auth;
 
 import jakarta.validation.Valid;
 import jakarta.validation.Validator;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import com.zip.backend.common.ApiException;
 import java.util.Map;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,11 +14,32 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 public class AuthController {
     private final AuthService auth;
+    private final AuthSessions sessions;
+    private final RefreshCookie cookie;
     private final Validator validator;
-    public AuthController(AuthService auth, Validator validator) { this.auth = auth; this.validator = validator; }
+    public AuthController(AuthService auth, AuthSessions sessions, RefreshCookie cookie, Validator validator) {
+        this.auth = auth;
+        this.sessions = sessions;
+        this.cookie = cookie;
+        this.validator = validator;
+    }
 
     @PostMapping("/login")
-    public Map<String, Object> login(@Valid @RequestBody AuthRequests.Login request) { return auth.login(request); }
+    public Map<String, Object> login(@Valid @RequestBody AuthRequests.Login request,
+        HttpServletRequest servlet, HttpServletResponse response) {
+        var result = auth.login(request);
+        cookie.write(servlet, response, result.session());
+        return result.body();
+    }
+
+    @PostMapping("/refresh")
+    public Map<String, String> refresh(@RequestHeader(value = "X-Zip-Session", defaultValue = "0") long id,
+        @CookieValue(value = RefreshCookie.NAME, required = false) String credential,
+        HttpServletRequest servlet, HttpServletResponse response) {
+        var session = sessions.refresh(id, RefreshCookie.token(id, credential));
+        cookie.write(servlet, response, session);
+        return Map.of("accessToken", session.accessToken());
+    }
 
     @GetMapping("/me")
     public Map<String, Object> me(@AuthenticationPrincipal Jwt jwt) { return auth.me(Long.parseLong(jwt.getSubject())); }
@@ -42,8 +65,11 @@ public class AuthController {
 
     @PostMapping("/logout")
     @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
-    public void logout(@AuthenticationPrincipal Jwt jwt) {
-        auth.logout(Long.parseLong(jwt.getSubject()), Long.parseLong(jwt.getClaimAsString("sid")));
+    public void logout(@AuthenticationPrincipal Jwt jwt, HttpServletRequest servlet, HttpServletResponse response,
+        @CookieValue(value = RefreshCookie.NAME, required = false) String credential) {
+        long id = Long.parseLong(jwt.getClaimAsString("sid"));
+        auth.logout(Long.parseLong(jwt.getSubject()), id);
+        cookie.clear(servlet, response, id, credential);
     }
 
     @DeleteMapping("/me")

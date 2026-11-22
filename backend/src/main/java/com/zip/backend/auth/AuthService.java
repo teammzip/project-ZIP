@@ -9,7 +9,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,10 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
     private final AuthRepository repository;
     private final PasswordEncoder passwords;
-    private final TokenService tokens;
+    private final AuthSessions sessions;
     private final Clock clock;
-    private final long accessSeconds;
-    private final long rememberSeconds;
     private final String dummyHash;
     private final com.zip.backend.files.ProfileFileService files;
     private final com.zip.backend.region.RegionVerifyService regionVerify;
@@ -44,24 +41,19 @@ public class AuthService {
         }
     }
 
-    public AuthService(AuthRepository repository, PasswordEncoder passwords, TokenService tokens, Clock clock,
-        com.zip.backend.files.ProfileFileService files, com.zip.backend.region.RegionVerifyService regionVerify,
-        @Value("${zip.auth.access-seconds}") long accessSeconds,
-        @Value("${zip.auth.remember-access-seconds}") long rememberSeconds) {
-        if (accessSeconds <= 0 || rememberSeconds < accessSeconds) throw new IllegalArgumentException("Invalid token lifetime");
+    public AuthService(AuthRepository repository, PasswordEncoder passwords, AuthSessions sessions, Clock clock,
+        com.zip.backend.files.ProfileFileService files, com.zip.backend.region.RegionVerifyService regionVerify) {
         this.repository = repository;
         this.passwords = passwords;
-        this.tokens = tokens;
+        this.sessions = sessions;
         this.clock = clock;
         this.files = files;
         this.regionVerify = regionVerify;
-        this.accessSeconds = accessSeconds;
-        this.rememberSeconds = rememberSeconds;
         this.dummyHash = passwords.encode("unused-account-timing-pad");
     }
 
     @Transactional(noRollbackFor = {InvalidLogin.class, LockedLogin.class})
-    public Map<String, Object> login(AuthRequests.Login request) {
+    public AuthSessions.Login login(AuthRequests.Login request) {
         var user = repository.findForLogin(request.loginId().trim().toLowerCase(Locale.ROOT)).orElse(null);
         String hash = user == null || user.passwordHash() == null ? dummyHash : user.passwordHash();
         boolean matches = passwords.matches(request.password(), hash);
@@ -81,11 +73,8 @@ public class AuthService {
         if (repository.suspended(user, now)) throw suspendedError(user.id(), now);
         if (locked) throw new LockedLogin(since);
         if (user.loginFailures() > 0) repository.clearLoginFailures(user.id());
-        boolean remember = Boolean.TRUE.equals(request.remember());
-        var expires = now.plus(Duration.ofSeconds(remember ? rememberSeconds : accessSeconds));
-        long sessionId = repository.createSession(user.id(), tokens.sessionHash(), remember, now, expires);
-        var response = Map.<String, Object>of("accessToken", tokens.issue(user.id(), sessionId, now, expires),
-            "user", userResponse(user));
+        var session = sessions.create(user.id(), Boolean.TRUE.equals(request.remember()), now);
+        var response = new AuthSessions.Login(session, userResponse(user));
         repository.recordLogin(user.id(), now);
         return response;
     }
@@ -97,7 +86,7 @@ public class AuthService {
      * account is rejected instead of silently merged.
      */
     @Transactional
-    public String socialLogin(String provider, String subject, String email, String name) {
+    public AuthSessions.Issued socialLogin(String provider, String subject, String email, String name) {
         var now = clock.instant();
         var user = repository.findBySocial(provider, subject).orElse(null);
         if (user == null) {
@@ -110,10 +99,9 @@ public class AuthService {
             user = repository.findById(id).orElseThrow(() -> new ApiException(500, "계정을 만들지 못했어요."));
         }
         if (repository.suspended(user, now)) throw suspendedError(user.id(), now);
-        var expires = now.plus(Duration.ofSeconds(accessSeconds));
-        long sessionId = repository.createSession(user.id(), tokens.sessionHash(), false, now, expires);
+        var session = sessions.create(user.id(), true, now);
         repository.recordLogin(user.id(), now);
-        return tokens.issue(user.id(), sessionId, now, expires);
+        return session;
     }
 
     // users.nickname is NOT NULL and 2-12 characters.

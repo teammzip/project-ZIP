@@ -24,8 +24,8 @@ class LedgerIntegrationTests {
     @Autowired JdbcTemplate jdbc;
     String token, other, date, month;
     @BeforeEach void seed() {
-        token=auth.socialLogin("GOOGLE","ledger-user","ledger@example.com","가계부");
-        other=auth.socialLogin("GOOGLE","ledger-other","ledger-other@example.com","다른회원");
+        token=auth.socialLogin("GOOGLE","ledger-user","ledger@example.com","가계부").accessToken();
+        other=auth.socialLogin("GOOGLE","ledger-other","ledger-other@example.com","다른회원").accessToken();
         date=LocalDate.now(ZoneOffset.UTC).toString(); month=date.substring(0,7);
     }
     String body(int amount,String category,String type) {

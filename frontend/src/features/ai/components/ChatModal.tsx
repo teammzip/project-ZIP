@@ -56,7 +56,7 @@ export function ChatModal({ open, onClose, opening, ctx }: Props) {
     const redirect = getTopicSuggestion(selected, v)
     const isNearby = topicId === 'nearby'
     const isSummary = topicId === 'summary' || ((!selected || topicId === 'qna') && SUMMARY_ASK.test(v))
-    const token = useAuthStore.getState().token
+    const sessionKey = useAuthStore.getState().sessionKey
     setBusy(true)
     push({ role: 'user', text: v })
     if (redirect) push({ role: 'bot', ...redirect })
@@ -66,7 +66,7 @@ export function ChatModal({ open, onClose, opening, ctx }: Props) {
       let id = useChatStore.getState().conversationId
       if (!id) {
         id = await createConversation('HOME_MODAL', isSummary ? 'summary' : topicId)
-        if ((isSummary || isNearby) && useAuthStore.getState().token !== token) {
+        if ((isSummary || isNearby) && useAuthStore.getState().sessionKey !== sessionKey) {
           setBusy(false)
           return
         }
@@ -84,7 +84,7 @@ export function ChatModal({ open, onClose, opening, ctx }: Props) {
       }
       if (isSummary) {
         const card = await loadMonthlyBudget().catch(() => null)
-        if (useAuthStore.getState().token === token) {
+        if (useAuthStore.getState().sessionKey === sessionKey) {
           if (card) {
             const reply = '이번 달 수입과 지출을 정리했어요.'
             push({ role: 'bot', text: reply, card })

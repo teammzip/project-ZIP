@@ -59,13 +59,17 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 서버의 가입 트랜잭션에서 해당 SQL의 SELECT를 **새 회원 ID로 제한**하여 user_settings·user_profiles 생성과 함께 실행하세요. 전체 회원에 반복 실행하면 사용자가 이름을 바꾸거나 지운 기본 항목이 다시 생길 수 있으므로 초기화용으로만 사용합니다.
 
-### 전국 지역 · 쓰레기 배출표
+### 전국 지역 · 쓰레기 배출표 · 주변 동네
 
-전국 시도 · 시군구(`regions` 249행)와 쓰레기 배출표(`trash_schedules` 6,218행)는 데이터 마이그레이션 두 개(`20261122_01` · `02`)로 넣습니다. 백엔드가 자동으로 넣지 않으니 각자 DB 에 한 번 실행하세요(여러 번 실행해도 같음, 각자 DB 의 지역 번호는 그대로).
+전국 시도 · 시군구(`regions` 249행), 쓰레기 배출표(`trash_schedules` 6,218행), 주변 동네(`region_neighbors` 1,286행)는 데이터 마이그레이션 세 개(`20261122_01_regions_nationwide` · `02` · `04`)로 넣습니다. 백엔드가 자동으로 넣지 않으니 각자 DB 에 한 번 실행하세요(여러 번 실행해도 같음, 각자 DB 의 지역 번호는 그대로).
 
 1. [`migrations/20261121_06_trash_schedule_columns.sql`](migrations/20261121_06_trash_schedule_columns.sql) — 배출표 구조 (동네 · 장소 한 줄에 생활쓰레기 · 음식물 · 재활용 요일 · 시작 시각)
 2. [`migrations/20261122_01_regions_nationwide.sql`](migrations/20261122_01_regions_nationwide.sql) — 전국 시도 16 · 시군구 233 (없는 것만 추가)
 3. [`migrations/20261122_02_trash_schedules_nationwide.sql`](migrations/20261122_02_trash_schedules_nationwide.sql) — 배출표를 모두 지우고 다시 넣음. 마지막에 `파일 줄 수 6218 · 넣은 줄 수 6218 · 지역 없음 0` 이면 정상
+4. [`migrations/20261122_04_region_neighbors_nationwide.sql`](migrations/20261122_04_region_neighbors_nationwide.sql) — 주변 동네를 모두 지우고 다시 넣음(예시 12줄도 바뀜). 마지막에 `파일 줄 수 1286 · 넣은 줄 수 1286 · 지역 없음 0` 이면 정상
+
+**주변 동네 기준** (`20261122_04`, 커뮤니티 "주변 동네" 탭이 씀): **육지 경계선을 함께 쓰는(맞닿은) 시 · 군 · 구**끼리 이웃이고 양쪽이 같아요. 강 가운데 경계는 이웃(마포구 ↔ 영등포구), 바다 위 경계는 빼요(제주시 ↔ 완도군 같은 바다 건너는 이웃 아님). 인천 옛 구(중구 · 동구 · 서구)는 이어받은 새 구 + 그 이웃, 맞닿은 곳이 없는 울릉군 · 진도군은 중심이 가장 가까운 2곳. 동네당 이웃은 1 ~ 12곳(평균 5.5). 예: 마포구 → 강서구 · 고양시 · 서대문구 · 영등포구 · 용산구 · 은평구 · 중구.
+OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `python db/tools/region_neighbors_import.py --fetch` 로 만들어요(받은 경계 목록은 `db/data/`, 저장소에 안 올림). 경계선 좌표는 받지 않고 경계를 이루는 선 번호 · 중심 좌표만 써요.
 
 `20261122_01` · `02` 는 공공데이터포털 「전국생활쓰레기배출정보표준데이터」 CSV(`db/data/`, 저장소에 안 올림)를 `python db/tools/trash_import.py` 로 바꿔 만든 파일이에요. 표 구조는 아래 [`trash_schedules`](#trash_schedules--쓰레기-배출-요일표) 항목을 보세요.
 
@@ -199,7 +203,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 ### `region_neighbors` — 이웃 동네
 
-주변 동네: 어느 동네가 어느 동네와 이웃한지 적어 둔 표.
+주변 동네: 어느 동네가 어느 동네와 이웃한지 적어 둔 표. 데이터는 [위 "주변 동네 기준"](#전국-지역--쓰레기-배출표--주변-동네) (`20261122_04`, 전국 1,286행 · 육지 경계가 맞닿은 시 · 군 · 구).
 
 | 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
 |---|---|---|---|---|

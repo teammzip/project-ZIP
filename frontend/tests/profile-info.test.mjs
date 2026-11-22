@@ -14,7 +14,7 @@ function render(query, mock = false, survey = null) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, { exports, require: (name) => {
     if (name === '@tanstack/react-query') return { useQuery: () => query, useQueryClient: () => ({}) }
-    if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: { id: 'a', nickname: '데모이름', address: '로컬 주소' }, token: 'token' }) }
+    if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: { id: 'a', nickname: '데모이름', address: '로컬 주소' }, sessionKey: 'token' }) }
     if (name === '@/features/auth/api') return { isMockApi: mock }
     if (name === '@/features/onboarding/store') return { useHousingSurveyStore: (selector) => selector({ survey }) }
     if (name === '@/lib/useAge') return { useAge: (birth) => ({ age: birth ? 26 : null }) }
@@ -46,7 +46,7 @@ function editor({ fail = false } = {}) {
   let index = 0
   const calls = []
   let info = { nickname: '기존이름', birth: '2000-02-29', email: 'me@example.com', username: 'member01' }
-  const auth = { user: { id: 'a', ...info }, token: 'token', updateUser(user) { this.user = user } }
+  const auth = { user: { id: 'a', ...info }, sessionKey: 'token', updateUser(user) { this.user = user } }
   const authStore = (selector) => selector(auth)
   authStore.getState = () => auth
   const exports = {}

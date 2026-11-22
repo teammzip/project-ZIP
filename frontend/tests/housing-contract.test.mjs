@@ -126,10 +126,13 @@ test('생활 정보도 계약 유형별 입력칸만 표시한다', () => {
   assert.doesNotMatch(jeonse, /월세 납부일|월세 \(원\)|월세에 관리비/)
 })
 
-test('전세 알림에는 월세 납부 알림이 없다', () => {
+test('모의 월세 알림은 납부 기한과 미납 상태를 확인하고 해당 월별로 구분한다', () => {
   const ctx = setup('jeonse')
-  assert.equal(ctx.buildNotis([], settings, 'jeonse').some((n) => n.id === 'n2'), false)
-  assert.equal(ctx.buildNotis([], settings, 'monthly').some((n) => n.id === 'n2'), true)
+  const today = { ...settings, rentDay: new Date().getDate() }
+  assert.equal(ctx.buildMockRentNoti(today, {}, 'jeonse'), undefined)
+  assert.equal(ctx.buildMockRentNoti(today, { [currentMonth]: true }, 'monthly'), undefined)
+  assert.equal(ctx.buildMockRentNoti({ ...today, notiOn: false }, {}, 'monthly'), undefined)
+  assert.equal(ctx.buildMockRentNoti(today, {}, 'monthly').id, `rent-${currentMonth}`)
 })
 
 test('전세는 남아 있는 예전 월세 설정을 집계하지 않고 실제 이자 내역은 보존한다', () => {
@@ -158,7 +161,7 @@ test('월세 계약은 이자 자동 기록을 실행하지 않고 전세 계약
         if (name === '@/features/onboarding/useHousingContract') return { useHousingContract: () => ({ isJeonse: kind === 'jeonse' }) }
         if (name === '@/features/life/homeApi') return {}
         if (name === '@/lib/apiMode') return { isMockApi: true }
-        if (name === '@/features/auth/store/authStore') return { useAuthStore: (selector) => selector({ user: { id: 'member-a' }, token: 'test-token' }) }
+        if (name === '@/features/auth/store/authStore') return { useAuthStore: (selector) => selector({ user: { id: 'member-a' }, sessionKey: 'test-token' }) }
         if (name === './store') return { useLoanStore: (selector) => selector(state) }
         return require(name)
       },

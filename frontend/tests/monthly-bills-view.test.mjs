@@ -12,16 +12,17 @@ const compile = (file) => ts.transpileModule(readFileSync(new URL(file, import.m
 const period = {}
 vm.runInNewContext(compile('../src/features/life/monthlyPeriod.ts'), { exports: period, Date, Intl })
 
-function setup() {
+function setup(search = new URLSearchParams()) {
   let selection = null, currentMonth = '2026-05', queryOptions, clockZone = 'Asia/Seoul'
   let resolution = { choice: { timeZone: 'Asia/Seoul', source: 'address' }, resolving: false }
   let result = { data: undefined, isPending: true }
   const exports = {}
   const card = ({ title, actions, children }) => React.createElement('section', null, React.createElement('h2', null, title), actions, children)
-  vm.runInNewContext(compile('../src/features/life/components/MonthlyFixedExpense.tsx'), { exports, require: (name) => {
+  vm.runInNewContext(compile('../src/features/life/components/MonthlyFixedExpense.tsx'), { exports, URLSearchParams, require: (name) => {
     if (name === 'react') return { useState: () => [selection, (value) => { selection = value }] }
+    if (name === 'react-router-dom') return { useSearchParams: () => [search, (value) => { search = value }] }
     if (name === '@tanstack/react-query') return { useQuery: (options) => { queryOptions = options; return { ...result, refetch: () => {} } } }
-    if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: { id: 'a' }, token: 'test-session' }) }
+    if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: { id: 'a' }, sessionKey: 'test-session' }) }
     if (name === '@/features/loan') return { LoanInterestCard: () => React.createElement('p', null, '전세 대출 이자 설정') }
     if (name === '../useLocalMonth') return { useLocalMonth: () => ({ currentMonth, timeZone: clockZone }) }
     if (name === '../useBillingTimeZone') return { useBillingTimeZone: () => resolution }
@@ -60,6 +61,12 @@ test('조회는 회원·세션·시간대·월로 구분하고 현재 월은 갱
   assert.equal(key.at(-1), '2026-05')
   assert.equal(s.options().refetchInterval, 60000)
   assert.equal(s.options().enabled, true)
+})
+test('월세 알림이 지정한 과거 월을 열고 조회 월을 직접 바꿀 수 있다', () => {
+  const s = setup(new URLSearchParams('month=2026-03'))
+  assert.equal(s.options().queryKey.at(-1), '2026-03')
+  s.picker().props.onChange({ target: { value: '2026-04' } })
+  assert.equal(s.options().queryKey.at(-1), '2026-04')
 })
 test('고정 지출은 요약 목록과 기록 폼으로 나뉘고 월별 조회라는 화면명을 쓰지 않는다', () => {
   const html = setup().html()
@@ -116,6 +123,21 @@ test('계약 기간 밖이면 제외 사유와 실제 계약 기간을 표시한
   assert.ok(s.html().includes('2026-04'))
   s.result({ data: { ...data, contractPeriod: { ...data.contractPeriod, outside: false } } })
   assert.ok(!s.html().includes('자동 등록 대상에서 제외'))
+  assert.ok(s.html().includes('등록된 계약 기간 2026-01 ~ 2026-04'))
+})
+
+test('월세와 계약 관리비는 납부 상태를 표시하고 실제 납부 시각은 숨긴다', () => {
+  const s = setup()
+  const common = { active: true, snapshot: true, dueDate: '2026-05-15' }
+  s.result({ data: { contractKind: 'monthly', timeZone: 'Asia/Seoul', periodFrom: '2026-05-01T00:00:00+09:00',
+    periodThrough: '2026-05-18T00:00:00+09:00', queriedAt: '2026-05-18T00:00:00+09:00',
+    housingItems: [{ ...common, id: 'rent:2026-05', name: '월세', tag: '월세', amount: 550000, paid: false, snapshot: false }],
+    items: [{ ...common, id: '20', name: '계약 관리비', tag: '관리비', amount: 50000, paid: true, paidAt: '2026-05-12T10:30:00+09:00', homeManaged: true }] } })
+  const html = s.html()
+  assert.ok(html.includes('600,000원'))
+  assert.ok(html.includes('미납 · 납부 기한'))
+  assert.ok(html.includes('납부 완료 · 납부 기한'))
+  assert.ok(!html.includes('납부: '))
 })
 
 test('계약 기간 밖이면 직접 등록을 제공하지 않고 납부 완료는 수정하지 않는다', () => {
@@ -132,6 +154,6 @@ test('조회 월이 계약 안이어도 현재 날짜가 계약 밖이면 등록
   s.result({ data: { contractPeriod: { from: '2026-01', through: '2026-04', outside: false, currentOutside: true },
     items: [{ id: 'unpaid', name: '전기', tag: '공과금', amount: 30000, paid: false, snapshot: true, active: true }], housingItems: [],
     timeZone: 'Asia/Seoul', periodFrom: '2026-04-01T00:00:00+09:00', periodThrough: '2026-04-30T23:59:59+09:00', queriedAt: '2026-05-18T00:00:00+09:00' } })
-  assert.ok(s.html().includes('현재 날짜가 계약 기간 밖이므로 등록·수정할 수 없어요'))
+  assert.ok(s.html().includes('현재 날짜가 계약 기간 밖이므로 고정 지출을 직접 등록하거나 수정할 수 없어요'))
   assert.ok(s.html().includes('계약 기간 밖 · 수정 불가'))
 })

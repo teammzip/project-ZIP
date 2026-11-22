@@ -35,7 +35,7 @@ function view(result = {}, user = '1', kind = 'spend') {
       useNavigate: () => (to) => navigations.push(to),
     }
     if (name === '@tanstack/react-query') return { useQuery: (config) => { options.push(config); return { ...result, refetch() {} } }, useQueryClient: () => ({ invalidateQueries() {} }) }
-    if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: user ? { id: user } : null, token: user ? 'session' : null }) }
+    if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: user ? { id: user } : null, sessionKey: user ? 'session' : null }) }
     if (name === '../useBillingTimeZone') return { useBillingTimeZone: () => ({ choice: { source: 'address', timeZone: 'Asia/Seoul' }, resolving: false }) }
     if (name === '../useLocalMonth') return { useLocalMonth: () => ({ currentMonth: '2026-11', timeZone: 'Asia/Seoul' }) }
     if (name === '../monthlyPeriod') return { selectedMonth: (_, month) => month }
@@ -46,7 +46,8 @@ function view(result = {}, user = '1', kind = 'spend') {
     if (name === '../ledgerMemoNavigation') return { returnedMemoDraft: () => undefined }
     if (name === '@/components/ui') return {
       Card: card,
-      Button: ({ children, variant, block, ...props }) => {
+      // block 은 진짜 <button> 에 넘기지 않으려고 꺼내기만 함 (_ = 일부러 안 씀)
+      Button: ({ children, variant, block: _block, ...props }) => {
         buttons.push({ children, variant, onClick: props.onClick })
         return React.createElement('button', props, children)
       },

@@ -89,7 +89,7 @@ public class HomeInfoService {
         if (contracts.isEmpty()) jdbc.update("INSERT INTO home_contracts(user_id,contract_kind) VALUES (?,?)",user,input.kind());
         jdbc.update("UPDATE home_contracts SET contract_kind=?,deposit=?,management_included=?,management_fee=?,contract_fee=?,management_bill_id=?,payment_effective_from=? WHERE user_id=?",
             input.kind(),input.deposit(),input.included(),input.fee(),input.contractFee(),managed,java.sql.Date.valueOf(today),user);
-        // 새 계약 기간 안의 도래분만 생성하고 이미 저장된 기록은 보존한다.
+        // 계약 기간에 포함되는 이번 달 지출을 등록하고 이미 저장된 기록은 보존한다.
         writeLoan(user,input.loan(),oldLoan,today);
         paymentChanges.apply(user,input,previous,oldLoan,managed,oldManagementDay);
         bills.autoRegisterSavedZone(user);
@@ -169,7 +169,7 @@ public class HomeInfoService {
         var zone=term.zone()==null?KOREA:ZoneId.of(term.zone());
         String id=(String)plan.get("id");
         LocalDate start=LocalDate.parse((String)plan.get("startDate")),today=LocalDate.now(clock.withZone(zone));
-        YearMonth first=YearMonth.from(start),last=YearMonth.from(today);
+        YearMonth current=YearMonth.from(today),first=YearMonth.from(start),last=current;
         if(term.effective()!=null && first.isBefore(YearMonth.from(term.effective()))) first=YearMonth.from(term.effective());
         if(term.from()!=null && first.isBefore(YearMonth.parse(term.from()))) first=YearMonth.parse(term.from());
         if(term.through()!=null && last.isAfter(YearMonth.parse(term.through()))) last=YearMonth.parse(term.through());
@@ -178,7 +178,8 @@ public class HomeInfoService {
         var pending=new ArrayList<Object[]>();
         for (YearMonth month=first;!month.isAfter(last);month=month.plusMonths(1)) {
             LocalDate date=month.atDay(Math.min((Integer)plan.get("paymentDay"),month.lengthOfMonth()));
-            if (date.isBefore(start) || date.isAfter(today) || (term.effective()!=null && date.isBefore(term.effective())) || seen.contains(month)) continue;
+            if (date.isBefore(start) || date.isAfter(today) || seen.contains(month)) continue;
+            if (!month.equals(current) && term.effective()!=null && date.isBefore(term.effective())) continue;
             pending.add(new Object[]{id,java.sql.Date.valueOf(date),plan.get("principal"),plan.get("annualRate"),amount});
         }
         if (!pending.isEmpty()) jdbc.batchUpdate("INSERT INTO loan_interest_charges(loan_id,charge_date,principal,annual_rate,amount) VALUES (?,?,?,?,?)",pending);

@@ -31,7 +31,7 @@ class BillMonthlyDeleteTests {
     String token, month;
     long user, session, id;
     @BeforeEach void seed() {
-        token=auth.socialLogin("GOOGLE","monthly-delete","delete@example.com","삭제검증");
+        token=auth.socialLogin("GOOGLE","monthly-delete","delete@example.com","삭제검증").accessToken();
         var jwt=decoder.decode(token);
         user=Long.parseLong(jwt.getSubject()); session=Long.parseLong(jwt.getClaimAsString("sid"));
         month=YearMonth.now(ZoneOffset.UTC).toString();
@@ -65,7 +65,7 @@ class BillMonthlyDeleteTests {
         mvc.perform(delete("/api/bills/monthly/"+id).param("month",month).param("timeZone","UTC")).andExpect(status().isUnauthorized());
         assertEquals(404,assertThrows(ApiException.class,()->service.deleteMonthly(user,session,id,YearMonth.parse(month).minusMonths(1).toString(),"UTC")).status());
         assertEquals(400,assertThrows(ApiException.class,()->service.deleteMonthly(user,session,id,YearMonth.parse(month).plusMonths(1).toString(),"UTC")).status());
-        String other=auth.socialLogin("GOOGLE","other-delete","other-delete@example.com","다른사용자");
+        String other=auth.socialLogin("GOOGLE","other-delete","other-delete@example.com","다른사용자").accessToken();
         mvc.perform(delete("/api/bills/monthly/"+id).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+other)).andExpect(status().isNotFound());
         assertNull(jdbc.queryForObject("SELECT deleted_at FROM bill_payments WHERE bill_item_id=? AND period_ym=?",java.sql.Timestamp.class,id,month));
     }

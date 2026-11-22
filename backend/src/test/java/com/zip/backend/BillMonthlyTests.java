@@ -92,7 +92,7 @@ class BillMonthlyTests {
 
     @Test void endpointRequiresLoginAndValidMonthAndTimeZone() throws Exception {
         mvc.perform(get("/api/bills/monthly").param("month","2026-05").param("timeZone","Asia/Seoul")).andExpect(status().isUnauthorized());
-        String token=authService.socialLogin("GOOGLE","monthly-view","monthly-view@example.com","조회테스트");
+        String token=authService.socialLogin("GOOGLE","monthly-view","monthly-view@example.com","조회테스트").accessToken();
         String month=YearMonth.now(ZoneOffset.UTC).toString();
         mvc.perform(get("/api/bills/monthly").param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token))
             .andExpect(status().isOk()).andExpect(jsonPath("$.month").value(month)).andExpect(jsonPath("$.items.length()").value(0));

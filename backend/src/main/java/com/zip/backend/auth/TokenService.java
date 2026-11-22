@@ -3,7 +3,9 @@ package com.zip.backend.auth;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.HexFormat;
+import java.nio.charset.StandardCharsets;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
@@ -27,12 +29,16 @@ public class TokenService {
             .getTokenValue();
     }
 
-    // Reserve an unguessable hash for the session; refresh cookies are not issued in this phase.
-    public String sessionHash() {
+    String newRefreshToken() {
         byte[] bytes = new byte[32];
         random.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    static String refreshHash(String token) {
         try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(token.getBytes(StandardCharsets.US_ASCII)));
         } catch (java.security.NoSuchAlgorithmException error) {
             throw new IllegalStateException(error);
         }

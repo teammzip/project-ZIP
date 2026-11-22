@@ -14,14 +14,22 @@ function setup(fail = false) {
   vm.runInNewContext(code, { exports, require: () => ({ apiClient }) })
   return { calls, api: exports }
 }
-test('확정 시간대로 자동 등록 후 선택 월을 조회한다', async () => {
+test('현재 월은 확정 시간대로 자동 등록 후 조회한다', async () => {
   const { calls, api } = setup()
   await api.getMonthlyBills('2026-10', 'America/Los_Angeles')
   assert.equal(calls[0][0], 'post')
   assert.equal(calls[0][1], '/bills/monthly/auto-register')
+  assert.equal(calls[0][3].params.month, '2026-10')
   assert.equal(calls[0][3].params.timeZone, 'America/Los_Angeles')
   assert.equal(calls[1][0], 'get')
   assert.equal(calls[1][2].params.month, '2026-10')
+})
+test('과거 월도 선택한 월의 자동 등록을 요청한 뒤 조회한다', async () => {
+  const { calls, api } = setup()
+  await api.getMonthlyBills('2026-09', 'America/Los_Angeles')
+  assert.deepEqual(calls.map((request) => request[0]), ['post', 'get'])
+  assert.equal(calls[0][3].params.month, '2026-09')
+  assert.equal(calls[1][2].params.month, '2026-09')
 })
 test('자동 등록 실패 시 성공한 것처럼 조회하지 않는다', async () => {
   const { calls, api } = setup(true)

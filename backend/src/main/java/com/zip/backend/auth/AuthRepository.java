@@ -169,6 +169,23 @@ public class AuthRepository {
             """, Long.class, sessionId, userId, Timestamp.from(now)) == 1;
     }
 
+    record RefreshSession(long userId, boolean remember, Instant expiresAt) {}
+
+    Optional<RefreshSession> findRefreshSession(long id, String hash, Instant now) {
+        return jdbc.query("""
+            SELECT user_id, remember, expires_at FROM auth_sessions
+            WHERE id = ? AND refresh_token_hash = ? AND revoked_at IS NULL AND expires_at > ?
+            """, (rs, row) -> new RefreshSession(rs.getLong("user_id"), rs.getBoolean("remember"),
+                rs.getTimestamp("expires_at").toInstant()), id, hash, Timestamp.from(now)).stream().findFirst();
+    }
+
+    boolean rotateRefreshToken(long id, String previousHash, String nextHash, Instant now) {
+        return jdbc.update("""
+            UPDATE auth_sessions SET refresh_token_hash = ?
+            WHERE id = ? AND refresh_token_hash = ? AND revoked_at IS NULL AND expires_at > ?
+            """, nextHash, id, previousHash, Timestamp.from(now)) == 1;
+    }
+
     public String housingSurveyStatus(long userId) {
         return jdbc.queryForObject("SELECT housing_survey_status FROM users WHERE id = ?", String.class, userId);
     }

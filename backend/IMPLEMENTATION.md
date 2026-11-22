@@ -4,7 +4,8 @@
 
 | API | 현재 동작 |
 |---|---|
-| POST `/api/auth/login` | 아이디/이메일 + BCrypt 비밀번호, JWT 발급, DB 세션 생성 |
+| POST `/api/auth/login` | 아이디/이메일 + BCrypt 비밀번호, JWT와 재발급 쿠키 발급, DB 세션 생성 |
+| POST `/api/auth/refresh` | 쿠키 및 JWT의 세션 ID 검증, 재발급 토큰 교체, 새 액세스 토큰 반환 |
 | GET `/api/auth/me` | 로그인 회원 조회, 문자열 ID, 약관 동의 시각 |
 | PATCH `/api/auth/me` | 닉네임·소개·캐릭터·배경색·프로필 사진 연결, 변경된 User 반환 |
 | POST `/api/files` | 프로필용 JPEG/PNG 단일 파일·2MB 이하 업로드, 파일 메타데이터 반환 |
@@ -20,7 +21,9 @@
 | PATCH/DELETE `/api/bills/{id}` | 기본 항목 수정·해지 |
 | PUT `/api/bills/{id}/payments/{month}` | 월별 납부 체크·금액 정정 |
 
-문자 발송 업체 미정으로 회원가입·전화 인증·아이디 찾기·비밀번호 재설정은 미구현입니다. 소셜 로그인·토큰 재발급·가입 주소 수정·소셜 첫 동의·탈퇴·설문·대출 등 나머지 생활 기능도 다음 단계입니다. `openapi.yaml` 전체가 구현됐다는 뜻은 아닙니다. 미구현 API는 호출하지 마세요.
+회원가입, 이메일 인증, 아이디 찾기와 비밀번호 재설정은 이메일 경로로 지원합니다. 구글·네이버·카카오 로그인은 공급자별 설정을 사용합니다.
+
+토큰 재발급에는 기존 `auth_sessions` 테이블을 사용합니다. 액세스 토큰은 기본 15분, 세션은 로그인 유지 시 7일·일반 로그인 시 12시간입니다. 재발급은 DB의 토큰 해시를 교체하며 최초 세션 만료 시각은 유지합니다. 프론트와 API는 동일 오리진에서 제공하고, 운영 HTTPS가 프록시에서 종료되면 `ZIP_AUTH_COOKIE_SECURE=true`를 설정합니다.
 
 닉네임 수정 코드를 추가한 뒤에는 실행 중인 백엔드를 재시작해야 합니다. Postman에서 PATCH `/api/auth/me`에 Bearer Token과 JSON `{ "nickname": "새닉네임" }`을 보내면 200과 변경된 User를 반환합니다. GET 내 정보와 재로그인에서도 같은 닉네임이어야 합니다. 비로그인/만료 토큰은 401, 빈 값·누락·길이 오류는 400입니다. 사용자 ID는 요청 본문이 아닌 토큰에서 결정합니다.
 
@@ -44,7 +47,7 @@ VITE_API_BASE_URL=/api
 VITE_PROXY_TARGET=http://localhost:8080
 ```
 
-현재 연결 가능한 화면 흐름은 **기존 DB 계정 로그인 → 내 정보 조회 → 비밀번호 변경/로그아웃**입니다. 비밀번호 변경 성공 시 프론트도 인증 상태를 비우고 다시 로그인하게 합니다. 약관 화면은 여전히 정적 본문을 사용하며 API 조회 연결은 후속 작업입니다.
+기존 DB 계정으로 로그인해 내 정보를 조회하고 비밀번호를 바꾸거나 로그아웃할 수 있습니다. 비밀번호 변경 성공 시 프론트도 인증 상태를 비우고 다시 로그인하게 합니다. 약관 화면은 `GET /api/terms`에서 시행 중인 본문을 가져옵니다.
 
 ### Windows에서 해시 생성 입력이 실패하는 경우
 
@@ -73,7 +76,7 @@ PATCH `/api/bills/{id}`는 name/amount/tag 중 하나 이상을 수정합니다.
 
 **월별 금액 정책**: 항목 추가 때 당월 미납 스냅샷을 만듭니다. PATCH/해지 전에 당월 스냅샷이 없으면 기존 기본 금액으로 확정합니다. 기본 금액 수정은 기존 당월·과거 기록을 바꾸지 않으며 미생성 월의 예정액에 적용됩니다. 예: 기본 5만원 → PATCH 7만원이면 응답 amount=50000, defaultAmount=70000입니다. 당월도 바꾸려면 payments API의 amount를 명시하세요. 이름과 분류는 현재 항목의 값이며 과거 이름 스냅샷은 저장하지 않습니다.
 
-GET은 DB를 변경하지 않습니다. 과거 월은 저장된 스냅샷만 반환하고, 현재/미래 활성 항목은 스냅샷이 없으면 기본 금액의 예정액(snapshot=false)을 표시합니다. 누락된 과거를 현재 금액으로 임의 복원하지 않으며, 사용자가 과거 월에 새 기록을 만들 때는 당시 amount를 명시해야 합니다. 미래 월 납부 저장은 400입니다. 현재 미생성 청구를 매월 자동 생성하는 스케줄러는 아직 없으므로 장기간 미사용 월은 명시 금액으로 등록해야 합니다.
+GET은 DB를 변경하지 않습니다. 일반 고정 지출은 과거 월에 저장된 스냅샷을 반환하고, 현재/미래 활성 항목은 스냅샷이 없으면 기본 금액의 예정액(snapshot=false)을 표시합니다. 사용자가 일반 항목의 과거 기록을 만들 때는 당시 amount를 명시해야 합니다. 미래 월 납부 저장은 400입니다. 월세와 별도 관리비에는 [계약 고정 지출 자동 등록](../frontend/API.md#계약-고정-지출-자동-등록) 정책이 적용됩니다.
 
 DELETE는 is_active=0으로 해지하며 실제 항목/납부 행은 삭제하지 않습니다. 기존 월 기록은 GET에 active=false로 남고 이미 있는 기록의 정정도 가능합니다. 해지 후 새 월 청구 생성·항목 수정은 404이고, 미래 월 예정액에서 제외됩니다. 같은 항목 DELETE 반복은 204입니다. **프론트 고정 지출 화면의 API 연결과 설문 관리비 자동 반영은 아직 별도 작업입니다.**
 
@@ -148,7 +151,7 @@ point는 null 또는 lat/lon 한 쌍이며 위도 ±90, 경도 ±180, 소수점 
 node --experimental-strip-types --test db/tests/legal-content.test.mjs
 ```
 
-H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 않습니다. 사용자 DB에는 DDL/DML을 실행하지 않았습니다. 운영 전에는 MySQL에서 HTTP 연결, 동시 로그인/비밀번호 변경, 로그인 시도 제한, HTTPS와 비밀키 운영을 검증해야 합니다. 문자·소셜 인증과 약관 버전별 동의 저장은 아직 구현되지 않았습니다.
+H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 않습니다. 운영 전에는 MySQL에서 HTTP 연결, 동시 로그인/비밀번호 변경, 로그인 시도 제한, HTTPS와 비밀키 운영을 검증해야 합니다.
 
 ## 약관 점검
 
@@ -166,8 +169,9 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 
 | API | 현재 동작 |
 |---|---|
-| GET `/api/posts?scope=here|near|all&category=&q=&page=0` | 보이는 글(VISIBLE) 새 글부터 20개 + `hasNext`. here = 내 동네(`users.region_id`), near = 내 동네 + `region_neighbors`, all = 전체. 동네가 없으면 here · near 는 빈 목록. `q` 는 제목 · 본문(40자) |
+| GET `/api/posts?scope=here|near|all&category=&q=&page=0` | 보이는 글(VISIBLE) 새 글부터 20개 + `hasNext`. here = 내 동네(`users.region_id`), near = 내 동네 + `region_neighbors`(전국 1,286줄 — 육지 경계가 맞닿은 시 · 군 · 구, `db/migrations/20261122_04`), all = 전체. 동네가 없으면 here · near 는 빈 목록. `q` 는 제목 · 본문(40자) |
 | GET `/api/posts/home-tips` | `is_home_tip` 글 최대 3개 (지정은 관리자 기능 단계에서) |
+| GET `/api/posts/neighbors` | "주변 동네" 탭 안내: 내 동네(`users.region_id`)와 이웃 동네 이름 `{ region, neighbors: [{ id, name, sido }] }`. 이웃은 같은 시 · 도 먼저 · 이름 순, 동네가 없으면 `region: null` |
 | GET `/api/posts/{id}` | 댓글(VISIBLE) · 첨부 포함, `mine` · `liked` · `reported` 는 토큰 기준 |
 | POST · PATCH · DELETE `/api/posts/{id}` | 쓰기는 동네(`region_id`)가 있어야 함(없으면 403 `REGION_REQUIRED`). 제목 100자 한 줄 · 본문 2000자. 수정 · 삭제는 내 글만(403), 삭제는 `status=DELETED` |
 | PUT · DELETE `/api/posts/{id}/like` | 한 번만 반영, `like_count` 를 서버가 맞춤 → `{ liked, likes }` |
@@ -175,7 +179,7 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 | POST `/api/reports` | 대상 작성자 · 제목/댓글을 서버가 복사(스냅샷). 같은 대상 두 번 409, 내 글 · 댓글 400, 기타(OTHER)는 detail 필수 |
 
 - **첨부**: `POST /api/files` 로 사진(JPEG · PNG)을 올린 뒤 `attachmentIds` 로 붙여요. 최대 5개 · 합계 2MB · 내가 올린 파일 · 다른 글이나 프로필 사진에 안 쓰인 파일만. 수정에서 뺀 첨부는 연결을 끊고 파일도 지워요(커밋 뒤). 문서(PDF 등)는 악성 파일 · 개인정보 노출 위험이 있어 받지 않기로 했어요(사진만).
-- **정지 회원**: 보안 설정에서 토큰 자체가 막혀요. **동네 인증**: 글쓰기 · 댓글 · 공감은 `POST /api/me/region-verify`(`com.zip.backend.region`, 카카오 좌표 → 행정구역)로 인증한 지 30일 안이어야 해요(403 `REGION_VERIFY_REQUIRED`). `RegionVerifyIntegrationTests` 5개 + 격리 MySQL · 실제 카카오로 확인.
+- **정지 회원**: 보안 설정에서 토큰 자체가 막혀요. **동네 인증**: 글쓰기 · 댓글 · 공감은 `POST /api/me/region-verify`(`com.zip.backend.region`, 카카오 좌표 → 행정구역)로 인증한 지 30일 안이어야 해요(403 `REGION_VERIFY_REQUIRED`). 카카오가 시 · 군 · 구를 비워 보내는 세종은 시 · 도 이름을, "성남시 분당구"처럼 구가 있는 시는 앞의 시 이름(성남시)만 써서 전국 `regions`(249개) · 쓰레기 배출표와 같은 시 단위로 맞춰요. `RegionVerifyIntegrationTests` 6개 + 격리 MySQL · 실제 카카오로 확인.
 - **관리자** (`AdminCommunityController`, `/api/admin/**` 는 ADMIN 만):
   - GET `/api/admin/posts?category=&q=&page=` 보이는 글 50개씩 (댓글 · 첨부 · `homeTip` 포함)
   - DELETE `/api/admin/posts/{id}` · `/api/admin/comments/{id}` (`?reason=` 200자 → `delete_reason`, 지운 운영자 → `deleted_by`) → 상태 DELETED, 그 글 · 댓글에 들어온 접수 중 신고는 HIDDEN(처리자 · 시각 기록)
@@ -210,7 +214,7 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 
 ## 일정
 
-`com.zip.backend.calendar` (CalendarController · CalendarService · CalendarRepository · CalendarDefaults). 표는 `events` · `event_categories` · `event_presets` · `trash_schedules` (DB 변경 없음). 규칙은 `frontend/API.md` 3장과 같아요.
+`com.zip.backend.calendar` (CalendarController · CalendarService · CalendarRepository · CalendarDefaults). 표는 `events` · `event_categories` · `event_presets` (DB 변경 없음) · `trash_schedules`(구조 변경 `20261121_05` · `06`, 아래 [쓰레기 배출표 · 배출일 알림](#쓰레기-배출표--배출일-알림)). 규칙은 `frontend/API.md` 3장과 같아요.
 
 | API | 현재 동작 |
 |---|---|
@@ -220,11 +224,11 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 | PATCH `/api/events/{id}/done` | `{ done }` 완료 시각(`done_at`)은 완료로 바뀔 때만 적고 해제하면 지움 |
 | GET · POST `/api/event-categories`, PATCH · DELETE `/{id}` | 처음 쓸 때 기본 5개 + 미분류 생성. 이름 20자, 같은 이름 409, 미분류는 바꾸기 · 지우기 400 |
 | GET · POST `/api/event-presets`, PATCH · DELETE `/{id}` | 직접 만든 항목. 같은 카테고리에 같은 이름이 있으면 POST 는 그것을 돌려주고 PATCH 는 409 |
-| GET `/api/trash-schedules?regionId=` | 동네 쓰레기 배출표 (읽기만) |
+| GET `/api/trash-schedules?regionId=` | 동네(시 · 군 · 구) 쓰레기 배출표 (읽기만). 장소별 `[{ place, general, food, recycle }]`, 종류마다 `{ days: [1,3,5], startTime: "18:00" }`(0=일 ~ 6=토) 또는 `null`(그 종류는 배출 요일 없음). 배출표가 없는 동네 · 없는 번호는 `[]`, 숫자가 아닌 번호는 404. 지금 화면은 안 씀(알림 전용) |
 
 - 기념일(`anniv`)은 시간 · 카테고리 · 완료가 없고, 매년 반복(`yearly`)은 기념일만 (DB CHECK 와 같음).
 - 카테고리 지우기는 일정 → 미분류, 기본 항목 삭제, 직접 만든 항목 → 미분류(겹치는 이름은 기존 것만 남김)를 한 트랜잭션에서 해요. MySQL 은 같은 표를 하위 질의로 읽으며 지우지 못해서(1093) 겹치는 이름을 먼저 읽어요.
-- **검증**: `CalendarIntegrationTests` 6개 + 격리 MySQL 에서 실제 백엔드로 이모지 기본 카테고리 · TIME · 기념일 CHECK · RENT · 이름 바꾸기 · 지우기 확인. 프론트 동기화는 `frontend/tests/calendar-sync.test.mjs` 8개.
+- **검증**: `CalendarIntegrationTests` 7개(배출표 1개 포함) + 격리 MySQL 에서 실제 백엔드로 이모지 기본 카테고리 · TIME · 기념일 CHECK · RENT · 이름 바꾸기 · 지우기 확인. 프론트 동기화는 `frontend/tests/calendar-sync.test.mjs` 8개.
 
 ## 알림
 
@@ -239,8 +243,42 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 - 알림을 만드는 곳 (`NotificationService.send`): 댓글(글쓴이) · 답글(답글을 받은 댓글 작성자, 글쓴이와 같으면 하나만) · 운영자 댓글 → `COMMUNITY`. 운영자가 지운 글 · 댓글(사유 포함) · 신고 처리로 숨긴 글 · 댓글 · 경고 · 문의 답변 → `SYSTEM`.
 - 받는 사람이 한 사람(내가 내 글에 댓글)이면 만들지 않고, `user_settings.noti_on = 0` 이면 만들지 않아요. 미리보기는 줄바꿈을 빼고 40자.
 - 알릴 시각은 초 단위로 내림해서 저장해요 (MySQL DATETIME 반올림으로 "미래 알림"처럼 숨지 않게).
-- **생활 알림** (`LifeNotificationService`): 목록을 볼 때 일정 · 월세 알림을 앞으로 3일 치 만들어 둬요(쓰레기 배출은 `TrashReminderService` 가 배출일 0시(자정)에 만들고, 여기서는 건드리지 않음). (종류, ref_id, link) 로 이미 만든 것을 알아봐서 다시 만들지 않고(읽거나 지운 것도), 같은 회원의 동시 요청은 회원 행 잠금으로 한 줄로 세워요. 해당 없어진 안 읽은 알림(일정 삭제 · 완료 · 날짜 변경, 월세 변경, 알림 끔)은 지우고, 제목 · 내용이 바뀌면 고쳐요. 규칙은 `frontend/API.md` 6장.
-- **검증**: `NotificationIntegrationTests` 4개 + `LifeNotificationIntegrationTests` 5개 + 격리 MySQL 8.0 에서 실제 백엔드로 댓글 · 문의 답변 알림 · 읽음 · 지우기, 생활 알림(두 기기 동시 10번 요청에도 한 번씩만, 날짜 변경 · 삭제 정리, 알림 끈 회원 없음) 확인.
+- **일정 알림** (`LifeNotificationService`): 목록을 볼 때 오늘부터 3일 뒤까지 갱신해요. 회원 행 잠금으로 같은 회원의 동시 요청을 처리하고, 종류 · `ref_id` · `link_view`로 읽거나 지운 이력까지 대조해요. 일정이 바뀌면 안 읽은 알림을 정리하거나 제목과 내용을 갱신해요.
+- **월세 알림** (`RentReminderScheduler`): 1분마다 납부 기한이 0~3일 남은 이번 달 미납 월세 기록을 확인해요. 회원 잠금으로 중복 생성을 막고 납부 처리 · 계약 변경과 같은 순서로 처리해요. `link_view`는 `budget`, `ref_id`는 납부 대상 연월(`YYYYMM`)이에요. 기존 날짜 링크와 삭제 이력도 같은 달로 대조해요. 납부가 확인되면 목록에서 안 읽은 해당 알림을 숨겨요.
+- **쓰레기 배출일 알림** (`TrashReminderService` · `TrashReminderScheduler`): 배출일 0시에 `TRASH` 알림을 만들어요. 아래 [쓰레기 배출표 · 배출일 알림](#쓰레기-배출표--배출일-알림) 참고.
+- **검증**: `NotificationIntegrationTests`, `LifeNotificationIntegrationTests`, `RentReminderTests`, `TrashReminderTests`에서 생성 · 갱신 · 읽음 · 삭제와 종류별 생성 경로를 확인해요.
+
+## 쓰레기 배출표 · 배출일 알림
+
+`com.zip.backend.notification` (TrashReminderService · TrashReminderScheduler), 주소 → 동네는 `com.zip.backend.auth.RegionMatcher`, 배출표 API 는 위 [일정](#일정)의 `/api/trash-schedules`. **화면(달력 · 홈)에는 배출표를 그리지 않고 알림으로만 알려요** (2026-11-22 결정).
+
+| 표 | 내용 | 넣는 법 |
+|---|---|---|
+| `regions` | 전국 시 · 도 16 + 시 · 군 · 구 233 = 249행. 프론트 `regions.ts` 와 같은 목록(전남광주통합특별시 · 인천 개편 반영), 세종은 시 · 군 · 구 자리에도 `세종특별자치시` | 데이터 마이그레이션 `db/migrations/20261122_01_regions_nationwide.sql` (없는 것만 추가, 기존 번호 그대로) |
+| `trash_schedules` | 동네 · 배출장소 한 줄에 생활쓰레기(`general_days` · `general_time`) · 음식물(`food_*`) · 재활용(`recycle_*`) 배출 요일(SET '일'~'토') · 시작 시각(TIME). 6,218행 · 시 · 군 · 구 220곳 | 구조 `20261121_05` · `06`, 데이터 `20261122_02_trash_schedules_nationwide.sql` (전부 지우고 다시 넣음) |
+
+- **출처**: 행정안전부 「전국생활쓰레기배출정보표준데이터」 (공공데이터포털 15025450, 이용허락범위 제한 없음). CSV → SQL 변환은 `db/tools/trash_import.py`, 변환 규칙(마을 장소 한 문구 · 종료 시각 안 넣음 · 동(洞) 구분 없음)은 `db/README.md` "전국 지역 · 쓰레기 배출표 · 주변 동네".
+- **배출 정보가 없는 시 · 군 · 구 13곳**: 서울 강동구 · 도봉구, 인천 중구 · 동구 · 서구, 경기 고양시 · 광주시, 강원 속초시 · 화천군, 충북 청주시, 충남 공주시 · 예산군, 전북 남원시.
+
+**알림 만드는 규칙** (`TrashReminderService.sendDue`, 스케줄러가 서버 시작 30초 뒤부터 1분마다 불러요)
+
+1. **대상**: 알림을 켠 회원(`user_settings.noti_on`). 주소는 마이페이지 내 집 주소(`user_settings.home_address`), 없으면 회원 주소(`users.address` — 주거 설문 · 내 정보에서 정함, 예전 회원은 가입 때 적은 주소).
+2. **주소 → 시 · 군 · 구**: `RegionMatcher`. 시 · 도는 짧은 이름 · 예전 이름(광주 · 전남 → 전남광주)도 알아보고, 중구 · 동구처럼 여러 곳에 있는 이름은 주소에 시 · 도가 있어야 해요. 못 찾으면 아무것도 안 보내요.
+3. **배출일 알림**: 그날(한국 시간) 0시부터 그날 안에 한 번, 오늘 요일이 든 종류가 있으면 `TRASH` 알림. 제목 "오늘은 쓰레기 배출일이에요", 내용 예 `생활쓰레기 · 음식물 · 18:00부터 · 내 집 혹은 내 점포 앞`.
+   - 종류마다 시각이 다르면 `생활쓰레기 18:00 · 재활용 20:00부터`. `00:00` 은 "시간 제한 없음"과 섞여 있어서 시각을 빼요.
+   - 장소가 여러 곳(마을 · 거점마다 다른 군 지역)이면 장소 대신 `배출장소는 사는 곳마다 달라요`.
+   - `notify_at` = 그날 0시, `ref_id` = 동네 번호, `link` 없음(이동할 화면 없음).
+4. **같은 날 두 번 안 만듦**: (회원, `TRASH`, 그날 0시) 알림이 있으면 건너뛰어요. 서버가 0시에 꺼져 있었으면 켜진 뒤 그날 안에 만들어요(`notify_at` 은 그대로 0시).
+5. **배출표가 아예 없는 동네**: "우리 동네는 쓰레기 배출 정보가 없어요" 안내를 (회원, 동네)마다 **한 번만** 보내고(지워도 다시 안 옴), 그 뒤로는 아무것도 안 보내요. 주소를 다른 동네로 바꾸거나 그 동네 배출표가 생기면 다시 판단해요.
+6. **조회 줄이기**: 한 번 확인할 때 배출표는 동네마다 한 번만 읽고, 오늘 보낼 것이 없던 (회원, 주소)는 그날 다시 찾지 않아요(서버 메모리, 날짜가 바뀌면 비움).
+
+| 설정 (`application.properties`) | 환경 변수 | 기본 | 설명 |
+|---|---|---|---|
+| `zip.trash.reminder.enabled` | `TRASH_REMINDER_ENABLED` | `true` | `false` 면 스케줄러를 만들지 않아요. 테스트(`application-test.properties`)는 `false` |
+| `zip.trash.reminder-hour` | `TRASH_REMINDER_HOUR` | `0` | 알림 시각(한국 시간, 0 = 배출일 자정). 이 시각 전에는 아무것도 안 해요 |
+
+- **한계**: 서버를 여러 대 띄우면 같은 회원에게 두 번 갈 수 있어요(지금은 한 대 기준, 늘리면 DB 잠금 필요). 같은 장소인데 동(洞)마다 요일이 다른 동네(예: 서울 성북구)는 일부 동에 안 맞을 수 있어요(동 단위는 보류).
+- **검증**: `TrashReminderTests` 7개(0시 한 번 · 늦게 켜져도 그날 안 · 같은 날 주소 등록 · 시각 설정 · 가입 주소 · 정보 없는 동네 안내 한 번 · 알림 문구) + `CalendarIntegrationTests` 배출표 1개 + `RegionMatcherTests` 5개. 실제 DB(249개 지역 · 6,218줄)로 배출표 API 확인(2026-11-21), 알림 만들기는 H2 테스트로 확인.
 
 ## 공지사항
 

@@ -82,6 +82,25 @@ public class CommunityRepository {
         }, userId).stream().filter(java.util.Objects::nonNull).findFirst();
     }
 
+    /** 동네 이름과 그 시 · 도 이름 ("주변 동네" 탭 안내용) */
+    public record RegionName(long id, String name, String sido) {}
+
+    /** 회원의 동네(users.region_id — 주거 설문 · 내 정보 주소로 정해짐)의 이름. 동네가 없으면 빈 값 */
+    public Optional<RegionName> userRegionName(long userId) {
+        return jdbc.query("""
+            SELECT r.id, r.name, p.name FROM users u JOIN regions r ON r.id = u.region_id
+            LEFT JOIN regions p ON p.id = r.parent_id WHERE u.id = ?""",
+            (rs, row) -> new RegionName(rs.getLong(1), rs.getString(2), rs.getString(3)), userId).stream().findFirst();
+    }
+
+    /** 주변 동네(region_neighbors)의 이름들. 순서는 부르는 쪽에서 정함 */
+    public List<RegionName> neighborNames(long regionId) {
+        return jdbc.query("""
+            SELECT n.id, n.name, p.name FROM region_neighbors x JOIN regions n ON n.id = x.neighbor_region_id
+            LEFT JOIN regions p ON p.id = n.parent_id WHERE x.region_id = ?""",
+            (rs, row) -> new RegionName(rs.getLong(1), rs.getString(2), rs.getString(3)), regionId);
+    }
+
     /** 우리 동네 + 주변 동네 (region_neighbors) */
     public List<Long> regionWithNeighbors(long regionId) {
         var ids = new ArrayList<Long>(List.of(regionId));

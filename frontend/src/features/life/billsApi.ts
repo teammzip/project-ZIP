@@ -23,7 +23,7 @@ export type MonthlyBills = {
   items: ServerBill[]
 }
 export async function getMonthlyBills(month: string, timeZone: string, signal?: AbortSignal) {
-  await apiClient.post('/bills/monthly/auto-register', null, { params: { timeZone }, signal })
+  await apiClient.post('/bills/monthly/auto-register', null, { params: { month, timeZone }, signal })
   return readMonthlyBills(month, timeZone, signal)
 }
 export async function readMonthlyBills(month: string, timeZone: string, signal?: AbortSignal) {

@@ -13,7 +13,7 @@ type ProfileInfo = { nickname: string | null; birth: string | null; email: strin
 /** 편집 창을 열 때 서버의 본인 등록 정보를 조회한다. */
 export function ProfilePersonalInfo({ onNicknameSaved }: { onNicknameSaved?: (name: string) => void }) {
   const user = useAuthStore((s) => s.user)
-  const token = useAuthStore((s) => s.token)
+  const sessionKey = useAuthStore((s) => s.sessionKey)
   const survey = useHousingSurveyStore((s) => s.survey)
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
@@ -24,8 +24,8 @@ export function ProfilePersonalInfo({ onNicknameSaved }: { onNicknameSaved?: (na
   const [message, setMessage] = useState('')
   const [today] = useState(() => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10))
   const query = useQuery({
-    queryKey: ['profile-info', user?.id, token],
-    enabled: !!user && !!token && !isMockApi,
+    queryKey: ['profile-info', user?.id, sessionKey],
+    enabled: !!user && !!sessionKey && !isMockApi,
     queryFn: async ({ signal }) => (await apiClient.get<ProfileInfo>('/me/profile-info', { signal })).data,
     staleTime: 0,
     gcTime: 0,
@@ -37,7 +37,7 @@ export function ProfilePersonalInfo({ onNicknameSaved }: { onNicknameSaved?: (na
   } : query.data
   const { age } = useAge(editing ? birth : info?.birth ?? '')
   const save = async () => {
-    if (pending || !user || !token) return
+    if (pending || !user || !sessionKey) return
     const name = nickname.trim()
     if ([...name].length < 2 || [...name].length > 12) return setError('닉네임은 2~12자로 입력해 주세요.')
     if (birth) {
@@ -50,9 +50,9 @@ export function ProfilePersonalInfo({ onNicknameSaved }: { onNicknameSaved?: (na
         ? { ...(await authApi.updateMe({ nickname: name })), birth: birth || null }
         : (await apiClient.patch<ProfileInfo>('/me/profile-info', { nickname: name, birth })).data
       const current = useAuthStore.getState()
-      if (current.token !== token || current.user?.id !== user.id) return
+      if (current.sessionKey !== sessionKey || current.user?.id !== user.id) return
       current.updateUser({ ...current.user, nickname: saved.nickname ?? name, birth: saved.birth })
-      if (!isMockApi) queryClient.setQueryData(['profile-info', user.id, token], saved)
+      if (!isMockApi) queryClient.setQueryData(['profile-info', user.id, sessionKey], saved)
       onNicknameSaved?.(saved.nickname ?? name)
       setEditing(false); setMessage('개인 정보를 저장했어요.')
     } catch (cause) { setError(getErrorMessage(cause, '개인 정보를 저장하지 못했어요.')) }

@@ -10,6 +10,6 @@ type Props = {
  * 위는 대화, 아래에 분야 카드 → 입력줄(＋ 로 카메라·사진 고르기). 예전 '사진' 메뉴는 여기로 합쳐짐 */
 export function AiAssistant(props: Props) {
   const userId = useAuthStore((s) => s.user?.id)
-  const token = useAuthStore((s) => s.token)
-  return <AiChat key={`${userId}:${token}`} {...props} />
+  const sessionKey = useAuthStore((s) => s.sessionKey)
+  return <AiChat key={`${userId}:${sessionKey}`} {...props} />
 }

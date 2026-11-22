@@ -74,6 +74,32 @@ public class CommunityService {
         return repository.homeTips(viewerId, HOME_POST_LIMIT).stream().map(p -> post(p, viewerId, null, null)).toList();
     }
 
+    /**
+     * "주변 동네" 탭 안내: 내 동네(주거 설문 · 내 정보 주소로 정해진 users.region_id)와 이웃 동네 이름.
+     * 글 목록 scope=near 가 거르는 기준과 같아서, 안내와 실제로 보이는 글의 동네가 항상 같아요.
+     * 이웃은 같은 시 · 도 먼저, 그다음 시 · 도 · 이름 순. 동네가 없으면 region = null, neighbors = [].
+     */
+    public Map<String, Object> neighbors(long viewerId) {
+        var mine = repository.userRegionName(viewerId);
+        var result = new java.util.LinkedHashMap<String, Object>(); // region 이 null 일 수 있어서 Map.of 대신
+        result.put("region", mine.map(CommunityService::regionView).orElse(null));
+        result.put("neighbors", mine.map(r -> repository.neighborNames(r.id()).stream()
+            .sorted(java.util.Comparator.comparing((CommunityRepository.RegionName n) -> !java.util.Objects.equals(n.sido(), r.sido()))
+                .thenComparing(CommunityRepository.RegionName::sido, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                .thenComparing(CommunityRepository.RegionName::name))
+            .map(CommunityService::regionView).toList()).orElse(List.of()));
+        return result;
+    }
+
+    /** { id, name: "마포구", sido: "서울특별시" } — 시 · 도가 없는 동네(시 · 도 자체)는 sido 가 null */
+    private static Map<String, Object> regionView(CommunityRepository.RegionName region) {
+        var view = new java.util.LinkedHashMap<String, Object>();
+        view.put("id", Long.toString(region.id()));
+        view.put("name", region.name());
+        view.put("sido", region.sido());
+        return view;
+    }
+
     public List<Map<String, Object>> popularPosts(long viewerId) {
         var region = repository.userRegion(viewerId);
         if (region.isEmpty()) return List.of();

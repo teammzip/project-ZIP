@@ -24,7 +24,7 @@ class HomeInfoTests {
     @Autowired JdbcTemplate jdbc;
     @Autowired AuthService auth;
     @Autowired ObjectMapper json;
-    private String token(String id) { return auth.socialLogin("GOOGLE",id,id+"@example.com","검증회원"); }
+    private String token(String id) { return auth.socialLogin("GOOGLE",id,id+"@example.com","검증회원").accessToken(); }
     private Map<String,Object> monthly() {
         var body=new LinkedHashMap<String,Object>();
         body.put("kind","monthly"); body.put("deposit",10000000); body.put("rent",550003); body.put("rentDay",15);
@@ -126,7 +126,7 @@ class HomeInfoTests {
         body.put("loan",Map.of("principal",100000000,"annualRate",4,"paymentDay",1,"startDate","2026-01-01"));
         save(t,body).andExpect(status().isOk()).andExpect(jsonPath("$.settings.rent").value(0)).andExpect(jsonPath("$.loan.active").value(true));
         long count=jdbc.queryForObject("SELECT COUNT(*) FROM loan_interest_charges",Long.class);
-        assertEquals(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).getDayOfMonth()==1?1:0,count);
+        assertEquals(1,count);
         jdbc.update("UPDATE loan_interest_charges SET paid_at=CURRENT_TIMESTAMP");
         var amounts=jdbc.queryForList("SELECT amount FROM loan_interest_charges ORDER BY charge_date",Long.class);
         body.put("loan",Map.of("principal",100000000,"annualRate",6,"paymentDay",1,"startDate","2026-01-01"));
@@ -233,7 +233,9 @@ class HomeInfoTests {
         assertNotNull(jdbc.queryForObject("SELECT deleted_at FROM bill_payments WHERE bill_item_id=?",java.sql.Timestamp.class,oldManaged));
         mvc.perform(get("/api/bills/monthly").param("month",month.toString()).param("timeZone","Asia/Seoul").header("Authorization","Bearer "+t))
             .andExpect(status().isOk()).andExpect(jsonPath("$.contractKind").value("monthly"))
-            .andExpect(jsonPath("$.housingItems[0].amount").value(600000)).andExpect(jsonPath("$.items").isEmpty());
+            .andExpect(jsonPath("$.housingItems[0].amount").value(600000))
+            .andExpect(jsonPath("$.items.length()").value(1)).andExpect(jsonPath("$.items[0].amount").value(70000))
+            .andExpect(jsonPath("$.items[0].dueDate").value(month.atDay(1).toString()));
     }
 
     @Test void homeEditUpdatesFutureUnpaidAndPreservesPaidHistory() throws Exception {

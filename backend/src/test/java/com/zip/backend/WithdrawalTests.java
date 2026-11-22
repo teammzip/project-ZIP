@@ -111,14 +111,14 @@ class WithdrawalTests {
     }
 
     @Test void socialAccountWithdrawsAndCanSignUpAgainAsNewUser() throws Exception {
-        String token = auth.socialLogin("NAVER", "naver-1", "a@naver.com", "지기");
+        String token = auth.socialLogin("NAVER", "naver-1", "a@naver.com", "지기").accessToken();
         long oldId = jdbc.queryForObject("SELECT id FROM users", Long.class);
         mvc.perform(delete("/api/auth/me").header("Authorization", "Bearer " + token)).andExpect(status().isNoContent());
         assertEquals(0, count(jdbc, "users"));
         assertEquals(0, count(jdbc, "social_accounts"));
 
         // The same Naver account (and the same email) is free again and becomes a fresh account that needs consent.
-        String again = auth.socialLogin("NAVER", "naver-1", "a@naver.com", "지기");
+        String again = auth.socialLogin("NAVER", "naver-1", "a@naver.com", "지기").accessToken();
         mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + again))
             .andExpect(status().isOk()).andExpect(jsonPath("$.agreedAt").doesNotExist());
         assertEquals(1, count(jdbc, "users"));
