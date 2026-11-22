@@ -29,14 +29,16 @@ export function CalendarBoard() {
   const today = todayStr()
   const [params] = useSearchParams()
   const initialMode = params.get('mode') as CalMode | null
-  const [view, setView] = useState({ y: now.getFullYear(), m: now.getMonth() })
+  // ?date=2026-11-24 (알림에서 열 때) 면 그 날을 고른 채로 시작
+  const initialDate = /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') ?? '') ? params.get('date')! : null
+  const [view, setView] = useState(() => initialDate ? { y: Number(initialDate.slice(0, 4)), m: Number(initialDate.slice(5, 7)) - 1 } : { y: now.getFullYear(), m: now.getMonth() })
   // 매년 반복 기념일은 보고 있는 해 앞뒤로 펼쳐서 보여 줌
   const shown = useMemo(() => expandAnniversaries(events, view.y - 1, view.y + 1), [events, view.y])
   // 일정 목록은 보고 있는 해의 기념일만 (여러 해가 같은 날짜로 겹쳐 보이지 않게)
   const listed = useMemo(() => expandAnniversaries(events, view.y, view.y), [events, view.y])
   const [calView, setCalView] = useState<'month' | 'week'>('month')
-  const [selected, setSelected] = useState(today)
-  const [mode, setMode] = useState<CalMode>(initialMode && MODES.includes(initialMode) ? initialMode : 'today')
+  const [selected, setSelected] = useState(initialDate ?? today)
+  const [mode, setMode] = useState<CalMode>(initialDate ? (initialDate === today ? 'today' : 'day') : initialMode && MODES.includes(initialMode) ? initialMode : 'today')
   const [query, setQuery] = useState('')
   // 일정 기록하기에서 골라 둔 항목 (달력에서 날짜를 누르면 이 이름 · 카테고리로 추가)
   const [picked, setPicked] = useState<Picked | null>(null)

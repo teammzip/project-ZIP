@@ -237,7 +237,17 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 - 알림을 만드는 곳 (`NotificationService.send`): 댓글(글쓴이) · 답글(답글을 받은 댓글 작성자, 글쓴이와 같으면 하나만) · 운영자 댓글 → `COMMUNITY`. 운영자가 지운 글 · 댓글(사유 포함) · 신고 처리로 숨긴 글 · 댓글 · 경고 · 문의 답변 → `SYSTEM`.
 - 받는 사람이 한 사람(내가 내 글에 댓글)이면 만들지 않고, `user_settings.noti_on = 0` 이면 만들지 않아요. 미리보기는 줄바꿈을 빼고 40자.
 - 알릴 시각은 초 단위로 내림해서 저장해요 (MySQL DATETIME 반올림으로 "미래 알림"처럼 숨지 않게).
-- **검증**: `NotificationIntegrationTests` 4개 + 격리 MySQL 에서 실제 백엔드로 댓글 · 문의 답변 알림 · 읽음 · 지우기 확인.
+- **생활 알림** (`LifeNotificationService`): 목록을 볼 때 일정 · 월세 알림을 앞으로 3일 치 만들어 둬요(쓰레기 배출은 `TrashReminderService` 가 배출일 0시(자정)에 만들고, 여기서는 건드리지 않음). (종류, ref_id, link) 로 이미 만든 것을 알아봐서 다시 만들지 않고(읽거나 지운 것도), 같은 회원의 동시 요청은 회원 행 잠금으로 한 줄로 세워요. 해당 없어진 안 읽은 알림(일정 삭제 · 완료 · 날짜 변경, 월세 변경, 알림 끔)은 지우고, 제목 · 내용이 바뀌면 고쳐요. 규칙은 `frontend/API.md` 6장.
+- **검증**: `NotificationIntegrationTests` 4개 + `LifeNotificationIntegrationTests` 5개 + 격리 MySQL 8.0 에서 실제 백엔드로 댓글 · 문의 답변 알림 · 읽음 · 지우기, 생활 알림(두 기기 동시 10번 요청에도 한 번씩만, 날짜 변경 · 삭제 정리, 알림 끈 회원 없음) 확인.
+
+## 공지사항
+
+`com.zip.backend.notice` (NoticeController · NoticeService · NoticeRepository). 표는 `notices` (`db/migrations/20261121_07_notices.sql`). 규칙은 `frontend/API.md` 14장.
+
+- 회원은 목록(고정 먼저 · 새 것부터) · 내용만, 관리자(`/api/admin/**`)만 쓰기 · 고치기 · 지우기.
+- `popup: true` 공지는 `GET /api/notices/popups` 로 내용까지 내려가요(새 것부터 5개). 안 보기 · 닫기는 화면이 브라우저에 기억해요.
+- `notify: true` 로 쓰면 알림을 켠 일반 회원 모두에게 `SYSTEM` 알림(`link: notice`, `refId` = 공지 번호)을 한 번에(INSERT … SELECT) 만들어요.
+- **검증**: `NoticeIntegrationTests` 4개 + 격리 MySQL 8.0 에서 이모지 제목 · 5,000자 내용 · 고정 순서 · 알림 대상(알림 끈 회원 · 관리자 제외) · 고치기 · 지우기 확인.
 
 ## 메모
 

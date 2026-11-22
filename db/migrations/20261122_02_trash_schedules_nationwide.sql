@@ -1,6 +1,6 @@
 -- 쓰레기 배출표: 전국생활쓰레기배출정보표준데이터(공공데이터포털) → db/tools/trash_import.py 가 만든 파일 — 직접 고치지 말고 스크립트로 다시 만드세요.
 -- 원본: db/data/생활쓰레기배출정보.csv · 6218줄 (동네 · 배출장소, 생활쓰레기 · 음식물 · 재활용 배출 요일 · 시작 시각)
--- 먼저 db/migrations/20261121_06_trash_schedule_columns.sql 과 20261121_07_regions_nationwide.sql 을 적용하세요.
+-- 먼저 db/migrations/20261121_06_trash_schedule_columns.sql 과 20261122_01_regions_nationwide.sql 을 적용하세요.
 -- 실행하면 배출표(trash_schedules)를 모두 지우고 이 파일 내용으로 다시 넣어요 (다른 표가 참조하지 않는 공공 데이터). 중간에 실패하면 지운 것도 되돌려요.
 USE `zip`;
 

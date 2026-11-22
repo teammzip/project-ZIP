@@ -1,15 +1,15 @@
 """전국생활쓰레기배출정보표준데이터(공공데이터포털 CSV) → DB 시드 SQL 2개를 만드는 변환 스크립트.
 
 만드는 파일
-  db/migrations/20261121_07_regions_nationwide.sql         전국 시도(level 1) · 시군구(level 2). 이미 있는 지역은 건너뜀 (서울 id 그대로)
-  db/migrations/20261121_08_trash_schedules_nationwide.sql 쓰레기 배출표. 실행하면 배출표 전체를 지우고 CSV 기준으로 다시 넣음
+  db/migrations/20261122_01_regions_nationwide.sql         전국 시도(level 1) · 시군구(level 2). 이미 있는 지역은 건너뜀 (서울 id 그대로)
+  db/migrations/20261122_02_trash_schedules_nationwide.sql 쓰레기 배출표. 실행하면 배출표 전체를 지우고 CSV 기준으로 다시 넣음
 
 실행 (저장소 루트에서)
   python db/tools/trash_import.py                       # 기본 경로 사용
   python db/tools/trash_import.py --csv 다른파일.csv --report 변환목록.txt
 
-DB 적용 순서: db/migrations/ 의 20261121_06 (표 구조) → 07 (지역) → 08 (배출표)
-07 · 08 은 데이터만 넣는 마이그레이션이라 CSV 가 바뀌면 이 스크립트로 다시 만들고 다시 실행해도 됨
+DB 적용 순서: db/migrations/ 의 20261121_06 (표 구조) → 20261122_01 (지역) → 20261122_02 (배출표)
+20261122_01 · 02 는 데이터만 넣는 마이그레이션이라 CSV 가 바뀌면 이 스크립트로 다시 만들고 다시 실행해도 됨
 배출표 한 줄 = 동네 · 배출장소, 생활쓰레기 · 음식물 · 재활용마다 배출 요일("월,수,금") · 시작 시각 (원본 CSV 한 줄과 같은 모양)
 이 스크립트는 DB에 접속하지 않고 파일만 만든다.
 """
@@ -24,9 +24,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CSV = ROOT / 'db' / 'data' / '생활쓰레기배출정보.csv'
 REGIONS_TS = ROOT / 'frontend' / 'src' / 'features' / 'auth' / 'data' / 'regions.ts'
-# 데이터 마이그레이션 두 개 (구조 변경 06 바로 뒤에 실행하도록 같은 폴더 · 번호로 둠)
-OUT_REGIONS = ROOT / 'db' / 'migrations' / '20261121_07_regions_nationwide.sql'
-OUT_TRASH = ROOT / 'db' / 'migrations' / '20261121_08_trash_schedules_nationwide.sql'
+# 데이터 마이그레이션 두 개 (구조 변경 06 뒤에 실행되도록 같은 폴더 · 뒤 번호로 둠)
+OUT_REGIONS = ROOT / 'db' / 'migrations' / '20261122_01_regions_nationwide.sql'
+OUT_TRASH = ROOT / 'db' / 'migrations' / '20261122_02_trash_schedules_nationwide.sql'
 
 # regions.ts 의 짧은 시도 이름 → DB(regions.name) 에 저장하는 정식 이름
 SIDO_FULL = {
@@ -177,7 +177,7 @@ def write_trash(schedules, csv_name):
     lines = [
         '-- 쓰레기 배출표: 전국생활쓰레기배출정보표준데이터(공공데이터포털) → db/tools/trash_import.py 가 만든 파일 — 직접 고치지 말고 스크립트로 다시 만드세요.',
         f'-- 원본: db/data/{csv_name} · {len(schedules)}줄 (동네 · 배출장소, 생활쓰레기 · 음식물 · 재활용 배출 요일 · 시작 시각)',
-        '-- 먼저 db/migrations/20261121_06_trash_schedule_columns.sql 과 20261121_07_regions_nationwide.sql 을 적용하세요.',
+        '-- 먼저 db/migrations/20261121_06_trash_schedule_columns.sql 과 20261122_01_regions_nationwide.sql 을 적용하세요.',
         '-- 실행하면 배출표(trash_schedules)를 모두 지우고 이 파일 내용으로 다시 넣어요 (다른 표가 참조하지 않는 공공 데이터). 중간에 실패하면 지운 것도 되돌려요.',
         'USE `zip`;',
         '',

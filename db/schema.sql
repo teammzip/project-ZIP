@@ -611,6 +611,21 @@ CREATE TABLE IF NOT EXISTS `support_inquiries` (
   CONSTRAINT `fk_support_answered_by` FOREIGN KEY (`answered_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='고객센터 문의와 관리자 단일 답변';
 
+CREATE TABLE IF NOT EXISTS `notices` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '고유 번호',
+  `title` VARCHAR(100) NOT NULL COMMENT '공지 제목 — 1~100자',
+  `body` TEXT NOT NULL COMMENT '공지 내용 — 1~5000자',
+  `is_pinned` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '목록 맨 위 고정',
+  `is_popup` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '앱을 열면 팝업으로 보여 줌',
+  `created_by` BIGINT UNSIGNED NULL COMMENT '쓴 관리자 번호',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록 일시',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '수정 일시',
+  PRIMARY KEY (`id`),
+  KEY `idx_notices_pinned_created` (`is_pinned`, `created_at`, `id`),
+  CONSTRAINT `fk_notices_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `ck_notices_title` CHECK (CHAR_LENGTH(TRIM(`title`)) > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='관리자 공지사항';
+
 -- AI 분야: 자유 질문·사용 방법·근처 탐색 등 10개 주제. 분야를 추가·숨기는 것은 이 표만 고치면 됩니다.
 CREATE TABLE IF NOT EXISTS `ai_topics` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '분야 아이디 — 자동 증가',
@@ -706,7 +721,7 @@ CREATE TABLE IF NOT EXISTS `ai_usage_daily` (
 -- 쓰레기 배출 일정: 원본 CSV(전국생활쓰레기배출정보표준데이터)와 같은 모양. 한 줄 = 동네(시군구) · 배출장소, 종류마다 배출 요일 · 시작 시각.
 -- 쓰레기 배출일 아침 알림(notification/TrashReminderService)이 집 주소의 동네 줄에서 오늘 요일이 든 종류를 찾아 알려줘요.
 -- 같은 동네에 장소마다 요일이 다르면 줄이 여러 개예요 (마을 · 거점마다 장소가 다른 군 지역). 배출이 없는 종류는 요일 빈 값 · 시각 NULL.
--- 데이터: db/data/생활쓰레기배출정보.csv → db/tools/trash_import.py → db/migrations/20261121_08_trash_schedules_nationwide.sql
+-- 데이터: db/data/생활쓰레기배출정보.csv → db/tools/trash_import.py → db/migrations/20261122_02_trash_schedules_nationwide.sql
 CREATE TABLE IF NOT EXISTS `trash_schedules` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '배출일정 아이디 — 자동 증가',
   `region_id` BIGINT UNSIGNED NOT NULL COMMENT '동네 아이디 — 시군구',
@@ -918,7 +933,7 @@ UPDATE `place_categories` SET `icon` = '🥘' WHERE `name` = '반찬가게';
 UPDATE `place_categories` SET `icon` = '👔' WHERE `name` = '세탁소';
 UPDATE `place_categories` SET `icon` = '🏛️' WHERE `name` = '주민센터';
 
--- 쓰레기 배출표는 여기서 넣지 않아요 (예전 마포구 예시 6행은 삭제). 전국 데이터는 db/migrations/ 의 20261121_07(지역) → 20261121_08(배출표) 순서로 넣어요.
+-- 쓰레기 배출표는 여기서 넣지 않아요 (예전 마포구 예시 6행은 삭제). 전국 데이터는 db/migrations/ 의 20261122_01(지역) → 20261122_02(배출표) 순서로 넣어요.
 
 -- 약관 본문: frontend/src/features/legal/content.ts의 제목·본문·LEGAL_VERSION과 동일
 -- 이미 동의한 이전 버전은 보존하며, 본문 변경 시 프론트와 함께 새 버전을 추가합니다.
