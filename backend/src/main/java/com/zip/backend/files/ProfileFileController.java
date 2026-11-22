@@ -20,6 +20,12 @@ public class ProfileFileController {
     }
 
     // Profile pictures and attachments of visible posts are public; other uploads require their owner's token.
+    @DeleteMapping("/api/files/{id}/unused")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    public void discard(@AuthenticationPrincipal Jwt jwt, @PathVariable long id) {
+        files.discardUnused(Long.parseLong(jwt.getSubject()), id);
+    }
+
     @GetMapping("/api/files/content/{key}")
     public ResponseEntity<FileSystemResource> content(@PathVariable String key, @AuthenticationPrincipal Jwt jwt) {
         var content = files.content(key, jwt == null ? null : Long.parseLong(jwt.getSubject()));

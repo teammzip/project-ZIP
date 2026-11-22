@@ -24,6 +24,20 @@ public class PlaceReviewRepository {
 
     public PlaceReviewRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
+    public record MyReview(String id, String placeId, String placeName, int rating, String body, String createdAt) {}
+
+    public List<MyReview> myReviews(long userId) {
+        return jdbc.query("""
+            SELECT r.id, CONCAT('', r.place_id) AS place_key, p.name, r.rating, COALESCE(r.body, '') AS body, r.created_at
+            FROM place_reviews r JOIN places p ON p.id = r.place_id WHERE r.user_id = ?
+            UNION ALL
+            SELECT r.id, CONCAT('kakao:', r.kakao_place_id), r.name, r.rating, COALESCE(r.body, ''), r.created_at
+            FROM kakao_place_reviews r WHERE r.user_id = ?
+            ORDER BY created_at DESC, place_key, id DESC
+            """, (rs, row) -> new MyReview(Long.toString(rs.getLong("id")), rs.getString("place_key"), rs.getString("name"),
+                rs.getInt("rating"), rs.getString("body"), rs.getTimestamp("created_at").toInstant().toString()), userId, userId);
+    }
+
     /** 리뷰가 붙는 곳. DB 장소면 placeId, 카카오 장소면 kakaoPlaceId */
     public record Target(String kind, Long placeId, String kakaoPlaceId) {
         static Target place(long id) { return new Target(PlaceReviewService.PLACE, id, null); }
@@ -108,7 +122,7 @@ public class PlaceReviewRepository {
 
     public List<FileRow> files(Collection<Long> ids) {
         if (ids.isEmpty()) return List.of();
-        return jdbc.query("SELECT id, user_id, mime_type, deleted_at FROM uploaded_files WHERE id IN (" + marks(ids.size()) + ")",
+        return jdbc.query("SELECT id, user_id, mime_type, deleted_at FROM uploaded_files WHERE id IN (" + marks(ids.size()) + ") ORDER BY id FOR UPDATE",
             (rs, row) -> new FileRow(rs.getLong(1), rs.getLong(2), rs.getString(3), rs.getTimestamp(4) != null), ids.toArray());
     }
 

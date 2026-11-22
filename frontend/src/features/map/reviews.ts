@@ -25,6 +25,7 @@ export const PHOTO_MAX = 5
 export const PHOTO_TYPES = ['image/jpeg', 'image/png']
 export const PHOTO_BYTES = 2 * 1024 * 1024
 export type ReviewSummary = { id: string; rating: number; count: number }
+export type MyReview = { id: string; placeId: string; placeName: string; rating: number; body: string; createdAt: string }
 export type ReviewReportStatus = 'RECEIVED' | 'HIDDEN' | 'DISMISSED'
 export type AdminReviewReport = {
   id: string
@@ -117,18 +118,31 @@ const asDataUrls = (photos: PhotoDraft[]) =>
   )
 
 /** 새로 고른 사진은 서버에 올리고(동시에, 순서는 그대로) 이미 올린 사진은 id 그대로 */
-const uploadPhotos = (photos: PhotoDraft[]) =>
-  Promise.all(
+const uploadPhotos = async (photos: PhotoDraft[]) => {
+  const results = await Promise.allSettled(
     photos.map(async (p) => {
       if (p.id) return p.id
       if (!p.file) throw new Error('사진을 다시 골라 주세요.')
       const form = new FormData()
       form.append('file', p.file)
-      return (await apiClient.post<{ id: string }>('/files', form)).data.id
+      const id = (await apiClient.post<{ id: string }>('/files', form)).data.id
+      p.id = id
+      return id
     }),
   )
+  const failed = results.find((result) => result.status === 'rejected')
+  if (failed?.status === 'rejected') throw failed.reason
+  return results.map((result) => (result as PromiseFulfilledResult<string>).value)
+}
 
 export const reviewApi = {
+  mine: async (me?: Me): Promise<MyReview[]> => isMockApi
+    ? [...mock.reviews].flatMap(([placeId, reviews]) => reviews.filter((r) => r.author.id === me?.id).map((r) => ({ id: r.id, placeId, placeName: r.placeName, rating: r.rating, body: r.body, createdAt: r.createdAt }))).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    : (await apiClient.get<MyReview[]>('/places/reviews/mine')).data,
+  discardPhotos: async (photos: PhotoDraft[]) => {
+    if (isMockApi) return
+    await Promise.allSettled(photos.filter((p) => p.file && p.id).map((p) => apiClient.delete(`/files/${encodeURIComponent(p.id!)}/unused`)))
+  },
   reviews: async (placeId: string, me?: Me) => (isMockApi ? mockApi.reviews(placeId, me) : (await apiClient.get<PlaceReview[]>(path(placeId))).data),
   /** 카카오 장소는 장소 이름(60자)도 같이 (서버는 카카오 장소 id · 이름 + 리뷰만 저장) */
   add: async (placeId: string, placeName: string, rating: number, body: string, photos: PhotoDraft[], me?: Me) => {

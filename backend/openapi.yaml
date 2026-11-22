@@ -423,13 +423,22 @@ paths:
             application/json:
               schema:
                 type: array
-                items:
-                  type: object
-                  properties:
-                    place: { type: string, example: '내 집 혹은 내 점포 앞' }
-                    general: { $ref: '#/components/schemas/TrashKind' }
-                    food: { $ref: '#/components/schemas/TrashKind' }
-                    recycle: { $ref: '#/components/schemas/TrashKind' }
+                items: { $ref: '#/components/schemas/TrashSchedule' }
+  /api/trash-schedules/me:
+    get:
+      tags: [일정 · 쓰레기 배출]
+      summary: 로그인 회원의 내 집 주소로 배출표 조회. 내 집 주소가 비어 있으면 회원 주소 사용
+      responses:
+        '200':
+          description: 시·군·구를 찾지 못하면 regionName은 null, 배출표가 없으면 items는 빈 배열
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [regionName, items]
+                properties:
+                  regionName: { type: string, nullable: true, example: '서울특별시 마포구' }
+                  items: { type: array, items: { $ref: '#/components/schemas/TrashSchedule' } }
   /api/event-categories:
     get:
       tags: [일정 · 쓰레기 배출]
@@ -1134,6 +1143,29 @@ paths:
                     place: { $ref: '#/components/schemas/Place' }
                     reasons: { type: array, items: { type: string }, example: ['약국', '24시간·심야 운영'] }
                     walkMin: { type: integer }
+  /api/places/reviews/mine:
+    get:
+      tags: [지도]
+      summary: 내가 쓴 장소 리뷰 (DB·카카오 장소 통합, 최신순)
+      responses:
+        '200':
+          description: 로그인한 회원의 리뷰만 반환
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    placeId: { type: string, description: 'DB 장소 id 또는 kakao:장소id' }
+                    placeName: { type: string }
+                    rating: { type: integer }
+                    body: { type: string }
+                    createdAt: { type: string, format: date-time }
+        '401':
+          description: 로그인 필요
+
   /api/places/{id}/reviews:
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -1512,6 +1544,55 @@ paths:
         '204': { description: 처리 완료 }
 
   # ───────────────────────── 12. 메모 ─────────────────────────
+  /api/memo-folders:
+    get:
+      tags: [메모]
+      summary: 내 메모 폴더 목록
+      responses:
+        '200':
+          description: 본인 폴더만 반환
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MemoFolder' }
+    post:
+      tags: [메모]
+      summary: 메모 폴더 생성 (회원별 중복 이름 불가, 100개까지)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MemoFolderInput' }
+      responses:
+        '201':
+          description: 생성된 폴더
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemoFolder' }
+  /api/memo-folders/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string } }
+    patch:
+      tags: [메모]
+      summary: 내 폴더 이름 변경
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MemoFolderInput' }
+      responses:
+        '200':
+          description: 변경된 폴더
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MemoFolder' }
+    delete:
+      tags: [메모]
+      summary: 내 폴더 삭제 (메모는 미분류로 보존)
+      responses:
+        '204': { description: 삭제 완료 }
+
   /api/memos:
     get:
       tags: [메모]
@@ -1872,6 +1953,13 @@ components:
         color: { type: string, example: '#6485df' }
 
     # 일정
+    TrashSchedule:
+      type: object
+      properties:
+        place: { type: string, example: '내 집 혹은 내 점포 앞' }
+        general: { $ref: '#/components/schemas/TrashKind' }
+        food: { $ref: '#/components/schemas/TrashKind' }
+        recycle: { $ref: '#/components/schemas/TrashKind' }
     TrashKind:
       description: 쓰레기 한 종류의 배출 요일 · 시작 시각. 그 장소에서 이 종류를 배출하지 않으면 null
       type: object
@@ -2181,6 +2269,8 @@ components:
       type: object
       properties:
         id: { type: string }
+        folderId: { type: string, nullable: true, description: 'null은 미분류' }
+        ledgerContext: { type: string, nullable: true }
         title: { type: string, maxLength: 60 }
         body: { type: string, maxLength: 5000 }
         color: { type: string, enum: [노랑, 분홍, 하늘, 초록, 보라, 흰색] }
@@ -2189,6 +2279,16 @@ components:
         items: { type: array, items: { $ref: '#/components/schemas/MemoItem' } }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    MemoFolder:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string, minLength: 1, maxLength: 40 }
+    MemoFolderInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 40 }
     MemoInput:
       type: object
       properties:
@@ -2198,6 +2298,7 @@ components:
         pinned: { type: boolean }
         checklist: { type: boolean }
         items: { type: array, items: { $ref: '#/components/schemas/MemoItem' } }
+        folderId: { type: string, nullable: true, description: '생략/null은 유지, 빈 문자열은 미분류, 문자열 ID는 본인 폴더로 이동' }
     HomeMemos:
       type: object
       properties:

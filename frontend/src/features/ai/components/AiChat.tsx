@@ -13,6 +13,7 @@ import { BillPhotoQuestion } from './BillPhotoQuestion'
 import { UsageGuide } from './UsageGuide'
 import { NearbySearch } from './NearbySearch'
 import { NEARBY_PROMPT } from '../nearbySearch'
+import { supportGuide } from '../usageGuide'
 import guideStyles from './UsageGuide.module.css'
 import { useAuthStore } from '@/features/auth'
 
@@ -21,7 +22,18 @@ type Props = {
   name: string
 }
 
-type Msg = { role: 'user' | 'bot'; text: string; photo?: string; action?: TopicAction | null; suggestion?: TopicSuggestion; budget?: SpendCard; nearbyKeyword?: string }
+type AiRequest = { id: string; text: string; topic: string }
+
+type Msg = {
+  role: 'user' | 'bot'
+  text: string
+  photo?: string
+  action?: TopicAction | null
+  suggestion?: TopicSuggestion
+  budget?: SpendCard
+  nearbyKeyword?: string
+  quotaRequest?: AiRequest
+}
 
 export function AiChat({ region, name }: Props) {
   const accountId = useAuthStore((s) => s.user?.id)
@@ -33,9 +45,10 @@ export function AiChat({ region, name }: Props) {
   const ctx = { region, name, hasPhoto: !!photoUrl }
 
   const [msgs, setMsgs] = useState<Msg[]>([])
+  const quotaRequest = msgs.at(-1)?.quotaRequest
   // 다른 화면에서 ?topic=trash&fill=치킨뼈 로 들어오면 그 분야를 바로 펼침
-  const [guideOpen, setGuideOpen] = useState(() => params.get('topic') === 'guide')
-  const [topic, setTopic] = useState<Topic | null>(() => guideOpen ? null : topicById(params.get('topic')))
+  const [guideSource, setGuideSource] = useState<'topic' | 'quota' | null>(() => params.get('topic') === 'guide' ? 'topic' : null)
+  const [topic, setTopic] = useState<Topic | null>(() => guideSource ? null : topicById(params.get('topic')))
   const [keyword, setKeyword] = useState(() => topic?.input ? params.get('fill') ?? '' : '')
   const summarySelected = topic?.id === 'summary'
   const nearbySelected = topic?.id === 'nearby'
@@ -45,6 +58,7 @@ export function AiChat({ region, name }: Props) {
   const endRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const topicTrigger = useRef<HTMLButtonElement>(null)
+  const quotaGuideTrigger = useRef<HTMLButtonElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const alive = useRef(true)
@@ -63,12 +77,12 @@ export function AiChat({ region, name }: Props) {
   }, [params, setParams])
 
   useEffect(() => {
-    if (!guideOpen) endRef.current?.scrollIntoView({ block: 'end' })
-  }, [msgs, pending, guideOpen])
+    if (!guideSource) endRef.current?.scrollIntoView({ block: 'end' })
+  }, [msgs, pending, guideSource])
 
   const pickTopic = (t: Topic, original?: string) => {
     if (t.id === 'guide') {
-      setGuideOpen(true)
+      setGuideSource('topic')
       setPlus(false)
       return
     }
@@ -83,8 +97,9 @@ export function AiChat({ region, name }: Props) {
   }
 
   const closeGuide = () => {
-    setGuideOpen(false)
-    requestAnimationFrame(() => topicTrigger.current?.focus({ preventScroll: true }))
+    const trigger = guideSource === 'quota' ? quotaGuideTrigger : topicTrigger
+    setGuideSource(null)
+    requestAnimationFrame(() => (trigger.current ?? topicTrigger.current)?.focus({ preventScroll: true }))
   }
 
   const onPhoto = (e: ChangeEvent<HTMLInputElement>) => {
@@ -92,6 +107,38 @@ export function AiChat({ region, name }: Props) {
     e.target.value = ''
     setPlus(false)
     if (f && f.type.startsWith('image/')) setPhoto(f)
+  }
+
+  const requestAi = async (request: AiRequest) => {
+    const answer = await askAi(request.id, request.text, request.topic)
+    if (!alive.current) return true
+    if (!answer) return false
+    setMsgs((m) => [...m, {
+      role: 'bot',
+      text: answer.text,
+      quotaRequest: answer.kind === 'gemini-quota' ? request : undefined,
+    }])
+    setPending(false)
+    return true
+  }
+
+  const showSupportGuide = (request: AiRequest) => {
+    const { name, path, steps, to, link } = supportGuide
+    const instructions = steps.map((step, i) => `${i + 1}. ${step}`).join('\n')
+    setMsgs((m) => [...m,
+      { role: 'user', text: name },
+      { role: 'bot', text: `${path}\n\n${instructions}`, action: { kind: 'link', to, label: link }, quotaRequest: request },
+    ])
+  }
+
+  const retryQuestion = async (request: AiRequest) => {
+    if (pending) return
+    setPending(true)
+    setMsgs((m) => [...m, { role: 'user', text: request.text }])
+    inputRef.current?.focus({ preventScroll: true })
+    if (await requestAi(request)) return
+    setMsgs((m) => [...m, { role: 'bot', text: 'AI 서버에 연결하지 못했어요. 잠시 뒤 다시 시도해 주세요.', quotaRequest: request }])
+    setPending(false)
   }
 
   const send = () => {
@@ -137,13 +184,7 @@ export function AiChat({ region, name }: Props) {
         setPending(false)
         return
       }
-      const ai = text && !sentPhoto && usesAiReply(t) ? await askAi(id, text, t?.id ?? 'qna') : null
-      if (ai) {
-        if (!alive.current) return
-        setMsgs((m) => [...m, { role: 'bot', text: ai.text, action: null }])
-        setPending(false)
-        return
-      }
+      if (id && text && !sentPhoto && usesAiReply(t) && await requestAi({ id, text, topic: t?.id ?? 'qna' })) return
       await new Promise((resolve) => setTimeout(resolve, 500))
       if (!alive.current) return
       let out = !text ? '사진을 받았어요. 어떤 도움이 필요한지 아래에서 주제를 골라 물어봐 주세요.' : t?.reply?.(text, ctx) ?? keywordReply(text)
@@ -174,9 +215,9 @@ export function AiChat({ region, name }: Props) {
 
   return (
     <div className={styles.chat}>
-      {guideOpen && <UsageGuide onBack={closeGuide} onNavigate={closeGuide} />}
-      <div className={guideStyles.conversation} hidden={guideOpen}>
-        <div className={styles.scroll}>
+      {guideSource && <UsageGuide onBack={closeGuide} onNavigate={closeGuide} />}
+      <div className={guideStyles.conversation} hidden={!!guideSource}>
+        <div className={styles.scroll} role="log" aria-label="AI 대화">
           {!msgs.length && (
             <div className={styles.empty}>
               <b>무엇을 도와드릴까요?</b>
@@ -196,6 +237,13 @@ export function AiChat({ region, name }: Props) {
               )}
             </div>
           ))}
+          {quotaRequest && (
+            <div className={styles.quotaMenu} role="group" aria-label="AI 사용량 소진 시 선택할 수 있는 기능">
+              <button ref={quotaGuideTrigger} type="button" onClick={() => { setGuideSource('quota'); setPlus(false) }}>사용 방법</button>
+              <button type="button" onClick={() => showSupportGuide(quotaRequest)}>{supportGuide.name}</button>
+              <button type="button" onClick={() => void retryQuestion(quotaRequest)}>질문 다시 보내기</button>
+            </div>
+          )}
           {pending && (
             <div className={cx(styles.msg, styles.bot, styles.typing)} aria-label="답변 쓰는 중">
               <i />

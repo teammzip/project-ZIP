@@ -25,6 +25,7 @@ class PlaceReviewIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired PasswordEncoder passwords;
+    @Autowired com.zip.backend.files.ProfileFileService files;
 
     @BeforeEach void seed() {
         String hash = passwords.encode("abcd123!");
@@ -45,6 +46,20 @@ class PlaceReviewIntegrationTests {
     }
 
     private Integer count(String sql) { return jdbc.queryForObject(sql, Integer.class); }
+
+    @Test void myReviewsCombinesPlaceKindsAndExcludesOtherUsers() throws Exception {
+        String one = login("tester01"), two = login("tester02");
+        call(post("/api/places/10/reviews"), one, "{\"rating\":3,\"body\":\"내 장소 후기\"}").andExpect(status().isNoContent());
+        call(post("/api/places/kakao:777/reviews"), one, "{\"rating\":5,\"name\":\"카페\"}").andExpect(status().isNoContent());
+        call(post("/api/places/kakao:888/reviews"), two, "{\"rating\":1,\"name\":\"다른 장소\"}").andExpect(status().isNoContent());
+        call(get("/api/places/reviews/mine"), one, null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[?(@.placeId == 'kakao:777')].placeName").value(org.hamcrest.Matchers.contains("카페")))
+            .andExpect(jsonPath("$[?(@.placeId == '10')].body").value(org.hamcrest.Matchers.contains("내 장소 후기")));
+        call(delete("/api/places/10/reviews/mine"), one, null).andExpect(status().isNoContent());
+        call(get("/api/places/reviews/mine"), one, null).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+        mvc.perform(get("/api/places/reviews/mine")).andExpect(status().isUnauthorized());
+    }
 
     @Test void writeEditDeleteMyReviewOnDbPlaceKeepsRatingInSync() throws Exception {
         String one = login("tester01"), two = login("tester02");
@@ -69,6 +84,29 @@ class PlaceReviewIntegrationTests {
         jdbc.update("INSERT INTO uploaded_files (user_id, original_name, storage_url, mime_type, size_bytes) VALUES (?, 'a.jpg', ?, 'image/jpeg', 100)",
             userId, "/api/files/content/" + key + ".jpg");
         return jdbc.queryForObject("SELECT MAX(id) FROM uploaded_files", Long.class);
+    }
+
+    @Test void failedReviewCanReusePhotoAndDiscardProtectsRegisteredPhotos() throws Exception {
+        String one = login("tester01"), two = login("tester02");
+        long id = file(1, "aaaaaaaa-0000-0000-0000-000000000099");
+        String input = "{\"rating\":5,\"photoIds\":[\"" + id + "\"]}";
+        call(post("/api/places/999/reviews"), one, input).andExpect(status().isNotFound());
+        assertEquals(1, count("SELECT COUNT(*) FROM uploaded_files WHERE id = " + id + " AND deleted_at IS NULL"));
+        call(delete("/api/files/{id}/unused", id), two, null).andExpect(status().isNoContent());
+        assertEquals(1, count("SELECT COUNT(*) FROM uploaded_files WHERE id = " + id + " AND deleted_at IS NULL"));
+        call(post("/api/places/10/reviews"), one, input).andExpect(status().isNoContent());
+        call(delete("/api/files/{id}/unused", id), one, null).andExpect(status().isNoContent());
+        assertEquals(1, count("SELECT COUNT(*) FROM uploaded_files WHERE id = " + id + " AND deleted_at IS NULL"));
+        long unused = file(1, "aaaaaaaa-0000-0000-0000-000000000098");
+        call(delete("/api/files/{id}/unused", unused), one, null).andExpect(status().isNoContent());
+        call(delete("/api/files/{id}/unused", unused), one, null).andExpect(status().isNoContent());
+        assertEquals(1, count("SELECT COUNT(*) FROM uploaded_files WHERE id = " + unused + " AND deleted_at IS NOT NULL"));
+        long abandoned = file(1, "aaaaaaaa-0000-0000-0000-000000000097");
+        jdbc.update("UPDATE uploaded_files SET created_at = ? WHERE id IN (?, ?)",
+            java.sql.Timestamp.valueOf("2000-01-01 00:00:00"), abandoned, id);
+        files.cleanupUnusedUploads();
+        assertEquals(1, count("SELECT COUNT(*) FROM uploaded_files WHERE id = " + abandoned + " AND deleted_at IS NOT NULL"));
+        assertEquals(1, count("SELECT COUNT(*) FROM uploaded_files WHERE id = " + id + " AND deleted_at IS NULL"));
     }
 
     @Test void photosAuthorInfoAndCleanup() throws Exception {

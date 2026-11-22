@@ -54,6 +54,7 @@ function setup(kind) {
       if (name === '@/features/auth/api') return { isMockApi: true }
     if (name === '../homeApi') return {}
     if (name === '@/lib/apiClient') return { getErrorMessage: (cause) => cause.message }
+    if (name === '@/features/map/components/MyReviews') return { MyReviews: () => null }
     if (name === './interest') return interest
     if (name === './MyInfo') return info
     if (name === './MonthlyFixedExpense') return { MonthlyFixedExpense: () => null }

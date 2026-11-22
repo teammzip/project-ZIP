@@ -50,6 +50,27 @@ class MemoIntegrationTests {
         return JsonPath.read(call(token, post("/api/memos"), body).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
     }
 
+    @Test void foldersPreserveMemosAndLedgerLinksAndEnforceOwnership() throws Exception {
+        String folder = JsonPath.read(call(me, post("/api/memo-folders"), "{\"name\":\"생활\"}").andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        call(me, post("/api/memo-folders"), "{\"name\":\" 생활 \"}").andExpect(status().isConflict());
+        call(me, post("/api/memo-folders"), "{\"name\":\" \"}").andExpect(status().isBadRequest());
+        String memo = create(me, "{\"body\":\"관리비 확인\",\"folderId\":\"" + folder + "\"}");
+        jdbc.update("UPDATE memos SET ledger_label = '가계부 · 관리비' WHERE id = ?", memo);
+        call(me, patch("/api/memos/{id}", memo), "{\"title\":\"수정\"}").andExpect(status().isOk())
+            .andExpect(jsonPath("$.folderId").value(folder)).andExpect(jsonPath("$.ledgerContext").value("가계부 · 관리비"));
+        call(other, get("/api/memo-folders"), null).andExpect(jsonPath("$.length()").value(0));
+        call(other, post("/api/memos"), "{\"folderId\":\"" + folder + "\"}").andExpect(status().isBadRequest());
+        call(other, patch("/api/memo-folders/{id}", folder), "{\"name\":\"탈취\"}").andExpect(status().isNotFound());
+        call(other, delete("/api/memo-folders/{id}", folder), null).andExpect(status().isNotFound());
+        call(me, patch("/api/memo-folders/{id}", folder), "{\"name\":\"집 관리\"}").andExpect(status().isOk());
+        call(me, patch("/api/memos/{id}", memo), "{\"folderId\":\"\"}").andExpect(status().isOk()).andExpect(jsonPath("$.folderId").isEmpty());
+        call(me, patch("/api/memos/{id}", memo), "{\"folderId\":\"" + folder + "\"}").andExpect(status().isOk());
+        call(me, delete("/api/memo-folders/{id}", folder), null).andExpect(status().isNoContent());
+        call(me, get("/api/memos"), null).andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].folderId").isEmpty())
+            .andExpect(jsonPath("$[0].body").value("관리비 확인")).andExpect(jsonPath("$[0].ledgerContext").value("가계부 · 관리비"));
+        call(null, get("/api/memo-folders"), null).andExpect(status().isUnauthorized());
+    }
+
     @Test void createUpdateAndDeleteOwnMemos() throws Exception {
         // 빠른 메모: 글만
         call(me, post("/api/memos"), "{\"body\":\"택배 반품\"}").andExpect(status().isCreated())

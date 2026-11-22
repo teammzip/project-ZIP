@@ -14,7 +14,7 @@ import { useLedgerCategorySettings } from '../ledgerCategories'
 import { LedgerCategoryDialog } from './LedgerCategoryDialog'
 import common from '@/styles/common.module.css'
 import styles from './life.module.css'
-import { returnedMemoDraft, openLedgerMemo, clearMemoDraft } from '../ledgerMemoNavigation'
+import { returnedMemoDraft, openLedgerMemo, clearMemoDraft, discardMemoDraft } from '../ledgerMemoNavigation'
 
 const incomeSettingsPath = '/my/settings?section=income'
 
@@ -137,7 +137,10 @@ function LedgerForm({ kind, incomeType, timeZone, row, onDone }: { kind: LedgerK
       ? <>월급은 <Link to={incomeSettingsPath} className={common.link}>마이페이지 수입 정보</Link>에서 관리해 주세요.</>
       : '첫 월급을 기록하면 이 금액과 수령일을 마이페이지 월 수입에도 저장해요.'}</p>}
     <Button type="submit" block disabled={busy || salaryBlocked || categoriesUnavailable || !selectedCat || !date || !(Number(amount) > 0)}>{busy ? '저장 중' : row ? '저장' : '기록하기'}</Button>
-    {row && <Button variant="line" disabled={busy} onClick={() => onDone()}>취소</Button>}
+    {row && <Button variant="line" disabled={busy} onClick={async () => {
+      try { if (resume) await discardMemoDraft(resume); onDone() }
+      catch (cause) { setError(getErrorMessage(cause, '메모를 정리하지 못했어요. 다시 시도해 주세요.')) }
+    }}>취소</Button>}
     {error && <p role="alert">{error}</p>}
     {adding && <LedgerCategoryDialog scope={scope} onClose={() => setAdding(false)} onAdded={setCat} onRenamed={(oldName, newName) => { if (selectedCat === oldName) setCat(newName) }} />}
   </form>

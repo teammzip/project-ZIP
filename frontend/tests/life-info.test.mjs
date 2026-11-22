@@ -85,6 +85,7 @@ function submitForm(patch = {}, kind = 'monthly', savedRent = 50, serverSave = n
       if (name === '@/features/auth/api') return { isMockApi: !serverSave }
       if (name === '../homeApi') return { saveHomeInfo: async (input) => { writes.push('server'); return serverSave(input) } }
       if (name === '@/lib/apiClient') return { getErrorMessage: (cause) => cause.message }
+      if (name === '@/features/map/components/MyReviews') return { MyReviews: () => null }
       if (name === '../store') return { useLifeStore: store }
       if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: { id: 'member-a' } }) }
       if (name === '@/features/onboarding/useHousingContract') return { useHousingContract: () => ({ kind, survey: null }) }

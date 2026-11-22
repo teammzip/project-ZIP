@@ -50,6 +50,7 @@ mysql -u root -p --default-character-set=utf8mb4 zip --execute="source db/migrat
 | `20261122_03_place_reviews.sql` | 장소 리뷰 표 두 개: 카카오 검색 장소 리뷰 `kakao_place_reviews`(카카오 장소 id · 이름 + 회원 별점 · 한 줄 리뷰, 주소 · 좌표 없음) · 리뷰 신고 `place_review_reports` | ⭕ |
 | `20261122_05_place_review_photos.sql` | 장소 리뷰 사진 표 `place_review_photos` (리뷰당 5장, 03 다음에 실행) | ⭕ |
 | `20261122_06_terms_privacy_ai.sql` | 개인정보 처리방침 5번(국외 이전): AI 답변 Google Gemini(미국) 이전 내용 채움, 클라우드는 출시 전 확정 안내. 버전 · 동의 기록은 그대로 | ⭕ |
+| `20261122_07_memo_folders.sql` | 계정별 메모 폴더와 메모 분류를 추가. 기존 메모는 유지되고 폴더 삭제 시 미분류로 이동 | ⭕ |
 | `20261122_01_regions_nationwide.sql` | **데이터** — 전국 시도 16 · 시군구 233 (`regions`, 없는 것만 추가 · 지역 번호 그대로) | ⭕ |
 | `20261122_02_trash_schedules_nationwide.sql` | **데이터** — 쓰레기 배출표 6,218줄 (`trash_schedules` 를 모두 지우고 다시 넣음, 01 다음에 실행). 마지막에 `파일 줄 수 6218 · 넣은 줄 수 6218 · 지역 없음 0` 이면 정상 | ⭕ |
 | `20261122_04_region_neighbors_nationwide.sql` | **데이터** — 주변 동네 1,286줄 (`region_neighbors` 를 모두 지우고 다시 넣음, 01 다음에 실행). 육지 경계가 맞닿은 시 · 군 · 구끼리, OpenStreetMap 경계로 `db/tools/region_neighbors_import.py` 가 만듦. 마지막에 `파일 줄 수 1286 · 넣은 줄 수 1286 · 지역 없음 0` 이면 정상 | ⭕ |

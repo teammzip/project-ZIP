@@ -310,6 +310,15 @@ CREATE TABLE IF NOT EXISTS `events` (
   CONSTRAINT `fk_events_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='일정: 마이페이지 "일정" 탭의 달력과 일정 목록.';
 
+CREATE TABLE IF NOT EXISTS `memo_folders` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `name` VARCHAR(40) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_memo_folders_user_name` (`user_id`, `name`),
+  CONSTRAINT `fk_memo_folders_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='사용자별 메모 분류 폴더';
+
 CREATE TABLE IF NOT EXISTS `memos` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '고유 번호',
   `user_id` BIGINT UNSIGNED NOT NULL COMMENT '소유 사용자 번호',
@@ -318,6 +327,7 @@ CREATE TABLE IF NOT EXISTS `memos` (
   `ledger_source` VARCHAR(10) NULL COMMENT '가계부 원본 종류 income/spend/bill',
   `ledger_key` VARCHAR(40) NULL COMMENT '가계부 원본 ID 또는 고정 지출 ID:월',
   `ledger_label` VARCHAR(120) NULL COMMENT '가계부 수입/지출 종류 및 날짜·분류',
+  `folder_id` BIGINT UNSIGNED NULL COMMENT '분류 폴더, NULL은 미분류',
   `color` ENUM('노랑','분홍','하늘','초록','보라','흰색') NOT NULL DEFAULT '노랑' COMMENT '메모 색',
   `is_pinned` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '목록 상단 고정 여부',
   `is_checklist` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '체크리스트 여부',
@@ -328,6 +338,7 @@ CREATE TABLE IF NOT EXISTS `memos` (
   KEY `idx_memos_user_pinned_updated` (`user_id`, `is_pinned`, `updated_at`),
   UNIQUE KEY `uk_memos_ledger_source` (`user_id`, `ledger_source`, `ledger_key`),
   CONSTRAINT `fk_memos_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_memos_folder` FOREIGN KEY (`folder_id`) REFERENCES `memo_folders` (`id`) ON DELETE SET NULL,
   CONSTRAINT `ck_memos_items_array` CHECK (JSON_TYPE(`items`) = 'ARRAY')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='글 메모 및 체크리스트';
 

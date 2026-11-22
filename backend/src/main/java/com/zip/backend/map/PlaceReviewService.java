@@ -51,6 +51,10 @@ public class PlaceReviewService {
 
     // ---------- 회원 ----------
 
+    public List<PlaceReviewRepository.MyReview> myReviews(long userId) {
+        return repository.myReviews(userId);
+    }
+
     /** 이 장소의 리뷰 (최신순). 작성자 프로필 · 후기 수 · 별점 평균, 사진, reportedByMe = 내가 이미 신고한 리뷰 */
     public List<Map<String, Object>> reviews(long userId, String placeId) {
         var target = existingTarget(placeId);

@@ -1,5 +1,6 @@
 package com.zip.backend.auth;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -12,7 +13,11 @@ import java.util.stream.Collectors;
  * also need the 시·도 in the address ("서울시", "서울특별시", "서울" all match 서울특별시).
  */
 public final class RegionMatcher {
-    public record District(String id, String name, String parentName) {}
+    public record District(String id, String name, String parentName) {
+        public String displayName() {
+            return parentName == null || parentName.equals(name) ? name : parentName + " " + name;
+        }
+    }
 
     private static final List<String> SIDO_SUFFIXES = List.of("특별자치시", "특별자치도", "특별시", "광역시", "시", "도");
     // 전남광주통합 · 광주 · 전라남 · 전남 → 전남광주: 2026-07-01 광주광역시 · 전라남도가 전남광주통합특별시로 통합돼서 예전 이름도 같은 시 · 도로 봄
@@ -24,7 +29,7 @@ public final class RegionMatcher {
 
     public static Optional<String> match(String address, List<District> districts) {
         if (address == null || address.isBlank()) return Optional.empty();
-        Set<String> tokens = Set.of(address.strip().split("[\\s,]+"));
+        Set<String> tokens = Arrays.stream(address.strip().split("[\\s,]+")).collect(Collectors.toSet());
         var byName = districts.stream().filter(d -> tokens.contains(d.name())).toList();
         if (byName.size() == 1) return Optional.of(byName.get(0).id());
         if (byName.isEmpty()) return Optional.empty();

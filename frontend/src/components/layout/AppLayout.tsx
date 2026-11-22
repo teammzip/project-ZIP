@@ -6,6 +6,7 @@ import { Button } from '@/components/ui'
 import { useAuthStore, useLogout } from '@/features/auth'
 import { useCalendarServerSync, useNotis } from '@/features/life'
 import { useMemoServerSync } from '@/features/memo'
+import { useLedgerMemoCleanup } from '@/features/life/ledgerMemoNavigation'
 import { WarnNotice } from '@/features/moderation'
 import { NoticePopup } from '@/features/notice'
 import { Avatar } from '@/features/profile'
@@ -29,6 +30,7 @@ export function AppLayout() {
   const toggleProfile = () => setProfileOpen((v) => !v)
   const showFab = pathname !== '/ai' && pathname !== '/map' // AI 버튼은 AI · 동네 화면에선 안 나옴
   useMemoServerSync() // 서버 모드: 메모장 · 홈 메모 위젯을 서버와 맞춤 (어느 화면에 있든 한 번만)
+  useLedgerMemoCleanup()
   useCalendarServerSync() // 서버 모드: 일정 · 일정 카테고리 · 항목 버튼을 서버와 맞춤
 
   // 화면을 옮기면 ☰ 메뉴는 닫힘 (렌더 중에 이전 주소와 비교 — effect 안에서 setState 하지 않으려고)
@@ -120,7 +122,7 @@ function Sidebar(props: ProfileProps) {
 
 function Header({ menuOpen, onToggleMenu, ...profile }: { menuOpen: boolean; onToggleMenu: () => void } & ProfileProps) {
   const user = useAuthStore((s) => s.user)
-  const { showDot } = useNotis()
+  const { unread } = useNotis()
   const now = useToday()
   const name = user?.nickname ?? '자취생'
 
@@ -136,9 +138,9 @@ function Header({ menuOpen, onToggleMenu, ...profile }: { menuOpen: boolean; onT
       </div>
       {/* 모바일: 알림 · 프로필(메뉴) · ☰ 전체 메뉴 */}
       <div className={styles.mobIcons}>
-        <NavLink to="/my/noti" className={({ isActive }) => cx(styles.mobIcon, isActive && styles.mobOn)} aria-label="알림" title="알림">
+        <NavLink to="/my/noti" className={({ isActive }) => cx(styles.mobIcon, isActive && styles.mobOn)} aria-label={unread > 0 ? `알림, 안 읽은 알림 ${unread}개` : '알림'} title="알림">
           <NavIcon name="bell" size={20} />
-          {showDot && <span className={styles.mobDot} aria-label="안 읽은 알림 있음" />}
+          {unread > 0 && <span className={styles.mobCount} aria-hidden="true">{unread > 99 ? '99+' : unread}</span>}
         </NavLink>
         <ProfileButton {...profile} size={30} className={cx(styles.mobIcon, profile.profileOpen && styles.mobOn)} />
         <button
@@ -184,6 +186,7 @@ function BottomNav() {
 /** 모바일 ☰ 전체 메뉴: 오른쪽에서 열리는 패널 (PC 사이드바와 같은 항목 + 알림) */
 function MenuPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const user = useAuthStore((s) => s.user)
+  const { unread } = useNotis()
   const logout = useLogout()
   const name = user?.nickname ?? '자취생'
 
@@ -218,7 +221,7 @@ function MenuPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
               <span className={styles.icoWrap}>
                 <NavIcon name={t.icon} size={24} />
               </span>
-              {t.label}
+              <span>{t.label}{t.to === '/my/noti' && unread > 0 && <span className={styles.notiCount} aria-label={`안 읽은 알림 ${unread}개`}>{unread}</span>}</span>
             </NavLink>
           ))}
         </div>

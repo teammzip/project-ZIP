@@ -52,7 +52,7 @@ export function LedgerCategoryDialog({ scope, onClose, onAdded, onRenamed }: Pro
       {loading ? <p role="status">카테고리를 불러오는 중이에요.</p> : failed ? (
         <div role="alert">카테고리를 불러오지 못했어요. <Button variant="line" onClick={() => void retry()}>다시 조회</Button></div>
       ) : <>
-        <p className={common.note}>이름을 바꾸거나 삭제해도 이미 기록한 거래의 분류명은 유지돼요.</p>
+        <p className={common.note}>이름을 바꾸면 기존 거래의 분류명도 바뀌어요. 카테고리를 삭제해도 기존 거래는 남아요.</p>
         {categories.length > 0 ? <ol className={common.stack} aria-label="카테고리 표시 순서">
           {categories.map(({ name: category }, index) => <li key={category}>
             <b>{category}</b>

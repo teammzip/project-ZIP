@@ -36,11 +36,11 @@ export function UsageGuide({ onBack, onNavigate }: Props) {
                 {feature.steps.map((step) => <li key={step}>{step}</li>)}
               </ol>
               {feature.note && <p className={styles.note}>{feature.note}</p>}
-              <Link className={styles.go} to={feature.to} onClick={(event) => {
+              {feature.to && <Link className={styles.go} to={feature.to} onClick={(event) => {
                 if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey) {
                   onNavigate()
                 }
-              }}>{feature.link}</Link>
+              }}>{feature.link}</Link>}
             </article>
           </>
         ) : (

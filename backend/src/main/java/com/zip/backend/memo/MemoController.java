@@ -16,6 +16,20 @@ public class MemoController {
 
     private static long userId(Jwt jwt) { return Long.parseLong(jwt.getSubject()); }
 
+    @GetMapping("/api/memo-folders")
+    public List<MemoRepository.Folder> folders(@AuthenticationPrincipal Jwt jwt) { return memos.folders(userId(jwt)); }
+
+    @PostMapping("/api/memo-folders")
+    @ResponseStatus(HttpStatus.CREATED)
+    public MemoRepository.Folder addFolder(@AuthenticationPrincipal Jwt jwt, @RequestBody MemoService.FolderInput input) { return memos.saveFolder(userId(jwt), null, input); }
+
+    @PatchMapping("/api/memo-folders/{id}")
+    public MemoRepository.Folder renameFolder(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestBody MemoService.FolderInput input) { return memos.saveFolder(userId(jwt), id, input); }
+
+    @DeleteMapping("/api/memo-folders/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteFolder(@AuthenticationPrincipal Jwt jwt, @PathVariable String id) { memos.deleteFolder(userId(jwt), id); }
+
     @GetMapping("/api/memos")
     public List<Map<String, Object>> list(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String q) {
         return memos.list(userId(jwt), q);

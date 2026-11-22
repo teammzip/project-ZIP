@@ -3,12 +3,18 @@
   gap: 16px;
 }
 
-.dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
   margin-left: 4px;
-  border-radius: 50%;
+  border-radius: 999px;
   background: var(--color-pink);
-  vertical-align: top;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: middle;
 }

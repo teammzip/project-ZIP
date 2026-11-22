@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "sideEffects": [
-    "*.css"
+    "*.css",
+    "./src/app/setupApi.ts"
   ],
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

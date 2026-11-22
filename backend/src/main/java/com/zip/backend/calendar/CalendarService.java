@@ -1,5 +1,7 @@
 package com.zip.backend.calendar;
 
+import com.zip.backend.auth.AuthRepository;
+import com.zip.backend.auth.RegionMatcher;
 import com.zip.backend.common.ApiException;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -33,10 +35,12 @@ public class CalendarService {
     private static final Pattern CONTROL = Pattern.compile("\\p{Cntrl}");
 
     private final CalendarRepository repository;
+    private final AuthRepository auth;
     private final Clock clock;
 
-    public CalendarService(CalendarRepository repository, Clock clock) {
+    public CalendarService(CalendarRepository repository, AuthRepository auth, Clock clock) {
         this.repository = repository;
+        this.auth = auth;
         this.clock = clock;
     }
 
@@ -240,15 +244,27 @@ public class CalendarService {
 
     // ---------- 쓰레기 배출표 ----------
 
+    public record MyTrashSchedule(String regionName, List<Map<String, Object>> items) {}
+
+    public MyTrashSchedule myTrashSchedule(long userId) {
+        var address = repository.trashAddress(userId);
+        if (address.isEmpty()) return new MyTrashSchedule(null, List.of());
+        var districts = auth.districts();
+        return RegionMatcher.match(address.get(), districts)
+            .flatMap(regionId -> districts.stream().filter(district -> district.id().equals(regionId)).findFirst())
+            .map(district -> new MyTrashSchedule(district.displayName(), trashSchedules(district.id())))
+            .orElseGet(() -> new MyTrashSchedule(null, List.of()));
+    }
+
     public List<Map<String, Object>> trashSchedules(String regionId) {
         // [{ place, general: { days: [1,3,5], startTime: "18:00" } | null, food, recycle }]
-        return repository.trashSchedules(id(regionId, "동네")).stream().map(t -> {
-            var row = new java.util.LinkedHashMap<String, Object>();
+        return repository.trashSchedules(id(regionId, "동네")).stream().<Map<String, Object>>map(t -> {
+            var row = new LinkedHashMap<String, Object>();
             row.put("place", t.place());
             row.put("general", trashKind(t.general()));
             row.put("food", trashKind(t.food()));
             row.put("recycle", trashKind(t.recycle()));
-            return (Map<String, Object>) row;
+            return row;
         }).toList();
     }
 

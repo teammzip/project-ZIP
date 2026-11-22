@@ -1,18 +1,20 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createAccountStorage } from '@/lib/accountStorage'
-import type { Memo } from './types'
+import type { Memo, MemoFolder } from './types'
 
 /* 메모장 (회원별 localStorage 'zip-memos:user:<id>'). 처음에는 비어 있고, 쓰는 대로 바로 저장. 데이터 초기화 · 회원 탈퇴 때 reset.
  * 서버 모드에서는 sync.ts 가 서버의 메모를 받아 넣고, 바뀐 것을 서버에 저장해요 (이 저장소는 화면 상태 + 이 기기 사본) */
 export const HOME_MAX = 3
 type MemoState = {
   memos: Memo[]
+  folders: MemoFolder[]
+  setFolders: (folders: MemoFolder[]) => void
   /** 홈 위젯에 보여 줄 메모 id (최대 3개, 이 순서로). null 이면 자동(고정 → 최근 수정 순 3개) */
   homeIds: number[] | null
   setHomeIds: (ids: number[] | null) => void
   /** 새 메모를 만들고 id 를 돌려줌. toHome: 홈 빠른 메모 — 직접 고른 상태에서 자리가 남으면 홈에도 보여 줌 */
-  add: (body?: string, toHome?: boolean) => number
+  add: (body?: string, toHome?: boolean, folderId?: string | null) => number
   update: (id: number, patch: Partial<Memo>) => void
   remove: (id: number) => void
   reset: () => void
@@ -24,17 +26,19 @@ export const useMemoStore = create<MemoState>()(
   persist(
     (set) => ({
       memos: [],
+      folders: [],
+      setFolders: (folders) => set({ folders }),
       homeIds: null,
       setHomeIds: (ids) => set({ homeIds: ids ? ids.slice(0, HOME_MAX) : null }),
-      add: (body = '', toHome = false) => {
+      add: (body = '', toHome = false, folderId = null) => {
         const now = Date.now()
-        const memo: Memo = { id: now, title: '', body, color: '노랑', pinned: false, checklist: false, items: [], createdAt: now, updatedAt: now }
+        const memo: Memo = { id: now, title: '', body, color: '노랑', pinned: false, checklist: false, items: [], folderId, createdAt: now, updatedAt: now }
         set((s) => ({ memos: [...s.memos, memo], homeIds: toHome && s.homeIds && s.homeIds.length < HOME_MAX ? [...s.homeIds, now] : s.homeIds }))
         return now
       },
       update: (id, patch) => set((s) => ({ memos: s.memos.map((m) => (m.id === id ? { ...m, ...patch, updatedAt: Date.now() } : m)) })),
       remove: (id) => set((s) => ({ memos: s.memos.filter((m) => m.id !== id), homeIds: s.homeIds?.filter((x) => x !== id) ?? null })),
-      reset: () => set({ memos: [], homeIds: null }),
+      reset: () => set({ memos: [], folders: [], homeIds: null }),
     }),
     {
       name: 'zip-memos',
@@ -54,4 +58,4 @@ export const useMemoStore = create<MemoState>()(
   ),
 )
 
-account.bind(() => useMemoStore.setState({ memos: [], homeIds: null }), () => useMemoStore.persist.rehydrate())
+account.bind(() => useMemoStore.setState({ memos: [], folders: [], homeIds: null }), () => useMemoStore.persist.rehydrate())

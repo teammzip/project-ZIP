@@ -18,6 +18,15 @@ public class LedgerMemoController {
     private final AuthRepository auth;
     private final Clock clock;
     public LedgerMemoController(JdbcTemplate jdbc,AuthRepository auth,Clock clock) { this.jdbc=jdbc;this.auth=auth;this.clock=clock; }
+    @DeleteMapping("/api/memos/ledger-draft/{key}")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    @Transactional
+    public void discard(@AuthenticationPrincipal Jwt jwt,@PathVariable String key) {
+        long user=Long.parseLong(jwt.getSubject()); auth.lockUser(user);
+        if(!auth.sessionActive(Long.parseLong(jwt.getClaimAsString("sid")),user,clock.instant())) throw new ApiException(401,"다시 로그인해 주세요.");
+        if(!key.matches("[a-fA-F0-9]{32}")) throw new ApiException(400,"메모 작성 정보를 확인해 주세요.");
+        jdbc.update("DELETE FROM memos WHERE user_id=? AND ledger_source IN ('income','spend','bill') AND ledger_key IN (?,?)",user,"draft:"+key,"saved:"+key);
+    }
     @PostMapping("/api/memos/ledger-draft")
     @Transactional
     public Map<String,Object> prepare(@AuthenticationPrincipal Jwt jwt,@RequestBody Map<String,Object> body) {
@@ -35,11 +44,19 @@ public class LedgerMemoController {
         String key=Objects.toString(body.get("key"),"");
         if(!key.matches("[a-fA-F0-9]{32}")) throw new ApiException(400,"메모 작성 정보를 확인해 주세요.");
         key="draft:"+key;
-        var ids=jdbc.queryForList("SELECT id FROM memos WHERE user_id=? AND ledger_source=? AND ledger_key=?",Long.class,user,source,key);
+        var ids=jdbc.queryForList("SELECT id FROM memos WHERE user_id=? AND ledger_source=? AND (ledger_key=? OR ledger_key=?)",Long.class,user,source,key,"saved:"+key.substring(6));
         if(ids.isEmpty()) {
+            String incomeType=Objects.toString(body.get("incomeType"),"fixed");
+            if(source.equals("income") && !Set.of("fixed","other").contains(incomeType)) throw new ApiException(400,"수입 종류를 확인해 주세요.");
+            String folderName=source.equals("bill") ? "고정 지출" : source.equals("spend") ? "기타 지출" : incomeType.equals("other") ? "기타 수입" : "고정 수입";
+            var folderIds=jdbc.queryForList("SELECT id FROM memo_folders WHERE user_id=? AND name=?",Long.class,user,folderName);
+            if(folderIds.isEmpty()) {
+                jdbc.update("INSERT INTO memo_folders(user_id,name) VALUES (?,?)",user,folderName);
+                folderIds=jdbc.queryForList("SELECT id FROM memo_folders WHERE user_id=? AND name=?",Long.class,user,folderName);
+            }
             var now=Timestamp.from(clock.instant().truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
             if(jdbc.queryForObject("SELECT COUNT(*) FROM memos WHERE user_id=?",Integer.class,user)>=1000) throw new ApiException(400,"메모는 1000개까지 만들 수 있어요.");
-            jdbc.update("INSERT INTO memos(user_id,title,body,color,is_pinned,is_checklist,items,created_at,updated_at,ledger_source,ledger_key,ledger_label) VALUES (?,?,'','노랑',FALSE,FALSE,'[]',?,?,?,?,?)",user,label.substring(0,Math.min(60,label.length())),now,now,source,key,label);
+            jdbc.update("INSERT INTO memos(user_id,title,body,color,is_pinned,is_checklist,items,created_at,updated_at,ledger_source,ledger_key,ledger_label,folder_id) VALUES (?,?,'','노랑',FALSE,FALSE,'[]',?,?,?,?,?,?)",user,label.substring(0,Math.min(60,label.length())),now,now,source,key,label,folderIds.get(0));
             ids=jdbc.queryForList("SELECT id FROM memos WHERE user_id=? AND ledger_source=? AND ledger_key=?",Long.class,user,source,key);
         }
         return Map.of("id",ids.get(0).toString());

@@ -74,7 +74,7 @@ export function useNotis() {
   const read: Record<string, boolean> = { ...notiRead }
   for (const n of server.data?.items ?? []) if (n.read) read[SERVER + n.id] = true
   const notis = [...remote, ...local]
-  const unread = notis.filter((n) => !read[n.id]).length
+  const unread = isMockApi ? notis.filter((n) => !read[n.id]).length : (server.data?.unreadCount ?? 0)
   return { notis, notiRead: read, unread, showDot: settings.notiOn && unread > 0 }
 }
 

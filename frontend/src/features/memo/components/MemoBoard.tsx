@@ -9,7 +9,8 @@ import { isMockApi } from '@/lib/apiMode'
 import { MEMO_COLORS } from '../constants'
 import { colorOf, previewLines, searchText, sortMemos, titleOf, whenText } from '../lib'
 import { useMemoStore } from '../store'
-import type { Memo } from '../types'
+import type { Memo, MemoFolder } from '../types'
+import { useMemoFolders } from '../folders'
 import styles from './Memo.module.css'
 
 /** 메모장: PC 는 왼쪽 목록 | 오른쪽 쓰기, 모바일은 목록 → 누르면 쓰기 화면.
@@ -19,6 +20,14 @@ export function MemoBoard({ editableLedgerMemoId, saveAction }: { editableLedger
   const add = useMemoStore((s) => s.add)
   const [params, setParams] = useSearchParams()
   const [query, setQuery] = useState('')
+  const [folder, setFolder] = useState('all')
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false)
+  const [selecting, setSelecting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const selectedMemos = memos.filter((memo) => selectedIds.includes(memo.id))
+  const toggleSelected = (id: number) => setSelectedIds((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id])
+  const cancelSelection = () => { setSelecting(false); setSelectedIds([]) }
+  const folders = useMemoFolders()
   const composing = useRef(false)
   useEffect(() => {
     if (params.get('compose') !== '1' || composing.current) return
@@ -29,12 +38,12 @@ export function MemoBoard({ editableLedgerMemoId, saveAction }: { editableLedger
   const isMobile = useMediaQuery('(max-width: 900px)')
   const now = useToday().getTime()
 
-  const sorted = sortMemos(memos)
+  const sorted = sortMemos(memos.filter((m) => folder === 'all' || (folder === 'pinned' ? m.pinned : folder === 'unfiled' ? !m.folderId : m.folderId === folder)))
   const asked = Number(params.get('id')) || null
   // PC 는 고른 메모가 없으면 맨 위 메모를 바로 보여 줌, 모바일은 목록부터
   const current = editableLedgerMemoId
     ? memos.find((m) => String(m.id) === editableLedgerMemoId)
-    : memos.find((m) => m.id === asked) ?? (isMobile ? undefined : sorted[0])
+    : sorted.find((m) => m.id === asked) ?? (isMobile ? undefined : sorted[0])
   const open = (id: number | null) => {
     const next = new URLSearchParams(params)
     if (id) next.set('id', String(id)); else next.delete('id')
@@ -49,17 +58,32 @@ export function MemoBoard({ editableLedgerMemoId, saveAction }: { editableLedger
       <aside className={styles.side}>
         <div className={styles.sideHead}>
           <h2>
-            메모 <small>{memos.length}개</small>
+            {folder === 'all' ? '전체 메모' : folder === 'pinned' ? '고정 메모' : folder === 'unfiled' ? '미분류' : folders.folders.find((f) => f.id === folder)?.name ?? '폴더'} <small>{sorted.length}개</small>
           </h2>
           <Button
+            disabled={selecting}
             onClick={() => {
               setQuery('')
-              open(add())
+              const id = add('', false, folders.folders.some((f) => f.id === folder) ? folder : null)
+              if (folder === 'pinned') useMemoStore.getState().update(id, { pinned: true })
+              open(id)
             }}
           >
             + 새 메모
           </Button>
         </div>
+        <div className={styles.folderActions}>
+          <FolderPanel folders={folders} memos={memos} selected={folder} onSelect={(id) => { cancelSelection(); setFolder(id); setQuery(''); open(null) }} />
+          {folder !== 'all' && <Button variant="line" onClick={() => { cancelSelection(); setFolder('all'); setQuery(''); open(null) }}>전체 메모</Button>}
+          <button type="button" className={cx(styles.folderSettings, styles.deleteSelection)} aria-label="메모 선택 삭제" title="메모 선택 삭제" aria-pressed={selecting} disabled={!memos.length} onClick={() => { if (selecting) cancelSelection(); else { setSelecting(true); open(null) } }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg>
+          </button>
+        </div>
+        {selecting && <div className={styles.selectionActions}>
+          <span role="status">{selectedMemos.length}개 선택</span>
+          <Button variant="line" onClick={cancelSelection}>취소</Button>
+          <Button variant="danger" disabled={!selectedMemos.length} onClick={() => setConfirmDeleteAll(true)}>선택 삭제</Button>
+        </div>}
         <input type="search" className={styles.search} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="메모 검색" aria-label="메모 검색" />
         <div className={styles.list}>
           {list.length === 0 && <p className={styles.none}>{q ? '찾는 메모가 없어요.' : '아직 메모가 없어요. 새 메모를 만들어 보세요.'}</p>}
@@ -67,21 +91,25 @@ export function MemoBoard({ editableLedgerMemoId, saveAction }: { editableLedger
             const c = colorOf(m.color)
             const preview = previewLines(m, (d) => (d ? '✓ ' : '· ')).join('  ')
             return (
+              <div key={m.id} className={cx(selecting && styles.selectableMemo)}>
+              {selecting && <input type="checkbox" aria-label={`${titleOf(m)} 삭제 선택`} checked={selectedIds.includes(m.id)} onChange={() => toggleSelected(m.id)} />}
               <button
-                key={m.id}
                 type="button"
                 className={cx(styles.item, current?.id === m.id && styles.on)}
                 style={{ '--memo-bg': c.bg, '--memo-line': c.line } as CSSProperties}
-                onClick={() => open(m.id)}
+                onClick={() => selecting ? toggleSelected(m.id) : open(m.id)}
+                aria-label={selecting ? `${titleOf(m)} ${selectedIds.includes(m.id) ? '선택 해제' : '삭제 선택'}` : undefined}
               >
                 <span className={styles.itemTop}>
                   <b>
                     {m.pinned && '📌 '}
+                    {m.draft && <span className={styles.draftBadge}>작성 중 · 임시 메모 </span>}
                     {titleOf(m)}
                   </b>
                   <time>{whenText(m.updatedAt, now)}</time>
                 </span>
                 {preview && <small>{preview}</small>}
+                <small>📁 {folders.folders.find((f) => f.id === m.folderId)?.name ?? (m.folderId ? '폴더 확인 중' : '미분류')}</small>
                 {m.ledgerContext && <small>가계부 · {m.ledgerContext}</small>}
                 {m.checklist && m.items.length > 0 && (
                   <span className={styles.progress}>
@@ -89,15 +117,17 @@ export function MemoBoard({ editableLedgerMemoId, saveAction }: { editableLedger
                   </span>
                 )}
               </button>
+              </div>
             )
           })}
         </div>
       </aside>
 
       <section className={styles.editor} style={current ? ({ '--memo-bg': colorOf(current.color).bg } as CSSProperties) : undefined} aria-label="메모 쓰기">
+        {current?.draft && <p role="status">작성 중인 임시 메모예요. ‘저장’을 누르면 일반 메모로 전환돼요.</p>}
         {current?.ledgerContext && !editableLedgerMemoId && <p>가계부 · {current.ledgerContext}</p>}
         {current ? (
-          <MemoEditor key={current.id} memo={current} onBack={() => open(null)} onDeleted={() => open(null)} saveAction={saveAction} />
+          <MemoEditor key={current.id} memo={current} folders={folders.folders} foldersReady={!folders.loading && !folders.error} onBack={() => open(null)} onDeleted={() => open(null)} saveAction={saveAction} />
         ) : (
           <div className={styles.empty}>
             <span aria-hidden="true">📝</span>
@@ -106,14 +136,29 @@ export function MemoBoard({ editableLedgerMemoId, saveAction }: { editableLedger
           </div>
         )}
       </section>
+      <Modal open={confirmDeleteAll} onClose={() => setConfirmDeleteAll(false)} title="선택 메모 삭제" className={styles.confirm}>
+        <h3>선택한 메모 {selectedMemos.length}개를 삭제할까요?</h3>
+        <p>선택한 메모만 삭제돼요. 가계부에 연결된 메모도 포함되며, 삭제한 메모는 되돌릴 수 없어요.</p>
+        <div className={styles.confirmActions}>
+          <Button variant="line" onClick={() => setConfirmDeleteAll(false)}>취소</Button>
+          <Button variant="danger" disabled={!selectedMemos.length} onClick={() => {
+            const store = useMemoStore.getState()
+            selectedMemos.forEach((memo) => store.remove(memo.id))
+            setConfirmDeleteAll(false)
+            cancelSelection()
+            open(null)
+          }}>선택 삭제</Button>
+        </div>
+      </Modal>
     </div>
   )
 }
 
-function MemoEditor({ memo, onBack, onDeleted, saveAction }: { memo: Memo; onBack: () => void; onDeleted: () => void; saveAction?: ReactNode }) {
+function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, saveAction }: { memo: Memo; folders: MemoFolder[]; foldersReady: boolean; onBack: () => void; onDeleted: () => void; saveAction?: ReactNode }) {
   const update = useMemoStore((s) => s.update)
   const remove = useMemoStore((s) => s.remove)
   const [confirmDel, setConfirmDel] = useState(false)
+  const [moving, setMoving] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [saved, setSaved] = useState(false)
@@ -125,7 +170,8 @@ function MemoEditor({ memo, onBack, onDeleted, saveAction }: { memo: Memo; onBac
     if (pendingSave.current) return
     pendingSave.current = true; setSaving(true); setSaveError(''); setSaved(false)
     try {
-      if (!isMockApi) await apiClient.patch(`/memos/${memo.id}`, { title: memo.title, body: memo.body, color: memo.color, pinned: memo.pinned, checklist: memo.checklist, items: memo.items })
+      if (!isMockApi) await apiClient.patch(`/memos/${memo.id}`, { title: memo.title, body: memo.body, color: memo.color, pinned: memo.pinned, checklist: memo.checklist, items: memo.items, folderId: memo.folderId ?? '', complete: true })
+      update(memo.id, { draft: false })
       setSaved(true)
     } catch (cause) { setSaveError(getErrorMessage(cause, '메모를 저장하지 못했어요.')) }
     finally { pendingSave.current = false; setSaving(false) }
@@ -169,6 +215,12 @@ function MemoEditor({ memo, onBack, onDeleted, saveAction }: { memo: Memo; onBac
           ))}
         </div>
         <span className={styles.grow} />
+        <button type="button" className={styles.tool} disabled={!foldersReady} onClick={() => setMoving(true)} aria-label="폴더로 이동" aria-haspopup="dialog" aria-expanded={moving} title="폴더로 이동">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M20 10V7a2 2 0 0 0-2-2h-6l-2-2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7" />
+            <path d="M13 16h9m-4-4 4 4-4 4" />
+          </svg>
+        </button>
         <button type="button" className={styles.tool} aria-pressed={memo.pinned} onClick={() => set({ pinned: !memo.pinned })} title="맨 위에 고정">
           📌 <span>고정</span>
         </button>
@@ -235,6 +287,21 @@ function MemoEditor({ memo, onBack, onDeleted, saveAction }: { memo: Memo; onBac
         자동 저장됨 · {whenText(memo.updatedAt, now)}
       </p>
 
+      <Modal open={moving} onClose={() => setMoving(false)} title="폴더로 이동">
+        <h3>폴더로 이동</h3>
+        <p>“{titleOf(memo)}” 메모를 이동할 폴더를 선택해 주세요.</p>
+        <div className={styles.folders}>
+          <nav aria-label="이동할 폴더">
+            {[{ id: '', name: '미분류' }, ...folders].map((folder) => <button type="button" key={folder.id} disabled={!foldersReady} aria-pressed={(memo.folderId ?? '') === folder.id} onClick={() => {
+              setMoving(false)
+              if ((memo.folderId ?? '') !== folder.id) set({ folderId: folder.id || null })
+            }}>
+              <span>📁 {folder.name}</span>{(memo.folderId ?? '') === folder.id && <b>현재 폴더</b>}
+            </button>)}
+          </nav>
+          {!folders.length && <p>‘폴더’ 버튼에서 폴더를 먼저 만들어 주세요.</p>}
+        </div>
+      </Modal>
       <Modal open={confirmDel} onClose={() => setConfirmDel(false)} title="메모 삭제" className={styles.confirm}>
         <h3>메모를 지울까요?</h3>
         <p>“{titleOf(memo)}” 메모를 지우면 되돌릴 수 없어요.</p>
@@ -256,4 +323,90 @@ function MemoEditor({ memo, onBack, onDeleted, saveAction }: { memo: Memo; onBac
       </Modal>
     </div>
   )
+}
+
+function FolderPanel({ folders, memos, selected, onSelect }: { folders: ReturnType<typeof useMemoFolders>; memos: Memo[]; selected: string; onSelect: (id: string) => void }) {
+  const [showFolders, setShowFolders] = useState(false)
+  const [managing, setManaging] = useState(false)
+  const [editing, setEditing] = useState<MemoFolder | 'new' | null>(null)
+  const [deleting, setDeleting] = useState<MemoFolder | null>(null)
+  const [name, setName] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const pending = useRef(false)
+  const entries = [
+    { id: 'all', name: '모든 메모', count: memos.length },
+    { id: 'pinned', name: '고정 메모', count: memos.filter((m) => m.pinned).length },
+    { id: 'unfiled', name: '미분류', count: memos.filter((m) => !m.folderId).length },
+  ]
+  return <>
+    <Button variant="line" aria-haspopup="dialog" aria-expanded={showFolders} onClick={() => { setManaging(false); setShowFolders(true) }}>📁 폴더</Button>
+    <Modal open={showFolders} onClose={() => setShowFolders(false)} title="메모 폴더">
+      <h3>메모 폴더</h3>
+      <div className={styles.folders}>
+    <div className={styles.folderToolbar}>
+      <Button onClick={() => { setName(''); setError(''); setEditing('new') }}>+ 폴더 만들기</Button>
+      <button type="button" className={styles.folderSettings} aria-label="폴더 수정·삭제" title="폴더 수정·삭제" aria-pressed={managing} onClick={() => setManaging((value) => !value)}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+          <path d="M4 6h16M4 12h16M4 18h16" /><circle cx="9" cy="6" r="2" fill="white" /><circle cx="15" cy="12" r="2" fill="white" /><circle cx="9" cy="18" r="2" fill="white" />
+        </svg>
+      </button>
+    </div>
+    <nav aria-label="메모 폴더">{entries.map((f) => <button type="button" key={f.id} aria-pressed={selected === f.id} onClick={() => { onSelect(f.id); setShowFolders(false) }}>
+      <span>📁 {f.name}</span><b>{f.count}</b>
+    </button>)}
+    {folders.folders.map((f) => <div className={cx(styles.folderRow, managing && styles.folderRowManaging)} key={f.id}>
+      <button type="button" aria-pressed={selected === f.id} onClick={() => { onSelect(f.id); setShowFolders(false) }}>
+        <span>📁 {f.name}</span><b>{memos.filter((m) => m.folderId === f.id).length}</b>
+      </button>
+      {managing && <>
+        <button type="button" aria-label={`${f.name} 폴더 수정`} title="폴더 이름 수정" onClick={() => { setName(f.name); setError(''); setEditing(f) }}>수정</button>
+        <button type="button" aria-label={`${f.name} 폴더 삭제`} title="폴더 삭제" onClick={() => { setError(''); setDeleting(f) }}>삭제</button>
+      </>}
+    </div>)}
+    </nav>
+    {folders.loading && <p role="status">폴더를 불러오는 중이에요.</p>}
+    {folders.error && <p role="alert">{folderErrorMessage(folders.error)} <button type="button" onClick={() => void folders.retry()}>다시 시도</button></p>}
+    {!folders.loading && !folders.error && !folders.folders.length && <p>아직 만든 폴더가 없어요. 위의 ‘폴더 만들기’로 추가해 주세요.</p>}
+      </div>
+    </Modal>
+    <Modal open={!!editing} onClose={() => { if (!busy) setEditing(null) }} title={editing === 'new' ? '폴더 만들기' : '폴더 이름 변경'}>
+      <form onSubmit={async (e) => {
+        e.preventDefault()
+        if (!editing || pending.current) return
+        pending.current = true; setBusy(true); setError('')
+        try { await folders.save(name, editing === 'new' ? undefined : editing.id); setEditing(null) }
+        catch (cause) { setError(folderErrorMessage(cause)) }
+        finally { pending.current = false; setBusy(false) }
+      }}>
+        <h3>{editing === 'new' ? '폴더 만들기' : '폴더 이름 변경'}</h3>
+        <label className={styles.folderSelect}>폴더 이름<input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} required disabled={busy} /></label>
+        {error && <p role="alert">{error}</p>}
+        <div className={styles.confirmActions}>
+          <Button type="button" variant="line" disabled={busy} onClick={() => setEditing(null)}>취소</Button>
+          <Button type="submit" disabled={busy || !name.trim()}>{busy ? '저장 중' : editing === 'new' ? '만들기' : '수정 저장'}</Button>
+        </div>
+      </form>
+    </Modal>
+    <Modal open={!!deleting} onClose={() => { if (!busy) setDeleting(null) }} title="폴더 삭제">
+      <h3>“{deleting?.name}” 폴더를 삭제할까요?</h3><p>안에 있는 메모는 삭제되지 않고 미분류로 옮겨져요.</p>
+      {error && <p role="alert">{error}</p>}
+      <div className={styles.confirmActions}>
+      <Button variant="line" disabled={busy} onClick={() => setDeleting(null)}>취소</Button>
+      <Button variant="danger" disabled={busy} onClick={async () => {
+        if (!deleting || pending.current) return
+        pending.current = true; setBusy(true); setError('')
+        try { await folders.remove(deleting.id); if (selected === deleting.id) onSelect('unfiled'); setDeleting(null) }
+        catch (cause) { setError(folderErrorMessage(cause)) }
+        finally { pending.current = false; setBusy(false) }
+      }}>{busy ? '삭제 중' : '폴더 삭제'}</Button>
+      </div>
+    </Modal>
+  </>
+}
+
+function folderErrorMessage(cause: unknown) {
+  const status = (cause as { response?: { status?: number } })?.response?.status
+  if (status === 404 || status === 405) return '폴더 기능을 서버에서 찾지 못했어요. 변경된 백엔드를 재시작한 후 다시 시도해 주세요.'
+  return getErrorMessage(cause, '폴더 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.')
 }

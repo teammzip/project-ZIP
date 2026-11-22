@@ -13,6 +13,7 @@ import { useLifeStore } from '../store'
 import type { CalEvent, TrashEvent } from '../types'
 import cal from './calendar.module.css'
 import { CategorySelect, RecordCard, type Picked } from './RecordCard'
+import { TrashScheduleDisclosure } from './TrashScheduleDisclosure'
 import styles from './life.module.css'
 
 /** 목록 보기: 오늘 할 일 · 이번 주 할 일 · 선택한 날 · 전체 (백엔드 담당 시안 PR #12) */
@@ -120,6 +121,7 @@ export function CalendarBoard() {
           onShift={shift}
           onToday={() => pick(today)}
         />
+        <TrashScheduleDisclosure />
       </div>
       <div className={common.col}>
         <RecordCard

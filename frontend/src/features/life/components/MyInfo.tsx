@@ -12,7 +12,6 @@ import { monthKeyOf, todayStr, won } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
 import common from '@/styles/common.module.css'
 import { spendBreakdown, sumAmount } from '../derive'
-import { useNotis } from '../notifications'
 import { useLifeStore } from '../store'
 import styles from './myinfo.module.css'
 import { billPaidInMonth } from '../payments'
@@ -20,6 +19,7 @@ import { validateLifeInfo } from '../validateLifeInfo'
 import { isMockApi } from '@/features/auth/api'
 import { getErrorMessage } from '@/lib/apiClient'
 import { loadHomeInfo, saveHomeInfo } from '../homeApi'
+import { MyReviews } from '@/features/map/components/MyReviews'
 
 /* 내 정보 화면에 쓰는 생활 조각들: 수입·지출 카드, 이번 달 요약, 생활 정보 폼, 알림 스위치 */
 
@@ -47,14 +47,11 @@ export function BudgetSummaryCard() {
 /** 이번 달 요약 카드 4개. 커뮤니티 글 수는 다른 기능이라 쓰는 쪽이 넘겨 줌 */
 export function LifeStats({ postCount }: { postCount: number }) {
   const { events, bills } = useLifeStore(useShallow((s) => ({ events: s.events, bills: s.bills })))
-  const { unread } = useNotis()
-  const notiOn = useLifeStore((s) => s.settings.notiOn)
   const month = monthKeyOf(useToday())
   const paid = bills.length ? Math.round((bills.filter((b) => billPaidInMonth(b, month)).length / bills.length) * 100) : 0
   const items = [
     { to: '/my/calendar', label: '이번 달 일정', value: `${events.filter((e) => e.date.startsWith(month)).length}개` },
     { to: '/my/budget/expense', label: '공과금 납부', value: `${paid}%` },
-    { to: '/my/noti', label: '안 읽은 알림', value: `${notiOn ? unread : 0}개` },
     { to: '/community', label: '내가 쓴 글', value: `${postCount}개` },
   ]
   return (
@@ -65,6 +62,7 @@ export function LifeStats({ postCount }: { postCount: number }) {
           <b>{it.value}</b>
         </Link>
       ))}
+      <MyReviews className={styles.stat} />
     </section>
   )
 }
