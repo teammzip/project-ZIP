@@ -35,7 +35,9 @@ if (!expected.tables.length) throw new Error('No tables parsed')
 const literal = JSON.stringify(expected).replace(/\\/g, '\\\\').replace(/'/g, "''")
 const path = 'db/tests/15_schema_audit.sql'
 let query = fs.readFileSync(path, 'utf8')
-if (!/^SET @zip_audit_expected=.*;$/m.test(query)) throw new Error('Missing metadata placeholder')
+if ([...query.matchAll(/^SET @zip_audit_expected=.*;$/gm)].length !== 1) {
+  throw new Error('Expected exactly one metadata placeholder; resolve duplicate assignments before generation')
+}
 query = query.replace(/^SET @zip_audit_expected=.*;$/m, () => `SET @zip_audit_expected='${literal}';`)
 fs.writeFileSync(path, query)
 fs.writeFileSync('db/tests/schema_expected.json', JSON.stringify(expected, null, 2) + '\n')

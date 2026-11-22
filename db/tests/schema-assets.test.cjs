@@ -86,6 +86,11 @@ test('schema audit snapshot covers actual tables and the ordered column set', ()
   assert.deepEqual(expected.columns.map(row => `${row.table}.${row.column}`), actual)
   const literal = JSON.stringify(expected).replace(/\\/g, '\\\\').replace(/'/g, "''")
   assert(read('db/tests/15_schema_audit.sql').includes(`SET @zip_audit_expected='${literal}';`))
+  for (const path of ['15_schema_audit.sql', '20_migration_schema_audit.sql']) {
+    const assignments = [...read(`db/tests/${path}`).matchAll(/^SET @zip_audit_expected=.*;$/gm)]
+    assert.equal(assignments.length, 1, `${path}: exactly one expected schema assignment`)
+    assert.equal(assignments[0][0], `SET @zip_audit_expected='${literal}';`, `${path}: current schema metadata`)
+  }
 })
 
 test('isolated migration fixture contains current migrations in order and final audit stays synchronized', () => {

@@ -203,6 +203,16 @@ SELECT 'salary deletion tombstone',IF((SELECT COUNT(*) FROM salary_records WHERE
 INSERT INTO ledger_categories(kind,name,color) VALUES ('INCOME','CaseVerify','#123456'),('INCOME','caseverify','#123456');
 SELECT 'case-sensitive labels',IF((SELECT COUNT(*) FROM ledger_categories WHERE kind='INCOME' AND name IN ('CaseVerify','caseverify'))=2,'PASS','FAIL');
 `, 4)
+  successful('login lockout migration defaults and precision', `USE zip_incremental_test;
+SELECT 'existing users start unlocked',IF(
+ (SELECT COUNT(*) FROM users WHERE nickname IN ('mig-return','mig-new','mig-home') AND login_failures=0 AND login_failure_since IS NULL)=3,'PASS','FAIL');
+SET @lockout_user=(SELECT id FROM users WHERE nickname='mig-return');
+UPDATE users SET login_failures=5,login_failure_since='2026-11-22 09:00:00.123' WHERE id=@lockout_user;
+SELECT 'lockout state and other users preserved',IF(
+ (SELECT COUNT(*) FROM users WHERE nickname='mig-return' AND login_failures=5 AND login_failure_since='2026-11-22 09:00:00.123')=1
+ AND (SELECT COUNT(*) FROM users WHERE nickname IN ('mig-new','mig-home') AND login_failures=0 AND login_failure_since IS NULL)=2
+ AND (SELECT deposit FROM home_contracts h JOIN users u ON h.user_id=u.id WHERE u.nickname='mig-home')=123456,'PASS','FAIL');
+`, 2)
   successful('incremental structure audit', read('db/tests/15_schema_audit.sql')
     .replace('USE zip_test;','USE zip_incremental_test;'), 7)
   successful('duplicate upgrade legacy fixture',oldSchema.replaceAll('zip_incremental_test','zip_dirty_upgrade_test'),0)
