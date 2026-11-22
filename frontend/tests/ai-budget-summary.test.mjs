@@ -34,7 +34,7 @@ test('수입 범위 안에서는 남은 금액을 표시하고 수입이 없으�
 })
 
 test('서버 모드에서 기록된 수입과 기타 지출에 납부한 고정 지출만 합산한다', async () => {
-  const session = { user: { id: 'owner', address: '' }, token: 'demo-token' }
+  const session = { user: { id: 'owner', address: '' }, sessionKey: 'demo-token' }
   const now = Date.now()
   const today = new Date(now).toISOString().slice(0, 10)
   const tomorrow = new Date(now + 86_400_000).toISOString().slice(0, 10)

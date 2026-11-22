@@ -20,7 +20,7 @@ function setup(kind, failHome = false, overrides = {}) {
   }
   let stateIndex = 0
   const stores = {
-    auth: { user, token: 'session-a', updateUser(value) { updates.push(value) } },
+    auth: { user, sessionKey: 'session-a', updateUser(value) { updates.push(value) } },
     life: { settings: {}, saveSettings() {}, addBill: () => assert.fail('로컬 관리비 생성') },
     loan: { savePlan: () => assert.fail('로컬 대출 생성'), stopPlan: () => assert.fail('로컬 대출 중지') },
     survey: { survey: { userId: user.id }, save() {} },

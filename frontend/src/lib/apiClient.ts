@@ -1,44 +1,74 @@
-import axios, { isAxiosError } from 'axios'
+import axios, { isAxiosError, type InternalAxiosRequestConfig } from 'axios'
 
-/* 모든 서버 요청은 이 apiClient 로 보냅니다.
- * - 로그인 토큰을 Authorization 헤더에 자동으로 붙임
- * - 401(로그인 만료)이 오면 onUnauthorized 를 불러 로그아웃 처리
- * - 403 + code SUSPENDED(쓰는 중에 이용 정지됨)면 onSuspended(서버 안내 문구)
- * 토큰을 어디서 읽을지는 app/setupApi.ts 에서 bindAuth() 로 연결합니다. (lib 가 features 를 몰라도 되게) */
-export const apiClient = axios.create({
+const options = {
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 10_000,
-})
+}
+export const apiClient = axios.create(options)
+export const publicAuthClient = axios.create({ ...options, withCredentials: true })
 
-let getToken: () => string | null = () => null
-let onUnauthorized: () => void = () => {}
-let onSuspended: (message: string) => void = () => {}
+type Session = { key: string | null; token: string | null }
+type AuthBinding = {
+  getSession: () => Session
+  refresh: (session: Session) => Promise<void>
+  onUnauthorized: () => void
+  onSuspended: (message: string) => void
+}
+type AuthRequest = InternalAxiosRequestConfig & { zipSession?: string; zipRetried?: boolean }
 
-export function bindAuth(opts: { getToken: () => string | null; onUnauthorized: () => void; onSuspended?: (message: string) => void }) {
-  getToken = opts.getToken
-  onUnauthorized = opts.onUnauthorized
-  if (opts.onSuspended) onSuspended = opts.onSuspended
+let auth: AuthBinding | undefined
+let pending: { key: string; promise: Promise<void> } | undefined
+
+export function bindAuth(binding: AuthBinding) {
+  auth = binding
 }
 
-apiClient.interceptors.request.use((config) => {
-  const token = getToken()
-  if (token) config.headers.Authorization = `Bearer ${token}`
+apiClient.interceptors.request.use((config: AuthRequest) => {
+  const session = auth?.getSession()
+  if (config.zipRetried && session?.key !== config.zipSession) throw new Error('로그인 상태가 변경됐어요.')
+  if (session?.key && session.token) {
+    config.zipSession = session.key
+    config.headers.set('Authorization', `Bearer ${session.token}`)
+  }
   return config
-})
+}, (error) => { throw error }, { synchronous: true })
 
 apiClient.interceptors.response.use(
   (res) => res,
-  (error) => {
-    if (isAxiosError(error) && error.response?.status === 401) {
-      const token = getToken()
-      // 이전 세션의 늦은 401로 새 로그인까지 해제하지 않는다.
-      if (token && error.config?.headers?.Authorization === `Bearer ${token}`) onUnauthorized()
+  async (error: unknown) => {
+    if (!auth || !isAxiosError<{ message?: string; code?: string }>(error)) throw error
+    const binding = auth
+    const request = error.config as AuthRequest | undefined
+    const session = binding.getSession()
+    if (!request || !session.key || !session.token || request.zipSession !== session.key) throw error
+    const status = error.response?.status
+    if (status === 403 && error.response?.data?.code === 'SUSPENDED') {
+      binding.onSuspended(error.response.data.message ?? '이용이 정지된 계정이에요.')
     }
-    if (isAxiosError<{ message?: string; code?: string }>(error) && error.response?.status === 403 && error.response.data?.code === 'SUSPENDED') {
-      const token = getToken()
-      if (token && error.config?.headers?.Authorization === `Bearer ${token}`) onSuspended(error.response.data.message ?? '이용이 정지된 계정이에요.')
+    // Spring Security rejects expired bearer tokens before the request reaches the handler.
+    if (status !== 401 || !error.response?.headers['www-authenticate']) throw error
+    const usedCurrentToken = request.headers.get('Authorization') === `Bearer ${session.token}`
+    if (request.zipRetried) {
+      if (usedCurrentToken) binding.onUnauthorized()
+      throw error
     }
-    return Promise.reject(error)
+    if (usedCurrentToken) {
+      const key = session.key
+      if (pending?.key !== key) {
+        const promise = binding.refresh(session).catch((failure: unknown) => {
+          if (binding.getSession().key === key && isAxiosError<{ message?: string; code?: string }>(failure)) {
+            if (failure.response?.status === 401) binding.onUnauthorized()
+            if (failure.response?.status === 403 && failure.response.data?.code === 'SUSPENDED') {
+              binding.onSuspended(failure.response.data.message ?? '이용이 정지된 계정이에요.')
+            }
+          }
+          throw failure
+        }).finally(() => { if (pending?.promise === promise) pending = undefined })
+        pending = { key, promise }
+      }
+      await pending.promise
+    }
+    return apiClient.request({ ...request, zipRetried: true } as AuthRequest)
   },
 )
 

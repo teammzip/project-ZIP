@@ -13,7 +13,7 @@ const member = { id: 'member-a', nickname: '회원', role: 'USER' }
 const draft = { category: '오류 신고', title: ' 날짜 선택 문의 ', content: ' 날짜를 변경하고 싶어요. ' }
 
 function setup(saved) {
-  let auth = { user: member, token: 'test-token' }
+  let auth = { user: member, sessionKey: 'test-token' }
   let stored = saved
   let fail = false
   const exports = {}
@@ -30,7 +30,7 @@ function setup(saved) {
   return {
     store: exports.useSupportStore,
     visible: exports.visibleInquiries,
-    login: (user) => { auth = { user, token: user ? 'test-token' : null } },
+    login: (user) => { auth = { user, sessionKey: user ? 'test-token' : null } },
     failStorage: () => { fail = true },
     saved: () => stored,
   }

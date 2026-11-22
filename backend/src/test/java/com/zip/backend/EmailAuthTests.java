@@ -76,11 +76,18 @@ class EmailAuthTests {
         send("New@Zip.com", "SIGNUP", 204);
         assertNotNull(lastCode.get());
         String token = verify("new@zip.com", lastCode.get(), "SIGNUP");
-        mvc.perform(post("/api/auth/signup").contentType("application/json").content(signupBody(token)))
+        var signup = mvc.perform(post("/api/auth/signup").contentType("application/json").content(signupBody(token)))
             .andExpect(status().isOk()).andExpect(jsonPath("$.accessToken").isString())
             .andExpect(jsonPath("$.user.username").value("newuser01")).andExpect(jsonPath("$.user.email").value("new@zip.com"))
             .andExpect(jsonPath("$.user.firstLogin").value(true)).andExpect(jsonPath("$.user.region.name").value("마포구"))
-            .andExpect(jsonPath("$.user.agreedAt").isString());
+            .andExpect(jsonPath("$.user.agreedAt").isString()).andReturn().getResponse();
+        var refreshCookie = signup.getCookie("zip_refresh");
+        assertNotNull(refreshCookie);
+        assertTrue(refreshCookie.isHttpOnly());
+        assertTrue(refreshCookie.getMaxAge() > 0);
+        long sessionId = jdbc.queryForObject("SELECT id FROM auth_sessions", Long.class);
+        mvc.perform(post("/api/auth/refresh").header("X-Zip-Session", sessionId).cookie(refreshCookie))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.accessToken").isString());
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE email = 'new@zip.com' AND email_verified_at IS NOT NULL AND password_hash IS NOT NULL", Integer.class));
         // the token is spent: the same sign-up cannot be repeated
         mvc.perform(post("/api/auth/signup").contentType("application/json").content(signupBody(token)))

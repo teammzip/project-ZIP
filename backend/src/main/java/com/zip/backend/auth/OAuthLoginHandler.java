@@ -24,10 +24,12 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Component
 public class OAuthLoginHandler implements AuthenticationSuccessHandler, AuthenticationFailureHandler {
     private final AuthService auth;
+    private final RefreshCookie cookie;
     private final String frontendUrl;
 
-    public OAuthLoginHandler(AuthService auth, @Value("${zip.oauth.frontend-url}") String frontendUrl) {
+    public OAuthLoginHandler(AuthService auth, RefreshCookie cookie, @Value("${zip.oauth.frontend-url}") String frontendUrl) {
         this.auth = auth;
+        this.cookie = cookie;
         this.frontendUrl = frontendUrl;
     }
 
@@ -66,7 +68,9 @@ public class OAuthLoginHandler implements AuthenticationSuccessHandler, Authenti
                 if (!Boolean.TRUE.equals(principal.getAttribute("email_verified"))) email = null;
             }
             if (subject == null || subject.isBlank()) throw new ApiException(400, "소셜 계정 정보를 받지 못했어요.");
-            redirect(request, response, "token", auth.socialLogin(provider, subject, email, name));
+            var session = auth.socialLogin(provider, subject, email, name);
+            cookie.write(request, response, session);
+            redirect(request, response, "token", session.accessToken());
         } catch (ApiException error) {
             redirect(request, response, "error", error.getMessage());
         } catch (RuntimeException error) {

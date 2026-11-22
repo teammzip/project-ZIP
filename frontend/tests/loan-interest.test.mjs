@@ -16,7 +16,7 @@ const plan = { ...terms, id: 'loan-a', userId: member.id, active: true }
 
 function setup(date = '2026-10-24', initialSaved = null) {
   let now = Date.parse(`${date}T00:00:00+09:00`)
-  let auth = { user: member, token: 'test-token' }
+  let auth = { user: member, sessionKey: 'test-token' }
   let saved = initialSaved
   class ClockDate extends Date {
     constructor(...args) { super(...(args.length ? args : [now])) }
@@ -59,7 +59,7 @@ function setup(date = '2026-10-24', initialSaved = null) {
   return {
     ...interest, ...derived, store: exports.useLoanStore,
     advance: (next) => { now = Date.parse(`${next}T00:00:00+09:00`) },
-    login: (user) => { auth = { user, token: user ? 'test-token' : null } },
+    login: (user) => { auth = { user, sessionKey: user ? 'test-token' : null } },
     saved: () => saved,
   }
 }

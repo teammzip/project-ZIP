@@ -85,7 +85,7 @@ function setup({ events = [], local = {}, synced = true } = {}) {
   const api = Object.fromEntries(['get', 'post', 'patch', 'put', 'delete'].map((m) => [m, (url, body) => respond(m.toUpperCase(), url, body).then((data) => ({ data }))]))
 
   // ---- 진짜 생활 저장소 (회원 · 저장소만 가짜) ----
-  let auth = { user: { id: 'u1' }, token: 't' }
+  let auth = { user: { id: 'u1' }, sessionKey: 't' }
   const authListeners = []
   const useAuthStore = Object.assign((selector) => selector(auth), {
     getState: () => auth,
@@ -141,7 +141,7 @@ function setup({ events = [], local = {}, synced = true } = {}) {
   const start = () => sync.startCalendarSync('u1', setTimer, clearTimer)
   const switchUser = (id) => {
     const previous = auth
-    auth = { user: id ? { id } : null, token: id ? 't2' : null }
+    auth = { user: id ? { id } : null, sessionKey: id ? 't2' : null }
     authListeners.forEach((l) => l(auth, previous))
   }
   return { server, store, start, settle, runTimers, sync, switchUser, saved, calls: (m, path) => server.calls.filter(([cm, u]) => cm === m && u.startsWith(path)) }

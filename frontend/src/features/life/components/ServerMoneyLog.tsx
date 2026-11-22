@@ -19,13 +19,13 @@ import { returnedMemoDraft, openLedgerMemo, clearMemoDraft } from '../ledgerMemo
 const incomeSettingsPath = '/my/settings?section=income'
 
 export function ServerMoneyLog({ kind, incomeType = 'fixed' }: { kind: LedgerKind; incomeType?: 'fixed' | 'other' }) {
-  const user = useAuthStore((s) => s.user?.id), token = useAuthStore((s) => s.token)
-  return <AccountMoneyLog key={`${user}:${token}:${kind}:${incomeType}`} kind={kind} incomeType={incomeType} />
+  const user = useAuthStore((s) => s.user?.id), sessionKey = useAuthStore((s) => s.sessionKey)
+  return <AccountMoneyLog key={`${user}:${sessionKey}:${kind}:${incomeType}`} kind={kind} incomeType={incomeType} />
 }
 
 function AccountMoneyLog({ kind, incomeType }: { kind: LedgerKind; incomeType: 'fixed' | 'other' }) {
   const navigate = useNavigate()
-  const user = useAuthStore((s) => s.user?.id), token = useAuthStore((s) => s.token)
+  const user = useAuthStore((s) => s.user?.id), sessionKey = useAuthStore((s) => s.sessionKey)
   const { choice, resolving } = useBillingTimeZone()
   const preferred = choice?.source === 'device' ? undefined : choice?.timeZone
   const { timeZone, currentMonth } = useLocalMonth(preferred)
@@ -34,7 +34,7 @@ function AccountMoneyLog({ kind, incomeType }: { kind: LedgerKind; incomeType: '
   const [selection, setSelection] = useState<string | null>(resume?.month ?? null)
   const month = selectedMonth(selection, currentMonth)
   const title = kind === 'spend' ? '기타 지출' : incomeType === 'fixed' ? '고정 수입' : '기타 수입'
-  const query = useQuery({ queryKey: ['ledger', user, token, kind, incomeType, timeZone, month], queryFn: ({ signal }) => getLedger(kind, month, timeZone, incomeType, signal), enabled: !!user && !!token && ready, gcTime: 0, staleTime: 0, refetchInterval: 60000, retry: false })
+  const query = useQuery({ queryKey: ['ledger', user, sessionKey, kind, incomeType, timeZone, month], queryFn: ({ signal }) => getLedger(kind, month, timeZone, incomeType, signal), enabled: !!user && !!sessionKey && ready, gcTime: 0, staleTime: 0, refetchInterval: 60000, retry: false })
   const rows = query.data ?? []
   const total = rows.reduce((sum, row) => sum + row.amount, 0)
   const totals = new Map<string, number>()
@@ -56,8 +56,8 @@ function AccountMoneyLog({ kind, incomeType }: { kind: LedgerKind; incomeType: '
   const [formVersion, setFormVersion] = useState(0)
   return <div className={common.layout}>
     <Card title={`${Number(month.slice(5))}월 ${title}`} actions={<label className={styles.monthlyPicker}><input type="month" className={common.select} value={month} max={currentMonth} aria-label="월 선택" onChange={(event) => setSelection(event.target.value || null)} /></label>}>
-      {user && token && kind === 'income' && incomeType === 'fixed' && <Link to={incomeSettingsPath} className={common.link}>월·연 수입 설정</Link>}
-      {!user || !token ? <p>로그인 후 조회해 주세요.</p> : !ready || query.isPending ? <p role="status">불러오는 중이에요.</p> : query.isError ? <p role="alert">{getErrorMessage(query.error, '조회하지 못했어요.')} <Button onClick={() => void query.refetch()}>다시 조회</Button></p> : <>
+      {user && sessionKey && kind === 'income' && incomeType === 'fixed' && <Link to={incomeSettingsPath} className={common.link}>월·연 수입 설정</Link>}
+      {!user || !sessionKey ? <p>로그인 후 조회해 주세요.</p> : !ready || query.isPending ? <p role="status">불러오는 중이에요.</p> : query.isError ? <p role="alert">{getErrorMessage(query.error, '조회하지 못했어요.')} <Button onClick={() => void query.refetch()}>다시 조회</Button></p> : <>
         <p className={common.note}>{kind === 'spend' ? '선택한 달에 기록한 기타 지출' : '선택한 달에 실제로 받은 수입'} · 분류별 합계와 기록 확인</p>
         <div className={common.sumRow}><div><small>{title} 합계</small><b>{won(total)}</b></div><div><small>기록</small><b>{rows.length}건</b></div><div><small>{kind === 'spend' ? '가장 많이 쓴 곳' : '가장 큰 수입'}</small><b>{top ?? '-'}</b></div></div>
         {total > 0 && <div className={styles.moneyDonutWrap}><div className={styles.moneyDonut} style={{ background: `conic-gradient(${groups.map((group) => group.stop).join(', ')})` }} role="img" aria-label={`${title} 합계 ${won(total)}`}><div className={styles.moneyDonutCenter}><small>총 {kind === 'income' ? '수입' : '지출'}</small><b>{won(total)}</b></div></div><ul className={styles.moneyLegend}>{groups.map((group) => <li key={group.name} style={{ '--c': group.color } as CSSProperties}>{group.name}<span>{Math.round(group.amount / total * 100)}% · {won(group.amount)}</span></li>)}</ul></div>}
@@ -78,7 +78,7 @@ function AccountMoneyLog({ kind, incomeType }: { kind: LedgerKind; incomeType: '
       </>}
     </Card>
     <Card title={`${title} ${editing ? '수정' : '기록하기'}`}>
-      {!!user && !!token && ready && <LedgerForm key={`${user}:${token}:${kind}:${incomeType}:${timeZone}:${formVersion}`} kind={kind} incomeType={incomeType} timeZone={timeZone} row={editing} onDone={(date) => { if (date) setSelection(date.slice(0, 7)); setEditing(undefined); setFormVersion((value) => value + 1) }} />}
+      {!!user && !!sessionKey && ready && <LedgerForm key={`${user}:${sessionKey}:${kind}:${incomeType}:${timeZone}:${formVersion}`} kind={kind} incomeType={incomeType} timeZone={timeZone} row={editing} onDone={(date) => { if (date) setSelection(date.slice(0, 7)); setEditing(undefined); setFormVersion((value) => value + 1) }} />}
       <p className={common.note}>{kind === 'spend' ? '정기적인 비용은 고정 지출에 기록해 주세요.' : '수입은 실제로 받은 날짜에 기록해 주세요.'}</p>
     </Card>
   </div>
@@ -86,7 +86,7 @@ function AccountMoneyLog({ kind, incomeType }: { kind: LedgerKind; incomeType: '
 
 function LedgerForm({ kind, incomeType, timeZone, row, onDone }: { kind: LedgerKind; incomeType: 'fixed' | 'other'; timeZone: string; row?: LedgerRow; onDone: (date?: string) => void }) {
   const owner = useAuthStore((state) => state.user?.id)
-  const token = useAuthStore((state) => state.token)
+  const sessionKey = useAuthStore((state) => state.sessionKey)
   const [resume] = useState(() => {
     const draft = returnedMemoDraft(owner, kind, kind === 'income' ? incomeType : undefined)
     return draft?.recordId === row?.id ? draft : undefined
@@ -104,9 +104,9 @@ function LedgerForm({ kind, incomeType, timeZone, row, onDone }: { kind: LedgerK
   const categoriesUnavailable = !row && (loadingCategories || categoriesFailed)
   const salaryCategory = kind === 'income' && incomeType === 'fixed' && selectedCat === salaryLabel
   const salary = useQuery({
-    queryKey: ['salary-settings', owner, token],
+    queryKey: ['salary-settings', owner, sessionKey],
     queryFn: ({ signal }) => getSalary(signal),
-    enabled: salaryCategory && !!owner && !!token,
+    enabled: salaryCategory && !!owner && !!sessionKey,
     retry: false,
   })
   const salaryRegistered = !!(salary.data?.startMonth || salary.data?.draft)
@@ -119,7 +119,7 @@ function LedgerForm({ kind, incomeType, timeZone, row, onDone }: { kind: LedgerK
       clearMemoDraft(resume)
       await Promise.all([
         client.invalidateQueries({ queryKey: ['ledger'] }),
-        ...(salaryCategory ? [client.invalidateQueries({ queryKey: ['salary-settings', owner, token] })] : []),
+        ...(salaryCategory ? [client.invalidateQueries({ queryKey: ['salary-settings', owner, sessionKey] })] : []),
       ])
       onDone(date)
     } catch (cause) { setError(getErrorMessage(cause, '저장하지 못했어요.')) }

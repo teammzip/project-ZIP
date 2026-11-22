@@ -38,7 +38,7 @@ class BillMonthlyWriteTests {
     String token, month;
     long user, session, conversationId;
     @BeforeEach void seed() {
-        token=auth.socialLogin("GOOGLE","monthly-write","write@example.com","월별등록");
+        token=auth.socialLogin("GOOGLE","monthly-write","write@example.com","월별등록").accessToken();
         var jwt=decoder.decode(token); user=Long.parseLong(jwt.getSubject()); session=Long.parseLong(jwt.getClaimAsString("sid"));
         month=YearMonth.now(ZoneOffset.UTC).toString();
         conversationId=Long.parseLong((String)ai.create(user,"AI_PAGE","bill").get("id"));
@@ -70,7 +70,7 @@ class BillMonthlyWriteTests {
         long id=Long.parseLong((String)service.registerMonthly(user,session,month,"UTC",input(40000)).get("id"));
         String previous=YearMonth.parse(month).minusMonths(1).toString();
         assertEquals(404,assertThrows(ApiException.class,()->service.updateMonthly(user,session,id,previous,"UTC",Map.of("amount",100,"dueDate","2026-12-01"))).status());
-        String other=auth.socialLogin("GOOGLE","monthly-other","other@example.com","다른회원");
+        String other=auth.socialLogin("GOOGLE","monthly-other","other@example.com","다른회원").accessToken();
         var jwt=decoder.decode(other);
         assertEquals(404,assertThrows(ApiException.class,()->service.updateMonthly(Long.parseLong(jwt.getSubject()),Long.parseLong(jwt.getClaimAsString("sid")),id,month,"UTC",Map.of("amount",100,"dueDate","2026-12-01"))).status());
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
@@ -126,7 +126,7 @@ class BillMonthlyWriteTests {
     @Test void anotherOwnerCannotConfirmDraft() throws Exception {
         when(gemini.billImage(any(),anyString(),anyString(),anyString())).thenReturn("{\"readable\":true,\"name\":\"전기\",\"tag\":\"공과금\",\"amount\":42000,\"dueDate\":\"2026-12-05\"}");
         var id=analyze(photo());
-        String other=auth.socialLogin("GOOGLE","draft-other","draft-other@example.com","다른회원");
+        String other=auth.socialLogin("GOOGLE","draft-other","draft-other@example.com","다른회원").accessToken();
         mvc.perform(post("/api/ai/conversations/"+conversationId+"/bill-photo/"+id+"/decision").header("Authorization","Bearer "+other)
             .contentType("application/json").content("{\"register\":true}")).andExpect(status().isNotFound());
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
@@ -169,7 +169,7 @@ class BillMonthlyWriteTests {
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_items",Integer.class));
     }
     @Test void photosRequireOwnedConversationAndMemoPersists() throws Exception {
-        String other=auth.socialLogin("GOOGLE","photo-other","photo-other@example.com","다른회원");
+        String other=auth.socialLogin("GOOGLE","photo-other","photo-other@example.com","다른회원").accessToken();
         mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(photo()).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+other)).andExpect(status().isNotFound());
         verify(gemini,never()).billImage(any(),anyString(),anyString(),anyString());
         var body=new HashMap<String,Object>(input(40000)); body.put("memo","이번 달 전기요금");

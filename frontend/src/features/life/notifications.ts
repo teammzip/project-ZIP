@@ -5,10 +5,10 @@ import { useHousingContract } from '@/features/onboarding/useHousingContract'
 import { apiClient } from '@/lib/apiClient'
 import { isMockApi } from '@/lib/apiMode'
 import { relTime } from '@/lib/date'
-import { buildNotis, type Noti } from './derive'
+import { buildMockRentNoti, buildNotis, type Noti } from './derive'
 import { useLifeStore } from './store'
 
-/* 알림 = 브라우저가 계산하는 알림(일정 · 쓰레기 배출 · 월세, buildNotis) + 서버 알림(서버 모드: 댓글 · 답글 · 운영자 조치 · 경고 · 문의 답변).
+/* 서버 모드에서는 일정과 월세 알림을 서버에서 받아요. 모의 모드에서는 브라우저에서 계산해요.
  * 서버 알림 id 는 앞에 's' 를 붙여 구분하고, 읽음 · 지우기는 서버 알림이면 /api/notifications, 아니면 이 브라우저(zip-life)에 저장해요. */
 
 type ServerNoti = {
@@ -30,6 +30,12 @@ const ICONS: Record<ServerNoti['type'], string> = { EVENT: '📌', TRASH: '♻�
 const linkTo = (n: ServerNoti) =>
   n.link === 'community' ? (n.refId ? `/community?post=${n.refId}` : '/community')
   : n.link === 'support' ? `/my/settings/support${n.refId ? `/${n.refId}` : ''}`
+  : n.type === 'EVENT' && n.link && /^calendar:\d{4}-\d{2}-\d{2}$/.test(n.link)
+    ? `/my/calendar?date=${n.link.slice(9)}`
+  : n.link === 'budget' && n.type === 'RENT' && n.refId && /^\d{4}(0[1-9]|1[0-2])$/.test(n.refId)
+    ? `/my/budget/expense?month=${n.refId.slice(0, 4)}-${n.refId.slice(4)}`
+  : n.type === 'RENT' && n.link && /^budget:\d{4}-(0[1-9]|1[0-2])-\d{2}$/.test(n.link)
+    ? `/my/budget/expense?month=${n.link.slice(7, 14)}`
   : undefined
 
 const serverId = (id: string) => (id.startsWith(SERVER) ? id.slice(SERVER.length) : null)
@@ -48,9 +54,14 @@ function useServerNotis() {
 /** 알림 목록 + 안 읽은 개수 (알림을 끄면 빨간 점은 안 보이게 showDot=false) */
 export function useNotis() {
   const { kind } = useHousingContract()
-  const { events, settings, notiRead, notiDeleted } = useLifeStore(useShallow((s) => ({ events: s.events, settings: s.settings, notiRead: s.notiRead, notiDeleted: s.notiDeleted })))
+  const { events, settings, notiRead, notiDeleted, rentPaid } = useLifeStore(useShallow((s) => ({ events: s.events, settings: s.settings, notiRead: s.notiRead, notiDeleted: s.notiDeleted, rentPaid: s.rentPaid })))
   const server = useServerNotis()
-  const local = buildNotis(events, settings, kind).filter((n) => !notiDeleted?.[n.id]) // 저장된 예전 데이터엔 notiDeleted 가 없을 수 있음
+  const calculated = isMockApi ? buildNotis(events) : []
+  if (isMockApi) {
+    const mockRent = buildMockRentNoti(settings, rentPaid, kind)
+    if (mockRent) calculated.push(mockRent)
+  }
+  const local = calculated.filter((n) => !notiDeleted?.[n.id]) // 저장된 예전 데이터엔 notiDeleted 가 없을 수 있음
   const remote: Noti[] = (server.data?.items ?? []).map((n) => ({
     id: SERVER + n.id,
     ico: ICONS[n.type] ?? '🔔',

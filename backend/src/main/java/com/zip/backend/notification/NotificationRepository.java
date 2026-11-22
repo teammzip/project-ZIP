@@ -5,6 +5,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -16,6 +17,12 @@ public class NotificationRepository {
     private final JdbcTemplate jdbc;
 
     public NotificationRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+
+    // 현재 월세 알림과 dev에서 저장한 날짜 링크를 같은 납부월로 비교한다.
+    static final String RENT_PERIOD_MATCH = """
+        (n.ref_id = CAST(REPLACE(r.period_ym, '-', '') AS DECIMAL(6, 0))
+          OR (n.ref_id IS NULL AND n.link_view LIKE CONCAT('budget:', r.period_ym, '-%')))
+        """;
 
     public record NotiRow(long id, String type, String title, String body, String link, Long refId, Instant notifyAt, boolean read) {}
 
@@ -69,9 +76,59 @@ public class NotificationRepository {
             .allMatch(on -> on == null || on);
     }
 
+    /** 지운 알림도 확인해 같은 월세 알림이 다시 생기지 않도록 한다. */
+    public boolean hasRentReminder(long userId, YearMonth month) {
+        return !jdbc.queryForList("""
+            SELECT n.id FROM notifications n
+            JOIN rent_payments r ON r.user_id = n.user_id AND r.period_ym = ?
+            WHERE n.user_id = ? AND n.noti_type = 'RENT' AND
+            """ + RENT_PERIOD_MATCH + " LIMIT 1", Long.class, month.toString(), userId).isEmpty();
+    }
+
+    public void dismissSettledRent(long userId, Instant now) {
+        jdbc.update("""
+            UPDATE notifications n SET deleted_at = ?
+            WHERE n.user_id = ? AND n.noti_type = 'RENT' AND n.read_at IS NULL AND n.deleted_at IS NULL
+              AND EXISTS (SELECT 1 FROM rent_payments r WHERE r.user_id = n.user_id AND r.paid_at IS NOT NULL AND
+            """ + RENT_PERIOD_MATCH + ")", Timestamp.from(now), userId);
+    }
+
     public void insert(long userId, String type, String title, String body, String link, Long refId, Instant at) {
+        insertAt(userId, type, title, body, link, refId, at, at);
+    }
+
+    /** notifyAt 이 미래면 그때부터 보여요 */
+    public void insertAt(long userId, String type, String title, String body, String link, Long refId, Instant notifyAt, Instant createdAt) {
         jdbc.update("""
             INSERT INTO notifications (user_id, noti_type, title, body, link_view, ref_id, notify_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, userId, type, title, body, link, refId, Timestamp.from(at), Timestamp.from(at));
+            """, userId, type, title, body, link, refId, Timestamp.from(notifyAt), Timestamp.from(createdAt));
+    }
+
+    /** 생활 알림 (지운 것 · 읽은 것 포함) — 다시 만들지 않으려고 */
+    public record LifeRow(long id, String type, Long refId, String link, String title, String body, boolean read, boolean deleted) {}
+
+    public List<LifeRow> lifeRows(long userId, List<String> types) {
+        var args = new ArrayList<Object>(List.of(userId));
+        args.addAll(types);
+        return jdbc.query("SELECT id, noti_type, ref_id, link_view, title, body, read_at, deleted_at FROM notifications WHERE user_id = ? AND noti_type IN ("
+            + Sql.marks(types) + ")", (rs, n) -> {
+                long ref = rs.getLong("ref_id");
+                Long refId = rs.wasNull() ? null : ref;
+                return new LifeRow(rs.getLong("id"), rs.getString("noti_type"), refId, rs.getString("link_view"),
+                    rs.getString("title"), rs.getString("body"), rs.getTimestamp("read_at") != null, rs.getTimestamp("deleted_at") != null);
+            }, args.toArray());
+    }
+
+    public void updateText(long id, String title, String body) {
+        jdbc.update("UPDATE notifications SET title = ?, body = ? WHERE id = ? AND read_at IS NULL AND deleted_at IS NULL", title, body, id);
+    }
+
+    /** 더는 해당 없는 생활 알림 지우기 (내 것 · 안 읽은 것만) */
+    public void deleteIds(long userId, List<Long> ids) {
+        if (ids.isEmpty()) return;
+        var args = new ArrayList<Object>(List.of(userId));
+        args.addAll(ids);
+        jdbc.update("DELETE FROM notifications WHERE user_id = ? AND read_at IS NULL AND deleted_at IS NULL AND id IN (" + Sql.marks(ids) + ")",
+            args.toArray());
     }
 }

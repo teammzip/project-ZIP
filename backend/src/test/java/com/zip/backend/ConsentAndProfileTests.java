@@ -26,7 +26,7 @@ class ConsentAndProfileTests {
     private static final String CONSENT = """
         {"address":"서울 마포구 합정동","agreeTerms":true,"agreePrivacy":true,"agreePolicy":true,"ageOver14":true,"termsVersion":"%s"}""";
 
-    private String socialToken() { return auth.socialLogin("GOOGLE", "sub-1", "a@gmail.com", "김지기"); }
+    private String socialToken() { return auth.socialLogin("GOOGLE", "sub-1", "a@gmail.com", "김지기").accessToken(); }
 
     private org.springframework.test.web.servlet.ResultActions updateMe(String token, String body) throws Exception {
         return mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/auth/me").header("Authorization", "Bearer " + token).contentType("application/json").content(body));

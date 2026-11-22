@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url)
 function setup(fail = false) {
   const exports = {}, values = [], calls = [], exchanges = []
   let index = 0, invalidations = 0
-  const auth = { user: { id: 'owner' }, token: 'session' }
+  const auth = { user: { id: 'owner' }, sessionKey: 'session' }
   const useAuthStore = (selector) => selector(auth)
   useAuthStore.getState = () => auth
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/features/ai/components/BillPhotoQuestion.tsx', import.meta.url), 'utf8'), {

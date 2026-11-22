@@ -95,11 +95,11 @@ export const ddayText = (diff: number) => (diff === 0 ? 'D-Day' : `D-${diff}`)
 /** 그 날짜가 속한 달의 월세를 냈는지 */
 export const monthKeyRentPaid = (rentPaid: Record<string, boolean>, d: Date) => !!rentPaid[monthKeyOf(d)]
 
-/** to: 누르면 열 화면 (서버 알림만) */
+/** to: 누르면 열 화면 */
 export type Noti = { id: string; ico: string; t: string; s: string; time: string; to?: string }
 
-/** 알림 목록: 3일 안의 일정(끝낸 건 빼고) · 쓰레기 배출(배출표가 있을 때) + 월세(월세 금액을 입력했을 때만). 예시 알림은 넣지 않아요 */
-export function buildNotis(events: CalEvent[], settings: LifeSettings, contractKind: ContractKind = 'monthly'): Noti[] {
+/** 알림 목록: 3일 안의 미완료 일정 · 쓰레기 배출(배출표가 있을 때). */
+export function buildNotis(events: CalEvent[]): Noti[] {
   const list: Noti[] = []
   const year = new Date().getFullYear()
   const all = [...expandAnniversaries(events, year, year + 1), ...trashEventsBetween(todayStr(), addDays(3))]
@@ -114,9 +114,22 @@ export function buildNotis(events: CalEvent[], settings: LifeSettings, contractK
       time: diff === 0 ? '오늘' : `D-${diff}`,
     })
   }
-  const rdiff = dayDiff(fmt(nextRentDate(settings.rentDay)))
-  if (contractKind === 'monthly' && settings.rent > 0) list.push({ id: 'n2', ico: '💸', t: `월세 납부일이 ${rdiff === 0 ? '오늘이에요' : `${rdiff}일 남았어요`}`, s: `매월 ${settings.rentDay}일 · ${settings.rent}만원`, time: '1시간 전' })
   return list
+}
+
+/** 모의 모드에서만 브라우저의 월세 설정과 납부 기록으로 알림을 계산한다. */
+export function buildMockRentNoti(settings: LifeSettings, rentPaid: Record<string, boolean>, kind: ContractKind): Noti | undefined {
+  if (kind !== 'monthly' || !settings.notiOn || settings.rent <= 0) return
+  const due = nextRentDate(settings.rentDay)
+  const date = fmt(due)
+  const month = monthKeyOf(due)
+  const diff = dayDiff(date)
+  if (month !== monthKeyOf(new Date()) || diff < 0 || diff > 3 || monthKeyRentPaid(rentPaid, due)) return
+  if ((settings.moveIn && month < settings.moveIn) || (settings.contractEnd && month > settings.contractEnd)) return
+  return {
+    id: `rent-${month}`, ico: '💸', t: '월세 납부 안내', s: `납부 기한 ${date} · ${settings.rent}만원`,
+    time: diff === 0 ? '오늘' : `D-${diff}`, to: '/my/budget/expense',
+  }
 }
 
 // 알림 목록 훅(useNotis)은 서버 알림까지 합쳐서 ./notifications.ts 에 있어요

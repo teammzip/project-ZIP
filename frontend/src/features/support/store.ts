@@ -41,8 +41,8 @@ export const useSupportStore = create<SupportState>((set, get) => {
   return {
     inquiries: readJSON<Inquiry[]>(KEY) ?? [],
     add: (draft) => {
-      const { user, token } = useAuthStore.getState()
-      if (!user || !token) throw new Error('로그인 후 문의를 작성해 주세요.')
+      const { user, sessionKey } = useAuthStore.getState()
+      if (!user || !sessionKey) throw new Error('로그인 후 문의를 작성해 주세요.')
       const title = draft.title.trim()
       const content = draft.content.trim()
       if (!title || title.length > 100 || !content || content.length > 3000 || !INQUIRY_CATEGORIES.includes(draft.category)) {
@@ -53,8 +53,8 @@ export const useSupportStore = create<SupportState>((set, get) => {
       return id
     },
     reply: (id, value) => {
-      const { user, token } = useAuthStore.getState()
-      if (!token || user?.role !== 'ADMIN') throw new Error('관리자만 답변할 수 있어요.')
+      const { user, sessionKey } = useAuthStore.getState()
+      if (!sessionKey || user?.role !== 'ADMIN') throw new Error('관리자만 답변할 수 있어요.')
       const content = value.trim()
       if (!content || content.length > 3000) throw new Error('답변을 1~3,000자로 작성해 주세요.')
       const inquiry = get().inquiries.find((q) => q.id === id)

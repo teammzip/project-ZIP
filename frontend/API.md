@@ -50,14 +50,13 @@
 
 현재 백엔드의 PATCH `/api/auth/me`는 닉네임·한 줄 소개·캐릭터·배경색·프로필 사진 연결, 그리고 소셜 첫 가입의 주소·약관 동의(`address`, `agreeTerms`, `agreePrivacy`, `agreePolicy`, `ageOver14`, `termsVersion`; 한 번만 가능)를 지원해요. 사용자 ID·권한 등 지원하지 않는 키를 보내면 400이에요.
 
-> **서버 구현 현황(2026-11):** 로그인·로그아웃·내 정보·비밀번호 변경·프로필·회원 탈퇴·구글/네이버/카카오 소셜 로그인은 구현됨. **회원가입(`POST /auth/signup`), 이메일 인증(`/auth/email/send`·`verify`), 아이디 찾기, 비밀번호 재설정도 구현됨**(메일은 Gmail SMTP, `MAIL_USERNAME`·`MAIL_PASSWORD`가 없으면 503, 개발 중 `MAIL_LOG_ONLY=true`를 켜면 메일 대신 서버 로그에 인증번호를 찍어요). 토큰 재발급(`/auth/refresh`)은 아직 서버에 없어요.
-
-✅는 아래 기본 인증 요청 경로가 realAuthApi에 있다는 뜻이에요. 프로필은 연동되어 있지만 제재·위치 확장 필드와 refresh 제안까지 구현되어 있다는 뜻은 아니에요.
+> 로그인·토큰 재발급·로그아웃·내 정보·비밀번호 변경·프로필·회원 탈퇴·구글/네이버/카카오 소셜 로그인·회원가입·이메일 인증·아이디 찾기·비밀번호 재설정을 지원해요. 메일은 Gmail SMTP를 사용해요. 개발 중에는 `MAIL_LOG_ONLY=true`로 메일 발송을 대신할 수 있어요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
 | POST | `/api/auth/signup` | 아래 [회원가입](#회원가입) | `{ accessToken, user }` |
 | POST | `/api/auth/login` | `{ loginId, password, remember }` | `{ accessToken, user }` |
+| POST | `/api/auth/refresh` | `zip_refresh` 쿠키, `X-Zip-Session` 헤더(JWT의 `sid`) | `{ accessToken }`, 갱신된 `zip_refresh` 쿠키 |
 | POST | `/api/auth/logout` | — | — (`auth_sessions.revoked_at` 채움) |
 | GET | `/api/auth/me` | — | `user` |
 | PATCH | `/api/auth/me` | `{ nickname }` 또는 [소셜 첫 가입](#소셜-로그인) 정보 | `user` |
@@ -101,9 +100,11 @@
 ### 로그인
 - `loginId`는 **아이디 또는 이메일** (`users.login_id` 또는 `users.email`로 찾기).
 - 일반 로그인은 첫 실패부터 15분 안에 비밀번호가 5회 틀리면 해당 계정의 비밀번호 로그인을 15분간 잠가요. 아이디와 이메일로 시도해도 같은 횟수를 사용해요. 실패 메시지에는 해당 계정의 누적 횟수가 표시되며, 다섯 번째 실패부터 잠금 중에는 `423 LOGIN_LOCKED`와 해제 시각을 반환해요. 가입 이메일을 인증하고 비밀번호를 재설정하면 즉시 해제돼요.
-- `remember`(로그인 유지)가 `true`면 세션 만료를 길게 (`auth_sessions.remember`). 성공하면 `users.last_login_at` 갱신.
+- 액세스 토큰은 기본 15분 동안 유효해요. `로그인 유지`를 켜면 같은 브라우저에서 다시 열었을 때 로그인 시점부터 최대 7일간 로그인 상태를 복원해요. 끄면 열려 있는 탭에서 최대 12시간 동안 재발급돼요. 회원가입 직후와 소셜 로그인에는 로그인 유지 정책이 적용돼요.
 - 정지된 계정이면 403 + `{ "message": "이용이 정지된 계정이에요. (10/24 18:00 해제) 사유: …" }`.
-- **재발급 토큰**(`auth_sessions.refresh_token_hash`)은 httpOnly 쿠키로 주는 걸 추천해요. `POST /api/auth/refresh` → `{ accessToken }`은 **추가 제안**이며 현재 realAuthApi/apiClient에 재발급 호출·자동 재시도는 없어요. 쿠키 방식·세션 연결·로그아웃/정지 시 access token 무효화 정책을 합의하고 구현해야 해요. (지금 프론트는 401이면 로그아웃)
+- 재발급 토큰은 `HttpOnly; SameSite=Lax; Path=/api/auth` 쿠키로 발급하고 DB에는 SHA-256 해시만 저장해요. 재발급할 때 쿠키를 교체하고 기존 세션 만료 시각과 로그인 시각은 유지해요.
+- 보호 API에서 액세스 토큰 만료로 401을 받으면 재발급 후 원래 요청을 한 번 재시도해요. 통신 장애에는 로그인 상태를 유지하며 다음 요청에서 다시 시도해요. 로그아웃은 현재 세션을 해제하고, 비밀번호 변경·재설정은 해당 계정의 모든 세션을 해제해요. 정지 상태에서는 재발급도 403이에요.
+- 프론트와 API는 동일 오리진으로 연결해요. 운영 HTTPS 프록시가 백엔드에 HTTP로 전달하면 `ZIP_AUTH_COOKIE_SECURE=true`를 설정해요. 기능 반영 전 발급된 로그인은 새 재발급 쿠키가 필요하므로 만료 후 한 번 다시 로그인해야 해요.
 
 ### 회원가입
 ```json
@@ -306,7 +307,7 @@ PUT `/api/me/home-info/loan`은 전세 대출 카드에서 사용한다. 본문�
 | PUT | `/api/bills/{id}/payments/{month}` | `{ paid: true }` 또는 `{ amount: 41000 }` | `bill` |
 | DELETE | `/api/bills/{id}` | — (해지: `is_active = 0`) | — |
 
-고정 지출 API는 현재 백엔드에 구현돼 있어요. 프론트는 아직 브라우저 저장 방식이며 API 연결은 별도예요. POST는 당월 미납 스냅샷을 생성하고, PATCH는 당월 금액을 보존한 채 기본 금액을 수정해요. 응답의 defaultAmount는 미생성 월 예정액, amount는 선택 월 금액이에요. 당월 금액 정정은 payments API로 보내세요. GET은 DB를 변경하지 않고 과거 월은 기존 기록만, 현재/미래 월은 스냅샷 또는 예정액(snapshot=false)을 반환해요. 해지 항목도 기존 월 기록은 active=false로 남아요. [Postman 검증·상세 정책](../backend/IMPLEMENTATION.md#고정-지출-api-확인)을 참고하세요.
+일반 고정 지출 API의 POST는 당월 미납 스냅샷을 생성하고, PATCH는 당월 금액을 보존한 채 기본 금액을 수정해요. 응답의 defaultAmount는 미생성 월 예정액, amount는 선택 월 금액이에요. 당월 금액 정정은 payments API로 보내세요. 일반 고정 지출 GET은 DB를 변경하지 않고 과거 월은 기존 기록만, 현재/미래 월은 스냅샷 또는 예정액(snapshot=false)을 반환해요. 해지 항목도 기존 월 기록은 active=false로 남아요. 가계부의 계약 비용은 아래 월별 조회·자동 등록 정책을 따릅니다. [Postman 검증·상세 정책](../backend/IMPLEMENTATION.md#고정-지출-api-확인)을 참고하세요.
 
 ```json
 { "id": "5", "name": "전기", "amount": 32000, "tag": "공과금", "paid": false, "paidAt": null }
@@ -317,7 +318,7 @@ PUT `/api/me/home-info/loan`은 전세 대출 카드에서 사용한다. 본문�
 - **납부는 달마다 따로**: 달이 바뀌면 저절로 미납으로 보여요 (그 달 `bill_payments` 줄이 없으면 미납). 예전의 "이번 달 모두 미납으로"(`POST /api/bills/reset`)는 화면에서 없어져서 필요 없어요.
 - 월별 청구 생성 작업/명시적 납부 저장에서 같은 달 행을 한 번만 만들어요 (`uk_*_period_ym`). 단순 GET이 과거 청구를 현재 금액으로 임의 생성하지 않도록 해요. 과거 금액은 월별 amount 스냅샷이고 항목 수정으로 덮어쓰지 않아요.
 - 프론트는 `Bill.paidMonths: Record<YYYY-MM, boolean>`로 여러 달을 저장하고 paidMonth를 이전 형식으로도 읽어요. 선택한 달의 false가 이전 paidMonth보다 우선해요. API의 월별 paid를 해당 달 키에 매핑하고 다른 달을 덮어쓰지 마세요.
-- 고정 지출 수정은 default_amount에 반영하고 납부 기록은 보존해요. 관리비 포함 월세이면 별도 관리비를 중복 합산하지 않아요. 현재 프론트의 과거 월 합계는 현재 항목 금액을 사용하므로 연동 때 월별 스냅샷 표시로 조정해야 해요.
+- 고정 지출 수정은 default_amount에 반영하고 납부 기록은 보존해요. 관리비 포함 월세이면 별도 관리비를 중복 합산하지 않아요. 가계부는 조회한 월의 API 응답에 포함된 금액을 합산해요.
 
 ---
 
@@ -346,7 +347,7 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 #### 월별 조회 · 시간대
 
-고정 지출 월별 조회: GET `/api/bills/monthly?month=YYYY-MM&timeZone=Asia%2FSeoul`. DB의 등록 집 주소(없으면 본인 설문·가입 주소) → 실제 현재 위치 → 기기 설정 순으로 결정한 시간대를 보내며 서버 시각으로 조회 범위를 제한한다. 현재 월은 미납·예정도 포함하고 과거 월은 저장된 기록만 반환한다.
+고정 지출 월별 조회: GET `/api/bills/monthly?month=YYYY-MM&timeZone=Asia%2FSeoul`. DB의 등록 집 주소(없으면 본인 설문·가입 주소) → 실제 현재 위치 → 기기 설정 순으로 결정한 시간대를 보내며 서버 시각으로 조회 범위를 제한한다. 조회는 DB를 바꾸지 않는다. 현재 월은 미납·예정도 포함한다. 과거 월은 저장된 기록을 우선 반환하고, 시작월과 종료월이 모두 있는 월세 계약의 기간 안에서는 누락된 월세와 별도 관리비를 미납 예상액(`snapshot=false`)으로도 반환한다.
 
 #### 월별 고정 지출 쓰기 API (2026-11-18)
 
@@ -369,7 +370,7 @@ GET /api/bills/monthly는 contractKind(monthly/jeonse/null), managementIncluded,
 
 #### 계약 고정 지출 자동 등록
 
-POST /api/bills/monthly/auto-register?timeZone=IANA: 현재 월 월세·별도 관리비·전세 이자 DB 등록(204). 확정 시간대를 저장하며 중복 호출 시 기존 기록을 보존한다. 가계부는 자동 등록 후 GET 조회한다. 계약 관리비는 homeManaged=true이며 일반 수정/삭제·금액 변경은 409.
+POST `/api/bills/monthly/auto-register?timeZone=IANA&month=YYYY-MM`은 선택한 월의 계약 비용을 자동 등록한다(204). 월을 생략하면 현재 월을 사용하고 미래 월은 400이다. 시작월과 종료월이 모두 있는 월세 계약은 입주월부터 종료월까지 선택한 현재·과거 월의 누락된 월세와 별도 관리비를 계약 금액으로 미납 등록한다. 기존 금액·납부 기한·납부 여부는 보존한다. 전세 이자와 기간이 일부만 등록된 계약의 자동 등록은 현재 월에 적용한다. 가계부와 홈 지출 합계는 선택 월을 자동 등록한 후 조회한다. 계약 관리비는 `homeManaged=true`이며 일반 수정·삭제와 금액 변경은 409다.
 
 #### 고지서 인식 후 확인 등록 (기존 즉시 등록 흐름 대체)
 
@@ -383,11 +384,11 @@ POST /api/bills/monthly/auto-register?timeZone=IANA: 현재 월 월세·별도 �
 
 관리비 계약 분리 보완: bill_items.home_contract_kind가 monthly/jeonse인 항목은 현재 계약 유형과 일치할 때만 조회·합산합니다. 계약 유형 전환 시 이전 관리비를 비활성화하고 오늘 이후 미납 예정분을 취소 표시하며 새 유형의 항목을 생성합니다. 일반 지출의 유형은 NULL입니다. 월세 저장 시 남아 있는 오늘 이후 미납 월세 금액을 동기화하며, 새 납부일이 이미 지났다면 해당 기록의 기존 기한을 유지합니다.
 
-반복 납부일은 1~31일이면 오늘 이전이어도 내 집 정보에 저장할 수 있습니다. 저장 시 payment_effective_from을 지역 기준 오늘로 기록하고 신규 월세·관리비·이자 자동 등록 및 예정 금액 조회는 해당 날짜 이상부터 반영합니다. 기존 미납 기록은 변경 전후 기한이 모두 오늘 이후일 때만 갱신하고 과거·납부 완료 기록은 유지합니다. 실제 연결 DB에는 08 마이그레이션 적용이 필요합니다.
+반복 납부일은 1~31일이면 오늘 이전이어도 내 집 정보에 저장할 수 있습니다. 저장 시 `payment_effective_from`을 지역 기준 오늘로 기록합니다. 시작월과 종료월이 등록된 월세 계약은 계약 기간 안의 누락 금액을 채웁니다. 전세 이자는 반영일이 속하는 월과 대출 시작일 이후 기한부터 반영합니다. 기존 납부 완료와 지난 기한의 기록은 보존합니다. `payment_effective_from`은 DB 08 마이그레이션에서 추가된 열입니다.
 
 고정 지출 monthly 응답의 housingItems는 현재 contractKind에 해당하는 주거비만 반환합니다. monthly이면 월세, jeonse이면 전세 대출 이자를 반환하며 과거 조회 월에도 동일합니다. 반대 유형의 기존 기록은 조회에서 제외하고 DB에는 보존합니다. 공통 items(관리비·공과금)는 이 유형 필터로 제외하지 않습니다. 가계부 및 같은 응답을 사용하는 홈 합계에 동일하게 반영됩니다.
 
-내 집 정보 저장은 입력 계약 기간에 현재 월이 포함되지 않으면 400입니다. 고정 지출 등록·수정도 선택 월뿐 아니라 현재 월이 계약 기간 안이어야 합니다. monthly 응답 contractPeriod.currentOutside는 현재 월의 기간 이탈 여부이며 outside는 선택 월의 이탈 여부입니다. 계약 유형 저장 시 오늘 이후 미납인 반대 유형의 월세/이자 예정분을 정리합니다. 과거 및 납부 완료 기록은 보존합니다.
+내 집 정보 저장은 입력 계약 기간에 현재 월이 포함되지 않으면 400입니다. 고정 지출을 직접 등록하거나 수정할 때는 선택 월과 현재 월이 모두 계약 기간 안이어야 합니다. 월세 계약 비용의 자동 등록은 조회한 월이 등록된 계약 기간 안인지 확인합니다. monthly 응답 contractPeriod.currentOutside는 현재 월의 기간 이탈 여부이며 outside는 선택 월의 이탈 여부입니다. 계약 유형 저장 시 오늘 이후 미납인 반대 유형의 월세/이자 예정분을 정리합니다. 과거 및 납부 완료 기록은 보존합니다.
 
 #### 고정 지출 납부 · 해지 (2026-11-19)
 
@@ -440,7 +441,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 
 ## 6. 알림 ✅
 
-> **2026-11-19 백엔드 구현 · 프론트 연결**: 아래 API가 모두 있어요. 서버가 아는 일이 생기면 알림을 만들어요 — **내 글 댓글 · 내 댓글 답글 · 운영자 댓글**(`COMMUNITY`, `link: community` · `refId` = 글 번호), **운영자가 지운 · 신고로 숨긴 내 글 · 댓글 · 경고 · 문의 답변**(`SYSTEM`, 문의는 `link: support`). 내가 한 일은 알리지 않고, 알림을 끈 회원(`user_settings.noti_on = 0`)에게는 만들지 않아요. 일정 · 쓰레기 · 월세 알림은 일정이 아직 서버에 없어서 지금처럼 프론트가 계산하고, 화면은 두 가지를 합쳐 보여 줘요 (`features/life/notifications.ts`, 서버 알림을 누르면 그 글 · 문의로 이동). 자세한 서버 규칙은 [backend/IMPLEMENTATION.md](../backend/IMPLEMENTATION.md#알림).
+> **서버 알림**은 **내 글 댓글 · 내 댓글 답글 · 운영자 댓글**(`COMMUNITY`, `link: community` · `refId` = 글 번호), **운영자가 지운 · 신고로 숨긴 내 글 · 댓글 · 경고 · 문의 답변**(`SYSTEM`, 문의는 `link: support`), **쓰레기 배출일 · 월세 납부 안내**예요. 알림을 끈 회원(`user_settings.noti_on = 0`)에게는 새 알림을 만들지 않아요. 화면은 서버 알림과 브라우저에서 계산한 일정 알림을 함께 보여 줘요. 자세한 서버 규칙은 [backend/IMPLEMENTATION.md](../backend/IMPLEMENTATION.md#알림).
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
@@ -449,15 +450,17 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | DELETE | `/api/notifications?ids=1,2` | — | — (읽은 알림 지우기. DELETE 에는 본문을 넣지 않아요) |
 
 ```json
-{ "id": "1", "type": "RENT", "title": "월세 납부일이 3일 남았어요", "body": "매월 15일 · 55만원",
-  "link": "budget", "refId": null, "notifyAt": "2026-10-12T09:00:00+09:00", "read": false }
+{ "id": "1", "type": "RENT", "title": "월세 납부 안내", "body": "납부 기한 2026-10-15 · 550,000원",
+  "link": "budget", "refId": "202610", "notifyAt": "2026-10-12T00:00:00Z", "read": false }
 ```
 - `type`: `EVENT` · `TRASH` · `RENT` · `BILL` · `COMMUNITY` · `SYSTEM` (`notifications.noti_type`)
 - `TRASH`(쓰레기 배출일): 서버가 만들어요(`notification/TrashReminderService`). 내 집 주소(`homeAddress`)에서 시군구를 찾고, 그 동네 배출표(`trash_schedules`)에 오늘 요일이 있으면 **아침 7시(한국 시간)** 에 하루 한 번 `{ title: "오늘은 쓰레기 배출일이에요", body: "생활쓰레기 · 음식물 · 18:00부터 · 내 집 혹은 내 점포 앞" }`. 알림을 끄면(`notiOn: false`) 안 만들고, 서버가 7시에 꺼져 있었으면 켜진 뒤 그날 안에 만들어요(`notifyAt`은 그날 7시). 장소가 여러 곳인 군 지역은 장소 대신 "배출장소는 사는 곳마다 달라요". `link`는 없어요.
+- `EVENT`(일정 알림)은 목록에서 동기화해요. `calendar:YYYY-MM-DD` 링크는 해당 날짜의 일정을 열어요.
+- `RENT`(월세 납부 안내)는 스케줄러가 계약 기간 안의 이번 달 `rent_payments` 미납 기록을 확인해 납부 3일 전부터 당일까지 한 번 저장해요. 가계부의 저장된 시간대(없으면 한국 시간)로 날짜를 판단해요. `refId`는 납부 대상 연월(`YYYYMM`)이고 알림을 누르면 그 달의 가계부 고정 지출을 열어요. 기존 `budget:YYYY-MM-DD` 링크도 같은 달의 발송 이력으로 봐요. 월세를 납부하면 해당 월의 안 읽은 알림은 목록에서 숨겨요.
 - `read`는 `read_at`이 있으면 `true`. `unreadCount`가 메뉴·종의 빨간 점이 돼요.
 - 알림 화면은 **안 읽음 / 읽음**으로 나눠 보고(`status`), "모두 읽음"은 `ids: []`, 읽은 알림은 골라서 **삭제**해요. 지운 알림은 다시 안 나와야 해요 (줄을 지우거나 `deleted_at`을 두고 목록에서 빼기).
 - 설정에서 알림을 끄면(`notiOn: false`) 만들지 않거나 빈 목록을 주세요.
-- 일정·쓰레기·월세 알림은 아직 프론트가 직접 계산하고(`features/life/derive.ts`의 `buildNotis`), 그 읽음은 `zip-life`의 `notiRead`, 지운 것은 `notiDeleted`에 저장해요. 서버 알림(id 앞에 `s`)의 읽음 · 지우기는 이 API를 써요. 일정이 서버로 옮겨지면 일정 알림도 서버가 만들게 바꿀 수 있어요.
+- 모의 모드에서 계산하는 일정·월세 알림의 읽음과 삭제는 `zip-life`에 저장해요. 서버 모드에서는 위 API를 사용해요.
 - **홈 알림 칸**: 메모 옆에 알림이 세로로 쌓여요(넓은 화면 4개 · 좁은 화면 3개, 나머지는 "+N개 더 있어요"). "닫기"는 **그날 하루만 숨김**이라 브라우저에만 저장해요(`zip-home-noti-closed`, "닫은 알림 다시 보기"로 되살림). 읽음 처리와는 달라서 서버 API는 필요 없어요.
 
 ---

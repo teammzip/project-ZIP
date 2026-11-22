@@ -109,12 +109,12 @@ export function IncomeChart() {
 }
 
 function ServerIncomeChart() {
-  const user = useAuthStore((s) => s.user?.id), token = useAuthStore((s) => s.token)
+  const user = useAuthStore((s) => s.user?.id), sessionKey = useAuthStore((s) => s.sessionKey)
   const { choice, resolving } = useBillingTimeZone()
   const preferred = choice?.source === 'device' ? undefined : choice?.timeZone
   const { timeZone, currentMonth } = useLocalMonth(preferred)
-  const query = useQuery({ queryKey: ['ledger', user, token, 'income-summary', timeZone, currentMonth], queryFn: ({ signal }) => getIncomeSummary(timeZone, signal), enabled: !!user && !!token && !resolving && (!preferred || preferred === timeZone), gcTime: 0, staleTime: 0, refetchInterval: 60000, retry: false })
-  if (!user || !token) return <Card title="월별 수입"><p>로그인 후 조회해 주세요.</p></Card>
+  const query = useQuery({ queryKey: ['ledger', user, sessionKey, 'income-summary', timeZone, currentMonth], queryFn: ({ signal }) => getIncomeSummary(timeZone, signal), enabled: !!user && !!sessionKey && !resolving && (!preferred || preferred === timeZone), gcTime: 0, staleTime: 0, refetchInterval: 60000, retry: false })
+  if (!user || !sessionKey) return <Card title="월별 수입"><p>로그인 후 조회해 주세요.</p></Card>
   if (resolving || query.isPending) return <Card title="월별 수입"><p role="status">불러오는 중이에요.</p></Card>
   if (query.isError) return <Card title="월별 수입"><p role="alert">{getErrorMessage(query.error, '수입을 조회하지 못했어요.')}</p></Card>
   return <IncomeChartView serverSums={query.data} serverMonth={currentMonth} />
@@ -176,7 +176,7 @@ export function SpendDonut() {
 
 function ServerSpendDonut() {
   const userId = useAuthStore((s) => s.user?.id)
-  const token = useAuthStore((s) => s.token)
+  const sessionKey = useAuthStore((s) => s.sessionKey)
   const { choice, resolving } = useBillingTimeZone()
   const preferred = choice?.source === 'device' ? undefined : choice?.timeZone
   const { timeZone, currentMonth } = useLocalMonth(preferred)
@@ -185,14 +185,14 @@ function ServerSpendDonut() {
   const [year, number] = currentMonth.split('-').map(Number)
   const month = back ? monthKeyOf(new Date(year, number - 2, 1)) : currentMonth
   const query = useQuery({
-    queryKey: ['monthly-bills', userId, token, timeZone, month],
+    queryKey: ['monthly-bills', userId, sessionKey, timeZone, month],
     queryFn: ({ signal }) => getMonthlyBills(month, timeZone, signal),
-    enabled: !!userId && !!token && ready,
+    enabled: !!userId && !!sessionKey && ready,
     gcTime: 0, staleTime: 0, refetchInterval: 60000,
     refetchOnWindowFocus: 'always', retry: false,
   })
-  const expenses = useQuery({ queryKey: ['ledger', userId, token, 'spend', timeZone, month], queryFn: ({ signal }) => getLedger('spend', month, timeZone, 'fixed', signal), enabled: !!userId && !!token && ready, gcTime: 0, staleTime: 0, refetchInterval: 60000, retry: false })
-  if (!userId || !token) return <Card title="이번 달 지출 구성"><p>로그인 후 조회해 주세요.</p></Card>
+  const expenses = useQuery({ queryKey: ['ledger', userId, sessionKey, 'spend', timeZone, month], queryFn: ({ signal }) => getLedger('spend', month, timeZone, 'fixed', signal), enabled: !!userId && !!sessionKey && ready, gcTime: 0, staleTime: 0, refetchInterval: 60000, retry: false })
+  if (!userId || !sessionKey) return <Card title="이번 달 지출 구성"><p>로그인 후 조회해 주세요.</p></Card>
   if (!ready || query.isPending || expenses.isPending) return <Card title="이번 달 지출 구성"><p role="status">지출 내역을 불러오는 중이에요.</p></Card>
   if (expenses.isError) return <Card title="이번 달 지출 구성"><p role="alert">{getErrorMessage(expenses.error, '기타 지출을 조회하지 못했어요.')}</p><button onClick={() => void expenses.refetch()}>다시 조회</button></Card>
   if (query.isError) return <Card title="이번 달 지출 구성"><p role="alert">{getErrorMessage(query.error, '지출 내역을 불러오지 못했어요.')}</p><button onClick={() => void query.refetch()}>다시 조회</button></Card>

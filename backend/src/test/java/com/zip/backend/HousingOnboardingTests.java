@@ -26,7 +26,7 @@ class HousingOnboardingTests {
     private String token;
 
     @BeforeEach void account() {
-        token = auth.socialLogin("GOOGLE", "survey", "survey@example.com", "검증회원");
+        token = auth.socialLogin("GOOGLE", "survey", "survey@example.com", "검증회원").accessToken();
         jdbc.update("""
             INSERT INTO user_term_agreements(user_id,terms_id,agreed_at)
             SELECT u.id,t.id,CURRENT_TIMESTAMP FROM users u CROSS JOIN terms_documents t WHERE u.email='survey@example.com'

@@ -200,9 +200,9 @@ export function SettingsPage() {
           if (nickname !== name) await updateMe.mutateAsync({ nickname })
           useProfileStore.getState().save(look)
         } else {
-          const token = useAuthStore.getState().token
-          const patch = await createProfilePatch(nickname, look, token)
-          if (!token || useAuthStore.getState().token !== token) throw new Error('로그인 상태가 바뀌었어요. 다시 시도해 주세요.')
+          const sessionKey = useAuthStore.getState().sessionKey
+          const patch = await createProfilePatch(nickname, look, sessionKey)
+          if (!sessionKey || useAuthStore.getState().sessionKey !== sessionKey) throw new Error('로그인 상태가 바뀌었어요. 다시 시도해 주세요.')
           await updateMe.mutateAsync(patch)
         }
       }} onSaved={() => notify('프로필을 바꿨어요.')} />

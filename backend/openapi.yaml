@@ -79,13 +79,29 @@ paths:
   /api/auth/refresh:
     post:
       tags: [인증 · 내 정보]
-      summary: (선택) 토큰 재발급 — 재발급 토큰은 httpOnly 쿠키
+      summary: 액세스 토큰 자동 재발급
+      description: 재발급 쿠키를 교체하며 최초 세션 만료 시각은 유지합니다.
       security: []
+      parameters:
+        - in: header
+          name: X-Zip-Session
+          required: true
+          description: 기존 액세스 토큰의 sid
+          schema: { type: string, pattern: '^[0-9]+$' }
+        - in: cookie
+          name: zip_refresh
+          required: true
+          schema: { type: string }
       responses:
         '200':
           description: 새 토큰
-          content: { application/json: { schema: { type: object, properties: { accessToken: { type: string } } } } }
+          headers:
+            Set-Cookie:
+              description: 갱신된 HttpOnly 재발급 쿠키
+              schema: { type: string }
+          content: { application/json: { schema: { type: object, required: [accessToken], properties: { accessToken: { type: string } } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: 이용 정지된 계정, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /api/auth/me:
     get:
       tags: [인증 · 내 정보]
@@ -1493,6 +1509,10 @@ components:
   responses:
     Auth:
       description: 로그인 성공
+      headers:
+        Set-Cookie:
+          description: HttpOnly 재발급 쿠키
+          schema: { type: string }
       content:
         application/json:
           schema:
