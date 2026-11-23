@@ -23,6 +23,8 @@
 /db/exports/
 /db/private/
 /db/data/
+/PRIORITY_2_VERIFICATION.md
+/REAL_MYSQL_UI_VERIFICATION.md
 *.dump
 *.bak
 *.sql.gz

@@ -1,0 +1,32 @@
+name: Second Brain review
+
+on:
+  pull_request_target:
+    branches: [dev]
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+
+concurrency:
+  group: second-brain-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Keep the trusted dev tree checked out. The PR is read from Git objects only.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check sensitive content and Second Brain coverage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/second-brain.mjs
