@@ -1,4 +1,7 @@
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/lib/apiClient'
+import { isMockApi } from '@/lib/apiMode'
+import { queryClient } from '@/lib/queryClient'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { useHousingSurveyStore } from '@/features/onboarding/store'
 import { useLoanStore } from '@/features/loan/store'
@@ -8,26 +11,29 @@ import { useLifeStore } from './store'
 
 type Contract = { kind: ContractKind; deposit: number; mgmtIncluded: boolean; mgmtFee: number; contractFee: number }
 export type HomeInput = Contract & { homeAddress?: string; rent: number; rentDay: number; moveIn: string; contractEnd: string; loan: LoanTerms | null }
+export type SurveyLoanDraft = Partial<LoanTerms>
 type HomeResponse = {
   settings: { rent: number; rentDay: number; moveIn: string; contractEnd: string; homeAddress: string }
   contract: Contract | null
   loan: HousingLoan | null
-  loanDraft?: { principal?: number; annualRate?: number; paymentDay?: number; startDate?: string } | null
+  loanDraft?: SurveyLoanDraft | null
   charges: LoanCharge[]
   managementBill: { id: string; name: string; defaultAmount: number; tag: string; paid: boolean; month: string } | null
 }
-let revision = 0
-let pendingLoad: { id: string; sessionKey: string; revision: number; promise: Promise<HomeResponse> } | null = null
+type HomeOwner = { id: string; sessionKey: string }
 let pendingWrite: { sessionKey: string; promise: Promise<HomeResponse> } | null = null
 
-function session() {
+function session(): HomeOwner {
   const { user, sessionKey } = useAuthStore.getState()
   if (!user || !sessionKey) throw new Error('로그인 후 이용해 주세요.')
   return { id: user.id, sessionKey }
 }
-function apply(data: HomeResponse, owner: ReturnType<typeof session>, request: number) {
+function assertCurrent(owner: HomeOwner) {
   const current = useAuthStore.getState()
-  if (current.sessionKey !== owner.sessionKey || current.user?.id !== owner.id || request !== revision) throw new Error('로그인 상태 또는 내 집 정보가 변경됐어요. 다시 불러와 주세요.')
+  if (current.sessionKey !== owner.sessionKey || current.user?.id !== owner.id) throw new Error('로그인 상태가 변경됐어요. 다시 불러와 주세요.')
+}
+function apply(data: HomeResponse, owner: HomeOwner) {
+  assertCurrent(owner)
   const settings = useLifeStore.getState().settings
   useLifeStore.getState().saveSettings({ ...settings, ...(data.contract ? { rent: Number(data.settings.rent), rentDay: data.settings.rentDay,
     moveIn: data.settings.moveIn, contractEnd: data.settings.contractEnd } : {}),
@@ -51,24 +57,59 @@ function apply(data: HomeResponse, owner: ReturnType<typeof session>, request: n
   ] }))
 }
 
-export async function loadHomeInfo() {
-  const owner = session()
-  if (pendingWrite?.sessionKey === owner.sessionKey) return pendingWrite.promise
-  if (pendingLoad?.id === owner.id && pendingLoad.sessionKey === owner.sessionKey && pendingLoad.revision === revision) return pendingLoad.promise
-  const request = ++revision
-  const promise = apiClient.get<HomeResponse>('/me/home-info').then(({ data }) => {
-    apply(data, owner, request)
-    return data
-  }).finally(() => { if (pendingLoad?.revision === request) pendingLoad = null })
-  pendingLoad = { ...owner, revision: request, promise }
-  return promise
+const homeInfoKey = (owner: HomeOwner | null) => ['home-info', owner?.id, owner?.sessionKey] as const
+
+function homeInfoOptions(owner: HomeOwner | null) {
+  return queryOptions({
+    queryKey: homeInfoKey(owner),
+    enabled: !!owner,
+    retry: false,
+    queryFn: async ({ signal }) => {
+      if (!owner) throw new Error('로그인 후 이용해 주세요.')
+      assertCurrent(owner)
+      if (pendingWrite?.sessionKey === owner.sessionKey) {
+        try {
+          return await pendingWrite.promise
+        } catch {
+          signal.throwIfAborted()
+          assertCurrent(owner)
+        }
+      }
+      const { data } = await apiClient.get<HomeResponse>('/me/home-info', { signal })
+      signal.throwIfAborted()
+      apply(data, owner)
+      return data
+    },
+  })
 }
+
+export function useHomeInfo() {
+  const user = useAuthStore((s) => s.user)
+  const sessionKey = useAuthStore((s) => s.sessionKey)
+  return useQuery(homeInfoOptions(!isMockApi && user && user.role !== 'ADMIN' && sessionKey ? { id: user.id, sessionKey } : null))
+}
+
+export async function loadHomeInfo({ reset = false } = {}) {
+  const owner = session()
+  const options = homeInfoOptions(owner)
+  if (reset) void queryClient.resetQueries({ queryKey: options.queryKey, exact: true })
+  if (pendingWrite?.sessionKey === owner.sessionKey) return pendingWrite.promise
+  return queryClient.fetchQuery({ ...options, staleTime: 0 })
+}
+
+export function removeHomeInfo(id: string, sessionKey: string) {
+  queryClient.removeQueries({ queryKey: homeInfoKey({ id, sessionKey }), exact: true })
+}
+
 async function writeHomeInfo(path: string, input: HomeInput | { loan: LoanTerms | null }) {
   const owner = session()
   if (pendingWrite?.sessionKey === owner.sessionKey) throw new Error('내 집 정보를 저장하고 있어요. 잠시 후 다시 시도해 주세요.')
-  const request = ++revision
-  const promise = apiClient.put<HomeResponse>(path, input).then(({ data }) => {
-    apply(data, owner, request)
+  const { queryKey } = homeInfoOptions(owner)
+  const promise = apiClient.put<HomeResponse>(path, input).then(async ({ data }) => {
+    // 저장 전에 시작한 조회가 늦게 도착해도 저장 결과를 덮어쓰지 않는다.
+    await queryClient.cancelQueries({ queryKey, exact: true })
+    apply(data, owner)
+    queryClient.setQueryData(queryKey, data)
     return data
   }).finally(() => { if (pendingWrite?.promise === promise) pendingWrite = null })
   pendingWrite = { sessionKey: owner.sessionKey, promise }

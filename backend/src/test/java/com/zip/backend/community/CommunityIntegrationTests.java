@@ -55,6 +55,29 @@ class CommunityIntegrationTests {
         return JsonPath.read(response, "$.id");
     }
 
+    @Test void myPostCountUsesTheSignedInAccountAcrossLogins() throws Exception {
+        String mapo = login("mapo01"), yongsan = login("yongsan1");
+        String visible = write(mapo, "FREE", "첫 번째 글", "내용");
+        String hidden = write(mapo, "TIP", "숨김 글", "내용");
+        String deleted = write(mapo, "FREE", "삭제한 글", "내용");
+        write(mapo, "TOWN", "두 번째 글", "내용");
+        write(yongsan, "TIP", "다른 회원 글", "내용");
+        jdbc.update("UPDATE posts SET status = 'HIDDEN' WHERE id = ?", Long.parseLong(hidden));
+        call(mapo, delete("/api/posts/{id}", deleted), null).andExpect(status().isNoContent());
+        call(yongsan, post("/api/posts/{id}/comments", visible), "{\"body\":\"댓글이에요\"}").andExpect(status().isCreated());
+
+        String path = "/api/posts/my-count";
+        mvc.perform(get(path)).andExpect(status().isUnauthorized());
+        call(mapo, get(path).param("userId", "2"), null).andExpect(status().isOk()).andExpect(jsonPath("$.count").value(2));
+        call(yongsan, get(path), null).andExpect(status().isOk()).andExpect(jsonPath("$.count").value(1));
+        String secondMapoLogin = login("mapo01");
+        call(secondMapoLogin, get(path), null).andExpect(status().isOk()).andExpect(jsonPath("$.count").value(2));
+        call(login("nowhere1"), get(path), null).andExpect(status().isOk()).andExpect(jsonPath("$.count").value(0));
+
+        call(secondMapoLogin, delete("/api/posts/{id}", visible), null).andExpect(status().isNoContent());
+        call(secondMapoLogin, get(path), null).andExpect(status().isOk()).andExpect(jsonPath("$.count").value(1));
+    }
+
     @Test void neighborsShowMyRegionAndNeighborNames() throws Exception {
         // 마포구(2) 이웃: 용산구(3, community-fixture) + 다른 시 · 도의 고양시 → 같은 시 · 도 먼저
         jdbc.update("INSERT INTO regions (id, parent_id, name, level) VALUES (20, NULL, '경기도', 1), (21, 20, '고양시', 2)");

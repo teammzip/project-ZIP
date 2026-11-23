@@ -61,8 +61,6 @@ public class MapService {
     /** 응답 장소 한 곳. 카카오 장소는 DB 번호가 없어 id 가 "kakao:카카오장소id" */
     record Item(String id, MapRepository.PlaceRow row) {}
 
-    static final String KAKAO_ID = "kakao:";
-
     public PlaceResult places(long userId, String regionId, String category, String q, String filter, Double lat, Double lon, boolean wide) {
         var keyword = q == null || q.isBlank() ? null : q.trim();
         if (keyword != null && keyword.length() > 40) throw new ApiException(400, "검색어는 40자 이내로 입력해 주세요.");
@@ -120,8 +118,7 @@ public class MapService {
         try {
             var seen = new HashSet<String>();
             return kakaoPlaces(userId, kind, keyword, center, false, cell).stream()
-                .filter(item -> KAKAO_PLACE_ID.matcher(item.id().substring(KAKAO_ID.length())).matches())
-                .map(item -> new NearbyPlace(item.id().substring(KAKAO_ID.length()), item.row().name(), item.row().address(),
+                .map(item -> new NearbyPlace(KakaoPlaceId.fromKey(item.id()), item.row().name(), item.row().address(),
                     (long) Math.ceil(meters(lat, lon, item.row().lat(), item.row().lon())),
                     item.row().lat(), item.row().lon(), item.row().category()))
                 .filter(place -> place.distanceMeters() <= KAKAO_RADIUS)
@@ -163,7 +160,7 @@ public class MapService {
         }
         var items = new ArrayList<Item>();
         for (var doc : docs) {
-            if (doc.id() == null || doc.x() == null || doc.y() == null || doc.place_name() == null || doc.place_name().isBlank()) continue;
+            if (!KakaoPlaceId.isValid(doc.id()) || doc.x() == null || doc.y() == null || doc.place_name() == null || doc.place_name().isBlank()) continue;
             double y, x;
             try { y = Double.parseDouble(doc.y()); x = Double.parseDouble(doc.x()); }
             catch (NumberFormatException error) { continue; }
@@ -173,7 +170,7 @@ public class MapService {
             var parts = doc.category_name() == null ? new String[0] : doc.category_name().split(">");
             var description = parts.length == 0 ? "" : parts[parts.length - 1].trim();
             var address = doc.road_address_name() == null || doc.road_address_name().isBlank() ? doc.address_name() : doc.road_address_name();
-            items.add(new Item(KAKAO_ID + doc.id(), new MapRepository.PlaceRow(0, name, doc.place_name(), description, y, x,
+            items.add(new Item(KakaoPlaceId.toKey(doc.id()), new MapRepository.PlaceRow(0, name, doc.place_name(), description, y, x,
                 blankToNull(address), blankToNull(doc.phone()), null, null, 0)));
         }
         return items;
@@ -214,27 +211,26 @@ public class MapService {
     public List<String> favorites(long userId) {
         var ids = new ArrayList<String>();
         repository.favorites(userId).forEach(id -> ids.add(Long.toString(id)));
-        repository.kakaoFavorites(userId).forEach(f -> ids.add(KAKAO_ID + f.kakaoPlaceId()));
+        repository.kakaoFavorites(userId).forEach(f -> ids.add(KakaoPlaceId.toKey(f.kakaoPlaceId())));
         return ids;
     }
 
     /** 저장한 카카오 장소 (저장 목록에 보일 이름 · 종류). 지도 핀용 좌표는 없음 */
     public List<Map<String, String>> kakaoFavorites(long userId) {
         return repository.kakaoFavorites(userId).stream().map(f -> Map.of(
-            "id", KAKAO_ID + f.kakaoPlaceId(), "name", f.name(), "category", f.category())).toList();
+            "id", KakaoPlaceId.toKey(f.kakaoPlaceId()), "name", f.name(), "category", f.category())).toList();
     }
 
     /** 한 사람이 저장할 수 있는 카카오 장소 수 */
     static final int KAKAO_FAVORITE_MAX = 200;
-    private static final Pattern KAKAO_PLACE_ID = Pattern.compile("[0-9]{1,50}");
 
     @Transactional
     public void addFavorite(long userId, String placeId, MapRequests.KakaoFavorite kakaoPlace) {
-        if (placeId == null || !placeId.startsWith(KAKAO_ID)) {
+        var kakaoPlaceId = KakaoPlaceId.fromKey(placeId);
+        if (kakaoPlaceId == null) {
             repository.addFavorite(userId, existingPlace(placeId).id());
             return;
         }
-        var kakaoPlaceId = kakaoPlaceId(placeId);
         var name = kakaoPlace == null || kakaoPlace.name() == null ? "" : kakaoPlace.name().strip();
         if (name.isEmpty() || name.length() > 60 || CONTROL.matcher(name).find()) throw new ApiException(400, "장소 이름(name)을 확인해 주세요.");
         var category = kakaoPlace.category() == null ? "" : kakaoPlace.category().strip();
@@ -250,7 +246,8 @@ public class MapService {
     public void removeFavorite(long userId, String placeId) {
         var key = placeKey(placeId);
         repository.setPlaceListMembership(userId, key, List.of()); // 모든 리스트에서도 뺌
-        if (key.startsWith(KAKAO_ID)) repository.removeKakaoFavorite(userId, key.substring(KAKAO_ID.length()));
+        var kakaoPlaceId = KakaoPlaceId.fromKey(key);
+        if (kakaoPlaceId != null) repository.removeKakaoFavorite(userId, kakaoPlaceId);
         else repository.removeFavorite(userId, Long.parseLong(key));
     }
 
@@ -353,14 +350,7 @@ public class MapService {
 
     /** 장소 키: DB 장소 "12", 카카오 장소 "kakao:123" (형식이 틀리면 404) */
     private static String placeKey(String placeId) {
-        if (placeId != null && placeId.startsWith(KAKAO_ID)) return KAKAO_ID + kakaoPlaceId(placeId);
-        return Long.toString(id(placeId));
-    }
-
-    private static String kakaoPlaceId(String placeId) {
-        var id = placeId.substring(KAKAO_ID.length());
-        if (!KAKAO_PLACE_ID.matcher(id).matches()) throw new ApiException(404, "장소를 찾을 수 없어요.");
-        return id;
+        return KakaoPlaceId.fromKey(placeId) != null ? placeId : Long.toString(id(placeId));
     }
 
     public Map<String, List<String>> mapSettings(long userId) {
@@ -397,9 +387,6 @@ public class MapService {
     }
 
     private static long id(String placeId) {
-        if (placeId != null && placeId.startsWith(KAKAO_ID)) {
-            throw new ApiException(400, "카카오 검색 장소는 여기서 쓸 수 없어요.");
-        }
         try {
             long id = Long.parseLong(placeId);
             if (id > 0) return id;

@@ -4,9 +4,6 @@ import type { PlaceItem } from './data/places'
 import type { PlaceList } from './store'
 import type { MapPoint } from './location'
 
-/** 카카오 검색 장소의 id ("kakao:카카오장소id"). 장소 정보는 서버 DB 에 없어서 저장 · 리뷰 때 이름을 같이 보내요 */
-export const isKakaoPlace = (id: string) => id.startsWith('kakao:')
-
 /** 서버가 카카오 대신 DB 장소를 준 이유 (응답 헤더 X-Place-Notice) → 화면 안내 문구 */
 const PLACE_NOTICES: Record<string, string> = {
   'user-limit': '검색을 너무 자주 했어요. 1분 뒤에 다시 찾아 주세요. 지금은 저장된 장소만 보여 드려요.',

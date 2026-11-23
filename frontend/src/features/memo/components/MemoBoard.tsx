@@ -1,21 +1,25 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button, Modal } from '@/components/ui'
 import { cx } from '@/lib/cx'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { useToday } from '@/lib/useToday'
-import { apiClient, getErrorMessage } from '@/lib/apiClient'
-import { isMockApi } from '@/lib/apiMode'
+import { getErrorMessage } from '@/lib/apiClient'
 import { MEMO_COLORS } from '../constants'
 import { colorOf, previewLines, searchText, sortMemos, titleOf, whenText } from '../lib'
 import { useMemoStore } from '../store'
+import { completeLedgerMemo } from '../sync'
 import type { Memo, MemoFolder } from '../types'
 import { useMemoFolders } from '../folders'
 import styles from './Memo.module.css'
 
 /** 메모장: PC 는 왼쪽 목록 | 오른쪽 쓰기, 모바일은 목록 → 누르면 쓰기 화면.
  * 열린 메모는 주소의 ?id= 로 정해서 홈 위젯에서 바로 열 수 있음. 쓰는 대로 자동 저장 */
-export function MemoBoard({ editableLedgerMemoId, saveAction }: { editableLedgerMemoId?: string; saveAction?: ReactNode } = {}) {
+export function MemoBoard({ editableLedgerMemoId, onLedgerMemoSaved, onLedgerMemoEdit }: {
+  editableLedgerMemoId?: string
+  onLedgerMemoSaved?: (memo: Memo) => void
+  onLedgerMemoEdit?: (memo: Memo) => void
+} = {}) {
   const memos = useMemoStore((s) => s.memos)
   const add = useMemoStore((s) => s.add)
   const [params, setParams] = useSearchParams()
@@ -127,7 +131,7 @@ export function MemoBoard({ editableLedgerMemoId, saveAction }: { editableLedger
         {current?.draft && <p role="status">작성 중인 임시 메모예요. ‘저장’을 누르면 일반 메모로 전환돼요.</p>}
         {current?.ledgerContext && !editableLedgerMemoId && <p>가계부 · {current.ledgerContext}</p>}
         {current ? (
-          <MemoEditor key={current.id} memo={current} folders={folders.folders} foldersReady={!folders.loading && !folders.error} onBack={() => open(null)} onDeleted={() => open(null)} saveAction={saveAction} />
+          <MemoEditor key={current.id} memo={current} folders={folders.folders} foldersReady={!folders.loading && !folders.error} onBack={() => open(null)} onDeleted={() => open(null)} onSaved={onLedgerMemoSaved} onEdit={onLedgerMemoEdit} />
         ) : (
           <div className={styles.empty}>
             <span aria-hidden="true">📝</span>
@@ -154,7 +158,10 @@ export function MemoBoard({ editableLedgerMemoId, saveAction }: { editableLedger
   )
 }
 
-function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, saveAction }: { memo: Memo; folders: MemoFolder[]; foldersReady: boolean; onBack: () => void; onDeleted: () => void; saveAction?: ReactNode }) {
+function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, onSaved, onEdit }: {
+  memo: Memo; folders: MemoFolder[]; foldersReady: boolean; onBack: () => void; onDeleted: () => void
+  onSaved?: (memo: Memo) => void; onEdit?: (memo: Memo) => void
+}) {
   const update = useMemoStore((s) => s.update)
   const remove = useMemoStore((s) => s.remove)
   const [confirmDel, setConfirmDel] = useState(false)
@@ -165,15 +172,24 @@ function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, saveAction
   const pendingSave = useRef(false)
   const itemRefs = useRef<Array<HTMLInputElement | null>>([])
   const now = useToday().getTime()
-  const set = (patch: Partial<Memo>) => { setSaved(false); update(memo.id, patch) }
+  const set = (patch: Partial<Memo>) => {
+    if (pendingSave.current) return
+    setSaved(false)
+    update(memo.id, patch)
+    const edited = useMemoStore.getState().memos.find((entry) => entry.id === memo.id)
+    if (edited && onEdit) {
+      try { onEdit(edited) }
+      catch { setSaveError('작성 중인 내용을 이 탭에 보관하지 못했어요. 화면을 이동하기 전에 저장해 주세요.') }
+    }
+  }
   const save = async () => {
     if (pendingSave.current) return
     pendingSave.current = true; setSaving(true); setSaveError(''); setSaved(false)
     try {
-      if (!isMockApi) await apiClient.patch(`/memos/${memo.id}`, { title: memo.title, body: memo.body, color: memo.color, pinned: memo.pinned, checklist: memo.checklist, items: memo.items, folderId: memo.folderId ?? '', complete: true })
-      update(memo.id, { draft: false })
+      const completed = await completeLedgerMemo(memo.id)
+      onSaved?.(completed)
       setSaved(true)
-    } catch (cause) { setSaveError(getErrorMessage(cause, '메모를 저장하지 못했어요.')) }
+    } catch (cause) { setSaveError(getErrorMessage(cause, '메모를 저장하지 못했어요. 다시 시도해 주세요.')) }
     finally { pendingSave.current = false; setSaving(false) }
   }
 
@@ -198,7 +214,7 @@ function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, saveAction
   return (
     <div className={styles.edit}>
       <div className={styles.tools}>
-        <button type="button" className={styles.back} onClick={onBack} aria-label="목록으로">
+        <button type="button" className={styles.back} disabled={saving} onClick={onBack} aria-label="목록으로">
           ‹ 목록
         </button>
         <div className={styles.colors} role="group" aria-label="메모 색">
@@ -210,32 +226,33 @@ function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, saveAction
               style={{ background: c.bg, borderColor: c.line }}
               aria-label={c.name}
               aria-pressed={memo.color === c.name}
+              disabled={saving}
               onClick={() => set({ color: c.name })}
             />
           ))}
         </div>
         <span className={styles.grow} />
-        <button type="button" className={styles.tool} disabled={!foldersReady} onClick={() => setMoving(true)} aria-label="폴더로 이동" aria-haspopup="dialog" aria-expanded={moving} title="폴더로 이동">
+        <button type="button" className={styles.tool} disabled={saving || !foldersReady} onClick={() => setMoving(true)} aria-label="폴더로 이동" aria-haspopup="dialog" aria-expanded={moving} title="폴더로 이동">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M20 10V7a2 2 0 0 0-2-2h-6l-2-2H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7" />
             <path d="M13 16h9m-4-4 4 4-4 4" />
           </svg>
         </button>
-        <button type="button" className={styles.tool} aria-pressed={memo.pinned} onClick={() => set({ pinned: !memo.pinned })} title="맨 위에 고정">
+        <button type="button" className={styles.tool} aria-pressed={memo.pinned} disabled={saving} onClick={() => set({ pinned: !memo.pinned })} title="맨 위에 고정">
           📌 <span>고정</span>
         </button>
-        <button type="button" className={styles.tool} aria-pressed={memo.checklist} onClick={toggleChecklist} title="체크리스트로 바꾸기">
+        <button type="button" className={styles.tool} aria-pressed={memo.checklist} disabled={saving} onClick={toggleChecklist} title="체크리스트로 바꾸기">
           ☑️ <span>{memo.checklist ? '글로 바꾸기' : '체크리스트'}</span>
         </button>
-        <button type="button" className={cx(styles.tool, styles.danger)} onClick={() => setConfirmDel(true)} title="메모 삭제">
+        <button type="button" className={cx(styles.tool, styles.danger)} disabled={saving} onClick={() => setConfirmDel(true)} title="메모 삭제">
           🗑️ <span>삭제</span>
         </button>
-        {saveAction ?? (memo.ledgerContext ? <Button disabled={saving} onClick={() => void save()}>{saving ? '저장 중' : '저장'}</Button> : null)}
+        {(onSaved || memo.ledgerContext) && <Button disabled={saving} onClick={() => void save()}>{saving ? '저장 중' : '저장'}</Button>}
       </div>
       {saveError && <p role="alert">{saveError}</p>}
       {saved && <p role="status">저장했어요.</p>}
 
-      <input className={styles.title} value={memo.title} onChange={(e) => set({ title: e.target.value })} maxLength={60} placeholder="제목" aria-label="메모 제목" />
+      <input className={styles.title} value={memo.title} readOnly={saving} onChange={(e) => set({ title: e.target.value })} maxLength={60} placeholder="제목" aria-label="메모 제목" />
 
       {memo.checklist ? (
         <div className={styles.items}>
@@ -244,6 +261,7 @@ function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, saveAction
               <input
                 type="checkbox"
                 checked={it.done}
+                disabled={saving}
                 aria-label={`${it.text || '항목'} 완료`}
                 onChange={(e) => setItems(memo.items.map((x, j) => (j === i ? { ...x, done: e.target.checked } : x)))}
               />
@@ -253,6 +271,7 @@ function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, saveAction
                 }}
                 className={styles.checkText}
                 value={it.text}
+                readOnly={saving}
                 maxLength={100}
                 placeholder="할 일"
                 onChange={(e) => setItems(memo.items.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))}
@@ -270,21 +289,21 @@ function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, saveAction
                   }
                 }}
               />
-              <button type="button" className={styles.checkX} aria-label="항목 지우기" onClick={() => setItems(memo.items.filter((_, j) => j !== i))}>
+              <button type="button" className={styles.checkX} aria-label="항목 지우기" disabled={saving} onClick={() => setItems(memo.items.filter((_, j) => j !== i))}>
                 ×
               </button>
             </div>
           ))}
-          <button type="button" className={styles.checkAdd} onClick={() => setItems([...memo.items, { text: '', done: false }], memo.items.length)}>
+          <button type="button" className={styles.checkAdd} disabled={saving} onClick={() => setItems([...memo.items, { text: '', done: false }], memo.items.length)}>
             + 항목 추가
           </button>
         </div>
       ) : (
-        <textarea className={styles.body} value={memo.body} onChange={(e) => set({ body: e.target.value })} maxLength={5000} placeholder="내용을 적어 보세요" aria-label="메모 내용" />
+        <textarea className={styles.body} value={memo.body} readOnly={saving} onChange={(e) => set({ body: e.target.value })} maxLength={5000} placeholder="내용을 적어 보세요" aria-label="메모 내용" />
       )}
 
       <p className={styles.saved} aria-live="polite">
-        자동 저장됨 · {whenText(memo.updatedAt, now)}
+        {saving ? '저장 중…' : saveError ? '위의 저장 상태를 확인해 주세요.' : `${memo.draft ? '임시 편집' : '자동 저장됨'} · ${whenText(memo.updatedAt, now)}`}
       </p>
 
       <Modal open={moving} onClose={() => setMoving(false)} title="폴더로 이동">

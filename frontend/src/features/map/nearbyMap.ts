@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import type { NearbyPlace } from './api'
 import type { PlaceItem } from './data/places'
+import { toKakaoPlaceKey } from './kakaoPlaceId'
 import { readMapPoint, type MapPoint } from './location'
 
 export type NearbyMapResult = {
@@ -30,8 +31,9 @@ useAuthStore.subscribe((next, previous) => {
 export function nearbyMapPlaces(places: NearbyPlace[]): NearbyMapResult['places'] {
   return places.flatMap((place) => {
     const point = readMapPoint(place)
-    return point && /^\d+$/.test(place.id) ? [{
-      ...point, id: `kakao:${place.id}`, n: place.name, d: place.address ?? '',
+    const id = toKakaoPlaceKey(place.id)
+    return point && id ? [{
+      ...point, id, n: place.name, d: place.address ?? '',
       cat: place.category || '기타', distanceMeters: place.distanceMeters,
     }] : []
   })

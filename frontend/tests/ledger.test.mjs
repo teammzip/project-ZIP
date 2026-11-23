@@ -29,7 +29,7 @@ function view(result = {}, user = '1', kind = 'spend') {
   const exports = {}, options = [], buttons = [], navigations = []
   const card = ({ title, actions, children }) => React.createElement('section', null, React.createElement('h2', null, title), actions, children)
   vm.runInNewContext(compile('../src/features/life/components/ServerMoneyLog.tsx'), { exports, Intl, Date, require: (name) => {
-    if (name === 'react') return { useState: (initial) => [typeof initial === 'function' ? initial() : initial, () => {}], useRef: () => ({ current: false }) }
+    if (name === 'react') return { useState: (initial) => [typeof initial === 'function' ? initial() : initial, () => {}], useRef: () => ({ current: false }), useEffect() {} }
     if (name === 'react-router-dom') return {
       Link: ({ to, children }) => React.createElement('a', { href: to }, children),
       useNavigate: () => (to) => navigations.push(to),
@@ -43,7 +43,7 @@ function view(result = {}, user = '1', kind = 'spend') {
     if (name === './LedgerCategoryDialog') return { LedgerCategoryDialog: () => null }
     if (name === '../ledgerApi') return { getLedger() {} }
     if (name === '../salaryApi') return { getSalary() {} }
-    if (name === '../ledgerMemoNavigation') return { returnedMemoDraft: () => undefined }
+    if (name === '../ledgerMemoNavigation') return { returnedMemoDraft: () => undefined, rememberLedgerValues() {} }
     if (name === '@/components/ui') return {
       Card: card,
       // block 은 진짜 <button> 에 넘기지 않으려고 꺼내기만 함 (_ = 일부러 안 씀)

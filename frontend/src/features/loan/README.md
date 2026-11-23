@@ -17,7 +17,7 @@
 
 ## 저장과 운영
 
-서버 모드에서 첫 주거 설문과 내 집 정보는 `/api/me/home-info`를 사용하고, 고정 지출의 대출 카드는 `/api/me/home-info/loan`을 사용한다. 다시 로그인하면 서버가 저장한 대출 조건과 이자 내역을 복원한다. 기존 브라우저 데이터는 자동으로 이관하지 않는다. 모의 모드의 설정·내역은 Zustand persist의 `zip-loan-interest`에 저장된다.
+서버 모드에서 첫 주거 설문(`PUT /api/me/housing-onboarding`), 내 집 정보(`PUT /api/me/home-info`), 고정 지출의 대출 카드(`PUT /api/me/home-info/loan`)에서 저장한 정보는 회원·로그인 세션별 `GET /api/me/home-info` 공통 조회에 반영된다. 다시 로그인하면 서버가 저장한 대출 조건과 이자 내역을 복원한다. 기존 브라우저 데이터는 자동으로 이관하지 않는다. 모의 모드의 설정·내역은 Zustand persist의 `zip-loan-interest`에 저장된다.
 
 ## 검증
 

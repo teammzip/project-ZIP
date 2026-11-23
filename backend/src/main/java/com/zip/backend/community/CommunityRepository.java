@@ -108,6 +108,10 @@ public class CommunityRepository {
         return ids;
     }
 
+    public long countVisiblePostsByUser(long userId) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM posts WHERE user_id = ? AND status = 'VISIBLE'", Long.class, userId);
+    }
+
     /** 보이는 글 목록, 새 글부터. regions 가 null 이면 전체 동네. limit+1 개를 읽어 다음 쪽이 있는지 판단은 부르는 쪽에서 */
     public List<PostRow> posts(long viewerId, List<Long> regions, String category, String keyword, int limit, int offset) {
         var sql = new StringBuilder(POST_SQL).append(" WHERE p.status = 'VISIBLE'");

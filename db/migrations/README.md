@@ -14,7 +14,7 @@ mysql -u root -p --default-character-set=utf8mb4 zip --execute="source db/migrat
 | 파일 | 하는 일 | 다시 실행 |
 |---|---|:---:|
 | `20261031_current_project.sql` | 처음 35개 표 설계 → 10-31 설계로 전환 (아래 주의 1) | ❌ |
-| `20261031_02_event_anniversaries.sql` | 일정에 기념일 · 매년 반복 칸 (`is_anniversary` · `repeat_yearly`) | ❌ |
+| `20261031_02_event_anniversaries.sql` | 기념일 · 매년 반복 칸 추가 및 구형 칸 정리 ([아래 안내](#구형-기념일-컬럼-정리)) | ⭕ |
 | `20261101_housing_and_loan.sql` | 주거 설문 · 전세 대출 · 월별 이자 표, 금액 칸 확장 (아래 주의 2) | ❌ |
 | `20261102_requirements_hardening.sql` | 신고 중복 방지 · 신고 당시 내용 · 위치 출처 칸 (아래 주의 3) | ❌ |
 | `20261107_life_categories.sql` | 개인 분류 설정 · 집 주소 · 분류 칸 길이 | ❌ |
@@ -54,8 +54,6 @@ mysql -u root -p --default-character-set=utf8mb4 zip --execute="source db/migrat
 | `20261122_01_regions_nationwide.sql` | **데이터** — 전국 시도 16 · 시군구 233 (`regions`, 없는 것만 추가 · 지역 번호 그대로) | ⭕ |
 | `20261122_02_trash_schedules_nationwide.sql` | **데이터** — 쓰레기 배출표 6,218줄 (`trash_schedules` 를 모두 지우고 다시 넣음, 01 다음에 실행). 마지막에 `파일 줄 수 6218 · 넣은 줄 수 6218 · 지역 없음 0` 이면 정상 | ⭕ |
 | `20261122_04_region_neighbors_nationwide.sql` | **데이터** — 주변 동네 1,286줄 (`region_neighbors` 를 모두 지우고 다시 넣음, 01 다음에 실행). 육지 경계가 맞닿은 시 · 군 · 구끼리, OpenStreetMap 경계로 `db/tools/region_neighbors_import.py` 가 만듦. 마지막에 `파일 줄 수 1286 · 넣은 줄 수 1286 · 지역 없음 0` 이면 정상 | ⭕ |
-
-`20261101_event_anniversary.sql` 은 **실행하지 마세요**(폐기). 같은 기능을 다른 칸 이름(`is_anniv` · `is_yearly`)으로 만드는 옛 파일이에요. 이미 실행한 DB 는 그 두 칸을 정식 이름으로 `RENAME COLUMN` 하고 기념일 CHECK 를 추가해요 — 확인 없이 지우지 마세요.
 
 ## 꼭 알아야 할 주의
 
@@ -98,9 +96,14 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/migrations
 
 MySQL DDL은 암묵 커밋됩니다. 중간 실패 시 백업과 실제 스키마를 확인하고 실패 지점부터 복구해야 합니다. 이 파일은 재실행용·자동 롤백용이 아닙니다. 이전 할 일 ID를 참조하는 외부 시스템이 있다면 위 ID 변환을 함께 적용해야 합니다.
 
-# 2026-11-01 기념일 칸 (실행하지 않음)
+## 구형 기념일 컬럼 정리
 
-기념일 칸의 정식 이름은 `is_anniversary` · `repeat_yearly`이고, `20261031_02_event_anniversaries.sql`이 추가합니다. `20261101_event_anniversary.sql`(`is_anniv` · `is_yearly`)은 이름이 다른 중복 경로라 **DEPRECATED**입니다. 위쪽 안내대로 실행하지 마세요.
+**기념일 마이그레이션은 `20261031_02_event_anniversaries.sql`을 사용하고, 폐기된 `20261101_event_anniversary.sql`은 실행하지 마세요.**
+
+- `SHOW CREATE TABLE events`로 대상 DB의 컬럼을 확인하세요. 구형 컬럼(`is_anniv` · `is_yearly`)이 남아 있으면 정식 파일을 이미 실행한 DB에서도 다시 실행할 수 있어요. 백업하고 일정 쓰기를 중단한 뒤 대상 DB를 선택해 실행하세요.
+- 구형 컬럼만 있으면 값을 유지하면서 `is_anniversary` · `repeat_yearly`로 이름을 바꿔요. 양쪽 컬럼이 있으면 모든 행의 값이 일치할 때 구형 컬럼을 제거해요. 값이 다르면 `conflicting_rows`가 표시되고 중단돼요. 백업과 일정 원본을 확인해 양쪽의 값이 일치하도록 조정한 뒤 다시 실행하세요.
+- 완료 후 `SHOW CREATE TABLE events`에서 정식 컬럼 두 개와 `ck_events_anniversary_flags`를 확인하세요. 최신 `schema.sql`로 생성한 새 DB에는 이미 반영돼 있어요.
+
 # 2026-11-18 월별 고정 지출 납부 기한·사진 등록
 
 고지서 내용 식별 중복 차단에는 `20261118_03_bill_document_keys.sql`도 적용합니다. 기존 데이터를 변경하지 않고 회원별 문서 식별 해시·항목 연결 테이블을 추가합니다. 발행처·식별번호·청구 월 원문은 저장하지 않습니다.

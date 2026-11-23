@@ -89,6 +89,7 @@ export const communityApi = {
     const data = (await apiClient.get<{ items: ServerPost[]; hasNext: boolean }>('/posts', { params })).data
     return { items: data.items.map(toPost), hasNext: data.hasNext }
   },
+  myPostCount: async (signal: AbortSignal) => (await apiClient.get<{ count: number }>('/posts/my-count', { signal })).data.count,
   post: async (id: number) => toPost((await apiClient.get<ServerPost>(`/posts/${id}`)).data),
   recordView: (id: number) => apiClient.post(`/posts/${id}/views`),
   popularPosts: async () => (await apiClient.get<ServerPost[]>('/posts/popular')).data.map(toPost),

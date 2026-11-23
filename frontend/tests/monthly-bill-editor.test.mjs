@@ -25,7 +25,7 @@ function editor(bill, fail = false, confirm = true, resume) {
     if (name === '@tanstack/react-query') return { useQueryClient: () => ({ invalidateQueries: async () => { invalidations++ } }) }
     if (name === '../billsApi') return { registerMonthlyBill: save('create'), updateMonthlyBill: save('update'), deleteMonthlyBill: save('delete') }
     if (name === '@/features/auth') return { useAuthStore: (selector) => selector({ user: { id: '1' } }) }
-    if (name === '../ledgerMemoNavigation') return { returnedMemoDraft: () => resume, clearMemoDraft() {}, openLedgerMemo: (...args) => calls.push({ kind: 'memo', args }) }
+    if (name === '../ledgerMemoNavigation') return { returnedMemoDraft: () => resume, clearMemoDraft() {}, rememberLedgerValues() {}, openLedgerMemo: (...args) => calls.push({ kind: 'memo', args }) }
     if (name === '../ledgerCategories') return { useLedgerCategorySettings: () => ({ categories: [{ name: '공과금' }, { name: '통신' }], loading: false, failed: false }) }
     if (name === './LedgerCategoryDialog') return { LedgerCategoryDialog: () => null }
     if (name === '@/lib/apiClient') return { getErrorMessage: (error) => error.message }

@@ -22,8 +22,7 @@ const migrations = [...legacyMigrations, ...incrementalMigrations]
   .map(name => [`db/migrations/${name}`, read(`db/migrations/${name}`)])
 
 test('all supported migration files are included in the validation path', () => {
-  const deprecated = new Set(['20261101_event_anniversary.sql'])
-  const files = fs.readdirSync('db/migrations').filter(name => name.endsWith('.sql') && !deprecated.has(name)).sort()
+  const files = fs.readdirSync('db/migrations').filter(name => name.endsWith('.sql')).sort()
   assert.deepEqual([...legacyMigrations, ...incrementalMigrations, ...dataMigrations].sort(), files)
 })
 
@@ -62,8 +61,12 @@ test('all migrations produce the same columns, named keys and constraints as fre
       state.set(name, { columns: columns(body), definitions: definitions(body) })
     }
     // Include DDL guarded by an information_schema check and executed with PREPARE.
-    const ddl = migration.replace(/^\s*'(ALTER TABLE .+)'$/gm, (_, alter) =>
-      alter.replace(/''/g, "'") + ';')
+    const constraintFragments = new Map([...migration.matchAll(/^SET (@\w+) = '(ADD CONSTRAINT .+)';$/gm)]
+      .map(([, variable, constraint]) => [variable, constraint]))
+    const ddl = migration
+      .replace(/CONCAT\('(ALTER TABLE (?:[^']|'')*)',\s*(@\w+)\)/g, (expression, alter, variable) =>
+        constraintFragments.has(variable) ? alter.replace(/''/g, "'") + constraintFragments.get(variable) + ';' : expression)
+      .replace(/^\s*'(ALTER TABLE .+)'$/gm, (_, alter) => alter.replace(/''/g, "'") + ';')
     for (const alter of ddl.matchAll(/ALTER TABLE `?(\w+)`?\s+([\s\S]*?);/g)) {
       const table = state.get(alter[1])
       assert(table, `unknown table ${alter[1]}`)

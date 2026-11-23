@@ -32,21 +32,24 @@ function setup(initialSaved) {
   const authStore = (selector) => selector(auth)
   authStore.getState = () => auth
   authStore.subscribe = (listener) => { listeners.push(listener); return () => {} }
-  const storeExports = evaluate('../src/features/life/store.ts', {
-    '@/lib/date': dateApi,
-    './payments': paymentApi,
-    '@/features/map/location': pointApi,
-    '@/features/auth/store/authStore': { useAuthStore: authStore },
-    './data/seed': { seedBills: () => [], seedEvents: () => [], seedIncomes: () => [], seedSpends: () => [] },
-    './data/presets': { UNCATEGORIZED: '미분류', defaultCategories: () => [] },
-    './calendarHooks': { calendarHooks: { onOp: null, quiet: false }, quietly: (apply) => apply() },
-  }, {
+  const globals = {
     localStorage: {
       getItem: (key) => saved.get(key) ?? null,
       setItem: (key, value) => saved.set(key, value),
       removeItem: (key) => saved.delete(key),
     },
-  })
+  }
+  const authModule = { useAuthStore: authStore }
+  const storeExports = evaluate('../src/features/life/store.ts', {
+    '@/lib/accountStorage': evaluate('../src/lib/accountStorage.ts', { '@/features/auth/store/authStore': authModule }, globals),
+    '@/lib/date': dateApi,
+    './payments': paymentApi,
+    '@/features/map/location': pointApi,
+    '@/features/auth/store/authStore': authModule,
+    './data/seed': { seedBills: () => [], seedEvents: () => [], seedIncomes: () => [], seedSpends: () => [] },
+    './data/presets': { UNCATEGORIZED: '미분류', defaultCategories: () => [] },
+    './calendarHooks': { calendarHooks: { onOp: null, quiet: false }, quietly: (apply) => apply() },
+  }, globals)
   return {
     store: storeExports.useLifeStore,
     saved: () => Object.fromEntries(saved),

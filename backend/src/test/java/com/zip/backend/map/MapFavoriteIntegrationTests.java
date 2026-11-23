@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.time.Clock;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,7 @@ class MapFavoriteIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired PasswordEncoder passwords;
+    @Autowired MapRepository repository;
 
     @BeforeEach void seed() {
         String hash = passwords.encode("abcd123!");
@@ -86,6 +89,34 @@ class MapFavoriteIntegrationTests {
     private ResultActions review(String token, String placeId, String body) throws Exception {
         return mvc.perform(post("/api/places/{id}/reviews", placeId).header("Authorization", "Bearer " + token)
             .contentType("application/json").content(body));
+    }
+
+    @Test void kakaoSearchFavoriteAndReviewShareTheSamePlaceKey() throws Exception {
+        var kakao = new KakaoLocalClient("test") {
+            @Override public List<Document> category(String code, double lat, double lon, int radius) {
+                return List.of(
+                    new Document("10", "동네 편의점", "편의점", "CS2", null, null, null, "126.92", "37.55"),
+                    new Document("010", "동네 편의점", "편의점", "CS2", null, null, null, "126.92", "37.55"),
+                    new Document("invalid", "동네 편의점", "편의점", "CS2", null, null, null, "126.92", "37.55"));
+            }
+        };
+        var map = new MapService(repository, kakao, new KakaoQuota(Clock.systemUTC(), 30, 30_000));
+        var places = map.places(1, "2", "편의점", null, null, 37.55, 126.92, false).items();
+        assertEquals(List.of("kakao:10", "kakao:010"), places.stream().map(place -> place.get("id")).toList());
+        var key = (String) places.get(0).get("id");
+        var token = login("tester01");
+        save(token, key, "{\"name\":\"동네 편의점\",\"category\":\"편의점\"}").andExpect(status().isNoContent());
+        review(token, key, "{\"rating\":5,\"name\":\"동네 편의점\"}").andExpect(status().isNoContent());
+        review(token, "10", "{\"rating\":2}").andExpect(status().isNoContent());
+
+        mvc.perform(get("/api/me/place-favorites/kakao").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(key));
+        mvc.perform(get("/api/places/{id}/reviews", key).header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].rating").value(5));
+        mvc.perform(get("/api/places/review-summary").param("ids", "10,kakao:10,kakao:010").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[?(@.id == 'kakao:10')].rating").value(org.hamcrest.Matchers.contains(5.0)))
+            .andExpect(jsonPath("$[?(@.id == '10')].rating").value(org.hamcrest.Matchers.contains(2.0)));
     }
 
     @Test void kakaoPlaceReviewsAreSavedWithIdAndNameOnly() throws Exception {

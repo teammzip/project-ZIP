@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { apiClient } from '@/lib/apiClient'
 import { isMockApi } from '@/features/auth/api'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { useHousingSurveyStore } from '@/features/onboarding/store'
 import { useLifeStore } from './store'
+import { useHomeInfo } from './homeApi'
 import { deviceTimeZone } from './monthlyPeriod'
 import { registeredBillingAddress, resolveBillingTimeZone, type BillingTimeZone } from './billingTimeZone'
 import { addressTimeZone, locationTimeZone } from './billingTimeZoneApi'
@@ -15,13 +14,8 @@ export function useBillingTimeZone() {
   const sessionKey = useAuthStore((s) => s.sessionKey)
   const localHome = useLifeStore((s) => user ? s.settings.homeAddresses?.[user.id] ?? '' : '')
   const survey = useHousingSurveyStore((s) => s.survey)
-  const remote = useQuery({
-    queryKey: ['billing-address', user?.id, sessionKey],
-    queryFn: async ({ signal }) => (await apiClient.get<{ homeAddress: string }>('/me/settings', { signal })).data,
-    enabled: !isMockApi && !!user && !!sessionKey,
-    staleTime: 60000, gcTime: 0, retry: false,
-  })
-  const address = registeredBillingAddress(user, remote.data?.homeAddress ?? localHome, survey)
+  const remote = useHomeInfo()
+  const address = registeredBillingAddress(user, remote.data?.settings.homeAddress ?? localHome, survey)
   const label = address.label, lat = address.point?.lat, lon = address.point?.lon
   const key = JSON.stringify([user?.id, sessionKey, label, lat, lon])
   const authenticated = !!user && !!sessionKey

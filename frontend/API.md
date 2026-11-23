@@ -133,7 +133,8 @@
 
 ### 소셜 로그인
 1. 프론트가 `/api/oauth2/authorization/{kakao|google|naver}`로 이동 → 백엔드가 소셜 로그인 처리 (`social_accounts`). 공급자별 키는 `secrets/*.properties`에 있고, 키가 없는 공급자는 꺼져 있어요.
-2. 끝나면 `/oauth/callback#token=<accessToken>`으로 돌려보내기 → 프론트는 URL 토큰을 즉시 제거하고 `GET /api/auth/me` 호출. fragment는 프론트 서버의 요청 URL에 전송되지 않아요. 구버전 query 콜백은 배포 전환 중 읽을 수 있어요. 실패하면 `/oauth/callback?error=<문구>`.
+2. 끝나면 `/oauth/callback#token=<accessToken>`으로 돌려보내기 → 프론트는 URL 토큰을 즉시 제거하고 `GET /api/auth/me` 호출. fragment는 프론트 서버의 요청 URL에 전송되지 않아요. 실패하면 `/oauth/callback?error=<문구>`.
+   - OAuth 성공 콜백의 토큰은 URL fragment에만 넣으세요.
    - 같은 이메일로 가입한 다른 계정이 있으면 합치지 않고 오류(`EMAIL_EXISTS`)로 알려요. 카카오는 비즈 앱이 아니면 이메일이 없을 수 있고, 그래도 가입돼요.
 3. 처음 온 사람(`agreedAt: null`)은 동의 화면에서 `PATCH /api/auth/me`로 아래를 보내요
 ```json
@@ -165,9 +166,13 @@
 
 ### 내 집 정보 서버 연결 (2026-11-15)
 
-GET/PUT `/api/me/home-info`는 첫 주거 설문과 내 집 정보 폼에서 사용한다. 계약 유형·보증금·월세·관리비·전세 계약금·입주/종료월·주소·대출 조건을 저장한다. 모든 입력 금액은 원이며 응답 settings.rent는 기존 설정과 동일한 만원 단위다. 설문의 생년월일과 수입은 각각 `/api/me/profile-info`와 `/api/me/salary`에 저장한다.
+계약·주소·대출 정보는 `GET /api/me/home-info`로 조회한다. 서버 모드에서 내 집 정보, 고정 지출의 대출 카드와 시간대 계산은 `useHomeInfo`를 통해 회원·로그인 세션별 조회 캐시를 공유한다. 첫 주거 설문은 `PUT /api/me/housing-onboarding` 성공 후 같은 캐시를 다시 조회한다.
 
-PUT `/api/me/home-info/loan`은 전세 대출 카드에서 사용한다. 본문은 `{"loan":{"principal":120000000,"annualRate":4,"paymentDay":25,"startDate":"2026-11-01"}}` 형식이며 `{"loan":null}`은 자동 기록을 중지한다. 응답 형식은 GET `/api/me/home-info`와 같다. 회원 ID는 토큰에서 결정한다.
+내 집 정보 폼은 `PUT /api/me/home-info`로 계약 유형·보증금·월세·관리비·전세 계약금·입주/종료월·주소·대출 조건을 저장한다. 모든 입력 금액은 원이며 응답 `settings.rent`는 만원 단위다.
+
+전세 대출 카드는 `PUT /api/me/home-info/loan`을 사용한다. 본문은 `{"loan":{"principal":120000000,"annualRate":4,"paymentDay":25,"startDate":"2026-11-01"}}` 형식이며 `{"loan":null}`은 자동 기록을 중지한다. 내 집 정보와 대출 카드의 저장 응답은 공통 조회 캐시에 반영한다. 회원 ID는 토큰에서 결정한다.
+
+새 화면에서 내 집·대출 정보의 별도 조회 경로나 캐시를 만들지 마세요.
 
 ### 설정
 
@@ -475,6 +480,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
 | GET | `/api/posts?scope=here\|near\|all&category=TIP&q=&page=0` | — | `{ items: [post], hasNext }` |
+| GET | `/api/posts/my-count` | — | `{ count }` (로그인한 회원의 전체 공개 게시글 수) |
 | GET | `/api/posts/popular` | — | `[post]` (내 동네 공개 글, 조회 수순 최대 3개) |
 | GET | `/api/posts/neighbors` | — | `{ region: { id, name, sido } \| null, neighbors: [{ id, name, sido }] }` — "주변 동네" 탭 안내. 내 동네(`users.region_id`, 주거 설문 · 내 정보 주소로 정해짐)와 이웃 동네(`region_neighbors`, 같은 시 · 도 먼저 · 이름 순). `scope=near` 글 목록과 같은 기준. 동네가 없으면 `region: null` |
 | POST | `/api/posts/{id}/views` | — | 204 (공개 글 상세를 열 때 조회 수 1 증가) |
@@ -784,7 +790,7 @@ DB 저장 공간은 다음과 같이 반영되어 있어요. 실제 API 구현�
 
 ## 브라우저 저장 (localStorage)
 
-서버 모드(`VITE_USE_MOCK=false`)에서는 위 기능들이 모두 서버를 기준으로 써요. 아래 저장 키는 **목업 모드**(`VITE_USE_MOCK=true`)의 저장소이거나, 서버 모드에서 화면을 빨리 보여 주는 **캐시**예요(일정 · 메모는 `lib/listSync.ts` 로 서버와 맞춰요). 처음 서버를 붙일 때 쓴 "API 붙이는 순서" 안내는 연결이 끝나서 뺐어요.
+서버가 관리하는 기록은 서버 모드(`VITE_USE_MOCK=false`)에서 API 응답을 기준으로 삼아요. 예를 들어 설정의 ‘내가 쓴 글’은 서버 모드에서 `GET /api/posts/my-count`로 조회하고, 모의 모드에서만 `zip-posts`를 집계해요. 일정·메모의 브라우저 캐시는 `lib/listSync.ts`로 서버와 동기화해요. 모드 설정과 개발·배포 기준은 [모의 API 사용 범위](README.md#모의-api-사용-범위)를 참고하세요.
 
 | 저장 키 | 들어 있는 것 | 파일 | 서버 모드의 기준 |
 |---|---|---|---|

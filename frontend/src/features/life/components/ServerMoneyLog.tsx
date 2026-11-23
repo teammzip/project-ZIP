@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AmountInput, Button, Card } from '@/components/ui'
@@ -14,7 +14,7 @@ import { useLedgerCategorySettings } from '../ledgerCategories'
 import { LedgerCategoryDialog } from './LedgerCategoryDialog'
 import common from '@/styles/common.module.css'
 import styles from './life.module.css'
-import { returnedMemoDraft, openLedgerMemo, clearMemoDraft, discardMemoDraft } from '../ledgerMemoNavigation'
+import { returnedMemoDraft, openLedgerMemo, clearMemoDraft, discardMemoDraft, rememberLedgerValues } from '../ledgerMemoNavigation'
 
 const incomeSettingsPath = '/my/settings?section=income'
 
@@ -98,6 +98,7 @@ function LedgerForm({ kind, incomeType, timeZone, row, onDone }: { kind: LedgerK
   const memo = row?.memo ?? ''
   const memoId = resume?.memoId ?? row?.memoId, memoTitle = resume?.memoTitle ?? row?.memoTitle
   const [adding, setAdding] = useState(false)
+  useEffect(() => rememberLedgerValues(resume, { amount, date, cat }), [resume, amount, date, cat])
   const [busy, setBusy] = useState(false), [error, setError] = useState('')
   const pending = useRef(false), client = useQueryClient()
   const selectedCat = cat === row?.cat || cats.some((item) => item.name === cat) ? cat : cats[0]?.name ?? ''

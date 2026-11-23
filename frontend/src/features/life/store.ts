@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
+import { createAccountStorage } from '@/lib/accountStorage'
 import { monthKeyOf } from '@/lib/date'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { readMapPoint, type MapPoint } from '@/features/map/location'
@@ -112,16 +113,7 @@ function moveCategory(s: LifeData, from: string, to: string, extra: Partial<Life
 /** 반복 기념일 표시용 id("12@2027")에서 원본 id 만 */
 const baseId = (id: CalEvent['id']) => String(id).split('@')[0]
 
-const accountId = (auth: ReturnType<typeof useAuthStore.getState>) => auth.sessionKey ? auth.user?.id ?? null : null
-let activeAccount = accountId(useAuthStore.getState())
-const accountKey = () => activeAccount === null ? null : `zip-life:user:${encodeURIComponent(activeAccount)}`
-
-// 소유자를 알 수 없는 기존 zip-life는 보존하고 어떤 계정에도 자동 배정하지 않는다.
-const accountStorage = createJSONStorage<LifeData>(() => ({
-  getItem: () => { const key = accountKey(); return key ? localStorage.getItem(key) : null },
-  setItem: (_name, value) => { const key = accountKey(); if (key) localStorage.setItem(key, value) },
-  removeItem: () => { const key = accountKey(); if (key) localStorage.removeItem(key) },
-}))
+const account = createAccountStorage<LifeData>('zip-life')
 
 export const useLifeStore = create<LifeData & LifeActions>()(
   persist(
@@ -210,7 +202,7 @@ export const useLifeStore = create<LifeData & LifeActions>()(
     }),
     {
       name: 'zip-life',
-      storage: accountStorage,
+      storage: account.storage,
       version: 6,
       // v1 → v2: 따로 저장하던 할 일(todos)을 오늘 날짜 일정으로 옮김
       migrate: (saved, version) => {
@@ -247,12 +239,4 @@ export const useLifeStore = create<LifeData & LifeActions>()(
   ),
 )
 
-// 다음 회원의 키에 이전 회원의 상태를 쓰지 않도록 저장을 잠시 끈 뒤 교체한다.
-useAuthStore.subscribe((auth) => {
-  const next = accountId(auth)
-  if (next === activeAccount) return
-  activeAccount = null
-  useLifeStore.setState(initial())
-  activeAccount = next
-  if (next !== null) void useLifeStore.persist.rehydrate()
-})
+account.bind(() => useLifeStore.setState(initial()), () => useLifeStore.persist.rehydrate())

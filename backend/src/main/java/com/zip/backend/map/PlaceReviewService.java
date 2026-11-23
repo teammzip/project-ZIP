@@ -23,7 +23,6 @@ public class PlaceReviewService {
     static final String PLACE = "PLACE";
     static final String KAKAO = "KAKAO";
     static final int SUMMARY_MAX = 100;
-    private static final Pattern KAKAO_PLACE_ID = Pattern.compile("[0-9]{1,50}");
     private static final Pattern NAME_CONTROL = Pattern.compile("\\p{Cntrl}");
     private static final Pattern TEXT_CONTROL = Pattern.compile("[\\p{Cntrl}&&[^\\n\\t]]");
     private static final Set<String> REASONS = Set.of("ABUSE", "FALSE_INFO", "PRIVACY", "AD_ILLEGAL", "COPYRIGHT", "OTHER");
@@ -156,9 +155,9 @@ public class PlaceReviewService {
         if (parts.length > SUMMARY_MAX) throw new ApiException(400, "장소는 한 번에 " + SUMMARY_MAX + "곳까지 물어볼 수 있어요.");
         for (var raw : parts) {
             var id = raw.strip();
-            if (id.startsWith(MapService.KAKAO_ID)) {
-                var kakao = id.substring(MapService.KAKAO_ID.length());
-                if (KAKAO_PLACE_ID.matcher(kakao).matches()) kakaoIds.add(kakao);
+            var kakaoId = KakaoPlaceId.fromKey(id);
+            if (kakaoId != null) {
+                kakaoIds.add(kakaoId);
             } else {
                 try {
                     long value = Long.parseLong(id);
@@ -242,11 +241,8 @@ public class PlaceReviewService {
 
     /** "12" → DB 장소(있어야 함), "kakao:123" → 카카오 장소. 형식이 틀리거나 없는 장소면 404 */
     private PlaceReviewRepository.Target existingTarget(String placeId) {
-        if (placeId != null && placeId.startsWith(MapService.KAKAO_ID)) {
-            var id = placeId.substring(MapService.KAKAO_ID.length());
-            if (!KAKAO_PLACE_ID.matcher(id).matches()) throw new ApiException(404, "장소를 찾을 수 없어요.");
-            return PlaceReviewRepository.Target.kakao(id);
-        }
+        var kakaoId = KakaoPlaceId.fromKey(placeId);
+        if (kakaoId != null) return PlaceReviewRepository.Target.kakao(kakaoId);
         long id = positiveId(placeId, "장소를");
         if (repository.placeName(id).isEmpty()) throw new ApiException(404, "장소를 찾을 수 없어요.");
         return PlaceReviewRepository.Target.place(id);

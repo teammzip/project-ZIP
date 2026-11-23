@@ -1,16 +1,30 @@
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query'
-import { isMockApi } from '@/features/auth'
+import { isMockApi, useAuthStore } from '@/features/auth'
 import { getErrorMessage } from '@/lib/apiClient'
 import { STORAGE_FULL } from './attachments'
 import { useReportStore, type ReportReason } from './reports'
 import { communityApi, type PostPage, type Scope } from './server'
 import { useCommunityStore } from './store'
-import type { Post, PostDraft } from './types'
+import { isMine, type Post, type PostDraft } from './types'
 
 /* 커뮤니티 데이터 · 동작을 한 곳에서: 가짜 API 모드는 이 브라우저(useCommunityStore), 서버 모드는 서버 API.
  * 화면(CommunityBoard · PostDetail)은 어느 모드인지 몰라도 돼요. */
 
 const KEY = ['community'] as const
+
+export function useMyPostCount() {
+  const userId = useAuthStore((state) => state.user?.id)
+  const sessionKey = useAuthStore((state) => state.sessionKey)
+  const localCount = useCommunityStore((state) => isMockApi && sessionKey ? state.posts.filter((post) => isMine(post, userId)).length : undefined)
+  const { data, isError } = useQuery({
+    queryKey: [...KEY, 'my-post-count', userId, sessionKey],
+    queryFn: ({ signal }) => communityApi.myPostCount(signal),
+    enabled: !isMockApi && !!userId && !!sessionKey,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  })
+  return { count: isMockApi ? localCount : data, isError: !isMockApi && isError }
+}
 
 /** 서버 모드 "주변 동네" 탭 안내: 내 동네와 이웃 동네 이름 (주거 설문 · 내 정보 주소로 정해진 동네 기준 — 글 목록 near 와 같은 기준) */
 export function useServerNeighbors(enabled: boolean) {

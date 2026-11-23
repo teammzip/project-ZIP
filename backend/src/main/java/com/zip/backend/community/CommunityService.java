@@ -53,6 +53,10 @@ public class CommunityService {
 
     // ---------- 읽기 ----------
 
+    public long myPostCount(long userId) {
+        return repository.countVisiblePostsByUser(userId);
+    }
+
     public Map<String, Object> posts(long viewerId, String scope, String category, String q, int page) {
         var range = scope == null || scope.isBlank() ? "all" : scope;
         if (!SCOPES.contains(range)) throw new ApiException(400, "scope 는 here, near, all 중 하나예요.");

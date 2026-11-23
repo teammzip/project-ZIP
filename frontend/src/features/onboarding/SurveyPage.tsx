@@ -140,10 +140,10 @@ export function SurveyPage() {
             userId: user.id, region: selectedAddress, source: 'survey', point: selectedPoint ?? undefined,
           } })
         }
+        // 설문 응답은 회원 정보이므로 저장된 계약·대출은 공통 조회에서 다시 받는다.
+        void loadHomeInfo({ reset: true }).catch(() => {})
         updateUser(savedUser)
-        void loadHomeInfo().catch(() => {})
         void queryClient.invalidateQueries({ queryKey: ['monthly-bills'] })
-        void queryClient.invalidateQueries({ queryKey: ['billing-address'] })
         void queryClient.invalidateQueries({ queryKey: ['ledger'] })
         return
       }

@@ -61,6 +61,45 @@ function rejected(name, filename, prefix, expected) {
   results.push({ name, status: 'PASS', checks: expected.length + 1 })
   console.log(`PASS ${name}: ${expected.length} expected errors and cleanup`)
 }
+
+function verifyAnniversaryUpgrade() {
+  const useDb = 'USE zip_anniversary_test;\n'
+  const migration = useDb + read('db/migrations/20261031_02_event_anniversaries.sql')
+  successful('legacy anniversary fixture', `CREATE DATABASE zip_anniversary_test;
+${useDb}CREATE TABLE events (id INT PRIMARY KEY, title VARCHAR(60),
+ is_anniv TINYINT(1) NOT NULL DEFAULT 0, is_yearly TINYINT(1) NOT NULL DEFAULT 0) ENGINE=InnoDB;
+INSERT INTO events VALUES (1,'yearly',1,1), (2,'ordinary',0,0), (3,'once',1,0), (4,'invalid',0,1);`, 0)
+
+  const invalid = mysql(migration)
+  assert.notEqual(invalid.status, 0, 'invalid legacy flags must block the upgrade')
+  assert(invalid.stderr.includes('ck_events_anniversary_flags'), invalid.stderr)
+  successful('invalid anniversary flags leave legacy columns in place', useDb + `
+SELECT 'legacy values preserved', IF((SELECT is_yearly FROM events WHERE id=4)=1,'PASS','FAIL');
+DELETE FROM events WHERE id=4;`, 1)
+
+  successful('legacy anniversary values migrated', migration + migration + `
+SELECT 'all original rows and flags preserved', IF(
+ (SELECT COUNT(*) FROM events WHERE (id,title,is_anniversary,repeat_yearly) IN
+ ((1,'yearly',1,1),(2,'ordinary',0,0),(3,'once',1,0)))=3,'PASS','FAIL');
+SELECT 'legacy columns removed', IF(COUNT(*)=0,'PASS','FAIL') FROM information_schema.COLUMNS
+ WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='events' AND COLUMN_NAME IN ('is_anniv','is_yearly');`, 2)
+
+  successful('conflicting anniversary fixture', useDb + `
+ALTER TABLE events ADD COLUMN is_anniv TINYINT(1) NOT NULL DEFAULT 0,
+ ADD COLUMN is_yearly TINYINT(1) NOT NULL DEFAULT 0;
+UPDATE events SET is_anniv=1 WHERE id IN (1,3);`, 0)
+  const conflict = mysql(migration)
+  assert.notEqual(conflict.status, 0, 'different legacy and current values must block the upgrade')
+  assert(conflict.stderr.includes('ck_zip_anniversary_preflight'), conflict.stderr)
+  successful('mixed anniversary values preserved and matching columns retired', useDb + `
+SELECT 'both values preserved', IF(is_yearly=0 AND repeat_yearly=1,'PASS','FAIL') FROM events WHERE id=1;
+UPDATE events SET is_yearly=1 WHERE id=1;
+${migration}
+SELECT 'current values preserved', IF(is_anniversary=1 AND repeat_yearly=1,'PASS','FAIL') FROM events WHERE id=1;
+SELECT 'legacy columns removed', IF(COUNT(*)=0,'PASS','FAIL') FROM information_schema.COLUMNS
+ WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='events' AND COLUMN_NAME IN ('is_anniv','is_yearly');`, 3)
+}
+
 async function main() {
   assert.equal(process.platform, 'win32', 'Windows named pipe runner')
   assert(fs.existsSync(serverExe) && fs.existsSync(clientExe), 'MySQL 9.6 binaries missing')
@@ -159,6 +198,7 @@ async function main() {
   successful('legacy schema', read('db/tests/18_legacy_schema.sql'), 0)
   successful('full migration and data preservation', read('db/tests/19_migration_upgrade.sql'), 15)
   successful('migrated structure audit', read('db/tests/20_migration_schema_audit.sql'), 7)
+  verifyAnniversaryUpgrade()
   // Exercise the incremental upgrade independently of the fresh/full-path runs.
   const oldSchema = cp.execFileSync('git', ['show','7bb1c90:db/schema.sql'], {encoding:'utf8'})
     .replace('CREATE DATABASE IF NOT EXISTS `zip`','CREATE DATABASE IF NOT EXISTS `zip_incremental_test`')

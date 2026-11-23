@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { AmountInput, Button, Card } from '@/components/ui'
 import { cssVar } from '@/lib/cssVar'
@@ -16,7 +16,7 @@ import styles from './life.module.css'
 import { isMockApi } from '@/features/auth/api'
 import { ServerMoneyLog } from './ServerMoneyLog'
 import { useAuthStore } from '@/features/auth'
-import { returnedMemoDraft, openLedgerMemo, clearMemoDraft } from '../ledgerMemoNavigation'
+import { returnedMemoDraft, openLedgerMemo, clearMemoDraft, rememberLedgerValues } from '../ledgerMemoNavigation'
 import { useMemoStore } from '@/features/memo'
 
 type Kind = 'income' | 'spend'
@@ -82,10 +82,11 @@ function LocalMoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeType?
   ) : records
   const thisMonth = monthKeyOf(useToday())
   const [monthKey, setMonthKey] = useState(resume?.month ?? thisMonth)
-  const [form, setForm] = useState({ date: resume?.values.date ?? todayStr(), cat: resume?.values.cat ?? cats[0]?.name ?? '', amount: resume?.values.amount ?? '', memo: '' })
+  const [form, setForm] = useState({ date: resume?.values.date ?? todayStr(), cat: resume?.values.cat ?? cats[0]?.name ?? '', amount: resume?.values.amount ?? '', memo: resume?.values.memo ?? '' })
   const selectedCat = cats.some((item) => item.name === form.cat) ? form.cat : cats[0]?.name ?? ''
-  const [quickOpen, setQuickOpen] = useState(false)
+  const [quickOpen, setQuickOpen] = useState(!!resume)
   const [saved, setSaved] = useState('')
+  useEffect(() => rememberLedgerValues(resume, form), [resume, form])
 
   // 월 선택: 기록이 있는 달 + 이번 달 (최근 달이 위로)
   const months = [...new Set([thisMonth, ...visibleRecords.map((r) => r.date.slice(0, 7))])].sort().reverse()
@@ -177,7 +178,7 @@ function LocalMoneyLog({ kind, incomeType = 'fixed' }: { kind: Kind; incomeType?
         </label>
           <button type="button" className={styles.quickField} onClick={() => {
             if (!owner) return
-            openLedgerMemo({ key: resume?.key, owner, kind, incomeType: kind === 'income' ? incomeType : undefined, month: form.date.slice(0, 7), label: `${t.title} · ${form.date} · ${selectedCat}`, values: { amount: form.amount, date: form.date, cat: selectedCat }, memoId: resume?.memoId, memoTitle: resume?.memoTitle })
+            openLedgerMemo({ key: resume?.key, owner, kind, incomeType: kind === 'income' ? incomeType : undefined, month: form.date.slice(0, 7), label: `${t.title} · ${form.date} · ${selectedCat}`, values: { ...form, cat: selectedCat }, memoId: resume?.memoId, memoTitle: resume?.memoTitle })
           }}>
             <span>메모 (선택)</span>
             <b className={styles.quickAdd}>{resume?.memoId ? resume.memoTitle || '제목 없는 메모' : '메모 작성'}</b>

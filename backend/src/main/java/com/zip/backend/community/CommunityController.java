@@ -23,6 +23,11 @@ public class CommunityController {
         return community.posts(userId(jwt), scope, category, q, page);
     }
 
+    @GetMapping("/api/posts/my-count")
+    public Map<String, Long> myPostCount(@AuthenticationPrincipal Jwt jwt) {
+        return Map.of("count", community.myPostCount(userId(jwt)));
+    }
+
     @GetMapping("/api/posts/home-tips")
     public List<Map<String, Object>> homeTips(@AuthenticationPrincipal Jwt jwt) { return community.homeTips(userId(jwt)); }
 

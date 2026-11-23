@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { DEFAULT_CATS, PLACES } from './data/places'
+import { isKakaoPlace } from './kakaoPlaceId'
 
 export type FavName = { n: string; cat: string }
 
@@ -86,7 +87,7 @@ export const useMapStore = create<MapState>()(
           return {
             lists,
             favs: s.favs.includes(place.id) ? s.favs : [...s.favs, place.id],
-            favNames: place.id.startsWith('kakao:') ? { ...s.favNames, [place.id]: { n: place.n, cat: place.cat } } : s.favNames,
+            favNames: isKakaoPlace(place.id) ? { ...s.favNames, [place.id]: { n: place.n, cat: place.cat } } : s.favNames,
           }
         }),
       toggleCat: (cat) => set((s) => ({ on: s.on.includes(cat) ? s.on.filter((c) => c !== cat) : [...s.on, cat] })),

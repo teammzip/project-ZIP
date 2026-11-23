@@ -5,8 +5,9 @@ import { RegionVerifyDialog, useRegionVerify } from '@/features/life'
 import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
 import { aiFind } from '../aiFind'
-import { isKakaoPlace, mapApi, usePlaceNotice } from '../api'
+import { mapApi, usePlaceNotice } from '../api'
 import { walkMin, type PlaceItem } from '../data/places'
+import { getKakaoPlaceId, isKakaoPlace } from '../kakaoPlaceId'
 import type { NearbyMapResult } from '../nearbyMap'
 import { placeColors } from '../placeIcons'
 import { PlaceIcon } from './PlaceIcon'
@@ -35,11 +36,13 @@ const FILTERS: Array<{ key: string; label: string; re?: RegExp }> = [
 ]
 
 /* 카카오맵 링크 (https://apis.map.kakao.com/web/guide/#bigmapurl). 카카오 장소는 장소 id 로 열어 영업시간 · 사진 · 후기까지 보임 */
-const kakaoId = (p: PlaceItem) => (isKakaoPlace(p.id) ? p.id.slice('kakao:'.length) : null)
 const kakaoPoint = (p: PlaceItem) => `${encodeURIComponent(p.n.replace(/,/g, ' '))},${p.lat},${p.lon}`
-const bigUrl = (p: PlaceItem) => (kakaoId(p) ? `https://place.map.kakao.com/${kakaoId(p)}` : `https://map.kakao.com/link/map/${kakaoPoint(p)}`)
+const bigUrl = (p: PlaceItem) => {
+  const id = getKakaoPlaceId(p.id)
+  return id ? `https://place.map.kakao.com/${id}` : `https://map.kakao.com/link/map/${kakaoPoint(p)}`
+}
 /** 출발지는 카카오맵이 정함 (현재 위치 · 직접 입력) */
-const routeUrl = (p: PlaceItem) => `https://map.kakao.com/link/to/${kakaoId(p) ?? kakaoPoint(p)}`
+const routeUrl = (p: PlaceItem) => `https://map.kakao.com/link/to/${getKakaoPlaceId(p.id) ?? kakaoPoint(p)}`
 const walkText = (p: PlaceItem) => (walkMin(p) < 99 ? `도보 ${walkMin(p)}분` : '거리 정보 없음')
 /** 설명에서 "도보 약 N분"을 뺀 특징들 */
 const tagsOf = (p: PlaceItem) =>
@@ -147,7 +150,10 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
   const list = (found ? base : [...base].sort((a, b) => walkMin(a) - walkMin(b))).filter((p) => !rule || rule.test(p.d))
   // 저장 탭: 지금 불러온 장소에 없는 카카오 저장 장소 (좌표를 저장하지 않아 지도 핀 없이 목록으로만)
   const savedKakao = tab === 'fav' && !found
-    ? favs.filter((id) => isKakaoPlace(id) && favNames[id] && !list.some((p) => p.id === id)).map((id) => ({ id, ...favNames[id] }))
+    ? favs.flatMap((id) => {
+      const kakaoId = getKakaoPlaceId(id)
+      return kakaoId && favNames[id] && !list.some((p) => p.id === id) ? [{ id, kakaoId, ...favNames[id] }] : []
+    })
     : []
   // 목록 별점 (ZIP 회원 리뷰 평균 · 수)
   const summaries = useReviewSummaries([...list.map((p) => p.id), ...savedKakao.map((k) => k.id)])
@@ -520,7 +526,7 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
                           <PlaceRow key={p.id} p={p} rank={i + 1} summary={summaries.get(p.id)} onClick={() => select(p)} />
                         ))}
                         {kakaoRows.map((k) => (
-                          <SavedKakaoRow key={k.id} id={k.id} n={k.n} cat={k.cat} summary={summaries.get(k.id)} />
+                          <SavedKakaoRow key={k.id} {...k} summary={summaries.get(k.id)} />
                         ))}
                       </ol>
                     </section>
@@ -710,11 +716,11 @@ function dragScroll(el: HTMLDivElement | null) {
 }
 
 /** 저장 탭의 카카오 장소 (이름 · 종류만 있음): 누르면 카카오맵 장소 페이지, ★ 로 저장 취소 */
-function SavedKakaoRow({ id, n, cat, summary }: { id: string; n: string; cat: string; summary?: ReviewSummary }) {
+function SavedKakaoRow({ id, kakaoId, n, cat, summary }: { id: string; kakaoId: string; n: string; cat: string; summary?: ReviewSummary }) {
   return (
     <li>
       <div className={styles.row}>
-        <a className={styles.rowLink} href={`https://place.map.kakao.com/${id.slice('kakao:'.length)}`} target="_blank" rel="noopener noreferrer">
+        <a className={styles.rowLink} href={`https://place.map.kakao.com/${kakaoId}`} target="_blank" rel="noopener noreferrer">
           <span className={styles.thumb} style={{ background: placeColors(cat).bg, color: placeColors(cat).fg }} aria-hidden="true">
             <PlaceIcon cat={cat} size={30} />
           </span>
@@ -772,8 +778,8 @@ function PlaceDetail({ p, distanceMeters, onBack }: { p: PlaceItem; distanceMete
         </a>
         <a className={styles.action} href={bigUrl(p)} target="_blank" rel="noopener noreferrer">
           {/* 카카오 장소: 카카오맵 장소 페이지(영업시간 · 사진 · 후기), DB 장소: 카카오맵에서 위치 보기 */}
-          <ActionIcon name={kakaoId(p) ? 'info' : 'map'} />
-          <span>{kakaoId(p) ? '더 알아보기' : '큰 지도'}</span>
+          <ActionIcon name={isKakaoPlace(p.id) ? 'info' : 'map'} />
+          <span>{isKakaoPlace(p.id) ? '더 알아보기' : '큰 지도'}</span>
         </a>
       </div>
       <PlaceReviews placeId={p.id} placeName={p.n} />
