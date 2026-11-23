@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button, Card, Modal } from '@/components/ui'
 import { deleteAllConversations, useChatStore } from '@/features/ai'
 import { LoginBadge, LoginMethod, PasswordChangeForm, useAuthStore, useLogout, useUpdateMe, useWithdraw } from '@/features/auth'
-import { useCommunityStore, useReportStore } from '@/features/community'
+import { useCommunityStore, useMyPostCount, useReportStore } from '@/features/community'
 import { LegalLinks } from '@/features/legal'
 import { BudgetSummaryCard, LifeInfoForm, LifeStats, NotiSwitch, PersonalInfoCard, RegionVerifyDialog, SalaryInfo, useLifeStore, useLifeSummary, useRegionVerify, withoutCalendarSync } from '@/features/life'
 import { useMapStore } from '@/features/map'
@@ -49,7 +49,7 @@ export function SettingsPage() {
   const { isMonthly } = useHousingContract()
   const user = useAuthStore((s) => s.user)
   const { region, verified, left } = useRegionVerify()
-  const postCount = useCommunityStore((s) => s.posts.filter((p) => !!user?.id && p.ownerId === user.id).length)
+  const postCount = useMyPostCount()
   const lifeSummary = useLifeSummary()
   const updateMe = useUpdateMe()
   const logout = useLogout()

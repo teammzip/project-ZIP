@@ -242,7 +242,7 @@ paths:
     get:
       tags: [인증 · 내 정보]
       summary: 소셜 로그인 시작 (페이지 이동)
-      description: 끝나면 프론트 `/oauth/callback?token=<accessToken>` 으로 돌려보내기
+      description: 성공 시 프론트 `/oauth/callback#token=<accessToken>`으로, 실패 시 `/oauth/callback?error=<문구>`로 돌아가요.
       security: []
       parameters:
         - { name: provider, in: path, required: true, schema: { type: string, enum: [kakao, google, naver] } }
@@ -825,6 +825,15 @@ paths:
       responses:
         '200': { description: 쓴 글, content: { application/json: { schema: { $ref: '#/components/schemas/Post' } } } }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /api/posts/my-count:
+    get:
+      tags: [커뮤니티 · 첨부 · 신고]
+      summary: 로그인한 회원의 전체 공개 게시글 수
+      responses:
+        '200':
+          description: 공개 게시글 수
+          content: { application/json: { schema: { type: object, required: [count], properties: { count: { type: integer, format: int64, minimum: 0 } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /api/posts/popular:
     get:
       tags: [커뮤니티 · 첨부 · 신고]

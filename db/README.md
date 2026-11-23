@@ -45,7 +45,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 20261102까지 적용된 DB는 [20261107_life_categories.sql](migrations/20261107_life_categories.sql)을 한 번 적용합니다. 이미 최신 컬럼·타입이 있으면 재실행하지 않습니다. 20261102 이전 44개 표 DB는 먼저 [20261102_requirements_hardening.sql](migrations/20261102_requirements_hardening.sql)의 사전 검사를 마친 뒤 순서대로 적용합니다. 테이블 수만으로 적용 버전을 판단하지 않습니다.
 
-기념일 정식 컬럼까지 적용한 41개 테이블 DB는 [주거·대출 마이그레이션](migrations/20261101_housing_and_loan.sql)을 추가 적용합니다. 기념일 중복 파일에 대한 주의사항과 전체 순서는 migrations/README.md를 확인하세요.
+기념일 정식 컬럼까지 적용한 41개 테이블 DB는 [주거·대출 마이그레이션](migrations/20261101_housing_and_loan.sql)을 추가 적용합니다. 구형 기념일 컬럼이 남아 있으면 [마이그레이션 안내](migrations/README.md#구형-기념일-컬럼-정리)를 확인하세요.
 
 기념일 기능까지 반영하려면 기존 변경 파일 이후 [기념일 추가 마이그레이션](migrations/20261031_02_event_anniversaries.sql)을 적용합니다. 이미 첫 번째 파일을 적용했다면 기념일 파일만 실행하세요. 정확한 순서는 [마이그레이션 안내](migrations/README.md)를 따릅니다.
 

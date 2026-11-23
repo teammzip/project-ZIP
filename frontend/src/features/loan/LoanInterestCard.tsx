@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card } from '@/components/ui'
 import { useAuthStore } from '@/features/auth/store/authStore'
 import { useHousingSurveyStore } from '@/features/onboarding/store'
-import { loadHomeInfo, saveHomeLoan } from '@/features/life/homeApi'
+import { saveHomeLoan, useHomeInfo } from '@/features/life/homeApi'
 import { getErrorMessage } from '@/lib/apiClient'
 import { isMockApi } from '@/lib/apiMode'
 import { cx } from '@/lib/cx'
@@ -18,18 +18,13 @@ import styles from './Loan.module.css'
 const NOT_BANK = '설정한 납부일에 가계부에만 기록되며 실제 은행 계좌에서는 출금되지 않아요. 앱을 꺼 둔 동안 지난 납부일은 다음 실행 시 반영해요.'
 
 export function LoanInterestCard() {
-  const { plan, charges } = useLoanInterest()
+  const local = useLoanInterest()
   const userId = useAuthStore((s) => s.user?.id)
-  const sessionKey = useAuthStore((s) => s.sessionKey)
   const client = useQueryClient()
-  const home = useQuery({
-    queryKey: ['home-loan', userId, sessionKey],
-    queryFn: loadHomeInfo,
-    enabled: !isMockApi && !!userId && !!sessionKey,
-    gcTime: 0,
-    refetchOnWindowFocus: false,
-    retry: false,
-  })
+  const home = useHomeInfo()
+  const serverPlan = home.data?.loan
+  const plan = isMockApi ? local.plan : serverPlan?.active ? serverPlan : undefined
+  const charges = isMockApi ? local.charges : home.data?.charges ?? []
   const savePlan = useLoanStore((s) => s.savePlan)
   const stopPlan = useLoanStore((s) => s.stopPlan)
   const [editing, setEditing] = useState(false)

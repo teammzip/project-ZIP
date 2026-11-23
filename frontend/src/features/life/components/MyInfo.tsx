@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { AmountInput, Button } from '@/components/ui'
@@ -18,7 +18,7 @@ import { billPaidInMonth } from '../payments'
 import { validateLifeInfo } from '../validateLifeInfo'
 import { isMockApi } from '@/features/auth/api'
 import { getErrorMessage } from '@/lib/apiClient'
-import { loadHomeInfo, saveHomeInfo } from '../homeApi'
+import { saveHomeInfo, useHomeInfo, type SurveyLoanDraft } from '../homeApi'
 import { MyReviews } from '@/features/map/components/MyReviews'
 
 /* 내 정보 화면에 쓰는 생활 조각들: 수입·지출 카드, 이번 달 요약, 생활 정보 폼, 알림 스위치 */
@@ -45,14 +45,15 @@ export function BudgetSummaryCard() {
 }
 
 /** 이번 달 요약 카드 4개. 커뮤니티 글 수는 다른 기능이라 쓰는 쪽이 넘겨 줌 */
-export function LifeStats({ postCount }: { postCount: number }) {
+export function LifeStats({ postCount }: { postCount: { count: number | undefined; isError: boolean } }) {
   const { events, bills } = useLifeStore(useShallow((s) => ({ events: s.events, bills: s.bills })))
   const month = monthKeyOf(useToday())
   const paid = bills.length ? Math.round((bills.filter((b) => billPaidInMonth(b, month)).length / bills.length) * 100) : 0
+  const postCountLabel = postCount.isError ? '조회 실패' : postCount.count === undefined ? '—' : `${postCount.count}개`
   const items = [
     { to: '/my/calendar', label: '이번 달 일정', value: `${events.filter((e) => e.date.startsWith(month)).length}개` },
     { to: '/my/budget/expense', label: '공과금 납부', value: `${paid}%` },
-    { to: '/community', label: '내가 쓴 글', value: `${postCount}개` },
+    { to: '/community', label: '내가 쓴 글', value: postCountLabel },
   ]
   return (
     <section className={styles.stats} aria-label="이번 달 요약">
@@ -69,29 +70,22 @@ export function LifeStats({ postCount }: { postCount: number }) {
 
 /** 생활 정보: 선택한 계약 유형의 항목만 편집하고 설문·가계부 설정에 함께 반영한다. */
 type LifeInfoProps = { onSaved?: () => void; showHomeAddress?: boolean }
-type SurveyLoanDraft = NonNullable<Awaited<ReturnType<typeof loadHomeInfo>>['loanDraft']>
 export function LifeInfoForm(props: LifeInfoProps) {
   const sessionKey = useAuthStore((s) => s.sessionKey)
   const id = useAuthStore((s) => s.user?.id)
   return isMockApi ? <LifeInfoFields {...props} /> : <ServerLifeInfoForm key={`${id}:${sessionKey}`} {...props} />
 }
 function ServerLifeInfoForm(props: LifeInfoProps) {
-  const [ready, setReady] = useState(false)
-  const [error, setError] = useState('')
-  const [attempt, setAttempt] = useState(0)
-  const [loanDraft, setLoanDraft] = useState<SurveyLoanDraft>()
-  useEffect(() => {
-    let active = true
-    void loadHomeInfo().then((home) => {
-      if (!active) return
-      setLoanDraft(home.loanDraft ?? undefined)
-      setReady(true)
-    }).catch((cause) => { if (active) setError(getErrorMessage(cause, '내 집 정보를 불러오지 못했어요.')) })
-    return () => { active = false }
-  }, [attempt])
-  if (error) return <div role="alert"><p>{error}</p><Button onClick={() => { setError(''); setAttempt((n) => n + 1) }}>다시 불러오기</Button></div>
-  if (!ready) return <p role="status">내 집 정보를 불러오는 중이에요.</p>
-  return <LifeInfoFields {...props} loanDraft={loanDraft} />
+  const home = useHomeInfo()
+  const [opened, setOpened] = useState(false)
+  // 화면을 열 때 진행 중인 조회만 기다리고, 편집이 시작되면 배경 갱신이 입력을 리셋하지 않게 한다.
+  if (!opened && home.data && !home.isFetching) setOpened(true)
+  if (!home.data && home.isError) return <div role="alert">
+    <p>{getErrorMessage(home.error, '내 집 정보를 불러오지 못했어요.')}</p>
+    <Button onClick={() => void home.refetch()}>다시 불러오기</Button>
+  </div>
+  if (!home.data || (!opened && home.isFetching)) return <p role="status">내 집 정보를 불러오는 중이에요.</p>
+  return <LifeInfoFields {...props} loanDraft={home.data.loanDraft ?? undefined} />
 }
 export function LifeInfoFields({ onSaved, showHomeAddress = true, loanDraft }: LifeInfoProps & { loanDraft?: SurveyLoanDraft }) {
   const queryClient = useQueryClient()
@@ -146,7 +140,7 @@ export function LifeInfoFields({ onSaved, showHomeAddress = true, loanDraft }: L
           contractFee: monthly ? 0 : Number(form.contractFee), ...months,
           ...(showHomeAddress ? { homeAddress: form.homeAddress.trim() } : {}), loan: terms ?? null })
         await queryClient.invalidateQueries({ queryKey: ['monthly-bills'] })
-        await queryClient.invalidateQueries({ queryKey: ['billing-address'] })
+        void queryClient.invalidateQueries({ queryKey: ['ledger'] })
         onSaved?.()
         return
       }

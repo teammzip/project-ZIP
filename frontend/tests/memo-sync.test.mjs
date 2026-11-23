@@ -26,13 +26,18 @@ const plain = (value) => JSON.parse(JSON.stringify(value))
 const memo = (id, body, extra = {}) => ({ id, title: '', body, color: '노랑', pinned: false, checklist: false, items: [], createdAt: 1, updatedAt: 1, ...extra })
 
 function setup({ server: initial = [], local = [], synced = true, moved = [] } = {}) {
-  const server = { memos: new Map(), next: 100, home: null, calls: [], failures: [], gates: [], posts: 0, failPosts: new Set() }
+  const server = { memos: new Map(), next: 100, home: null, calls: [], failures: [], gates: [], posts: 0, failPosts: new Set(), loseCompletionResponse: false }
   for (const m of initial) server.memos.set(m.id, { ...m })
   const toServer = (m) => ({ ...m, id: String(m.id), createdAt: '2026-11-19T00:00:00Z', updatedAt: '2026-11-19T00:00:00Z' })
   async function respond(method, url, body) {
     server.calls.push([method, url, body && structuredClone(body)])
     const gate = server.gates.findIndex((g) => g.method === method)
-    if (gate >= 0) await server.gates.splice(gate, 1)[0].promise
+    if (gate >= 0) {
+      const pending = server.gates.splice(gate, 1)[0]
+      const snapshot = pending.snapshot ? [...server.memos.values()].map(toServer) : undefined
+      await pending.promise
+      if (snapshot) return snapshot
+    }
     const fail = server.failures.findIndex((f) => f.method === method && (!f.url || url === f.url))
     if (fail >= 0) throw server.failures.splice(fail, 1)[0].error
     const id = Number(url.split('/')[2])
@@ -46,7 +51,16 @@ function setup({ server: initial = [], local = [], synced = true, moved = [] } =
     }
     if (method === 'PUT') return (server.home = body.ids), { ids: server.home }
     if (!server.memos.has(id)) throw http(404)
-    if (method === 'PATCH') return server.memos.set(id, { ...server.memos.get(id), ...body }), toServer(server.memos.get(id))
+    if (method === 'PATCH') {
+      const { complete, ...fields } = body
+      const saved = { ...server.memos.get(id), ...fields, ...(complete ? { draft: false } : {}) }
+      server.memos.set(id, saved)
+      if (complete && server.loseCompletionResponse) {
+        server.loseCompletionResponse = false
+        throw network()
+      }
+      return toServer(saved)
+    }
     if (method === 'DELETE') return server.memos.delete(id), null
   }
   const api = {
@@ -65,16 +79,18 @@ function setup({ server: initial = [], local = [], synced = true, moved = [] } =
   const setTimer = (fn, delay) => (timers.push({ fn, delay }), timers.length)
   const clearTimer = (n) => timers[n - 1] && (timers[n - 1].fn = null)
   const exports = {}
+  const window = new EventTarget()
+  let auth = { user: { id: 'u1' }, sessionKey: 'session-1' }
   const listSync = {}
   vm.runInNewContext(listSyncCode, { exports: listSync, localStorage, setTimeout, clearTimeout, console })
   vm.runInNewContext(code, {
-    exports, localStorage, structuredClone, setTimeout, clearTimeout, console,
+    exports, localStorage, structuredClone, setTimeout, clearTimeout, console, window,
     require: (name) => {
       if (name === 'react') return { useEffect: () => {} }
       if (name === '@/lib/listSync') return listSync
       if (name === '@/lib/apiClient') return { apiClient: api }
       if (name === '@/lib/apiMode') return { isMockApi: false }
-      if (name === '@/features/auth/store/authStore') return { useAuthStore: Object.assign(() => 'u1', { getState: () => ({ user: { id: 'u1' } }) }) }
+      if (name === '@/features/auth/store/authStore') return { useAuthStore: Object.assign(() => 'u1', { getState: () => auth }) }
       if (name === './store') return { useMemoStore: store }
       return {}
     },
@@ -88,15 +104,92 @@ function setup({ server: initial = [], local = [], synced = true, moved = [] } =
       await settle()
     }
   }
-  const gate = (method) => {
+  const gate = (method, snapshot = false) => {
     let open
-    server.gates.push({ method, promise: new Promise((r) => (open = r)) })
+    server.gates.push({ method, snapshot, promise: new Promise((r) => (open = r)) })
     return () => open()
   }
   const edit = (id, patch) => store.setState((s) => ({ memos: s.memos.map((m) => (m.id === id ? { ...m, ...patch } : m)) }))
   const start = () => exports.startMemoSync('u1', setTimer, clearTimer)
-  return { server, store, saved, start, settle, runTimers, gate, edit, exports, timers }
+  const switchAccount = () => { auth = { user: { id: 'u2' }, sessionKey: 'session-2' } }
+  const refresh = () => window.dispatchEvent(new Event('zip-memos-refresh'))
+  return { server, store, saved, start, settle, runTimers, gate, edit, exports, timers, switchAccount, refresh }
 }
+
+test('메모 확정은 이전 자동 저장을 기다리고 성공 응답 후 한 번만 적용한다', async () => {
+  const t = setup({ server: [memo(1, '초안', { draft: true, ledgerContext: '식비' })] })
+  t.start()
+  await t.settle()
+  const openAutosave = t.gate('PATCH')
+  t.edit(1, { body: '자동 저장할 내용' })
+  await t.runTimers(1)
+  t.edit(1, { body: '최종 내용' })
+  const openCompletion = t.gate('PATCH')
+  const completion = t.exports.completeLedgerMemo(1)
+  const duplicate = t.exports.completeLedgerMemo(1)
+  await t.settle()
+  assert.equal(t.server.calls.filter(([method]) => method === 'PATCH').length, 1)
+  openAutosave()
+  await t.settle()
+  assert.equal(t.store.getState().memos[0].draft, true)
+  openCompletion()
+  const [result, second] = await Promise.all([completion, duplicate])
+  assert.equal(result.body, '최종 내용')
+  assert.equal(second.draft, false)
+  await t.runTimers()
+  assert.deepEqual(t.server.calls.filter(([method]) => method === 'PATCH').map(([, , payload]) => [payload.body, payload.complete]), [
+    ['자동 저장할 내용', undefined], ['최종 내용', true],
+  ])
+  assert.equal(t.store.getState().memos[0].draft, false)
+})
+
+test('확정이 거절되거나 응답이 유실되어도 입력을 유지하고 같은 메모를 다시 확정한다', async () => {
+  const t = setup({ server: [memo(1, '초안', { draft: true, ledgerContext: '식비' })] })
+  t.start()
+  await t.settle()
+  t.edit(1, { body: '보존할 입력' })
+  t.server.failures.push({ method: 'PATCH', error: http(400) })
+  await assert.rejects(t.exports.completeLedgerMemo(1), /HTTP 400/)
+  assert.equal(t.store.getState().memos[0].body, '보존할 입력')
+  assert.equal(t.store.getState().memos[0].draft, true)
+  t.server.loseCompletionResponse = true
+  await assert.rejects(t.exports.completeLedgerMemo(1), /network/)
+  assert.equal(t.server.memos.get(1).draft, false)
+  assert.equal(t.store.getState().memos[0].draft, true)
+  assert.equal((await t.exports.completeLedgerMemo(1)).draft, false)
+  assert.equal(t.server.memos.size, 1)
+  assert.equal(t.store.getState().memos[0].body, '보존할 입력')
+})
+
+test('확정 응답을 기다리는 중 계정이 바뀌면 새 계정 메모에 결과를 적용하지 않는다', async () => {
+  const t = setup({ server: [memo(1, 'A 초안', { draft: true, ledgerContext: '식비' })] })
+  t.start()
+  await t.settle()
+  const openCompletion = t.gate('PATCH')
+  const completion = t.exports.completeLedgerMemo(1)
+  const rejected = assert.rejects(completion, /로그인 상태가 변경/)
+  await t.settle()
+  t.switchAccount()
+  t.store.setState({ memos: [memo(1, 'B 메모')] })
+  openCompletion()
+  await rejected
+  assert.equal(t.store.getState().memos[0].body, 'B 메모')
+})
+
+test('확정 전 시작한 조회가 늦게 돌아와도 메모를 초안으로 되돌리지 않는다', async () => {
+  const t = setup({ server: [memo(1, '초안', { draft: true, ledgerContext: '식비' })] })
+  t.start()
+  await t.settle()
+  const openPull = t.gate('GET', true)
+  t.refresh()
+  await t.runTimers(1)
+  await t.exports.completeLedgerMemo(1)
+  openPull()
+  await t.settle()
+  assert.equal(t.store.getState().memos[0].draft, false)
+  await t.runTimers()
+  assert.equal(t.store.getState().memos[0].draft, false)
+})
 
 test('처음 불러오기 전에 고친 내용도 서버 값으로 덮이지 않고 저장된다', async () => {
   const t = setup({ server: [memo(1, '원래')], local: [memo(1, '원래')] })

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { isMockApi } from '@/features/auth'
 import { apiClient } from '@/lib/apiClient'
+import { isKakaoPlace } from './kakaoPlaceId'
 
 /* 장소 리뷰 (frontend/API.md 9장). 우리 ZIP 회원이 쓴 리뷰는 우리 서버에만 저장해요 (카카오로 보내지 않음).
  * 장소 id: DB 장소 "12" · 카카오 검색 장소 "kakao:123". 한 사람당 한 장소에 하나, 내 리뷰는 고치기 · 지우기, 남의 리뷰는 신고.
@@ -44,7 +45,6 @@ export type AdminReviewReport = {
 type Me = { id: string; nickname: string }
 
 const path = (placeId: string) => `/places/${encodeURIComponent(placeId)}/reviews`
-const isKakao = (placeId: string) => placeId.startsWith('kakao:')
 
 // ---------- 목업 저장소 (목업 모드 전용, 새로고침하면 비워짐) ----------
 
@@ -80,7 +80,7 @@ const mockApi = {
     if (!review) throw new Error('리뷰를 찾을 수 없어요.')
     if (mock.reports.some((r) => r.reviewId === reviewId && r.reporterKey === me?.id)) throw conflict('이미 신고한 리뷰예요.')
     mock.reports.unshift({
-      id: String(mock.seq++), reviewKind: isKakao(placeId) ? 'KAKAO' : 'PLACE', reviewId, placeId, placeName: review.placeName,
+      id: String(mock.seq++), reviewKind: isKakaoPlace(placeId) ? 'KAKAO' : 'PLACE', reviewId, placeId, placeName: review.placeName,
       review: { author: review.author.nickname, text: review.body, rating: review.rating, deleted: false },
       reason, detail, reporter: { id: me?.id ?? 'me', nickname: me?.nickname ?? '나' }, status: 'RECEIVED', createdAt: new Date().toISOString(), reporterKey: me?.id ?? 'me',
     })
@@ -148,7 +148,7 @@ export const reviewApi = {
   add: async (placeId: string, placeName: string, rating: number, body: string, photos: PhotoDraft[], me?: Me) => {
     if (isMockApi) return mockApi.add(placeId, placeName, rating, body, await asDataUrls(photos), me)
     const photoIds = await uploadPhotos(photos)
-    await apiClient.post(path(placeId), { rating, body, photoIds, ...(isKakao(placeId) ? { name: placeName.slice(0, 60) } : {}) })
+    await apiClient.post(path(placeId), { rating, body, photoIds, ...(isKakaoPlace(placeId) ? { name: placeName.slice(0, 60) } : {}) })
   },
   update: async (placeId: string, rating: number, body: string, photos: PhotoDraft[], me?: Me) => {
     if (isMockApi) return mockApi.update(placeId, rating, body, await asDataUrls(photos), me)

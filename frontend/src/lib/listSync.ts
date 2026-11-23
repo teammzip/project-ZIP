@@ -22,6 +22,7 @@ export type ListSyncOptions<T extends { id: SyncId }, Extra> = {
   fetch: () => Promise<{ items: T[]; extra: Extra }>
   create: (item: T) => Promise<SyncId>
   update: (serverId: SyncId, item: T) => Promise<unknown>
+  keepRejectedUpdate?: (item: T) => boolean
   remove: (serverId: SyncId) => Promise<unknown>
   /** 보내기 전에 기다릴 일 (예: 일정은 카테고리 저장이 끝난 뒤에) */
   waitFor?: () => Promise<unknown>
@@ -31,7 +32,7 @@ export type ListSyncOptions<T extends { id: SyncId }, Extra> = {
   clearTimer?: typeof clearTimeout
 }
 
-export type ListSync = {
+export type ListSync<T> = {
   stop: () => void
   /** 서버 값을 한 번이라도 받았는지 */
   ready: () => boolean
@@ -40,6 +41,8 @@ export type ListSync = {
   isNew: (id: SyncId) => boolean
   /** 이 항목에 대한 요청이 다 끝날 때까지 */
   settled: (id: SyncId) => Promise<void>
+  /** 자동 저장과 같은 순서로 명시적인 저장을 실행하고 성공 응답을 적용 */
+  saveNow: (id: SyncId, write: (serverId: SyncId, item: T) => Promise<T>, apply: (saved: T, unchanged: boolean) => void, missing: string) => Promise<T>
   schedulePull: (delay: number) => void
   /** 같이 보내는 다른 값이 실패했을 때: 거절이면 drop, 아니면 나중에 다시 */
   failed: (error: unknown, drop: () => void) => void
@@ -76,7 +79,7 @@ export const syncStorage = {
   },
 }
 
-export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOptions<T, Extra>): ListSync {
+export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOptions<T, Extra>): ListSync<T> {
   const setTimer = o.setTimer ?? setTimeout
   const clearTimer = o.clearTimer ?? clearTimeout
   let alive = true
@@ -88,6 +91,8 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
   const dirty = new Set<SyncId>() // 고쳤는데 아직 서버가 받지 않은 항목
   const removed = new Set<SyncId>() // 지웠는데 아직 서버에서 안 지운 항목
   const chains = new Map<SyncId, Promise<void>>() // 항목마다 요청을 차례로
+  const explicitWrites = new Set<SyncId>()
+  let writeVersion = 0
   const timers = new Map<SyncId, ReturnType<typeof setTimeout>>()
   let pullTimer: ReturnType<typeof setTimeout> | null = null
   let failures = 0
@@ -127,10 +132,12 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
     } else schedulePull(RETRY_DELAYS[Math.min(failures++, RETRY_DELAYS.length - 1)])
   }
 
-  const enqueue = (id: SyncId, work: () => Promise<void>) => {
+  const enqueue = <Result>(id: SyncId, work: () => Promise<Result>): Promise<Result> => {
     const next = (chains.get(id) ?? Promise.resolve()).then(work, work)
-    chains.set(id, next)
-    void next.finally(() => chains.get(id) === next && chains.delete(id))
+    const tail = next.then(() => {}, () => {})
+    chains.set(id, tail)
+    void tail.then(() => { if (chains.get(id) === tail) chains.delete(id) })
+    return next
   }
 
   const create = (id: SyncId) =>
@@ -176,6 +183,7 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
         failures = 0
         if (current(id) === item) dirty.delete(id)
       } catch (error) {
+        if (rejected(error) && o.keepRejectedUpdate?.(item)) return
         failed(error, () => dirty.delete(id))
       }
     })
@@ -207,10 +215,12 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
   /** 서버 값을 받아 그 위에 아직 서버에 안 간 내 변경을 얹고, 남은 일을 보냄 */
   async function pull(): Promise<void> {
     const startedAt = Date.now()
+    const version = writeVersion
     try {
       await waitFor()
       const { items, extra } = await o.fetch()
       if (!alive) return
+      if (version !== writeVersion) return schedulePull(0)
       failures = 0
       const local = o.read()
       const localOf = new Map([...created].map(([l, s]) => [s, l]))
@@ -218,7 +228,7 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
       for (const m of items) {
         const id = localOf.get(m.id) ?? m.id
         if (removed.has(id)) continue
-        const mine = dirty.has(id) ? local.find((x) => x.id === id) : undefined
+        const mine = dirty.has(id) || explicitWrites.has(id) ? local.find((x) => x.id === id) : undefined
         merged.push(mine ?? { ...m, id })
       }
       // 서버 값에 아직 없는 내 항목: 만들 차례인 것, 불러오는 동안 만들어진 것, 서버와 맞춘 적 없는 브라우저의 항목
@@ -278,6 +288,36 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
     for (const id of [...timers.keys()]) save(id)
   }
 
+  const saveNow: ListSync<T>['saveNow'] = (id, write, apply, missing) => {
+    const timer = timers.get(id)
+    if (timer) clearTimer(timer)
+    timers.delete(id)
+    explicitWrites.add(id)
+    return enqueue(id, async () => {
+      try {
+        const item = current(id)
+        if (!alive || o.isMuted?.() || !item || newIds.has(id) || removed.has(id)) throw new Error(missing)
+        const saved = await write(serverId(id), item)
+        if (!alive || o.isMuted?.() || !current(id) || removed.has(id)) throw new Error(missing)
+        const unchanged = current(id) === item
+        muted = true
+        try {
+          apply(saved, unchanged)
+        } finally {
+          muted = false
+        }
+        if (unchanged) dirty.delete(id)
+        writeVersion++
+        return saved
+      } catch (error) {
+        if (alive && !o.isMuted?.() && current(id) && !removed.has(id)) dirty.add(id)
+        throw error
+      } finally {
+        explicitWrites.delete(id)
+      }
+    })
+  }
+
   void pull()
   return {
     stop: () => {
@@ -290,6 +330,7 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
     serverId,
     isNew: (id) => newIds.has(id),
     settled: (id) => chains.get(id) ?? Promise.resolve(),
+    saveNow,
     schedulePull,
     failed,
     flush,

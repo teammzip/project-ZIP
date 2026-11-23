@@ -6,7 +6,7 @@ import { Button } from '@/components/ui'
 import { useAuthStore, useLogout } from '@/features/auth'
 import { useCalendarServerSync, useNotis } from '@/features/life'
 import { useMemoServerSync } from '@/features/memo'
-import { useLedgerMemoCleanup } from '@/features/life/ledgerMemoNavigation'
+import { LedgerMemoResumeDialog } from '@/features/life/components/LedgerMemoResumeDialog'
 import { WarnNotice } from '@/features/moderation'
 import { NoticePopup } from '@/features/notice'
 import { Avatar } from '@/features/profile'
@@ -30,7 +30,6 @@ export function AppLayout() {
   const toggleProfile = () => setProfileOpen((v) => !v)
   const showFab = pathname !== '/ai' && pathname !== '/map' // AI 버튼은 AI · 동네 화면에선 안 나옴
   useMemoServerSync() // 서버 모드: 메모장 · 홈 메모 위젯을 서버와 맞춤 (어느 화면에 있든 한 번만)
-  useLedgerMemoCleanup()
   useCalendarServerSync() // 서버 모드: 일정 · 일정 카테고리 · 항목 버튼을 서버와 맞춤
 
   // 화면을 옮기면 ☰ 메뉴는 닫힘 (렌더 중에 이전 주소와 비교 — effect 안에서 setState 하지 않으려고)
@@ -51,6 +50,7 @@ export function AppLayout() {
         </main>
         {/* 관리자가 "팝업으로 보여 주기"를 고른 공지 (일주일 동안 보지 않기 · 닫기) */}
         <NoticePopup />
+        <LedgerMemoResumeDialog />
       </div>
       <BottomNav />
       {showFab && (

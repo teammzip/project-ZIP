@@ -31,11 +31,11 @@ public class PlaceReviewRepository {
             SELECT r.id, CONCAT('', r.place_id) AS place_key, p.name, r.rating, COALESCE(r.body, '') AS body, r.created_at
             FROM place_reviews r JOIN places p ON p.id = r.place_id WHERE r.user_id = ?
             UNION ALL
-            SELECT r.id, CONCAT('kakao:', r.kakao_place_id), r.name, r.rating, COALESCE(r.body, ''), r.created_at
+            SELECT r.id, CONCAT(?, r.kakao_place_id), r.name, r.rating, COALESCE(r.body, ''), r.created_at
             FROM kakao_place_reviews r WHERE r.user_id = ?
             ORDER BY created_at DESC, place_key, id DESC
             """, (rs, row) -> new MyReview(Long.toString(rs.getLong("id")), rs.getString("place_key"), rs.getString("name"),
-                rs.getInt("rating"), rs.getString("body"), rs.getTimestamp("created_at").toInstant().toString()), userId, userId);
+                rs.getInt("rating"), rs.getString("body"), rs.getTimestamp("created_at").toInstant().toString()), userId, KakaoPlaceId.PREFIX, userId);
     }
 
     /** 리뷰가 붙는 곳. DB 장소면 placeId, 카카오 장소면 kakaoPlaceId */
@@ -43,7 +43,7 @@ public class PlaceReviewRepository {
         static Target place(long id) { return new Target(PlaceReviewService.PLACE, id, null); }
         static Target kakao(String id) { return new Target(PlaceReviewService.KAKAO, null, id); }
         boolean isKakao() { return PlaceReviewService.KAKAO.equals(kind); }
-        String key() { return isKakao() ? MapService.KAKAO_ID + kakaoPlaceId : Long.toString(placeId); }
+        String key() { return isKakao() ? KakaoPlaceId.toKey(kakaoPlaceId) : Long.toString(placeId); }
         private String table() { return isKakao() ? "kakao_place_reviews" : "place_reviews"; }
         private String column() { return isKakao() ? "kakao_place_id" : "place_id"; }
         private Object value() { return isKakao() ? kakaoPlaceId : placeId; }
@@ -239,7 +239,7 @@ public class PlaceReviewRepository {
         }
         if (!kakaoPlaceIds.isEmpty()) {
             jdbc.query("SELECT kakao_place_id, AVG(rating) AS avg_rating, COUNT(*) AS cnt FROM kakao_place_reviews WHERE kakao_place_id IN (" + marks(kakaoPlaceIds.size()) + ") GROUP BY kakao_place_id",
-                rs -> { result.put(MapService.KAKAO_ID + rs.getString("kakao_place_id"), new Summary(round(rs.getDouble("avg_rating")), rs.getInt("cnt"))); },
+                rs -> { result.put(KakaoPlaceId.toKey(rs.getString("kakao_place_id")), new Summary(round(rs.getDouble("avg_rating")), rs.getInt("cnt"))); },
                 kakaoPlaceIds.toArray());
         }
         return result;

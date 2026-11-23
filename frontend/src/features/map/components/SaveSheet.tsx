@@ -4,6 +4,7 @@ import { Modal } from '@/components/ui'
 import { getErrorMessage } from '@/lib/apiClient'
 import { cx } from '@/lib/cx'
 import { mapApi } from '../api'
+import { isKakaoPlace } from '../kakaoPlaceId'
 import { placeColors } from '../placeIcons'
 import { closeSaveSheet, showFavNote, useSaveSheet, type SaveTarget } from '../saveSheet'
 import { LIST_COLORS, useMapStore } from '../store'
@@ -50,7 +51,7 @@ function SaveSheetBody({ target }: { target: SaveTarget }) {
 
   const changed = picked.length !== initial.length || picked.some((id) => !initial.includes(id))
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
-  const meta = target.id.startsWith('kakao:') ? { n: target.n, cat: target.cat } : undefined
+  const meta = isKakaoPlace(target.id) ? { n: target.n, cat: target.cat } : undefined
 
   const addList = async (e: FormEvent) => {
     e.preventDefault()

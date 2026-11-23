@@ -12,9 +12,10 @@ vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../src/features/auth
   compilerOptions: { module: ts.ModuleKind.CommonJS },
 }).outputText, { exports, URLSearchParams })
 
-test('토큰은 fragment를 우선하고 query 전환 호환성을 유지한다', () => {
+test('로그인 토큰은 fragment에서만 읽는다', () => {
   assert.equal(exports.readOAuthCallback('?token=legacy', '#token=current').token, 'current')
-  assert.equal(exports.readOAuthCallback('?token=legacy', '').token, 'legacy')
+  assert.equal(exports.readOAuthCallback('?token=legacy', '').token, null)
+  assert.equal(exports.readOAuthCallback('?token=legacy', '#token=').token, null)
   assert.equal(exports.readOAuthCallback('', '#token=current').token, 'current')
 })
 test('실패 이유와 토큰 없는 응답을 구분한다', () => {
@@ -22,7 +23,7 @@ test('실패 이유와 토큰 없는 응답을 구분한다', () => {
   assert.equal(exports.readOAuthCallback('', '').token, null)
 })
 
-function callbackPage(me) {
+function callbackPage(me, { search = '', hash = '#token=current-session' } = {}) {
   const events = []
   const effects = []
   const auth = { sessionKey: 'previous-session', token: 'previous-token', user: { id: 'previous-user' },
@@ -38,7 +39,7 @@ function callbackPage(me) {
     window: { location: { pathname: '/oauth/callback' }, history: { state: {}, replaceState(_state, _title, url) { events.push(`url:${url}`) } } },
     require: (name) => {
       if (name === 'react') return { useState: (initial) => [typeof initial === 'function' ? initial() : initial, () => {}], useRef: () => ({ current: false }), useEffect: (effect) => effects.push(effect) }
-      if (name === 'react-router-dom') return { Link: 'a', useNavigate: () => () => events.push('navigate'), useLocation: () => ({ search: '', hash: '#token=current-session' }) }
+      if (name === 'react-router-dom') return { Link: 'a', useNavigate: () => () => events.push('navigate'), useLocation: () => ({ search, hash }) }
       if (name === '@/features/auth/oauthCallback') return exports
       if (name === '@/features/auth') return { useAuthStore: store }
       if (name === '@/lib/apiClient') return { getErrorMessage: () => 'error', publicAuthClient: { get: async (path, options) => {
@@ -56,6 +57,13 @@ function callbackPage(me) {
   component.OAuthCallbackPage()
   return { events, auth, start: () => effects[0]() }
 }
+
+test('쿼리 토큰만 있으면 주소를 정리하고 로그인 요청을 보내지 않는다', () => {
+  const page = callbackPage(() => assert.fail('내 정보 요청이 발생했어요.'), { search: '?token=legacy', hash: '' })
+  page.start()
+  assert.deepEqual(page.events, ['url:/oauth/callback'])
+  assert.equal(page.auth.sessionKey, 'previous-session')
+})
 
 test('서버 요청 전에 URL 토큰과 이전 회원 상태를 제거한다', async () => {
   const page = callbackPage(async () => ({ id: 'new-user' }))

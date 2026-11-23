@@ -5,7 +5,7 @@ import { readSessionId, readSharedToken } from '@/features/auth/store/authStore'
 import { isAxiosError } from 'axios'
 import { useLifeStore } from '@/features/life/store'
 import { useProfileStore } from '@/features/profile/store'
-import { loadHomeInfo } from '@/features/life/homeApi'
+import { loadHomeInfo, removeHomeInfo } from '@/features/life/homeApi'
 
 // 로그인한 회원의 저장 주소로 시작한다. 다른 회원의 동네 설정을 이어 쓰지 않는다.
 function syncAddress() {
@@ -86,8 +86,9 @@ const restoredSession = useAuthStore.getState()
 const restoring = !isMockApi && restoredSession.sessionKey && window.location.pathname !== '/oauth/callback'
 if (restoring && restoredSession.user && restoredSession.user.role !== 'ADMIN') void loadHomeInfo().catch(() => {})
 useAuthStore.subscribe((state, previous) => {
-  if (!isMockApi && state.sessionKey && state.user && state.user.role !== 'ADMIN' &&
-      (state.sessionKey !== previous.sessionKey || state.user.id !== previous.user?.id)) void loadHomeInfo().catch(() => {})
+  if (isMockApi || (state.sessionKey === previous.sessionKey && state.user?.id === previous.user?.id)) return
+  if (previous.user && previous.sessionKey) removeHomeInfo(previous.user.id, previous.sessionKey)
+  if (state.sessionKey && state.user && state.user.role !== 'ADMIN') void loadHomeInfo().catch(() => {})
 })
 
 // 새로고침 시 Postman·다른 기기에서 변경된 내 정보도 서버에서 다시 받는다.

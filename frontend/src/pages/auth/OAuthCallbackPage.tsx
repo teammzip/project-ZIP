@@ -13,18 +13,21 @@ export function OAuthCallbackPage() {
   const [callback] = useState(() => readOAuthCallback(location.search, location.hash))
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
-  const token = callback.token
+  const { token, hasQueryToken } = callback
   const [requestError, setRequestError] = useState<string | null>(null)
   // 백엔드가 실패 이유를 ?error= 로 보내 주면 그대로 보여줌
   const error = token ? requestError : (callback.error ?? '로그인 정보가 없어요. 다시 시도해 주세요.')
   const started = useRef(false) // StrictMode 에서 두 번 실행되는 것 방지
 
   useEffect(() => {
-    if (!token || started.current) return
+    if (started.current || (!token && !hasQueryToken)) return
     started.current = true
 
-    // URL의 토큰을 즉시 지우고, 이전 회원 상태와 새 토큰이 섞이지 않도록 비운다.
+    // 로그인에 사용하지 않는 쿼리 토큰도 주소에서 제거한다.
     window.history.replaceState(window.history.state, '', window.location.pathname)
+    if (!token) return
+
+    // 이전 회원 상태와 새 토큰이 섞이지 않도록 비운다.
     useAuthStore.getState().clearAuth()
 
     publicAuthClient.get<User>('/auth/me', { headers: { Authorization: `Bearer ${token}` } })
@@ -37,7 +40,7 @@ export function OAuthCallbackPage() {
         if (useAuthStore.getState().sessionKey) return
         setRequestError(getErrorMessage(e))
       })
-  }, [token, navigate, setAuth])
+  }, [token, hasQueryToken, navigate, setAuth])
 
   return (
     <div className={styles.callback}>

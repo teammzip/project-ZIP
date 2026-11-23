@@ -9,7 +9,7 @@ import { cx } from '@/lib/cx'
 import common from '@/styles/common.module.css'
 import styles from './life.module.css'
 import { useAuthStore } from '@/features/auth'
-import { returnedMemoDraft, openLedgerMemo, clearMemoDraft, discardMemoDraft } from '../ledgerMemoNavigation'
+import { returnedMemoDraft, openLedgerMemo, clearMemoDraft, discardMemoDraft, rememberLedgerValues } from '../ledgerMemoNavigation'
 
 function localDate(timeZone: string) {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
@@ -32,13 +32,14 @@ export function MonthlyBillEditor({ month, timeZone, bill }: Props) {
   const categoryUnavailable = !bill && (loadingCategories || categoriesFailed || !selectedTag)
   const [amount, setAmount] = useState(resume?.values.amount ?? String(bill?.amount ?? ''))
   const [dueDate, setDueDate] = useState(resume?.values.dueDate ?? bill?.dueDate ?? '')
-  const [memo, setMemo] = useState(bill?.memo ?? '')
+  const [memo, setMemo] = useState(resume?.values.memo ?? bill?.memo ?? '')
   const memoId = resume?.memoId ?? bill?.memoId, memoTitle = resume?.memoTitle ?? bill?.memoTitle
   const [busy, setBusy] = useState(false)
   const pending = useRef(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [today, setToday] = useState(() => localDate(timeZone))
+  useEffect(() => rememberLedgerValues(resume, { amount, dueDate, tag, memo }), [resume, amount, dueDate, tag, memo])
   useEffect(() => {
     const refresh = () => setToday(localDate(timeZone))
     const timer = setInterval(refresh, 60000)
@@ -100,7 +101,7 @@ export function MonthlyBillEditor({ month, timeZone, bill }: Props) {
         <label className={styles.quickField}><span>납부 기한</span><input className={styles.quickDate} type="date" min={keepingDeadline ? undefined : today} max="9999-12-31" required value={dueDate} disabled={busy} onChange={(e) => setDueDate(e.target.value)} /></label>
         <button type="button" className={styles.quickField} disabled={busy} aria-label="메모 작성" onClick={() => {
           if (!owner) return
-          openLedgerMemo({ key: resume?.key, owner, kind: 'bill', recordId: bill?.id, month, label: `고정 지출 · ${month} · ${bill?.name ?? selectedTag}`, values: { amount, dueDate, tag: selectedTag }, memoId, memoTitle })
+          openLedgerMemo({ key: resume?.key, owner, kind: 'bill', recordId: bill?.id, month, label: `고정 지출 · ${month} · ${bill?.name ?? selectedTag}`, values: { amount, dueDate, tag: selectedTag, memo }, memoId, memoTitle })
         }}><span>메모 (선택)</span><b className={styles.quickAdd}>{memoId ? memoTitle?.trim() || '제목 없는 메모' : '메모 작성'}</b></button>
       </div>
       <Button type="submit" block disabled={busy || !amount || !dueDate || categoryUnavailable}>{busy ? '저장 중' : bill ? '저장' : '기록하기'}</Button>
