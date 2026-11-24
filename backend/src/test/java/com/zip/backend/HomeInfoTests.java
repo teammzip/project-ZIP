@@ -43,6 +43,30 @@ class HomeInfoTests {
             .contentType("application/json").content(json.writeValueAsString(body)));
     }
 
+    @Test void emptyHomeAndPreviouslyStoredDraftKeepTheirResponseShape() throws Exception {
+        String t = token("home-shape");
+        var response = json.readTree(read(t).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertEquals(6, response.size());
+        for (String field : List.of("contract", "loan", "loanDraft", "managementBill")) {
+            assertTrue(response.path(field).isNull(), field);
+        }
+        assertTrue(response.path("charges").isArray());
+        assertEquals(0, response.path("charges").size());
+        var settings = response.path("settings");
+        assertEquals(9, settings.size());
+        assertTrue(settings.path("notiOn").asBoolean());
+        assertTrue(settings.path("regionId").isNull());
+        assertTrue(settings.path("regionLocation").isNull());
+        assertEquals("", settings.path("regionName").asText());
+
+        jdbc.update("UPDATE users SET housing_loan_draft=? WHERE email=?",
+            "{\"principal\":120000000.0,\"annualRate\":3.25}", "home-shape@example.com");
+        read(t).andExpect(status().isOk()).andExpect(jsonPath("$.loanDraft.principal").value(120000000))
+            .andExpect(jsonPath("$.loanDraft.annualRate").value(3.25))
+            .andExpect(jsonPath("$.loanDraft.paymentDay").doesNotHaveJsonPath())
+            .andExpect(jsonPath("$.loanDraft.startDate").doesNotHaveJsonPath());
+    }
+
     @Test void loanCardUpdatesOnlyTheOwnersLoanAndPreservesPastInterestOnEditAndStop() throws Exception {
         var owner=token("loan-card-owner");
         var other=token("loan-card-other");

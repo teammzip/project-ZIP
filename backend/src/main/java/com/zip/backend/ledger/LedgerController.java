@@ -1,5 +1,6 @@
 package com.zip.backend.ledger;
 
+import com.zip.backend.bills.BillInput;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -17,24 +18,24 @@ public class LedgerController {
     }
 
     @GetMapping("/{kind}")
-    public List<Map<String, Object>> list(@AuthenticationPrincipal Jwt jwt, @PathVariable String kind,
-                                         @RequestParam String month, @RequestParam String timeZone,
-                                         @RequestParam(defaultValue = "fixed") String incomeType) {
+    public List<LedgerRow> list(@AuthenticationPrincipal Jwt jwt, @PathVariable String kind,
+                                @RequestParam String month, @RequestParam String timeZone,
+                                @RequestParam(defaultValue = "fixed") String incomeType) {
         return ledger.list(user(jwt), kind, month, timeZone, incomeType);
     }
 
     @PostMapping("/{kind}")
     @ResponseStatus(HttpStatus.CREATED)
     public void create(@AuthenticationPrincipal Jwt jwt, @PathVariable String kind, @RequestParam String timeZone,
-                       @RequestBody Map<String, Object> body) {
-        ledger.create(user(jwt), session(jwt), kind, timeZone, body);
+                       @RequestBody LedgerWriteBody body) {
+        ledger.create(user(jwt), session(jwt), ledger.prepareWrite(kind, timeZone, body));
     }
 
     @PutMapping("/{kind}/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void update(@AuthenticationPrincipal Jwt jwt, @PathVariable String kind, @PathVariable String id,
-                       @RequestParam String timeZone, @RequestBody Map<String, Object> body) {
-        ledger.update(user(jwt), session(jwt), kind, id, timeZone, body);
+                       @RequestParam String timeZone, @RequestBody LedgerWriteBody body) {
+        ledger.update(user(jwt), session(jwt), BillInput.id(id), ledger.prepareWrite(kind, timeZone, body));
     }
 
     @DeleteMapping("/{kind}/{id}")

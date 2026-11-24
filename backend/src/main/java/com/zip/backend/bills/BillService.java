@@ -3,12 +3,14 @@ package com.zip.backend.bills;
 import com.zip.backend.auth.AuthRepository;
 import com.zip.backend.common.ApiException;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.Instant;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +28,7 @@ public class BillService {
 
     /** 조회 범위와 월 전환은 요청한 지역 시간대로 계산하고 실제 시각은 서버 Clock을 사용한다. */
     @Transactional(readOnly = true)
-    public Map<String, Object> monthly(long userId, YearMonth month, String timeZone) {
+    public BillResponse.Monthly monthly(long userId, YearMonth month, String timeZone) {
         ZoneId zone;
         try { zone = ZoneId.of(timeZone); }
         catch (RuntimeException error) { throw BillInput.bad("올바른 지역 시간대를 보내 주세요."); }
@@ -55,35 +57,24 @@ public class BillService {
                 return month.equals(current) && !month.isBefore(YearMonth.from(row.item().createdAt().atZone(zone)));
             })
             .map(row -> {
+                var item = row.item();
                 var payment = row.payment();
                 if (payment != null && payment.paidAt() != null && payment.paidAt().isAfter(asOf)) payment = new BillRepository.Payment(payment.amount(), null, payment.dueDate(), payment.memo());
-                var entry=response(row.item(), payment, month);
-                entry.put("active", row.item().active() && (row.item().terminationDate()==null || asOf.atZone(zone).toLocalDate().isBefore(row.item().terminationDate())));
-                boolean management=housing!=null && housing.manages(row.item());
-                entry.put("homeManaged", row.item().homeContractKind()!=null || management);
-                if (payment==null && management) entry.put("dueDate",repository.managementDue(userId,month,housing).toString());
-                return entry;
+                boolean active = item.active() && (item.terminationDate() == null || asOf.atZone(zone).toLocalDate().isBefore(item.terminationDate()));
+                boolean management = housing != null && housing.manages(item);
+                LocalDate estimatedDueDate = payment == null && management ? repository.managementDue(userId, month, housing) : null;
+                return response(item, payment, month, active, item.homeContractKind() != null || management, estimatedDueDate);
             }).toList();
-        var result = new LinkedHashMap<String, Object>();
-        result.put("month", month.toString()); result.put("currentMonth", current.toString()); result.put("timeZone", zone.getId());
-        result.put("periodFrom", start.atZone(zone).toOffsetDateTime().toString());
-        result.put("periodThrough", through.atZone(zone).toOffsetDateTime().toString());
-        result.put("queriedAt", asOf.atZone(zone).toOffsetDateTime().toString());
-        result.put("items", items);
-        result.put("contractKind", housing==null?null:housing.kind());
-        result.put("managementIncluded", housing!=null && housing.included());
-        var contractPeriod = new LinkedHashMap<String,Object>();
-        contractPeriod.put("from", housing==null?null:housing.moveIn());
-        contractPeriod.put("through", housing==null?null:housing.end());
-        contractPeriod.put("outside", outside);
-        contractPeriod.put("currentOutside", housing!=null && !housing.includes(current));
-        result.put("contractPeriod", contractPeriod);
-        result.put("housingItems", housingItems(userId,month,current,asOf,housing,canRegister));
-        return result;
+        var contractPeriod = new BillResponse.ContractPeriod(housing == null ? null : housing.moveIn(),
+            housing == null ? null : housing.end(), outside, housing != null && !housing.includes(current));
+        return new BillResponse.Monthly(month.toString(), current.toString(), zone.getId(),
+            start.atZone(zone).toOffsetDateTime().toString(), through.atZone(zone).toOffsetDateTime().toString(),
+            asOf.atZone(zone).toOffsetDateTime().toString(), housing == null ? null : housing.kind(),
+            housing != null && housing.included(), contractPeriod, housingItems(userId, month, current, asOf, housing, canRegister), items);
     }
 
-    private List<Map<String,Object>> housingItems(long user, YearMonth month, YearMonth current, Instant asOf, BillRepository.Housing housing, boolean canRegister) {
-        var rows=new java.util.ArrayList<Map<String,Object>>();
+    private List<BillResponse.HousingItem> housingItems(long user, YearMonth month, YearMonth current, Instant asOf, BillRepository.Housing housing, boolean canRegister) {
+        var rows = new ArrayList<BillResponse.HousingItem>();
         // 현재 선택한 계약 유형으로 조회를 통일한다. 반대 유형의 과거 기록은 DB에 보존한다.
         boolean monthly=housing!=null && "monthly".equals(housing.kind());
         boolean jeonse=housing!=null && "jeonse".equals(housing.kind());
@@ -106,25 +97,22 @@ public class BillService {
         }
         return rows;
     }
-    private Map<String,Object> housingRow(String id,String name,String tag,long amount,java.time.LocalDate due,Instant paid,
+    private BillResponse.HousingItem housingRow(String id, String name, String tag, long amount, LocalDate due, Instant paid,
         boolean snapshot,String source,String memo) {
-        var row=new LinkedHashMap<String,Object>();
-        row.put("id",id); row.put("name",name); row.put("tag",tag); row.put("amount",amount); row.put("defaultAmount",amount);
-        row.put("paid",paid!=null); row.put("paidAt",paid==null?null:paid.toString()); row.put("dueDate",due==null?null:due.toString());
-        row.put("month",due==null?id.substring(id.length()-7):YearMonth.from(due).toString());
-        row.put("active",true); row.put("snapshot",snapshot); row.put("source",source); row.put("memo",memo);
-        return row;
+        return new BillResponse.HousingItem(id, name, tag, amount, amount, paid != null, Objects.toString(paid, null),
+            Objects.toString(due, null), due == null ? id.substring(id.length() - 7) : YearMonth.from(due).toString(),
+            true, snapshot, source, memo);
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> currentActive(long userId, long id) {
+    public BillResponse currentActive(long userId, long id) {
         var month = currentMonth();
         var row = repository.activeRow(userId, id, month);
         return row == null ? null : response(row.item(), row.payment(), month);
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> list(long userId, YearMonth month) {
+    public List<BillResponse> list(long userId, YearMonth month) {
         YearMonth current = currentMonth();
         var home=repository.housing(userId);
         return repository.list(userId, month).stream()
@@ -186,7 +174,7 @@ public class BillService {
             throw BillInput.bad("계약 기간 밖에는 고정 지출을 저장할 수 없어요. 내 집 정보의 계약 기간을 확인해 주세요.");
     }
 
-    private YearMonth writableMonth(String month, String timeZone) {
+    public YearMonth writableMonth(String month, String timeZone) {
         var value = BillInput.month(month);
         try {
             if (value.isAfter(YearMonth.from(clock.instant().atZone(ZoneId.of(timeZone)))))
@@ -196,50 +184,56 @@ public class BillService {
     }
 
     @Transactional
-    public Map<String, Object> registerMonthly(long userId, long sessionId, String monthValue, String timeZone, Map<String, Object> body) {
-        var month = writableMonth(monthValue, timeZone);
-        BillInput.monthly(body, true); lock(userId, sessionId);
-        requireDueDate(body, timeZone);
-        requireContractMonth(userId,month);
-        requireContractMonth(userId,YearMonth.from(BillInput.dueDate(body.get("dueDate"))));
-        String tag = BillInput.text(body.get("tag"), "분류", 24);
-        String name = body.containsKey("name") ? BillInput.text(body.get("name"), "이름", 30) : tag;
-        long amount = BillInput.amount(body.get("amount"));
+    public BillResponse registerMonthly(long userId, long sessionId, YearMonth month, String timeZone, BillInput.MonthlyCreate request) {
+        lock(userId, sessionId);
+        var details = request.details();
+        LocalDate dueDate = details.dueDate();
+        requireDueDate(dueDate, timeZone);
+        requireContractMonth(userId, month);
+        requireContractMonth(userId, YearMonth.from(dueDate));
+        String tag = request.tag();
+        String name = request.name();
+        long amount = details.amount();
         Long id = repository.matchingUnregistered(userId, name, tag, month);
         if (id != null) requireManual(userId,id);
         if (id == null) id = repository.create(userId, name, amount, tag, clock.instant());
-        requireBeforeTermination(repository.find(userId,id),BillInput.dueDate(body.get("dueDate")));
+        requireBeforeTermination(repository.find(userId, id), dueDate);
         if (repository.payment(id, month) != null) throw new ApiException(409, "이 월에 이미 등록된 항목이에요. 수정 버튼을 이용해 주세요.");
         repository.insertPayment(id, month, amount, null);
-        repository.monthlyDetails(id, month, amount, BillInput.dueDate(body.get("dueDate")));
-        if (body.containsKey("memoId")) repository.attachMemo(userId,id,month,body.get("memoId").toString());
-        else if (body.containsKey("memo")) repository.monthlyMemo(id,month,BillInput.memo(body.get("memo")));
+        repository.monthlyDetails(id, month, amount, dueDate);
+        saveMonthlyMemo(userId, id, month, details);
         return response(repository.find(userId, id), repository.payment(id, month), month);
     }
 
     @Transactional
-    public Map<String, Object> updateMonthly(long userId, long sessionId, long id, String monthValue, String timeZone, Map<String, Object> body) {
-        var month = writableMonth(monthValue, timeZone);
-        BillInput.monthly(body, false); lock(userId, sessionId);
+    public BillResponse updateMonthly(long userId, long sessionId, long id, YearMonth month, String timeZone, BillInput.MonthlyDetails request) {
+        lock(userId, sessionId);
+        LocalDate dueDate = request.dueDate();
+        long amount = request.amount();
         var item = repository.find(userId, id);
         requireManual(userId,id);
-        requireBeforeTermination(item,BillInput.dueDate(body.get("dueDate")));
+        requireBeforeTermination(item, dueDate);
         var existing=repository.payment(id,month);
         if (existing == null || existing.deletedAt() != null) throw new ApiException(404, "선택한 월에 등록한 후 수정해 주세요.");
         if(existing.paidAt()!=null) throw new ApiException(409,"납부 완료 기록은 변경할 수 없어요.");
-        requireContractMonth(userId,month);
-        requireContractMonth(userId,YearMonth.from(BillInput.dueDate(body.get("dueDate"))));
-        if (!BillInput.dueDate(body.get("dueDate")).equals(existing.dueDate())) requireDueDate(body,timeZone);
-        repository.monthlyDetails(id, month, BillInput.amount(body.get("amount")), BillInput.dueDate(body.get("dueDate")));
-        if (body.containsKey("memoId")) repository.attachMemo(userId,id,month,body.get("memoId").toString());
-        else if (body.containsKey("memo")) repository.monthlyMemo(id,month,BillInput.memo(body.get("memo")));
-        if(existing.amount()!=BillInput.amount(body.get("amount")) || !java.util.Objects.equals(existing.dueDate(),BillInput.dueDate(body.get("dueDate")))) {
-            repository.propagateMonthly(userId,id,month,BillInput.amount(body.get("amount")),BillInput.dueDate(body.get("dueDate")),
-                java.time.LocalDate.ofInstant(clock.instant(),ZoneId.of(timeZone)),existing.amount()!=BillInput.amount(body.get("amount")),
-                !java.util.Objects.equals(existing.dueDate(),BillInput.dueDate(body.get("dueDate"))));
-            repository.update(userId,id,item.name(),BillInput.amount(body.get("amount")),item.tag());
+        requireContractMonth(userId, month);
+        requireContractMonth(userId, YearMonth.from(dueDate));
+        boolean dateChanged = !dueDate.equals(existing.dueDate());
+        if (dateChanged) requireDueDate(dueDate, timeZone);
+        repository.monthlyDetails(id, month, amount, dueDate);
+        saveMonthlyMemo(userId, id, month, request);
+        boolean amountChanged = amount != existing.amount();
+        if (amountChanged || dateChanged) {
+            repository.propagateMonthly(userId, id, month, amount, dueDate,
+                LocalDate.ofInstant(clock.instant(), ZoneId.of(timeZone)), amountChanged, dateChanged);
+            repository.update(userId, id, item.name(), amount, item.tag());
         }
         return response(repository.find(userId,id), repository.payment(id, month), month);
+    }
+
+    private void saveMonthlyMemo(long userId, long id, YearMonth month, BillInput.MonthlyDetails request) {
+        if (request.memoId() != null) repository.attachMemo(userId, id, month, request.memoId());
+        else if (request.memo() != null) repository.monthlyMemo(id, month, request.memo());
     }
 
     @Transactional
@@ -255,28 +249,29 @@ public class BillService {
     }
 
     @Transactional
-    public Map<String, Object> registerPhoto(long userId, long sessionId, String month, String timeZone, String hash, Map<String, Object> body) {
+    public BillResponse registerPhoto(long userId, long sessionId, String month, String timeZone, String hash, Map<String, Object> body) {
         return registerPhoto(userId,sessionId,month,timeZone,hash,null,body);
     }
 
-    private void requireDueDate(Map<String,Object> body, String timeZone) {
-        var today=java.time.LocalDate.ofInstant(clock.instant(),ZoneId.of(timeZone));
-        if (BillInput.dueDate(body.get("dueDate")).isBefore(today)) throw BillInput.bad("납부 기한은 해당 시간대의 오늘 이후로 입력해 주세요.");
+    private void requireDueDate(LocalDate dueDate, String timeZone) {
+        var today = LocalDate.ofInstant(clock.instant(), ZoneId.of(timeZone));
+        if (dueDate.isBefore(today)) throw BillInput.bad("납부 기한은 해당 시간대의 오늘 이후로 입력해 주세요.");
     }
 
     @Transactional
-    public Map<String, Object> registerPhoto(long userId, long sessionId, String month, String timeZone, String hash, String documentHash, Map<String, Object> body) {
+    public BillResponse registerPhoto(long userId, long sessionId, String month, String timeZone, String hash, String documentHash, Map<String, Object> body) {
         lock(userId, sessionId);
         if (repository.photoImport(userId, hash) != null) throw new ApiException(409, "이미 등록한 사진이에요. 등록된 내역을 확인해 주세요.");
         if (documentHash != null && repository.documentExists(userId,documentHash)) throw new ApiException(409,"이미 등록된 고지서예요. 등록된 내역을 수정해 주세요.");
-        var result = registerMonthly(userId, sessionId, month, timeZone, body);
-        repository.rememberPhoto(userId, hash, Long.parseLong((String)result.get("id")));
-        if (documentHash != null) repository.rememberDocument(userId,documentHash,Long.parseLong((String)result.get("id")));
+        var result = registerMonthly(userId, sessionId, writableMonth(month, timeZone), timeZone, BillInput.monthlyCreate(body));
+        long id = Long.parseLong(result.id());
+        repository.rememberPhoto(userId, hash, id);
+        if (documentHash != null) repository.rememberDocument(userId, documentHash, id);
         return result;
     }
 
     @Transactional
-    public Map<String, Object> create(long userId, long sessionId, Map<String, Object> body) {
+    public BillResponse create(long userId, long sessionId, Map<String, Object> body) {
         BillInput.item(body, true); lock(userId, sessionId);
         String name = BillInput.text(body.get("name"), "이름", 30), tag = BillInput.text(body.get("tag"), "분류", 24);
         checkDuplicate(userId, name, tag, 0);
@@ -290,7 +285,7 @@ public class BillService {
     }
 
     @Transactional
-    public Map<String,Object> createFromHome(long userId,long sessionId,Map<String,Object> body) {
+    public BillResponse createFromHome(long userId,long sessionId,Map<String,Object> body) {
         BillInput.item(body,true); lock(userId,sessionId);
         String name=BillInput.text(body.get("name"),"이름",30),tag=BillInput.text(body.get("tag"),"분류",24);
         checkDuplicate(userId,name,tag,0);
@@ -299,7 +294,7 @@ public class BillService {
     }
 
     @Transactional
-    public Map<String, Object> update(long userId, long sessionId, long id, Map<String, Object> body) {
+    public BillResponse update(long userId, long sessionId, long id, Map<String, Object> body) {
         lock(userId,sessionId);
         requireContractMonth(userId,currentMonth());
         requireManual(userId,id);
@@ -314,7 +309,7 @@ public class BillService {
     }
 
     @Transactional
-    public Map<String,Object> updateFromHome(long userId,long sessionId,long id,Map<String,Object> body) {
+    public BillResponse updateFromHome(long userId,long sessionId,long id,Map<String,Object> body) {
         BillInput.item(body, false); lock(userId, sessionId);
         var item = active(repository.find(userId, id));
         String name = body.containsKey("name") ? BillInput.text(body.get("name"), "이름", 30) : item.name();
@@ -329,7 +324,7 @@ public class BillService {
     }
 
     @Transactional
-    public Map<String, Object> pay(long userId, long sessionId, long id, YearMonth month, Map<String, Object> body) {
+    public BillResponse pay(long userId, long sessionId, long id, YearMonth month, Map<String, Object> body) {
         BillInput.payment(body); lock(userId, sessionId);
         if(body.containsKey("amount")) requireManual(userId,id);
         var current = currentMonth();
@@ -389,18 +384,19 @@ public class BillService {
         if(item.terminationDate()!=null && !due.isBefore(item.terminationDate())) throw new ApiException(409,"해지 적용일 이후에는 고정 지출을 등록·수정할 수 없어요.");
     }
 
-    private Map<String, Object> response(BillRepository.Item item, BillRepository.Payment payment, YearMonth month) {
-        var result = new LinkedHashMap<String, Object>();
-        result.put("id", Long.toString(item.id())); result.put("name", item.name()); result.put("tag", item.tag());
-        result.put("amount", payment == null ? item.defaultAmount() : payment.amount());
-        result.put("paid", payment != null && payment.paidAt() != null);
-        result.put("paidAt", payment == null || payment.paidAt() == null ? null : payment.paidAt().toString());
-        result.put("month", month.toString()); result.put("defaultAmount", item.defaultAmount());
-        result.put("active", item.active()); result.put("snapshot", payment != null);
-        result.put("terminationDate",item.terminationDate()==null?null:item.terminationDate().toString());
-        result.put("dueDate", payment == null || payment.dueDate() == null ? null : payment.dueDate().toString());
-        result.put("memo", payment == null || payment.memo() == null ? "" : payment.memo());
-        result.putAll(repository.memoReference(item.id(),month));
-        return result;
+    private BillResponse response(BillRepository.Item item, BillRepository.Payment payment, YearMonth month) {
+        return response(item, payment, month, item.active(), null, null);
+    }
+
+    private BillResponse response(BillRepository.Item item, BillRepository.Payment payment, YearMonth month,
+                                  boolean active, Boolean homeManaged, LocalDate estimatedDueDate) {
+        var memo = repository.memoReference(item.id(), month);
+        Instant paidAt = payment == null ? null : payment.paidAt();
+        LocalDate dueDate = payment == null ? estimatedDueDate : payment.dueDate();
+        return new BillResponse(Long.toString(item.id()), item.name(), item.tag(),
+            payment == null ? item.defaultAmount() : payment.amount(), paidAt != null, Objects.toString(paidAt, null),
+            month.toString(), item.defaultAmount(), active, payment != null, Objects.toString(item.terminationDate(), null),
+            Objects.toString(dueDate, null), payment == null ? "" : Objects.toString(payment.memo(), ""),
+            memo == null ? null : memo.id(), memo == null ? null : memo.title(), homeManaged);
     }
 }

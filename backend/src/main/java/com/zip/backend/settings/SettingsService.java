@@ -4,7 +4,6 @@ import com.zip.backend.auth.AuthRepository;
 import com.zip.backend.common.ApiException;
 import java.math.BigDecimal;
 import java.time.Clock;
-import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -22,10 +21,10 @@ public class SettingsService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> get(long userId) { return response(repository.read(userId)); }
+    public SettingsResponse get(long userId) { return response(repository.read(userId)); }
 
     @Transactional
-    public Map<String, Object> put(long userId, long sessionId, SettingsInput input) {
+    public SettingsResponse put(long userId, long sessionId, SettingsInput input) {
         auth.lockUser(userId);
         if (!auth.sessionActive(sessionId, userId, clock.instant())) throw new ApiException(401, "로그인이 만료됐어요.");
         var previous = repository.read(userId);
@@ -73,21 +72,13 @@ public class SettingsService {
         return settings.regionId() == null ? "" : repository.region(settings.regionId()).fullName();
     }
 
-    private Map<String, Object> response(SettingsRepository.Settings settings) {
-        var result = new LinkedHashMap<String, Object>();
-        result.put("rent", settings.rent()); result.put("rentDay", settings.day());
-        result.put("moveIn", settings.moveIn()); result.put("contractEnd", settings.end()); result.put("notiOn", settings.on());
-        result.put("homeAddress", settings.home()); result.put("regionId", settings.regionId()); result.put("regionName", displayName(settings));
+    private SettingsResponse response(SettingsRepository.Settings settings) {
         var location = settings.location();
-        result.put("regionLocation", location == null ? null : locationMap(location));
-        return result;
-    }
-
-    private Map<String, Object> locationMap(SettingsRepository.Location location) {
-        var value = new LinkedHashMap<String, Object>();
-        value.put("region", location.name()); value.put("source", location.source().toLowerCase(Locale.ROOT));
-        value.put("point", location.lat() == null ? null : Map.of("lat", location.lat(), "lon", location.lon()));
-        return value;
+        var region = location == null ? null : new SettingsResponse.RegionLocation(location.name(),
+            location.source().toLowerCase(Locale.ROOT),
+            location.lat() == null ? null : new SettingsResponse.Point(location.lat(), location.lon()));
+        return new SettingsResponse(settings.rent(), settings.day(), settings.moveIn(), settings.end(), settings.on(),
+            settings.home(), settings.regionId(), displayName(settings), region);
     }
 
     private SettingsRepository.Location location(Object raw) {

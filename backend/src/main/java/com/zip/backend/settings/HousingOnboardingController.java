@@ -16,7 +16,7 @@ public class HousingOnboardingController {
     }
 
     @PutMapping("/api/me/housing-onboarding")
-    public Map<String, Object> save(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, Object> input) {
+    public Map<String, Object> save(@AuthenticationPrincipal Jwt jwt, @RequestBody HousingOnboardingRequest input) {
         return onboarding.save(Long.parseLong(jwt.getSubject()), Long.parseLong(jwt.getClaimAsString("sid")), input);
     }
 }

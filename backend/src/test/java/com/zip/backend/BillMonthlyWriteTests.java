@@ -18,6 +18,8 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import static org.junit.jupiter.api.Assertions.*;
+import static com.zip.backend.bills.BillInput.monthlyCreate;
+import static com.zip.backend.bills.BillInput.monthlyUpdate;
 import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -46,49 +48,84 @@ class BillMonthlyWriteTests {
     }
     Map<String,Object> input(long amount) { return Map.of("name","전기","tag","공과금","amount",amount,"dueDate","2026-12-05"); }
     @Test void registrationWithoutNameUsesCategoryAsDisplayName() {
-        var saved=service.registerMonthly(user,session,month,"UTC",Map.of("tag","통신","amount",30000,"dueDate","2026-12-05"));
-        assertEquals("통신",saved.get("name"));
+        var saved=service.registerMonthly(user,session,YearMonth.parse(month),"UTC",monthlyCreate(Map.of("tag","통신","amount",30000,"dueDate","2026-12-05")));
+        assertEquals("통신",saved.name());
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
     }
     @Test void monthlyRegistrationAndEditPreserveOtherMonthAndPaidStatus() {
-        var created=service.registerMonthly(user,session,month,"UTC",input(40000));
-        long id=Long.parseLong((String)created.get("id"));
+        var created=service.registerMonthly(user,session,YearMonth.parse(month),"UTC",monthlyCreate(input(40000)));
+        long id=Long.parseLong(created.id());
         var previous=YearMonth.parse(month).minusMonths(1);
         jdbc.update("INSERT INTO bill_payments(bill_item_id,period_ym,amount) VALUES (?,?,?)",id,previous.toString(),30000);
         jdbc.update("UPDATE bill_payments SET paid_at=CURRENT_TIMESTAMP WHERE bill_item_id=? AND period_ym=?",id,month);
-        assertEquals(409,assertThrows(ApiException.class,()->service.updateMonthly(user,session,id,month,"UTC",Map.of("amount",45000,"dueDate","2026-12-10"))).status());
+        var update=monthlyUpdate(Map.of("amount",45000,"dueDate","2026-12-10"));
+        assertEquals(409,assertThrows(ApiException.class,()->service.updateMonthly(user,session,id,YearMonth.parse(month),"UTC",update)).status());
         assertEquals(40000L,jdbc.queryForObject("SELECT amount FROM bill_payments WHERE bill_item_id=? AND period_ym=?",Long.class,id,month));
         jdbc.update("UPDATE bill_payments SET paid_at=NULL WHERE bill_item_id=? AND period_ym=?",id,month);
-        var edited=service.updateMonthly(user,session,id,month,"UTC",Map.of("amount",45000,"dueDate","2026-12-10"));
-        assertEquals(45000L,edited.get("amount")); assertEquals("2026-12-10",edited.get("dueDate")); assertEquals(false,edited.get("paid"));
+        var edited=service.updateMonthly(user,session,id,YearMonth.parse(month),"UTC",update);
+        assertEquals(45000L,edited.amount()); assertEquals("2026-12-10",edited.dueDate()); assertFalse(edited.paid());
         assertEquals(30000L,jdbc.queryForObject("SELECT amount FROM bill_payments WHERE bill_item_id=? AND period_ym=?",Long.class,id,previous.toString()));
         assertEquals(45000L,jdbc.queryForObject("SELECT default_amount FROM bill_items WHERE id=?",Long.class,id));
-        var separate=service.registerMonthly(user,session,month,"UTC",input(50000));
-        assertNotEquals(created.get("id"),separate.get("id")); // category/name alone cannot identify a bill
+        var separate=service.registerMonthly(user,session,YearMonth.parse(month),"UTC",monthlyCreate(input(50000)));
+        assertNotEquals(created.id(),separate.id()); // category/name alone cannot identify a bill
     }
     @Test void unregisteredMonthAndOtherUsersCannotBeEdited() {
-        long id=Long.parseLong((String)service.registerMonthly(user,session,month,"UTC",input(40000)).get("id"));
-        String previous=YearMonth.parse(month).minusMonths(1).toString();
-        assertEquals(404,assertThrows(ApiException.class,()->service.updateMonthly(user,session,id,previous,"UTC",Map.of("amount",100,"dueDate","2026-12-01"))).status());
+        long id=Long.parseLong(service.registerMonthly(user,session,YearMonth.parse(month),"UTC",monthlyCreate(input(40000))).id());
+        var previous=YearMonth.parse(month).minusMonths(1);
+        var update=monthlyUpdate(Map.of("amount",100,"dueDate","2026-12-01"));
+        assertEquals(404,assertThrows(ApiException.class,()->service.updateMonthly(user,session,id,previous,"UTC",update)).status());
         String other=auth.socialLogin("GOOGLE","monthly-other","other@example.com","다른회원").accessToken();
         var jwt=decoder.decode(other);
-        assertEquals(404,assertThrows(ApiException.class,()->service.updateMonthly(Long.parseLong(jwt.getSubject()),Long.parseLong(jwt.getClaimAsString("sid")),id,month,"UTC",Map.of("amount",100,"dueDate","2026-12-01"))).status());
+        assertEquals(404,assertThrows(ApiException.class,()->service.updateMonthly(Long.parseLong(jwt.getSubject()),Long.parseLong(jwt.getClaimAsString("sid")),id,YearMonth.parse(month),"UTC",update)).status());
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
     }
     @Test void existingEstimateCanBeRegisteredWithoutDuplicatingItem() {
         jdbc.update("INSERT INTO bill_items(user_id,name,tag,default_amount) VALUES (?,'전기','공과금',40000)",user);
-        var created=service.registerMonthly(user,session,month,"UTC",input(42000));
-        assertEquals(true,created.get("snapshot"));
+        var created=service.registerMonthly(user,session,YearMonth.parse(month),"UTC",monthlyCreate(input(42000)));
+        assertTrue(created.snapshot());
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_items",Integer.class));
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
     }
     @Test void invalidInputsAndFutureMonthsAreRejectedBeforeSaving() throws Exception {
         for (String payload: List.of("{\"name\":\"전기\",\"tag\":\"공과금\",\"amount\":-1,\"dueDate\":\"2026-12-01\"}",
-            "{\"name\":\"전기\",\"tag\":\"공과금\",\"amount\":1,\"dueDate\":\"2026-02-30\"}")) {
+            "{\"name\":\"전기\",\"tag\":\"공과금\",\"amount\":1,\"dueDate\":\"2026-02-30\"}",
+            "{\"tag\":\"공과금\",\"amount\":\"1000\",\"dueDate\":\"2026-12-05\"}",
+            "{\"tag\":\"공과금\",\"amount\":1.5,\"dueDate\":\"2026-12-05\"}",
+            "{\"tag\":\"공과금\",\"amount\":1000,\"dueDate\":\"2026-12-05\",\"unknown\":true}",
+            "{\"tag\":\"공과금\",\"amount\":1000,\"dueDate\":\"2026-12-05\",\"memo\":null}")) {
             mvc.perform(post("/api/bills/monthly").param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content(payload)).andExpect(status().isBadRequest());
         }
-        assertThrows(ApiException.class,()->service.registerMonthly(user,session,YearMonth.parse(month).plusMonths(1).toString(),"UTC",input(40000)));
+        mvc.perform(post("/api/bills/monthly").param("month",YearMonth.parse(month).plusMonths(1).toString()).param("timeZone","UTC")
+                .header("Authorization","Bearer "+token).contentType("application/json")
+                .content("{\"tag\":\"공과금\",\"amount\":40000,\"dueDate\":\"2026-12-05\"}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("미래 월에는 등록할 수 없어요."));
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_items",Integer.class));
+    }
+    @Test void monthlyEndpointsPreserveRequiredNullsAndOmitInapplicableFields() throws Exception {
+        String dueDate = LocalDate.now(ZoneOffset.UTC).plusDays(1).toString();
+        mvc.perform(post("/api/bills/monthly").param("month",month).param("timeZone","UTC")
+                .header("Authorization","Bearer "+token).contentType("application/json")
+                .content("{\"tag\":\"공과금\",\"amount\":1000,\"dueDate\":\"" + dueDate + "\"}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.id").isString())
+            .andExpect(jsonPath("$.paidAt").hasJsonPath()).andExpect(jsonPath("$.paidAt").isEmpty())
+            .andExpect(jsonPath("$.terminationDate").hasJsonPath())
+            .andExpect(jsonPath("$.homeManaged").doesNotHaveJsonPath())
+            .andExpect(jsonPath("$.memoId").doesNotHaveJsonPath());
+        long id = jdbc.queryForObject("SELECT id FROM bill_items WHERE user_id=?", Long.class, user);
+        String update = "{\"amount\":2000,\"dueDate\":\"" + dueDate + "\",\"memo\":\"고지서\"}";
+        mvc.perform(patch("/api/bills/monthly/{id}", id).param("month",month).param("timeZone","UTC")
+                .header("Authorization","Bearer "+token).contentType("application/json")
+                .content(update.replace("{", "{\"tag\":\"통신\",")))
+            .andExpect(status().isBadRequest());
+        mvc.perform(patch("/api/bills/monthly/{id}", id).param("month",month).param("timeZone","UTC")
+                .header("Authorization","Bearer "+token).contentType("application/json").content(update))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.amount").value(2000))
+            .andExpect(jsonPath("$.memoId").isString()).andExpect(jsonPath("$.memo").value("고지서"));
+        mvc.perform(get("/api/bills/monthly").param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.contractKind").hasJsonPath())
+            .andExpect(jsonPath("$.contractPeriod.from").hasJsonPath()).andExpect(jsonPath("$.housingItems").isEmpty())
+            .andExpect(jsonPath("$.items[0].homeManaged").value(false)).andExpect(jsonPath("$.items[0].snapshot").value(true))
+            .andExpect(jsonPath("$.items[0].paidAt").hasJsonPath()).andExpect(jsonPath("$.items[0].paidAt").isEmpty());
     }
     MockMultipartFile photo() { return new MockMultipartFile("photo","bill.png","image/png",new byte[]{(byte)137,80,78,71,13,10,26,10,0}); }
     String analyze(MockMultipartFile file) throws Exception {
@@ -105,7 +142,10 @@ class BillMonthlyWriteTests {
         var id=analyze(photo());
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
         assertEquals("PENDING",jdbc.queryForObject("SELECT state FROM bill_photo_drafts WHERE id=?",String.class,id));
-        decide(id,true).andExpect(status().isOk()).andExpect(jsonPath("$.registered").value(true));
+        decide(id,true).andExpect(status().isOk()).andExpect(jsonPath("$.registered").value(true))
+            .andExpect(jsonPath("$.reply.card.data.bill.id").isString())
+            .andExpect(jsonPath("$.reply.card.data.bill.amount").value(42000))
+            .andExpect(jsonPath("$.reply.card.data.bill.paidAt").hasJsonPath());
         decide(id,true).andExpect(status().isConflict());
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
         mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(photo()).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+token)).andExpect(status().isConflict());
@@ -173,10 +213,11 @@ class BillMonthlyWriteTests {
         mvc.perform(multipart("/api/ai/conversations/"+conversationId+"/bill-photo").file(photo()).param("month",month).param("timeZone","UTC").header("Authorization","Bearer "+other)).andExpect(status().isNotFound());
         verify(gemini,never()).billImage(any(),anyString(),anyString(),anyString());
         var body=new HashMap<String,Object>(input(40000)); body.put("memo","이번 달 전기요금");
-        var saved=service.registerMonthly(user,session,month,"UTC",body);
-        assertEquals("이번 달 전기요금",saved.get("memo"));
-        service.updateMonthly(user,session,Long.parseLong((String)saved.get("id")),month,"UTC",Map.of("amount",45000,"dueDate","2026-12-05","memo","수정 메모"));
-        assertEquals("수정 메모",jdbc.queryForObject("SELECT memo FROM bill_payments WHERE bill_item_id=?",String.class,Long.parseLong((String)saved.get("id"))));
+        var saved=service.registerMonthly(user,session,YearMonth.parse(month),"UTC",monthlyCreate(body));
+        assertEquals("이번 달 전기요금",saved.memo());
+        long id=Long.parseLong(saved.id());
+        service.updateMonthly(user,session,id,YearMonth.parse(month),"UTC",monthlyUpdate(Map.of("amount",45000,"dueDate","2026-12-05","memo","수정 메모")));
+        assertEquals("수정 메모",jdbc.queryForObject("SELECT memo FROM bill_payments WHERE bill_item_id=?",String.class,id));
     }
     @Test void chatSaveFailureRollsBackBillAndPhotoImport() throws Exception {
         when(gemini.billImage(any(),anyString(),anyString(),anyString())).thenAnswer(call -> {
@@ -207,10 +248,10 @@ class BillMonthlyWriteTests {
         jdbc.update("UPDATE auth_sessions SET expires_at=? WHERE id=?",java.sql.Timestamp.from(Instant.parse("2026-11-19T00:30:00Z")),session);
         var fixed=new BillService(new com.zip.backend.bills.BillRepository(jdbc),new com.zip.backend.auth.AuthRepository(jdbc),Clock.fixed(Instant.parse("2026-11-18T00:30:00Z"),ZoneOffset.UTC));
         var body=Map.<String,Object>of("tag","공과금","amount",40000,"dueDate","2026-11-17");
-        assertEquals(400,assertThrows(ApiException.class,()->fixed.registerMonthly(user,session,"2026-11","UTC",body)).status());
+        assertEquals(400,assertThrows(ApiException.class,()->fixed.registerMonthly(user,session,YearMonth.of(2026,11),"UTC",monthlyCreate(body))).status());
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
-        var saved=fixed.registerMonthly(user,session,"2026-11","America/Los_Angeles",body);
-        assertEquals("2026-11-17",saved.get("dueDate"));
+        var saved=fixed.registerMonthly(user,session,YearMonth.of(2026,11),"America/Los_Angeles",monthlyCreate(body));
+        assertEquals("2026-11-17",saved.dueDate());
     }
     @Test void categoryAmountAndDeadlineWithoutPrintedIdentityAreNotConsideredTheSameBill() {
         var json=tools.jackson.databind.json.JsonMapper.builder().build();

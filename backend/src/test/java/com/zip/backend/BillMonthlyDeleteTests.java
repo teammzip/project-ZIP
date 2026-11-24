@@ -1,6 +1,7 @@
 package com.zip.backend;
 
 import com.zip.backend.auth.AuthService;
+import com.zip.backend.bills.BillInput;
 import com.zip.backend.bills.BillService;
 import com.zip.backend.common.ApiException;
 import java.time.*;
@@ -36,7 +37,7 @@ class BillMonthlyDeleteTests {
         user=Long.parseLong(jwt.getSubject()); session=Long.parseLong(jwt.getClaimAsString("sid"));
         month=YearMonth.now(ZoneOffset.UTC).toString();
         var bill=service.registerPhoto(user,session,month,"UTC","a".repeat(64),"b".repeat(64),Map.of("tag","공과금","amount",40000,"dueDate",LocalDate.now(ZoneOffset.UTC).plusDays(10).toString()));
-        id=Long.parseLong((String)bill.get("id"));
+        id=Long.parseLong(bill.id());
     }
     @Test void deletionHidesRecordAndPreservesHistoryAndIdentity() throws Exception {
         var previous=YearMonth.parse(month).minusMonths(1).toString();
@@ -47,7 +48,8 @@ class BillMonthlyDeleteTests {
         assertEquals(30000L,jdbc.queryForObject("SELECT amount FROM bill_payments WHERE bill_item_id=? AND period_ym=? AND deleted_at IS NULL",Long.class,id,previous));
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_document_keys WHERE user_id=?",Integer.class,user));
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_photo_imports WHERE user_id=?",Integer.class,user));
-        assertEquals(404,assertThrows(ApiException.class,()->service.updateMonthly(user,session,id,month,"UTC",Map.of("amount",1,"dueDate",LocalDate.now(ZoneOffset.UTC).toString()))).status());
+        var update = BillInput.monthlyUpdate(Map.of("amount",1,"dueDate",LocalDate.now(ZoneOffset.UTC).toString()));
+        assertEquals(404,assertThrows(ApiException.class,()->service.updateMonthly(user,session,id,YearMonth.parse(month),"UTC",update)).status());
         assertEquals(404,assertThrows(ApiException.class,()->service.pay(user,session,id,YearMonth.parse(month),Map.of("paid",true))).status());
     }
     @Test void paidRecordCannotBeDeletedUntilPaymentIsCancelled() throws Exception {

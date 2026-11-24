@@ -8,7 +8,7 @@ import com.zip.backend.ledger.SalaryService;
 import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
+import java.util.Objects;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,91 +38,82 @@ public class HousingOnboardingService {
     }
 
     @Transactional
-    public Map<String, Object> save(long user, long session, Map<String, Object> input) {
+    public Map<String, Object> save(long user, long session, HousingOnboardingRequest input) {
         accounts.lockUser(user);
         if (!accounts.sessionActive(session, user, clock.instant())) throw new ApiException(401, "로그인이 만료됐어요.");
         if (!"PENDING".equals(accounts.housingSurveyStatus(user))) return auth.me(user);
         if (accounts.agreedAt(user) == null) throw SettingsInput.bad("먼저 약관에 동의해 주세요.");
-        var action = input.get("action");
-        if ("skip".equals(action) && input.size() == 1) {
+        if (input.submission() instanceof HousingOnboardingRequest.Save answers) {
+            saveAnswers(user, session, answers);
+            setStatus(user, "COMPLETED");
+        } else {
             setStatus(user, "SKIPPED");
-            return auth.me(user);
         }
-        if (!"save".equals(action) || !Set.of("action", "address", "birth", "salary", "timeZone", "home").containsAll(input.keySet())) {
-            throw SettingsInput.bad("설문 항목을 확인해 주세요.");
-        }
+        return auth.me(user);
+    }
 
-        String address = input.containsKey("address") ? SettingsInput.text(input.get("address"), "집 주소", 200, false) : null;
+    private void saveAnswers(long user, long session, HousingOnboardingRequest.Save answers) {
+        String address = answers.address();
         if (address != null) auth.updateMe(user, session, AuthRequests.UpdateMe.from(Map.of("address", address)));
-        if (input.containsKey("birth")) {
-            var birth = SettingsInput.text(input.get("birth"), "생년월일", 10, false);
+        String birth = answers.birth();
+        if (birth != null) {
             ProfileBirth.save(jdbc, user, ProfileBirth.parse(birth, clock));
         }
-        if (input.containsKey("salary")) {
-            var zone = input.containsKey("timeZone") ? SettingsInput.text(input.get("timeZone"), "시간대", 100, false) : "Asia/Seoul";
-            salaries.saveOnboarding(user, session, zone, fields(input.get("salary")));
+        if (answers.hasSalary()) {
+            salaries.saveOnboarding(user, session, answers.salaryTimeZone(), answers.salaryFields());
         }
-        if (input.containsKey("home")) {
-            saveHome(user, session, address, fields(input.get("home")));
+        var home = answers.home();
+        if (home != null) {
+            saveHome(user, session, address, home);
         } else if (address != null) {
             var previous = settings.read(user);
             settings.save(user, new SettingsRepository.Settings(previous.rent(), previous.day(), previous.moveIn(),
                 previous.end(), previous.on(), address, previous.regionId(), previous.location()), false);
         }
-        setStatus(user, "COMPLETED");
-        return auth.me(user);
     }
 
-    private void saveHome(long user, long session, String address, Map<String, Object> answers) {
-        if (!Set.of("kind", "deposit", "rent", "mgmtIncluded", "mgmtFee", "contractFee", "loan").containsAll(answers.keySet()))
-            throw SettingsInput.bad("계약 정보를 확인해 주세요.");
+    private void saveHome(long user, long session, String address, HousingOnboardingRequest.HomeAnswers answers) {
         var previous = homes.get(user, session);
-        var contract = previous.get("contract") instanceof Map<?, ?> existing ? existing : Map.of();
-        var previousSettings = settings.read(user);
-        var kind = answers.get("kind");
-        boolean sameKind = kind != null && kind.equals(contract.get("kind"));
+        var contract = previous.contract();
+        var previousSettings = previous.settings();
+        var kind = answers.kind();
+        boolean sameKind = contract != null && contract.kind().equals(kind);
         var home = new LinkedHashMap<String, Object>();
         home.put("kind", kind);
-        for (var key : Set.of("deposit", "mgmtFee", "contractFee", "mgmtIncluded")) {
-            var prior = sameKind ? contract.get(key) : null;
-            home.put(key, prior != null ? prior : key.equals("mgmtIncluded") ? false : 0);
-        }
-        home.put("rent", "monthly".equals(kind) && (sameKind || contract.isEmpty()) ? previousSettings.rent().movePointRight(4) : 0);
-        home.put("rentDay", previousSettings.day());
+        home.put("deposit", Objects.requireNonNullElse(answers.deposit(), sameKind ? contract.deposit() : 0));
+        home.put("mgmtFee", Objects.requireNonNullElse(answers.mgmtFee(), sameKind ? contract.mgmtFee() : 0));
+        home.put("contractFee", Objects.requireNonNullElse(answers.contractFee(), sameKind ? contract.contractFee() : 0));
+        home.put("mgmtIncluded", Objects.requireNonNullElse(answers.mgmtIncluded(), sameKind && contract.mgmtIncluded()));
+        var defaultRent = "monthly".equals(kind) && (sameKind || contract == null) ? previousSettings.rent().movePointRight(4) : 0;
+        home.put("rent", Objects.requireNonNullElse(answers.rent(), defaultRent));
+        home.put("rentDay", previousSettings.rentDay());
         home.put("moveIn", previousSettings.moveIn());
-        home.put("contractEnd", previousSettings.end());
+        home.put("contractEnd", previousSettings.contractEnd());
         if (address != null) home.put("homeAddress", address);
-        home.putAll(answers);
+        if (answers.loan() != null) home.put("loan", answers.loan());
 
-        Map<String, Object> draft = null;
-        if (home.get("loan") instanceof Map<?, ?>) {
+        HomeInfoResponse.LoanDraft draft = null;
+        if (answers.loan() instanceof Map<?, ?>) {
             if (!"jeonse".equals(kind)) throw SettingsInput.bad("전세 계약에만 대출을 입력할 수 있어요.");
-            var loan = fields(home.get("loan"));
+            var loan = HousingOnboardingRequest.fields(answers.loan());
             var complete = Map.<String, Object>of("principal", 1, "annualRate", 0, "paymentDay", 1, "startDate", "2000-01-01");
             var validated = new LinkedHashMap<>(complete);
             validated.putAll(loan);
-            HomeInfoInput.parseLoan(validated);
+            var parsed = HomeInfoInput.parseLoan(validated);
             if (loan.size() < complete.size()) {
-                draft = loan;
+                draft = new HomeInfoResponse.LoanDraft(loan.containsKey("principal") ? parsed.principal() : null,
+                    loan.containsKey("annualRate") ? parsed.rate() : null, loan.containsKey("paymentDay") ? parsed.day() : null,
+                    loan.containsKey("startDate") ? parsed.start().toString() : null);
                 home.remove("loan");
             }
         }
-        if (!home.containsKey("loan") && sameKind && previous.get("loan") instanceof Map<?, ?> loan && Boolean.TRUE.equals(loan.get("active"))) {
-            home.put("loan", Map.of("principal", loan.get("principal"), "annualRate", loan.get("annualRate"),
-                "paymentDay", loan.get("paymentDay"), "startDate", loan.get("startDate")));
+        var previousLoan = previous.loan();
+        if (!home.containsKey("loan") && sameKind && previousLoan != null && previousLoan.active()) {
+            home.put("loan", Map.of("principal", previousLoan.principal(), "annualRate", previousLoan.annualRate(),
+                "paymentDay", previousLoan.paymentDay(), "startDate", previousLoan.startDate()));
         }
         homes.save(user, session, HomeInfoInput.parse(home));
         if (draft != null) jdbc.update("UPDATE users SET housing_loan_draft=? WHERE id=?", json.writeValueAsString(draft), user);
-    }
-
-    private static Map<String, Object> fields(Object value) {
-        if (!(value instanceof Map<?, ?> map)) throw SettingsInput.bad("설문 항목을 확인해 주세요.");
-        var result = new LinkedHashMap<String, Object>();
-        map.forEach((key, field) -> {
-            if (!(key instanceof String name) || field == null) throw SettingsInput.bad("설문 항목을 확인해 주세요.");
-            result.put(name, field);
-        });
-        return result;
     }
 
     private void setStatus(long user, String status) {

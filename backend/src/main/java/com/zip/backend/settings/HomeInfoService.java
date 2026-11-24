@@ -34,14 +34,14 @@ public class HomeInfoService {
     }
 
     @Transactional
-    public Map<String,Object> get(long user,long session) {
+    public HomeInfoResponse get(long user,long session) {
         lock(user,session);
         settle(user);
         return response(user);
     }
 
     @Transactional
-    public Map<String,Object> save(long user,long session,HomeInfoInput input) {
+    public HomeInfoResponse save(long user,long session,HomeInfoInput input) {
         lock(user,session);
         var savedZones=jdbc.query("SELECT billing_time_zone FROM home_contracts WHERE user_id=?",(rs,n)->rs.getString(1),user);
         var zone=savedZones.isEmpty() || savedZones.get(0)==null?KOREA:ZoneId.of(savedZones.get(0));
@@ -55,7 +55,7 @@ public class HomeInfoService {
         var oldLoan=loan(user);
         settle(user);
         var oldKinds=jdbc.query("SELECT contract_kind FROM home_contracts WHERE user_id=?",(rs,n)->rs.getString(1),user);
-        int oldManagementDay=!oldKinds.isEmpty() && "jeonse".equals(oldKinds.get(0))?(oldLoan==null || !Boolean.TRUE.equals(oldLoan.get("active"))?15:((Number)oldLoan.get("paymentDay")).intValue()):previous.day();
+        int oldManagementDay=!oldKinds.isEmpty() && "jeonse".equals(oldKinds.get(0))?(oldLoan==null || !oldLoan.active()?15:oldLoan.paymentDay()):previous.day();
         var contracts=jdbc.query("SELECT management_bill_id FROM home_contracts WHERE user_id=?", (rs,row)->rs.getString(1),user);
         Long managed=contracts.isEmpty() || contracts.get(0)==null ? null : Long.valueOf(contracts.get(0));
         if (managed==null) managed=jdbc.query("SELECT id FROM bill_items WHERE user_id=? AND name='관리비' AND tag='관리비' AND is_active=1 ORDER BY id", (rs,row)->rs.getLong(1),user).stream().findFirst().orElse(null);
@@ -79,7 +79,7 @@ public class HomeInfoService {
         else
             jdbc.update("DELETE FROM loan_interest_charges WHERE loan_id IN (SELECT id FROM housing_loans WHERE user_id=?) AND paid_at IS NULL AND charge_date>=?",user,java.sql.Date.valueOf(today));
         if (input.fee()>0) {
-            if (managed==null) managed=Long.valueOf((String)bills.createFromHome(user,session,Map.of("name","관리비","tag","관리비","amount",input.fee())).get("id"));
+            if (managed==null) managed=Long.valueOf(bills.createFromHome(user,session,Map.of("name","관리비","tag","관리비","amount",input.fee())).id());
             else bills.updateFromHome(user,session,managed,Map.of("amount",input.fee()));
         } else if (managed!=null) bills.removeFromHome(user,session,managed);
         if(managed!=null) jdbc.update("UPDATE bill_items SET home_contract_kind=? WHERE id=? AND user_id=?",input.kind(),managed,user);
@@ -98,7 +98,7 @@ public class HomeInfoService {
     }
 
     @Transactional
-    public Map<String,Object> saveLoan(long user,long session,HomeInfoInput.Loan plan) {
+    public HomeInfoResponse saveLoan(long user,long session,HomeInfoInput.Loan plan) {
         lock(user,session);
         var previous=settings.read(user);
         var homes=jdbc.query("""
@@ -119,7 +119,7 @@ public class HomeInfoService {
         writeLoan(user,plan,oldLoan,today);
         var input=new HomeInfoInput("jeonse",0,0,previous.day(),false,home.fee(),0,
             previous.moveIn(),previous.end(),null,plan);
-        int oldDay=oldLoan!=null && Boolean.TRUE.equals(oldLoan.get("active"))?(Integer)oldLoan.get("paymentDay"):15;
+        int oldDay=oldLoan!=null && oldLoan.active()?oldLoan.paymentDay():15;
         paymentChanges.apply(user,input,previous,oldLoan,home.managementBill(),oldDay);
         bills.autoRegisterSavedZone(user);
         jdbc.update("UPDATE users SET housing_loan_draft=NULL WHERE id=?", user);
@@ -128,37 +128,35 @@ public class HomeInfoService {
 
     private record LoanHome(Long managementBill,long fee,String zone) {}
 
-    private void writeLoan(long user,HomeInfoInput.Loan plan,Map<String,Object> existing,LocalDate today) {
+    private void writeLoan(long user,HomeInfoInput.Loan plan,HomeInfoResponse.Loan existing,LocalDate today) {
         if (plan==null) {
             if (existing==null) return;
             jdbc.update("UPDATE housing_loans SET is_active=0 WHERE user_id=?",user);
             jdbc.update("DELETE FROM loan_interest_charges WHERE loan_id=? AND paid_at IS NULL AND charge_date>?",
-                existing.get("id"),java.sql.Date.valueOf(today));
+                existing.id(),java.sql.Date.valueOf(today));
             return;
         }
         if (existing==null) {
             jdbc.update("INSERT INTO housing_loans(id,user_id,principal,annual_rate,payment_day,start_date,is_active) VALUES (?,?,?,?,?,?,1)",
                 UUID.randomUUID().toString(),user,plan.principal(),plan.rate(),plan.day(),plan.start().toString());
         } else {
-            String start=Boolean.TRUE.equals(existing.get("active"))?(String)existing.get("startDate"):plan.start().toString();
+            String start=existing.active()?existing.startDate():plan.start().toString();
             jdbc.update("UPDATE housing_loans SET principal=?,annual_rate=?,payment_day=?,start_date=?,is_active=1 WHERE user_id=?",
                 plan.principal(),plan.rate(),plan.day(),start,user);
         }
         settle(user);
     }
 
-    private Map<String,Object> loan(long user) {
-        return jdbc.query("SELECT * FROM housing_loans WHERE user_id=?",(rs,row)->{
-            var out=new LinkedHashMap<String,Object>();
-            out.put("id",rs.getString("id")); out.put("userId",Long.toString(user)); out.put("principal",rs.getLong("principal"));
-            out.put("annualRate",rs.getBigDecimal("annual_rate")); out.put("paymentDay",rs.getInt("payment_day"));
-            out.put("startDate",rs.getDate("start_date").toLocalDate().toString()); out.put("active",rs.getBoolean("is_active")); return (Map<String,Object>)out;
-        },user).stream().findFirst().orElse(null);
+    private HomeInfoResponse.Loan loan(long user) {
+        return jdbc.query("SELECT * FROM housing_loans WHERE user_id=?", (rs, row) ->
+            new HomeInfoResponse.Loan(rs.getString("id"), Long.toString(user), rs.getLong("principal"),
+                rs.getBigDecimal("annual_rate"), rs.getInt("payment_day"), rs.getDate("start_date").toLocalDate().toString(),
+                rs.getBoolean("is_active")), user).stream().findFirst().orElse(null);
     }
 
     private void settle(long user) {
         var plan=loan(user);
-        if (plan==null || !Boolean.TRUE.equals(plan.get("active"))) return;
+        if (plan==null || !plan.active()) return;
         var homes=jdbc.query("""
             SELECT c.contract_kind,c.billing_time_zone,s.move_in_ym,s.contract_end_ym,c.payment_effective_from
             FROM home_contracts c LEFT JOIN user_settings s ON s.user_id=c.user_id WHERE c.user_id=?
@@ -167,42 +165,46 @@ public class HomeInfoService {
         if(homes.isEmpty() || !"jeonse".equals(homes.get(0).kind())) return;
         var term=homes.get(0);
         var zone=term.zone()==null?KOREA:ZoneId.of(term.zone());
-        String id=(String)plan.get("id");
-        LocalDate start=LocalDate.parse((String)plan.get("startDate")),today=LocalDate.now(clock.withZone(zone));
+        String id=plan.id();
+        LocalDate start=LocalDate.parse(plan.startDate()),today=LocalDate.now(clock.withZone(zone));
         YearMonth current=YearMonth.from(today),first=YearMonth.from(start),last=current;
         if(term.effective()!=null && first.isBefore(YearMonth.from(term.effective()))) first=YearMonth.from(term.effective());
         if(term.from()!=null && first.isBefore(YearMonth.parse(term.from()))) first=YearMonth.parse(term.from());
         if(term.through()!=null && last.isAfter(YearMonth.parse(term.through()))) last=YearMonth.parse(term.through());
         var seen=new HashSet<>(jdbc.query("SELECT charge_date FROM loan_interest_charges WHERE loan_id=?",(rs,row)->YearMonth.from(rs.getDate(1).toLocalDate()),id));
-        long amount=BigDecimal.valueOf((Long)plan.get("principal")).multiply((BigDecimal)plan.get("annualRate")).divide(BigDecimal.valueOf(1200),0,RoundingMode.HALF_UP).longValueExact();
+        long amount=BigDecimal.valueOf(plan.principal()).multiply(plan.annualRate()).divide(BigDecimal.valueOf(1200),0,RoundingMode.HALF_UP).longValueExact();
         var pending=new ArrayList<Object[]>();
         for (YearMonth month=first;!month.isAfter(last);month=month.plusMonths(1)) {
-            LocalDate date=month.atDay(Math.min((Integer)plan.get("paymentDay"),month.lengthOfMonth()));
+            LocalDate date=month.atDay(Math.min(plan.paymentDay(),month.lengthOfMonth()));
             if (date.isBefore(start) || date.isAfter(today) || seen.contains(month)) continue;
             if (!month.equals(current) && term.effective()!=null && date.isBefore(term.effective())) continue;
-            pending.add(new Object[]{id,java.sql.Date.valueOf(date),plan.get("principal"),plan.get("annualRate"),amount});
+            pending.add(new Object[]{id,java.sql.Date.valueOf(date),plan.principal(),plan.annualRate(),amount});
         }
         if (!pending.isEmpty()) jdbc.batchUpdate("INSERT INTO loan_interest_charges(loan_id,charge_date,principal,annual_rate,amount) VALUES (?,?,?,?,?)",pending);
     }
 
     private record InterestTerm(String kind,String zone,String from,String through,LocalDate effective) {}
 
-    private Map<String,Object> response(long user) {
-        var result=new LinkedHashMap<String,Object>();
-        result.put("settings",settingsService.get(user));
-        var contract=jdbc.query("SELECT * FROM home_contracts WHERE user_id=?",(rs,row)->{
-            var c=new LinkedHashMap<String,Object>(); c.put("kind",rs.getString("contract_kind")); c.put("deposit",rs.getLong("deposit"));
-            c.put("mgmtIncluded",rs.getBoolean("management_included")); c.put("mgmtFee",rs.getLong("management_fee")); c.put("contractFee",rs.getLong("contract_fee"));
-            c.put("managementBillId",rs.getString("management_bill_id")); return (Map<String,Object>)c;
-        },user).stream().findFirst().orElse(null);
-        result.put("contract",contract); result.put("loan",loan(user));
+    private HomeInfoResponse response(long user) {
+        var responseSettings = settingsService.get(user);
+        var contract = jdbc.query("SELECT * FROM home_contracts WHERE user_id=?", (rs, row) ->
+            new HomeInfoResponse.Contract(rs.getString("contract_kind"), rs.getLong("deposit"),
+                rs.getBoolean("management_included"), rs.getLong("management_fee"), rs.getLong("contract_fee"),
+                rs.getString("management_bill_id")), user).stream().findFirst().orElse(null);
+        var loan = loan(user);
         String draft = jdbc.queryForObject("SELECT housing_loan_draft FROM users WHERE id=?", String.class, user);
-        result.put("loanDraft", draft == null ? null : json.readTree(draft));
-        result.put("charges",jdbc.query("SELECT c.* FROM loan_interest_charges c JOIN housing_loans l ON l.id=c.loan_id WHERE l.user_id=? ORDER BY charge_date",(rs,row)->{
-            String date=rs.getDate("charge_date").toLocalDate().toString(),id=rs.getString("loan_id");
-            return Map.of("id",id+":"+date.substring(0,7),"loanId",id,"userId",Long.toString(user),"date",date,"amount",rs.getLong("amount"),"principal",rs.getLong("principal"),"annualRate",rs.getBigDecimal("annual_rate"));
-        },user));
-        result.put("managementBill",contract==null || contract.get("managementBillId")==null?null:bills.currentActive(user,Long.parseLong((String)contract.get("managementBillId"))));
-        return result;
+        var loanDraft = draft == null ? null : json.readValue(draft, HomeInfoResponse.LoanDraft.class);
+        var charges = jdbc.query("""
+            SELECT c.* FROM loan_interest_charges c JOIN housing_loans l ON l.id=c.loan_id
+            WHERE l.user_id=? ORDER BY charge_date
+            """, (rs, row) -> {
+            String date = rs.getDate("charge_date").toLocalDate().toString();
+            String id = rs.getString("loan_id");
+            return new HomeInfoResponse.InterestCharge(id + ":" + date.substring(0, 7), id, Long.toString(user), date,
+                rs.getLong("amount"), rs.getLong("principal"), rs.getBigDecimal("annual_rate"));
+        }, user);
+        var managementBill = contract == null || contract.managementBillId() == null ? null
+            : bills.currentActive(user, Long.parseLong(contract.managementBillId()));
+        return new HomeInfoResponse(responseSettings, contract, loan, loanDraft, charges, managementBill);
     }
 }

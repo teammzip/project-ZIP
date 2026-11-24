@@ -125,3 +125,112 @@
 ## [2026-11-24] record | 배출표 페이지에 알림 정리 예외 추가
 
 - PR #142 의 문서 동기화 검사가 `TrashReminderService` · `application.properties` 변경에 대해 [배출표](topics/trash-schedules.md) 갱신 누락으로 실패해, "배출 정보가 없어요" 안내가 오래된 알림 정리에서 빠진다는 내용을 배출일 알림 절에 추가했습니다.
+
+## [2026-11-25] record | 원격 dev 주제별 변경 확인
+
+- 원격 `dev` `c3ed411`을 이전 확인 기준 `250b8d9`와 비교하고 [PR #138~#142 원자료](raw/index.md#2026-11-25--pr-138142-이력-추가)를 등록했습니다. 조회 당시 원격 `backend` `d42841d`는 `dev`의 조상이며, `dev` 전용 커밋은 6개입니다. [원격 브랜치 비교](https://github.com/teammzip/project-ZIP/compare/d42841d07b9bbe2e37966e721fbdec04b005b72c...c3ed4115470eb3044c3ba8508d6a539744c44812)
+- [구현·검증 현황](topics/project-status.md#검증해야-될-부분)의 원격 가계부 행별 조회 설명은 11월 24일 병합 전 점검에 해당합니다. 최신 `dev`는 [PR #139](https://github.com/teammzip/project-ZIP/pull/139)의 일괄 조회를 포함합니다. [변경 기록](../CHANGELOG.md#백엔드)의 11월 24일 항목에는 가계부 일괄 조회·저장 서비스 분리 항목이 없고, 세부 근거는 [가계부와 메모](topics/ledger-memos.md#가계부-기록과-회원별-분류)에 있습니다. 운영 응답 시간은 측정되지 않았습니다.
+
+## [2026-11-25] record | API 계약 동기화 이후 DTO 적용 범위 재검토
+
+- `c3ed411`에서 API 경계와 프론트 타입을 대조해 월별 고정 지출·가계부부터 적용할 후보, 기존 타입과 `Map`을 유지할 범위, DTO와 별도로 줄일 수 있는 조회·파싱을 [API 데이터 계약과 DTO](topics/application.md#api-데이터-계약과-dto)에 정리했습니다.
+- OpenAPI 가입 주소의 필수 표기와 서버·프론트의 선택 처리를 확인했습니다. 코드를 정적으로 검토했고 구현 변경이나 운영 측정은 수행하지 않았습니다.
+
+## [2026-11-25] record | 주거 설문과 내 집 주소 입력 방식 확인
+
+- `c3ed411`의 화면 코드를 대조해 설문에서 동네를 검색해 선택하는 방식과 내 집 정보에서 상세주소를 직접 입력하는 경로를 [주소와 회원 설정](topics/home-info.md#주소와-회원-설정)에 기록했습니다.
+
+## [2026-11-25] record | Elasticsearch 도입 근거 검토
+
+- `c3ed411`의 게시글 검색 경로와 인덱스를 확인하고 [게시글 검색과 Elasticsearch 도입 검토](topics/community-operations.md#게시글-검색과-elasticsearch-도입-검토)에 현재 동작, MySQL `ngram` 대안, 운영 도입 판단 기준을 기록했습니다. 운영 검색 지표는 측정하지 않았습니다.
+- 같은 커밋의 [OpenAPI 게시글 목록](../backend/openapi.yaml#L876)은 읽기에 동네 인증이 필요하고 `scope` 생략값은 `here`라고 설명합니다. [서버 조회 경로](../backend/src/main/java/com/zip/backend/community/CommunityService.java#L60)는 `all`을 기본값으로 사용하며 목록 조회에 30일 동네 인증을 검사하지 않습니다. 권한과 기본값의 계약은 별도 확인이 필요합니다.
+
+## [2026-11-25] record | JDBC 유지와 데이터 접근 기술 도입 검토
+
+- `c3ed411`의 빌드·서버 설정, 로그인 잠금, 월별 납부와 가계부 조회를 확인하고 [데이터 접근 방식 검토](topics/database.md#백엔드-데이터-접근-방식-검토)에 JDBC 유지 의견과 JPA·MyBatis·QueryDSL의 도입 조건을 기록했습니다. 코드 변경이나 실행 성능 측정은 수행하지 않았습니다.
+
+## [2026-11-25] record | 가입 화면과 주거 설문의 주소 입력 범위 확인
+
+- `c3ed411`에서 이메일 가입과 소셜 첫 동의 화면에 주소 칸이 없고 두 화면의 요청에도 주소를 보내지 않는 것을 확인했습니다. [이메일 가입 요청](../frontend/src/features/auth/hooks/useAuthMutations.ts) · [소셜 첫 동의](../frontend/src/features/auth/components/ConsentOnboarding.tsx)
+- 주소 입력은 [첫 주거 설문과 내 집 정보](topics/home-info.md#주소와-회원-설정)에서 이어가는 방식을 제안했습니다. 당시 확인한 가입 API와 OpenAPI 표기의 차이는 같은 날 [주소 계약 문서 동기화](#2026-11-25-record--가입과-소셜-첫-동의의-주소-계약-문서-동기화)에서 정리했습니다.
+
+## [2026-11-25] record | JDBC·JPA와 다른 조회 기술 병행 검토
+
+- 공지 생성·수정이 상세 조회를 트랜잭션 안에서 재사용하는 점을 확인했습니다. [데이터 접근 방식 병행](topics/database.md#데이터-접근-방식-병행)에 동일 트랜잭션에서의 JDBC·JPA 연동 조건과 MyBatis·QueryDSL의 적용 범위를 기록했습니다. 검토 기준은 `c3ed411`이며 구현과 실행 검증은 수행하지 않았습니다.
+
+## [2026-11-25] record | 월별 고정 지출과 가계부 DTO 호환 기준 확인
+
+- `c3ed411`의 저장 응답, 월별 미납 필드와 가계부 메모 필드, 사진 고지서의 월별 등록 호출을 확인해 [DTO 도입 시 확인할 동작](topics/application.md#월별-고정-지출과-가계부의-dto-도입-시-확인할-동작)에 정리했습니다. 코드 변경은 수행하지 않았습니다.
+
+## [2026-11-25] record | JDBC와 대안의 성능 비교 기준 확인
+
+- `c3ed411`의 가계부 수입 목록, 공지 본문 조회·알림 일괄 삽입, 커뮤니티 페이지 조회 경로를 확인해 [성능 비교 기준](topics/database.md#성능-비교-기준)에 기록했습니다. 실제 MySQL의 실행 계획과 API 응답 시간은 측정하지 않았습니다.
+
+## [2026-11-25] record | JPA·MyBatis·QueryDSL 도입 판단 기준
+
+- 공지의 생성 키 처리와 갱신, 메모 폴더의 쓰기 조건, 커뮤니티의 검색 SQL·매핑 재사용을 확인했습니다. 다음 필드·필터 변경에 필요한 수정 지점을 기준으로 비교하는 방법을 [도입을 판단하는 기준](topics/database.md#도입을-판단하는-기준)에 기록했습니다. 코드 변경과 후보 구현 비교는 수행하지 않았습니다.
+
+## [2026-11-25] record | 가입과 소셜 첫 동의의 주소 계약 문서 동기화
+
+- 사용자 요청에 따라 주소 없이 진행하는 이메일 가입·소셜 첫 동의 화면과 선택 주소를 받는 API를 실제 동작에 맞춰 문서화했습니다. [OpenAPI](../backend/openapi.yaml) · [프론트 연동 문서](../frontend/API.md#회원가입) · [앱 인증](topics/application.md#인증과-토큰-재발급)
+- OpenAPI YAML과 주소를 생략한 두 JSON 요청 예시를 파싱했습니다. 주소 생략 사례를 포함한 [이메일 가입 테스트](../backend/src/test/java/com/zip/backend/EmailAuthTests.java)와 [소셜 첫 동의 테스트](../backend/src/test/java/com/zip/backend/ConsentAndProfileTests.java)를 로컬 H2 테스트 환경에서 통과했습니다.
+
+## [2026-11-25] record | project-ZIP 데이터 접근 기술 도입 의견
+
+- `c3ed411`의 생성 키 처리, 관리자 회원 조회의 SQL·매핑 공유, 게시글·지도·일정의 검색 구조를 대조해 [현재 도입 의견](topics/database.md#project-zip-현재-도입-의견)을 기록했습니다. 기존 운영 코드는 JDBC를 유지하고 신규 단순 CRUD에서 JPA를 시험하며, MyBatis·QueryDSL은 공유할 조회가 늘어날 때 검토하는 의견입니다. 코드 변경과 운영 성능 측정은 수행하지 않았습니다.
+
+## [2026-11-25] record | 신규 기능 JPA 시험과 조회 기술 병행 계획
+
+- 사용자 요청에 따라 다음 DB 연동 신규 기능에서 JPA를 시험하고, MyBatis와 QueryDSL이 모두 필요해질 때 병행 방식을 검토하도록 [신규 기능에 적용할 계획](topics/database.md#신규-기능에-적용할-계획)을 등록했습니다. [색인](index.md)에서 계획으로 바로 이동할 수 있습니다.
+
+## [2026-11-25] record | 동네 커뮤니티 검색 비교 절차
+
+- `c3ed411`의 검색·페이지 처리, 서버 모드 요청과 H2 통합 테스트를 확인했습니다. [게시글 검색 비교 절차](topics/community-operations.md#게시글-검색-비교-절차)에 평가 검색어, 동네·카테고리·페이지 회귀, 실제 MySQL 성능 비교, 인덱스 지연·장애 검증 기준을 기록했습니다. 후보 구현과 벤치마크는 수행하지 않았습니다.
+
+## [2026-11-25] record | 원격 dev 구현 및 검증 범위 확인
+
+- 원격 `dev` `c3ed411`와 동일한 프런트 소스·테스트 및 DB 파일에서 프런트 테스트 195개, 프런트 빌드, DB 정적 검사 7개가 통과했습니다. 린트는 종료 코드 0이며 [메모 화면](../frontend/src/pages/my/MemoPage.tsx#L62)과 [지도 화면](../frontend/src/features/map/components/MapView.tsx#L125)의 경고 2건이 남았습니다.
+- 가계부와 월별 고정 지출 DTO, 가입 주소 계약 문서의 작업 트리 변경은 원격 기준에서 제외했습니다. 백엔드와 격리 MySQL은 [기존 실행 기록](topics/project-status.md#검증된-부분) 및 [PR #139](https://github.com/teammzip/project-ZIP/pull/139)·[변경 기록](../CHANGELOG.md#백엔드)의 범위를 사용했습니다. [배포 환경 검증 항목](topics/project-status.md#검증해야-될-부분)은 별도로 남아 있습니다.
+
+## [2026-11-25] record | 전체 PR과 Trello 작업 분류 동기화
+
+- GitHub에서 PR #1~#142의 목록을 확인하고 [전체 PR 원자료](raw/pull-requests.md)와 대조했습니다. [ZIP-project Trello 보드](https://trello.com/b/8qibfPP2/zip-project)의 작업 카드와 병합 이력에 근거 링크를 반영했고, 반영한 카드 41장과 완료 체크 29개를 보드에서 다시 읽어 확인했습니다.
+- 병합 없이 닫힌 PR 세 건은 [삭제 분류의 정리 기록](https://trello.com/c/o0kbKIAV)에 남겼습니다. 배포 DB와 운영 가계부 응답 시간은 [구현·검증 현황](topics/project-status.md#검증해야-될-부분)의 확인 과제로 유지했습니다.
+
+## [2026-11-25] lint | 메모·지도 경고와 프로젝트 문서 정리
+
+- [가계부 메모](topics/ledger-memos.md)는 목록 동기화 후 임시 편집 내용을 복구하고, [지도 검색](topics/map-place-ids.md#장소-검색과-저장-리스트)은 위치 변경 시 이전 검색을 정리하도록 수정했습니다. [로컬 점검 결과](topics/project-status.md#검증된-부분) · [프론트 검증 명령](../frontend/README.md#변경-검증)
+- 사용자 확인에 따라 README의 [배출표 설명](../README.md#지금-상태)과 [신규 DB 준비](../README.md#백엔드-실행-선택)를 갱신했습니다. 가계부 일괄 조회와 저장 서비스 분리는 [11월 24일 백엔드 변경 기록](../CHANGELOG.md#백엔드)에 추가했습니다.
+
+## [2026-11-25] record | 가계부와 월별 고정 지출에 DTO 적용
+
+- [가계부 저장과 조회](topics/ledger-memos.md#가계부-저장-트랜잭션), [월별 고정 지출과 사진 고지서](topics/fixed-expenses.md#일반-고정-지출의-납부와-해지), [내 집 정보의 관리비 응답](topics/home-info.md)에 적용한 Java 타입과 JSON 계약을 반영했습니다.
+- 백엔드 전체 테스트 334개와 프론트 관련 테스트 62개가 통과했습니다. 문자열·소수 금액 거부, 미납 `null`과 선택 메모 필드 생략, 사진 고지서 응답, 가계부 롤백·동시 저장을 확인했습니다. [월별 등록 통합 테스트](../backend/src/test/java/com/zip/backend/BillMonthlyWriteTests.java) · [가계부 통합 테스트](../backend/src/test/java/com/zip/backend/LedgerIntegrationTests.java)
+
+## [2026-11-25] record | 게시글 검색 범위의 도입 판단 기준
+
+- `c3ed411`의 검색 목록이 최신순이고 인기 글이 조회수순이며, 목록 응답에 제목·본문이 들어가는 것을 확인했습니다. [게시글 검색 비교 절차](topics/community-operations.md#게시글-검색-비교-절차)에 동네별 기대 ID와 삭제·숨김 이후 운영 전환을 보류하는 이유를 기록했습니다. 후보 간 실행 비교는 수행하지 않았습니다.
+
+## [2026-11-25] record | 가계부 저장 요청 DTO 연결과 목록 계약 검증
+
+- 가계부 수입·지출 등록과 수정의 HTTP 본문을 `LedgerWriteBody`로 바인딩했습니다. JSON의 원래 자료형과 필드 생략 여부를 보존해 기존 검증을 거친 뒤 수입·지출 저장 DTO로 변환합니다. [가계부 저장과 목록 계약](topics/ledger-memos.md#가계부-저장-트랜잭션) · [앱 API 계약](topics/application.md#api-데이터-계약과-dto)
+- H2 MySQL 호환 모드에서 가계부·월급·메모 통합 테스트 32개와 프론트 가계부 테스트 11개가 통과했습니다. 등록·수정 상태 코드, 목록의 문자열 ID·월급 플래그·선택 메모 필드, 롤백·동시 저장을 확인했습니다. 백엔드 전체 실행은 Gradle 결과 파일 누락으로 종료돼 별도 출력 경로에서 관련 테스트를 실행했습니다. [가계부 통합 테스트](../backend/src/test/java/com/zip/backend/LedgerIntegrationTests.java)
+
+## [2026-11-25] record | 기능 구현과 테스트 재검증
+
+- 첫 백엔드 전체 실행은 고지서 테스트의 Spring 컨텍스트 초기화 실패와 Gradle 결과 처리 `EOFException`으로 종료했습니다. 별도 빌드·프로젝트 캐시 폴더에서 대표 고지서 테스트 한 건과 전체를 재실행했습니다. 최종 JUnit XML 48개에 기록된 백엔드 테스트 336개는 실패·오류·건너뜀 0건입니다. [관련 고지서 테스트](../backend/src/test/java/com/zip/backend/BillMonthlyWriteTests.java)
+- 작업 트리의 프론트 테스트 195개·타입 검사·빌드·린트 경고 0건, OpenAPI YAML 파싱 99경로를 확인했습니다. DB 정적 검사 7개와 격리 MySQL 9.6 신규·업그레이드·보존 검사 72단계 265개가 통과했습니다. 모바일 WebKit의 모의 API에서 가계부 메모 보류·복구·저장·복귀·선택 폐기를 확인했습니다. [구현·검증 현황](topics/project-status.md#검증된-부분)
+- 재검증 당시 GitHub `dev`는 `c3ed411`이었고, 가계부·고정 지출 DTO와 메모·지도 경고 수정은 로컬 작업 트리에 있었습니다. 최신 배포 DB 적용, 실제 제공자 연동, 서버 모드의 두 브라우저 계정 분리·동기화, 운영 가계부 응답 시간은 [배포 환경 검증 항목](topics/project-status.md#검증해야-될-부분)에 남아 있습니다.
+
+## [2026-11-25] record | 내 집 정보 응답과 첫 주거 설문 DTO 적용 범위 확인
+
+- 작업 트리의 서버 응답과 OpenAPI·프론트 타입을 대조했습니다. 내 집 정보 응답의 공통 설정 필드와 설문 서비스의 기존 계약·대출 참조, 설문 요청의 부분 입력·재요청·롤백 확인 항목을 [DTO 적용 검토](topics/home-info.md#내-집-정보와-첫-주거-설문의-dto)에 기록했습니다. 구현 변경과 테스트 실행은 수행하지 않았습니다.
+
+## [2026-11-25] record | 내 집 정보 응답과 첫 주거 설문에 DTO 적용
+
+- 조회·내 집 정보 저장·대출 조건 저장에 공통 응답 DTO를 적용하고 생활 설정 응답도 같은 타입 매핑을 사용하도록 바꿨습니다. 설문은 요청 DTO에서 `save`와 `skip`을 구분하고 기존 입력 계약을 유지합니다. [내 집 정보와 설문 DTO](topics/home-info.md#내-집-정보와-첫-주거-설문의-dto)
+- 별도 Gradle 출력 경로에서 H2 백엔드 전체 339개가 실패·오류·건너뜀 없이 통과했습니다. 프론트 내 집 정보·설문·대출·월별 지출 관련 테스트 54개도 통과했습니다. 기존 대출 초안 읽기, 응답의 `null`·빈 배열·필드 생략, 설문 재요청과 롤백을 검증했습니다. [내 집 정보 테스트](../backend/src/test/java/com/zip/backend/HomeInfoTests.java) · [설문 테스트](../backend/src/test/java/com/zip/backend/HousingOnboardingTests.java)
+
+## [2026-11-25] record | 생활 API DTO PR 문서 정리
+
+- 사진 고지서 확정이 월별 고정 지출 등록 검증을 공유하는 경로를 확인했습니다. 기준 브랜치 `c3ed411`에서 고지서 컨트롤러를 참조하는 [외부 서비스와 AI](topics/service-integrations.md)에 월별 고정 지출 DTO 설명을 연결하고, 네 기능의 적용 범위와 기존 검증 결과를 [백엔드 변경 기록](../CHANGELOG.md#백엔드)에 추가했습니다. [사진 확정 컨트롤러](../backend/src/main/java/com/zip/backend/bills/BillPhotoController.java#L111) · [사진 등록 서비스](../backend/src/main/java/com/zip/backend/bills/BillService.java#L262)

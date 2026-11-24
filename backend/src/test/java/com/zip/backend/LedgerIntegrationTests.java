@@ -125,10 +125,12 @@ class LedgerIntegrationTests {
                 .header("Authorization", "Bearer " + token))
             .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[0].id").value("11"))
+            .andExpect(jsonPath("$[0].salaryCategory").value(false))
             .andExpect(jsonPath("$[0].salaryManaged").value(false))
             .andExpect(jsonPath("$[0].memoId").doesNotHaveJsonPath())
             .andExpect(jsonPath("$[0].memoTitle").doesNotHaveJsonPath())
             .andExpect(jsonPath("$[1].id").value("10"))
+            .andExpect(jsonPath("$[1].salaryCategory").value(true))
             .andExpect(jsonPath("$[1].salaryManaged").value(true))
             .andExpect(jsonPath("$[1].memoId").value("101"))
             .andExpect(jsonPath("$[1].memoTitle").value("수입 메모"));
@@ -136,6 +138,7 @@ class LedgerIntegrationTests {
                 .header("Authorization", "Bearer " + token))
             .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].id").value("10"))
+            .andExpect(jsonPath("$[0].salaryCategory").value(false))
             .andExpect(jsonPath("$[0].salaryManaged").value(false))
             .andExpect(jsonPath("$[0].memoId").value("102"))
             .andExpect(jsonPath("$[0].memoTitle").value("지출 메모"));
@@ -257,13 +260,62 @@ class LedgerIntegrationTests {
     @Test void invalidAmountDateZoneAndUnauthenticatedWritesAreRejected() throws Exception {
         mvc.perform(post("/api/ledger/spend").param("timeZone","UTC").contentType("application/json").content(body(1000,"식비",null))).andExpect(status().isUnauthorized());
         for(int amount:new int[]{0,-1,100000000}) mvc.perform(post("/api/ledger/spend").param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content(body(amount,"식비",null))).andExpect(status().isBadRequest());
+        var expense = body(1000,"식비",null);
+        for (String payload : List.of(expense.replace(":1000", ":\"1000\""), expense.replace(":1000", ":1000.5"),
+            expense.replace("\"memo\":\"검증\"", "\"memo\":null"), body(1000,"식비","other"))) {
+            mvc.perform(post("/api/ledger/spend").param("timeZone","UTC").header("Authorization","Bearer "+token)
+                .contentType("application/json").content(payload)).andExpect(status().isBadRequest());
+        }
+        mvc.perform(post("/api/ledger/income").param("timeZone","UTC").header("Authorization","Bearer "+token)
+            .contentType("application/json").content(body(1000,"임대 수입",null))).andExpect(status().isBadRequest());
         date=LocalDate.now(ZoneOffset.UTC).plusDays(1).toString();
         mvc.perform(post("/api/ledger/spend").param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content(body(1000,"식비",null))).andExpect(status().isBadRequest());
         mvc.perform(get("/api/ledger/spend").param("month",month).param("timeZone","invalid").header("Authorization","Bearer "+token)).andExpect(status().isBadRequest());
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM expenses",Integer.class));
     }
+    @Test void writeBodyPreservesFieldPresenceAndValidationErrors() throws Exception {
+        String spend = body(1000, "식비", null);
+        String withUnknownField = spend.replace("\"memo\":\"검증\"", "\"memo\":\"검증\",\"unknown\":null");
+        String withIncomeType = spend.replace("\"memo\":\"검증\"", "\"memo\":\"검증\",\"incomeType\":null");
+        for (String payload : List.of(withUnknownField, withIncomeType)) {
+            mvc.perform(post("/api/ledger/spend").param("timeZone", "UTC").header("Authorization", "Bearer " + token)
+                    .contentType("application/json").content(payload))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("입력 항목을 확인해 주세요."));
+            mvc.perform(put("/api/ledger/spend/1").param("timeZone", "UTC").header("Authorization", "Bearer " + token)
+                    .contentType("application/json").content(payload))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("입력 항목을 확인해 주세요."));
+        }
+        for (String payload : List.of("[]", "null", "\"invalid\"", "{")) {
+            mvc.perform(post("/api/ledger/income").param("timeZone", "UTC").header("Authorization", "Bearer " + token)
+                    .contentType("application/json").content(payload))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("요청 JSON 형식을 확인해 주세요."));
+        }
+    }
+
+    @Test void incomeWriteAndListKeepTheWireContract() throws Exception {
+        String income = """
+            {"amount":1000.0,"date":"%s","cat":"용돈","incomeType":"fixed"}
+            """.formatted(date);
+        mvc.perform(post("/api/ledger/income").param("timeZone", "UTC").header("Authorization", "Bearer " + token)
+                .contentType("application/json").content(income))
+            .andExpect(status().isCreated()).andExpect(content().string(""));
+        long id = jdbc.queryForObject("SELECT id FROM incomes", Long.class);
+        mvc.perform(put("/api/ledger/income/" + id).param("timeZone", "UTC").header("Authorization", "Bearer " + token)
+                .contentType("application/json").content(income.replace("1000.0", "2000").replace("fixed", "other")))
+            .andExpect(status().isNoContent()).andExpect(content().string(""));
+        mvc.perform(get("/api/ledger/income").param("month", month).param("timeZone", "UTC").param("incomeType", "other")
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].id").isString()).andExpect(jsonPath("$[0].id").value(Long.toString(id)))
+            .andExpect(jsonPath("$[0].amount").value(2000)).andExpect(jsonPath("$[0].date").value(date))
+            .andExpect(jsonPath("$[0].cat").value("용돈")).andExpect(jsonPath("$[0].memo").value(""))
+            .andExpect(jsonPath("$[0].salaryCategory").value(false)).andExpect(jsonPath("$[0].salaryManaged").value(false))
+            .andExpect(jsonPath("$[0].memoId").doesNotHaveJsonPath()).andExpect(jsonPath("$[0].memoTitle").doesNotHaveJsonPath());
+    }
+
     @Test void ledgerMemoIsRegisteredInExistingMemoBoardAndUpdatesWithoutDuplication() throws Exception {
-        mvc.perform(post("/api/ledger/spend").param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content(body(1000,"식비",null))).andExpect(status().isCreated());
+        mvc.perform(post("/api/ledger/spend").param("timeZone","UTC").header("Authorization","Bearer "+token).contentType("application/json").content(body(1000,"식비",null)))
+            .andExpect(status().isCreated()).andExpect(content().string(""));
         long id=jdbc.queryForObject("SELECT id FROM expenses",Long.class);
         mvc.perform(get("/api/memos").header("Authorization","Bearer "+token)).andExpect(status().isOk()).andExpect(jsonPath("$[0].body").value("검증"));
         mvc.perform(get("/api/memos").header("Authorization","Bearer "+other)).andExpect(jsonPath("$.length()").value(0));

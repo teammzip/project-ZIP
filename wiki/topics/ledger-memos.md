@@ -10,17 +10,21 @@
 
 모의 모드에서는 브라우저의 메모 저장소에서 초안을 만들고 확정합니다. [메모 화면](../../frontend/src/pages/my/MemoPage.tsx) · [메모 확정](../../frontend/src/features/memo/sync.ts) · [앱 실행 모드](application.md)
 
+2026-11-25 확인. 이어쓰기 화면은 준비된 메모가 목록에 들어올 때까지 기다린 뒤 해당 탭에 보관된 편집 내용을 복구합니다. 목록 동기화가 끝난 뒤 복구해야 복구한 입력도 일반 수정으로 감지됩니다. 화면을 떠나거나 회원이 바뀌면 이전 초안의 복구를 중단합니다. [메모 화면](../../frontend/src/pages/my/MemoPage.tsx) · [메모 동기화](../../frontend/src/features/memo/sync.ts)
+
 ## 가계부 기록과 회원별 분류
 
 수입·기타 지출은 `/api/ledger/{income|spend}`에서 회원·월별로 조회합니다. 수입은 고정과 기타로 나누고, 등록·수정·삭제 시 서버에서 소유권과 입력값을 확인합니다. 저장 본문에는 분류명 `cat`을 보내고 수입에는 `incomeType`도 필수입니다. 고정 지출은 납부 상태를 포함한 별도의 월별 API를 사용합니다. [수입·지출 처리](../../backend/src/main/java/com/zip/backend/ledger/LedgerController.java) · [가계부 API 계약](../../frontend/API.md#5-가계부-수입--기타-지출-) · [가계부 요청 타입](../../frontend/src/features/life/ledgerApi.ts) · [계약 고정 지출](fixed-expenses.md)
 
-수입·기타 지출 목록은 연결 메모를 회원·기록 종류·문자열 기록 ID로 조인합니다. 수입은 같은 쿼리에서 자동 등록 월급 여부도 조회합니다. 메모가 없어도 거래를 반환하며, 이 경우 `memoId`와 `memoTitle`은 생략합니다. 수입 조회에 앞서 월급 자동 등록을 동기화하고, 고정 수입 목록의 월급 표시 이름도 조회합니다. 회원이나 기록 종류가 다른 메모와 숫자 표기가 비슷한 메모 키를 구분하는지 통합 테스트에서 확인합니다. [목록 SQL](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java) · [조인 키 제약](../../db/schema.sql) · [통합 테스트](../../backend/src/test/java/com/zip/backend/LedgerIntegrationTests.java)
+수입·기타 지출 목록은 연결 메모를 회원·기록 종류·문자열 기록 ID로 조인합니다. 수입은 같은 쿼리에서 자동 등록 월급 여부도 조회합니다. 목록은 문자열 ID와 월급 플래그를 포함하는 `LedgerRow`를 반환합니다. 연결 메모가 없으면 `memoId`와 `memoTitle`을 생략합니다. 수입 조회에 앞서 월급 자동 등록을 동기화하고, 고정 수입 목록의 월급 표시 이름도 조회합니다. 회원이나 기록 종류가 다른 메모와 숫자 표기가 비슷한 메모 키를 구분하는지 통합 테스트에서 확인합니다. [목록 SQL](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java) · [응답 DTO](../../backend/src/main/java/com/zip/backend/ledger/LedgerRow.java) · [조인 키 제약](../../db/schema.sql) · [통합 테스트](../../backend/src/test/java/com/zip/backend/LedgerIntegrationTests.java)
 
 분류의 표시 순서·사용자 추가·기본 분류 숨김은 회원별로 저장합니다. 분류 이름을 바꾸면 같은 회원과 분류 그룹의 기존 기록에도 반영합니다. 분류를 지우면 선택 목록에서 빠지며 기존 거래와 마지막 분류명은 보존합니다. 서버에 저장된 분류 설정이 없는 경우에만 기존 브라우저 설정을 가져옵니다. [회원별 분류 API](../../backend/src/main/java/com/zip/backend/ledger/LedgerCategoriesController.java) · [분류 계약](../../frontend/API.md#회원별-카테고리표시-순서)
 
 ### 가계부 저장 트랜잭션
 
-`LedgerController`는 JWT에서 회원·세션 ID를 읽고 API 요청을 `LedgerService`에 전달합니다. 등록은 `201`, 수정·삭제는 `204`를 반환합니다. `LedgerService`의 공개 등록·수정·삭제 메서드에서 각각 트랜잭션을 시작합니다. 회원 행을 잠근 뒤 세션을 다시 확인하고 소유권과 저장 규칙을 적용합니다. 등록·수정 중 발생한 거래·분류·메모 변경과 첫 월급 설정·원본 연결은 같은 트랜잭션에 포함됩니다. [가계부 API](../../backend/src/main/java/com/zip/backend/ledger/LedgerController.java) · [가계부 서비스](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java) · [회원 잠금](../../backend/src/main/java/com/zip/backend/auth/AuthRepository.java)
+`LedgerController`는 JWT에서 회원·세션 ID를 읽고, 등록·수정 JSON을 `LedgerWriteBody`로 받습니다. 이 DTO는 검증할 때까지 JSON 값의 원래 자료형을 보존합니다. 허용하지 않는 필드, 지출에 포함된 `incomeType`, 문자열·소수 금액과 명시적 `memo: null`은 거부합니다. `memo`를 생략하면 빈 문자열을 사용합니다. 검증을 통과하면 수입용 `LedgerWriteRequest.Income` 또는 지출용 `LedgerWriteRequest.Spend`로 변환합니다. 등록은 본문 없이 `201`, 수정·삭제는 본문 없이 `204`를 반환합니다. [가계부 API](../../backend/src/main/java/com/zip/backend/ledger/LedgerController.java) · [HTTP 요청 DTO](../../backend/src/main/java/com/zip/backend/ledger/LedgerWriteBody.java) · [저장 DTO](../../backend/src/main/java/com/zip/backend/ledger/LedgerWriteRequest.java)
+
+`LedgerService`의 공개 등록·수정·삭제 메서드에서 각각 트랜잭션을 시작합니다. 회원 행을 잠근 뒤 세션을 다시 확인하고 소유권과 저장 규칙을 적용합니다. 등록·수정 중 발생한 거래·분류·메모 변경과 첫 월급 설정·원본 연결은 같은 트랜잭션에 포함됩니다. [가계부 서비스](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java) · [회원 잠금](../../backend/src/main/java/com/zip/backend/auth/AuthRepository.java)
 
 `LedgerCategoryService`는 회원별 분류 설정과 월급 표시 이름을 읽고, 거래 저장 시 분류 ID를 찾아 반환합니다. 여러 회원이 같은 새 분류를 저장할 때는 분류 종류·이름의 유일 키와 삽입 후 잠금 조회를 사용합니다. 격리 MySQL 9.6의 `REPEATABLE READ`에서 기존 스냅샷에는 다른 트랜잭션이 생성한 분류가 보이지 않는 경우에도 잠금 조회는 해당 ID를 반환하는 것을 확인했습니다. [분류 서비스](../../backend/src/main/java/com/zip/backend/ledger/LedgerCategoryService.java) · [분류 유일 키](../../db/schema.sql)
 

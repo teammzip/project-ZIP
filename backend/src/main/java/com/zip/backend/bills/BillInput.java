@@ -2,23 +2,52 @@ package com.zip.backend.bills;
 
 import com.zip.backend.common.ApiException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 public final class BillInput {
     public static final long MAX_AMOUNT = 9_007_199_254_740_991L;
     private BillInput() {}
 
-    public static void monthly(Map<String, Object> body, boolean create) {
-        var keys = create ? Set.of("tag", "amount", "dueDate") : Set.of("amount", "dueDate");
-        var allowed = new java.util.HashSet<>(keys); allowed.add("memo"); allowed.add("memoId");
-        if(body.containsKey("memoId")) id(java.util.Objects.toString(body.get("memoId"),""));
-        if (create) allowed.add("name");
-        if (!body.keySet().containsAll(keys) || !allowed.containsAll(body.keySet())) throw bad("금액과 납부 기한을 입력해 주세요.");
-        if (body.containsKey("memo")) memo(body.get("memo"));
-        if (create) { if (body.containsKey("name")) text(body.get("name"), "이름", 30); text(body.get("tag"), "분류", 24); }
-        amount(body.get("amount")); dueDate(body.get("dueDate"));
+    public record MonthlyCreate(String name, String tag, MonthlyDetails details) {}
+
+    public record MonthlyDetails(long amount, LocalDate dueDate, String memo, String memoId) {}
+
+    public static MonthlyCreate monthlyCreate(Map<String, Object> body) {
+        String memoId = monthlyMemoId(body);
+        requireMonthlyFields(body, Set.of("tag", "amount", "dueDate"),
+            Set.of("name", "tag", "amount", "dueDate", "memo", "memoId"));
+        String memo = body.containsKey("memo") ? memo(body.get("memo")) : null;
+        String name = body.containsKey("name") ? text(body.get("name"), "이름", 30) : null;
+        String tag = text(body.get("tag"), "분류", 24);
+        return new MonthlyCreate(name == null ? tag : name, tag, monthlyDetails(body, memo, memoId));
+    }
+
+    public static MonthlyDetails monthlyUpdate(Map<String, Object> body) {
+        String memoId = monthlyMemoId(body);
+        requireMonthlyFields(body, Set.of("amount", "dueDate"), Set.of("amount", "dueDate", "memo", "memoId"));
+        String memo = body.containsKey("memo") ? memo(body.get("memo")) : null;
+        return monthlyDetails(body, memo, memoId);
+    }
+
+    private static String monthlyMemoId(Map<String, Object> body) {
+        if (!body.containsKey("memoId")) return null;
+        String memoId = Objects.toString(body.get("memoId"), "");
+        id(memoId);
+        return memoId;
+    }
+
+    private static void requireMonthlyFields(Map<String, Object> body, Set<String> required, Set<String> allowed) {
+        if (!body.keySet().containsAll(required) || !allowed.containsAll(body.keySet())) {
+            throw bad("금액과 납부 기한을 입력해 주세요.");
+        }
+    }
+
+    private static MonthlyDetails monthlyDetails(Map<String, Object> body, String memo, String memoId) {
+        return new MonthlyDetails(amount(body.get("amount")), dueDate(body.get("dueDate")), memo, memoId);
     }
 
     public static String memo(Object raw) {

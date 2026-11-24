@@ -29,11 +29,16 @@
 
 `backend/` — Spring Boot 서버 API
 
+### 2026-11-25
+- moon — 가계부 수입·지출 저장과 거래 목록, 월별 고정 지출, 내 집 정보 응답, 첫 주거 설문 요청에 DTO 적용. [API 데이터 계약과 DTO](wiki/topics/application.md#api-데이터-계약과-dto) · 검증: H2 백엔드 339개, 관련 프론트 54개 통과.
+
 ### 2026-11-24
 - jgkim7848-lab — 오래된 데이터 정리를 6시간마다: 만료 · 로그아웃 후 하루 지난 로그인 세션, 요청 후 하루 지난 이메일 인증, 알릴 시각 90일 지난 알림("배출 정보가 없어요" 안내는 제외) (`maintenance/DataCleanupService`, 설정 `zip.cleanup.*`). [앱 구조](wiki/topics/application.md) · [알림](wiki/topics/calendar-notifications.md#알림-생성과-읽음-상태) · 검증: `DataCleanupTests`, 실제 MySQL 에서 같은 조건 개수 확인
 - jgkim7848-lab — 동네 목록 API `GET /api/regions` · `GET /api/regions/{id}/neighbors` 추가 — 로그인 없이, `frontend/API.md` · `openapi.yaml` 계약대로 (`region/RegionController`). [앱 구조](wiki/topics/application.md) · 검증: `RegionApiIntegrationTests` 2개, 실제 DB 로 띄운 서버에서 확인(249개 · 강남구 이웃 6곳 · 없는 번호 404)
 - jgkim7848-lab — 가계부 메모 초안이 폴더 100개 제한을 넘겨 분류 폴더를 만들던 문제 수정 — 이미 100개면 미분류로 저장 (`memo/LedgerMemoController`). [확인된 폴더 문제](wiki/topics/ledger-memos.md#확인된-폴더-문제) · 검증: `LedgerIntegrationTests` 새 테스트 1개
 - jgkim7848-lab — 쓰레기 배출일 알림 · 배출표 조회(`GET /api/trash-schedules/me`): 내 집 주소로 시 · 군 · 구를 못 찾으면 회원 주소로 다시 찾기 (`RegionMatcher.matchFirst`, 두 곳 같은 규칙). [배출표](wiki/topics/trash-schedules.md) · 검증: `RegionMatcherTests` · `TrashReminderTests` · `CalendarIntegrationTests` 새 테스트 3개
+- moon — 가계부 등록·수정·삭제와 분류 처리를 서비스로 분리하고 거래·메모·월급 연결의 트랜잭션을 검증. [가계부 저장 트랜잭션](wiki/topics/ledger-memos.md#가계부-저장-트랜잭션)
+- moon — 가계부 수입·기타 지출 목록에서 연결 메모를 일괄 조회하고 수입 목록 쿼리에서 자동 등록 월급 여부도 함께 조회. [가계부 목록 조회](wiki/topics/ledger-memos.md#가계부-기록과-회원별-분류)
 - moon — 로그인한 회원의 공개 게시글 집계 API를 추가하고, 지도·즐겨찾기·회원 리뷰의 카카오 장소 ID 판별을 `kakao:장소ID` 기준으로 통합 (커뮤니티·지도 통합 테스트 통과).
 
 ### 2026-11-22
@@ -162,6 +167,9 @@
 ## 프론트엔드
 
 `frontend/` — React 앱
+
+### 2026-11-25
+- moon — 가계부 메모 복구와 동네 지도 검색 상태 처리를 정리해 React 린트 경고를 해소. [메모 이어쓰기](wiki/topics/ledger-memos.md) · [장소 검색](wiki/topics/map-place-ids.md#장소-검색과-저장-리스트)
 
 ### 2026-11-24
 - jgkim7848-lab — 모의 모드 커뮤니티 "주변 동네"를 서울 4개 구 예시에서 전국 233곳으로 (`community/data/neighbors.ts`, 이웃 변환 스크립트가 DB 이웃 데이터와 같이 만듦). [커뮤니티](wiki/topics/community-operations.md)
