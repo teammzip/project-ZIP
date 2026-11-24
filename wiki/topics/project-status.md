@@ -18,7 +18,6 @@ PR #137에 해당하는 11월 24일 변경 기록은 `51cfc1a`로 `backend`에 �
 
 ## 구현해야 될 부분
 
-- [폴더 목록 갱신 문제](ledger-memos.md#확인된-폴더-문제)를 수정하고, 일반 생성과 가계부 초안에 같은 폴더 개수 제한을 적용해야 합니다.
 - 메모·지도 화면의 `react(set-state-in-effect)` 경고 2건이 남아 있습니다. [MemoPage.tsx](../../frontend/src/pages/my/MemoPage.tsx) · [MapView.tsx](../../frontend/src/features/map/components/MapView.tsx)
 - 루트 README의 배출표 상태 설명을 실제 조회 경로에 맞춰 갱신하고, 출시용 처리방침의 클라우드 업체·보관 국가를 확정해야 합니다. [배출표 문서 차이](trash-schedules.md#문서-간-차이) · [약관 현황](service-integrations.md)
 

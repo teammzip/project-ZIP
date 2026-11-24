@@ -16,6 +16,15 @@ class RegionMatcherTests {
 
     private static Optional<String> match(String address) { return RegionMatcher.match(address, DISTRICTS); }
 
+    @Test void matchFirstTriesAddressesInOrder() {
+        // 내 집 주소(시군구가 빠짐)로 못 찾으면 회원 주소로, 둘 다 못 찾거나 비면 없음
+        assertEquals(Optional.of("4"), RegionMatcher.matchFirst(DISTRICTS, "마포 합정동", "충북 청주시 상당구"));
+        assertEquals(Optional.of("1"), RegionMatcher.matchFirst(DISTRICTS, "서울 마포구 합정동", "충북 청주시"));
+        assertEquals(Optional.of("1"), RegionMatcher.matchFirst(DISTRICTS, null, "마포구"));
+        assertEquals(Optional.empty(), RegionMatcher.matchFirst(DISTRICTS, "마포 합정동", null));
+        assertEquals(Optional.empty(), RegionMatcher.matchFirst(DISTRICTS));
+    }
+
     @Test void uniqueDistrictMatchesWithoutCity() {
         assertEquals(Optional.of("1"), match("서울 마포구 합정동 123-4"));
         assertEquals(Optional.of("1"), match("마포구"));

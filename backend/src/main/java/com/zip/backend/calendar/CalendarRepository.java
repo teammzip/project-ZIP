@@ -242,11 +242,15 @@ public class CalendarRepository {
 
     // ---------- 쓰레기 배출표 ----------
 
-    public Optional<String> trashAddress(long userId) {
+    /** 배출표를 찾을 주소 두 개: 내 집 주소(home) · 회원 주소(address). 비어 있으면 null */
+    public record TrashAddresses(String home, String address) {}
+
+    /** 내 집 주소로 동네를 못 찾으면 회원 주소로 다시 찾을 수 있게 두 주소를 다 돌려줌 (쓰레기 배출 알림과 같은 규칙) */
+    public TrashAddresses trashAddresses(long userId) {
         return jdbc.query("""
-            SELECT COALESCE(NULLIF(TRIM(s.home_address), ''), NULLIF(TRIM(u.address), ''))
+            SELECT NULLIF(TRIM(s.home_address), ''), NULLIF(TRIM(u.address), '')
             FROM users u LEFT JOIN user_settings s ON s.user_id = u.id WHERE u.id = ?
-            """, rs -> rs.next() ? Optional.ofNullable(rs.getString(1)) : Optional.<String>empty(), userId);
+            """, rs -> rs.next() ? new TrashAddresses(rs.getString(1), rs.getString(2)) : new TrashAddresses(null, null), userId);
     }
 
     /** 배출표 한 종류: 배출 요일(0=일 ~ 6=토) · 시작 시각("18:00"). 배출이 없는 종류는 null */

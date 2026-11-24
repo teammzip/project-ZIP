@@ -13,7 +13,7 @@
 
 전국 배출표와 이웃 지역 데이터는 별도 데이터 마이그레이션으로 들어갑니다. 로컬 DB에 어떤 데이터가 있는지는 적용 이력으로 확인합니다. [DB 안내](../../db/README.md) · [배출표 조회](trash-schedules.md) · [앱 실행 모드](application.md)
 
-[배출표 마이그레이션](../../db/migrations/20261122_02_trash_schedules_nationwide.sql)과 [이웃 지역 마이그레이션](../../db/migrations/20261122_04_region_neighbors_nationwide.sql)은 각각 기존 배출표·이웃 목록을 교체합니다. 문서 기준 자료는 지역 249건, 배출표 6,218건, 방향별 이웃 관계 1,286건입니다. 개별 배포 환경의 적용 여부는 별도 확인이 필요합니다. [전국 자료 적용 결과](../../db/README.md#전국-지역--쓰레기-배출표--주변-동네) · [변경 기록](../../CHANGELOG.md#db)
+[배출표 마이그레이션](../../db/migrations/20261122_02_trash_schedules_nationwide.sql)과 [이웃 지역 마이그레이션](../../db/migrations/20261122_04_region_neighbors_nationwide.sql)은 각각 기존 배출표·이웃 목록을 교체합니다. 문서 기준 자료는 지역 249건, 배출표 6,218건, 방향별 이웃 관계 1,286건입니다. 개별 배포 환경의 적용 여부는 별도 확인이 필요합니다. 동네 목록의 기준은 프론트 [regions.ts](../../frontend/src/features/auth/data/regions.ts) 하나이고, [이웃 변환 스크립트](../../db/tools/region_neighbors_import.py)가 이웃 마이그레이션과 프론트 이웃 목록을 같은 데이터로 만듭니다. 셋이 어긋나면 [동기화 테스트](../../frontend/tests/region-data-sync.test.mjs)가 실패합니다(2026-11-24). [전국 자료 적용 결과](../../db/README.md#전국-지역--쓰레기-배출표--주변-동네) · [변경 기록](../../CHANGELOG.md#db)
 
 ## 마이그레이션 정합성 점검
 

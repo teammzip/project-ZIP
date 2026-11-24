@@ -225,7 +225,7 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 | GET · POST `/api/event-categories`, PATCH · DELETE `/{id}` | 처음 쓸 때 기본 5개 + 미분류 생성. 이름 20자, 같은 이름 409, 미분류는 바꾸기 · 지우기 400 |
 | GET · POST `/api/event-presets`, PATCH · DELETE `/{id}` | 직접 만든 항목. 같은 카테고리에 같은 이름이 있으면 POST 는 그것을 돌려주고 PATCH 는 409 |
 | GET `/api/trash-schedules?regionId=` | 동네(시 · 군 · 구) 쓰레기 배출표 (읽기만). 장소별 `[{ place, general, food, recycle }]`, 종류마다 `{ days: [1,3,5], startTime: "18:00" }`(0=일 ~ 6=토) 또는 `null`(그 종류는 배출 요일 없음). 배출표가 없는 동네 · 없는 번호는 `[]`, 숫자가 아닌 번호는 404 |
-| GET `/api/trash-schedules/me` | 로그인 회원의 내 집 주소를 우선 사용하고 비어 있으면 회원 주소로 시·군·구를 찾아요. 응답은 `{ regionName, items }`. 지역 미확인은 `regionName: null`, 배출표 없음은 `items: []`예요. |
+| GET `/api/trash-schedules/me` | 로그인 회원의 내 집 주소로 먼저, 비었거나 시·군·구를 못 찾으면 회원 주소로 다시 찾아요(`RegionMatcher.matchFirst`, 쓰레기 알림과 같은 규칙). 응답은 `{ regionName, items }`. 지역 미확인은 `regionName: null`, 배출표 없음은 `items: []`예요. |
 
 - 기념일(`anniv`)은 시간 · 카테고리 · 완료가 없고, 매년 반복(`yearly`)은 기념일만 (DB CHECK 와 같음).
 - 카테고리 지우기는 일정 → 미분류, 기본 항목 삭제, 직접 만든 항목 → 미분류(겹치는 이름은 기존 것만 남김)를 한 트랜잭션에서 해요. MySQL 은 같은 표를 하위 질의로 읽으며 지우지 못해서(1093) 겹치는 이름을 먼저 읽어요.
@@ -249,6 +249,18 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 - **쓰레기 배출일 알림** (`TrashReminderService` · `TrashReminderScheduler`): 배출일 0시에 `TRASH` 알림을 만들어요. 아래 [쓰레기 배출표 · 배출일 알림](#쓰레기-배출표--배출일-알림) 참고.
 - **검증**: `NotificationIntegrationTests`, `LifeNotificationIntegrationTests`, `RentReminderTests`, `TrashReminderTests`에서 생성 · 갱신 · 읽음 · 삭제와 종류별 생성 경로를 확인해요.
 
+## 동네 목록
+
+`com.zip.backend.region.RegionController`. 로그인 없이 열리는 공개 정보예요(`SecurityConfiguration` 에서 GET 만 허용). 계약은 `frontend/API.md` 2장 · `openapi.yaml` "설정 · 동네".
+
+| API | 현재 동작 |
+|---|---|
+| GET `/api/regions` | `[{ id, name, parentId, level }]` — 시 · 도(level 1, `parentId: null`) 다음에 시 · 군 · 구(level 2) |
+| GET `/api/regions/{id}/neighbors` | `[{ id, name }]` — 주변 동네(`region_neighbors`, 커뮤니티 "주변 동네"와 같은 관계). 없는 번호 · 숫자가 아니면 404 |
+
+- **목록 기준은 하나**: 프론트 `features/auth/data/regions.ts`. `db/tools/trash_import.py` 가 지역 마이그레이션(`20261122_01`)을, `db/tools/region_neighbors_import.py` 가 이웃 마이그레이션(`20261122_04`)과 프론트 이웃 목록(`community/data/neighbors.ts`, 모의 모드용)을 만들어요. 어긋나면 `frontend/tests/region-data-sync.test.mjs` 가 실패.
+- **검증**: `RegionApiIntegrationTests` 2개(로그인 없이 목록 · 시 · 도 먼저, 이웃 · 없는 번호 404).
+
 ## 쓰레기 배출표 · 배출일 알림
 
 `com.zip.backend.notification` (TrashReminderService · TrashReminderScheduler), 주소 → 동네는 `com.zip.backend.auth.RegionMatcher`. 일정 화면에서 **우리 동네 배출표 보기**를 펼칠 때 `GET /api/trash-schedules/me`로 읽기 전용 배출표를 조회해요.
@@ -263,7 +275,7 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 
 **알림 만드는 규칙** (`TrashReminderService.sendDue`, 스케줄러가 서버 시작 30초 뒤부터 1분마다 불러요)
 
-1. **대상**: 알림을 켠 회원(`user_settings.noti_on`). 주소는 마이페이지 내 집 주소(`user_settings.home_address`), 없으면 회원 주소(`users.address` — 주거 설문 · 내 정보에서 정함, 예전 회원은 가입 때 적은 주소).
+1. **대상**: 알림을 켠 회원(`user_settings.noti_on`). 주소는 마이페이지 내 집 주소(`user_settings.home_address`)로 먼저 찾고, 비었거나 동네를 못 찾으면(직접 입력이라 시군구가 빠지는 등) 회원 주소(`users.address` — 주거 설문 · 동네 인증으로 정함)로 다시 찾아요(`RegionMatcher.matchFirst`, 배출표 화면과 같은 규칙).
 2. **주소 → 시 · 군 · 구**: `RegionMatcher`. 시 · 도는 짧은 이름 · 예전 이름(광주 · 전남 → 전남광주)도 알아보고, 중구 · 동구처럼 여러 곳에 있는 이름은 주소에 시 · 도가 있어야 해요. 못 찾으면 아무것도 안 보내요.
 3. **배출일 알림**: 그날(한국 시간) 0시부터 그날 안에 한 번, 오늘 요일이 든 종류가 있으면 `TRASH` 알림. 제목 "오늘은 쓰레기 배출일이에요", 내용 예 `생활쓰레기 · 음식물 · 18:00부터 · 내 집 혹은 내 점포 앞`.
    - 종류마다 시각이 다르면 `생활쓰레기 18:00 · 재활용 20:00부터`. `00:00` 은 "시간 제한 없음"과 섞여 있어서 시각을 빼요.

@@ -50,13 +50,15 @@ public class LedgerMemoController {
             if(source.equals("income") && !Set.of("fixed","other").contains(incomeType)) throw new ApiException(400,"수입 종류를 확인해 주세요.");
             String folderName=source.equals("bill") ? "고정 지출" : source.equals("spend") ? "기타 지출" : incomeType.equals("other") ? "기타 수입" : "고정 수입";
             var folderIds=jdbc.queryForList("SELECT id FROM memo_folders WHERE user_id=? AND name=?",Long.class,user,folderName);
-            if(folderIds.isEmpty()) {
+            // 분류 폴더가 없으면 만들되, 일반 폴더 만들기와 같은 100개 제한을 지킴. 이미 100개면 폴더 없이(미분류) 초안을 만듦 — 가계부 입력은 막지 않음
+            if(folderIds.isEmpty() && jdbc.queryForObject("SELECT COUNT(*) FROM memo_folders WHERE user_id=?",Integer.class,user)<100) {
                 jdbc.update("INSERT INTO memo_folders(user_id,name) VALUES (?,?)",user,folderName);
                 folderIds=jdbc.queryForList("SELECT id FROM memo_folders WHERE user_id=? AND name=?",Long.class,user,folderName);
             }
+            Long folderId=folderIds.isEmpty() ? null : folderIds.get(0);
             var now=Timestamp.from(clock.instant().truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
             if(jdbc.queryForObject("SELECT COUNT(*) FROM memos WHERE user_id=?",Integer.class,user)>=1000) throw new ApiException(400,"메모는 1000개까지 만들 수 있어요.");
-            jdbc.update("INSERT INTO memos(user_id,title,body,color,is_pinned,is_checklist,items,created_at,updated_at,ledger_source,ledger_key,ledger_label,folder_id) VALUES (?,?,'','노랑',FALSE,FALSE,'[]',?,?,?,?,?,?)",user,label.substring(0,Math.min(60,label.length())),now,now,source,key,label,folderIds.get(0));
+            jdbc.update("INSERT INTO memos(user_id,title,body,color,is_pinned,is_checklist,items,created_at,updated_at,ledger_source,ledger_key,ledger_label,folder_id) VALUES (?,?,'','노랑',FALSE,FALSE,'[]',?,?,?,?,?,?)",user,label.substring(0,Math.min(60,label.length())),now,now,source,key,label,folderId);
             ids=jdbc.queryForList("SELECT id FROM memos WHERE user_id=? AND ledger_source=? AND ledger_key=?",Long.class,user,source,key);
         }
         return Map.of("id",ids.get(0).toString());

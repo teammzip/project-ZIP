@@ -1,10 +1,12 @@
 # 우리 동네 쓰레기 배출표
 
-2026-11-24 코드 확인 · [초기 수집 기준](../raw/index.md) · [위키 색인](../index.md)
+2026-11-24 코드 확인(주소 다시 찾기 · 출처 표시 반영) · [초기 수집 기준](../raw/index.md) · [위키 색인](../index.md)
 
 1. 일정 화면의 `CalendarBoard`가 접힌 배출표를 렌더링합니다. 실제 서버 모드에서 로그인한 사용자가 펼치면 `GET /api/trash-schedules/me`를 호출합니다. 모의 API 모드에서는 서버 연결 안내를 표시합니다. [일정 화면](../../frontend/src/features/life/components/CalendarBoard.tsx) · [배출표 컴포넌트](../../frontend/src/features/life/components/TrashScheduleDisclosure.tsx) · [앱 실행 모드](application.md)
-2. 서버는 내 집 주소를 우선 사용하고, 내 집 주소가 비면 회원 주소를 사용해 시·군·구를 찾습니다. 응답의 `items`에는 장소별 생활쓰레기·음식물·재활용 배출 요일과 시작 시각이 들어갑니다. [배출표 조회 API 계약](../../frontend/API.md#3-일정--쓰레기-배출-) · [서버 조회](../../backend/src/main/java/com/zip/backend/calendar/CalendarService.java)
+2. 서버는 내 집 주소로 먼저 시·군·구를 찾고, 내 집 주소가 비었거나 **그 주소로 시·군·구를 찾지 못하면**(직접 입력이라 "마포 합정동"처럼 시·군·구가 빠진 경우 등) 회원 주소로 다시 찾습니다(2026-11-24, `RegionMatcher.matchFirst`). 응답의 `items`에는 장소별 생활쓰레기·음식물·재활용 배출 요일과 시작 시각이 들어갑니다. [배출표 조회 API 계약](../../frontend/API.md#3-일정--쓰레기-배출-) · [서버 조회](../../backend/src/main/java/com/zip/backend/calendar/CalendarService.java) · [주소 순서대로 찾기](../../backend/src/main/java/com/zip/backend/auth/RegionMatcher.java)
 3. 화면은 `regionName`이 `null`이면 주소로 지역을 찾지 못했다는 안내를 표시합니다. 지역 이름이 있고 `items`가 비어 있으면 해당 지역의 배출표가 없다는 안내를 표시합니다. 전국 자료가 필요한 DB의 적용 순서는 DB 문서에서 확인할 수 있습니다. [배출표 컴포넌트](../../frontend/src/features/life/components/TrashScheduleDisclosure.tsx) · [DB 안내](../../db/README.md) · [데이터베이스와 검증](database.md)
+
+4. 표 아래에 공공데이터 출처(행정안전부 「전국생활쓰레기배출정보표준데이터」, 공공데이터포털)를 표시합니다. 이용약관 제2조 · 소개 페이지 푸터에도 같은 출처가 있습니다. [배출표 컴포넌트](../../frontend/src/features/life/components/TrashScheduleDisclosure.tsx)
 
 ## 배출일 알림
 

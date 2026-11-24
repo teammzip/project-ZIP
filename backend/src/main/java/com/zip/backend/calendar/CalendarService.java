@@ -247,10 +247,11 @@ public class CalendarService {
     public record MyTrashSchedule(String regionName, List<Map<String, Object>> items) {}
 
     public MyTrashSchedule myTrashSchedule(long userId) {
-        var address = repository.trashAddress(userId);
-        if (address.isEmpty()) return new MyTrashSchedule(null, List.of());
+        var addresses = repository.trashAddresses(userId);
+        if (addresses.home() == null && addresses.address() == null) return new MyTrashSchedule(null, List.of());
         var districts = auth.districts();
-        return RegionMatcher.match(address.get(), districts)
+        // 내 집 주소로 못 찾으면(직접 입력이라 시군구가 빠지는 등) 회원 주소로 다시 찾음 — 쓰레기 배출 알림과 같은 규칙
+        return RegionMatcher.matchFirst(districts, addresses.home(), addresses.address())
             .flatMap(regionId -> districts.stream().filter(district -> district.id().equals(regionId)).findFirst())
             .map(district -> new MyTrashSchedule(district.displayName(), trashSchedules(district.id())))
             .orElseGet(() -> new MyTrashSchedule(null, List.of()));

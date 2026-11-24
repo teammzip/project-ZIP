@@ -9,6 +9,7 @@
 
 만드는 파일
   db/migrations/20261122_04_region_neighbors_nationwide.sql   실행하면 주변 동네 표 전체를 지우고 다시 넣음
+  frontend/src/features/community/data/neighbors.ts          같은 이웃 목록 (서버 없이 쓰는 목업 모드의 "주변 동네" 탭용)
 
 실행 (저장소 루트에서)
   python db/tools/region_neighbors_import.py --fetch            # OSM(Overpass API)에서 경계 목록을 받아 db/data/ 에 저장한 뒤 변환
@@ -32,10 +33,12 @@ from pathlib import Path
 
 # 같은 폴더의 쓰레기 배출표 변환 스크립트와 동네 목록 · SQL 글자 처리를 같이 씀 (python -I 로 실행해도 찾게 경로를 직접 넣음)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from trash_import import ROOT, read_regions_ts, sql_text  # noqa: E402
+from trash_import import ROOT, SIDO_FULL, read_regions_ts, sql_text  # noqa: E402
 
 DEFAULT_OSM = ROOT / 'db' / 'data' / 'osm_sigungu_boundaries.json'  # db/data/ 는 저장소에 안 올림
 OUT = ROOT / 'db' / 'migrations' / '20261122_04_region_neighbors_nationwide.sql'
+# 목업 모드용 프론트 목록. 서버 DB 와 같은 데이터라 목록이 어긋나지 않음 (frontend/tests/region-data-sync.test.mjs 가 확인)
+OUT_TS = ROOT / 'frontend' / 'src' / 'features' / 'community' / 'data' / 'neighbors.ts'
 
 # 대한민국 시 · 도(admin_level 4)마다 그 안의 시 · 군 · 구(6) · 일반구(7) 경계. 일반구는 제주시처럼 6 이 아닌 곳을 찾으려고 같이 받음
 OVERPASS_QUERY = """[out:json][timeout:300];
@@ -201,6 +204,28 @@ def ordered_pairs(edges, regions):
     return sorted(pairs, key=lambda p: (order.get(p[0], (99, 99)), order.get(p[1], (99, 99))))
 
 
+def short_label(key):
+    """('서울특별시', '마포구') → '서울 마포구', 세종은 '세종' (프론트 normRegion 과 같은 모양)"""
+    short = {full: name for name, full in SIDO_FULL.items()}[key[0]]
+    return short if key[1] == key[0] else f'{short} {key[1]}'
+
+
+def write_ts(pairs):
+    by = {}
+    for a, b in pairs:
+        by.setdefault(short_label(a), []).append(short_label(b))
+    lines = [
+        '/* 주변 동네(커뮤니티 "주변 동네" 탭) — 서버 없이 쓰는 목업 모드용 전국 목록.',
+        ' * db/tools/region_neighbors_import.py 가 DB 의 20261122_04_region_neighbors_nationwide.sql 과 같은 데이터로 만든 파일 — 직접 고치지 말고 스크립트로 다시 만드세요.',
+        ' * 서버 모드는 같은 데이터를 GET /api/posts/neighbors 로 받아요. 기준: 육지 경계가 맞닿은 시 · 군 · 구 (© OpenStreetMap contributors, ODbL) */',
+        'export const NEARBY: Record<string, string[]> = {',
+    ]
+    for key, names in by.items():
+        lines.append(f"  '{key}': [{', '.join(repr(n) for n in names)}],".replace('"', "'"))
+    lines += ['}', '']
+    OUT_TS.write_text('\n'.join(lines), encoding='utf-8', newline='\n')
+
+
 def write(pairs, count):
     lines = [
         '-- 주변 동네(region_neighbors, 커뮤니티 "주변 동네" 범위): 육지 경계선을 함께 쓰는(맞닿은) 시 · 군 · 구끼리 이웃(강 가운데 경계 포함, 바다 위 경계 제외), 양쪽이 같음.',
@@ -260,12 +285,13 @@ def main():
     pairs = ordered_pairs(edges, regions)
     keys = {key for edge in edges for key in edge}
     write(pairs, len(keys))
+    write_ts(pairs)
 
     total = sum(len(v) for v in regions.values())
     missing = [f'{s} {g}' for s, names in regions.items() for g in names if (s, g) not in keys]
     counts = collections.Counter(a for a, _ in pairs)
     print(f'동네 목록: {total}개 · OSM 에서 찾음: {len(found)}개 · 이웃이 있는 동네: {len(keys)}개')
-    print(f'주변 동네: {len(edges)}쌍 → 양쪽 {len(pairs)}줄 → {OUT.relative_to(ROOT)}')
+    print(f'주변 동네: {len(edges)}쌍 → 양쪽 {len(pairs)}줄 → {OUT.relative_to(ROOT)} · {OUT_TS.relative_to(ROOT)}')
     print(f'  동네당 이웃 수: 최소 {min(counts.values())} · 평균 {len(pairs) / len(keys):.1f} · 최대 {max(counts.values())} ({counts.most_common(1)[0][0][1]})')
     print(f'  목록에 있는데 이웃이 없는 동네 {len(missing)}개: {", ".join(missing) or "없음"}')
     print('맞닿음 말고 다른 규칙으로 만든 곳:')

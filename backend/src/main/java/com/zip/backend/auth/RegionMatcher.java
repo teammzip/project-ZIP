@@ -38,6 +38,18 @@ public final class RegionMatcher {
         return bySido.size() == 1 ? Optional.of(bySido.get(0).id()) : Optional.empty();
     }
 
+    /**
+     * 주소 여러 개를 앞에서부터 시도해 처음 찾아지는 동네. 쓰레기 배출 알림 · 배출표 화면이 씀:
+     * 내 집 주소(직접 입력이라 "마포 합정동"처럼 시군구가 빠질 수 있음)로 못 찾으면 회원 주소(주거 설문 · 동네 인증)로 다시 찾음
+     */
+    public static Optional<String> matchFirst(List<District> districts, String... addresses) {
+        for (String address : addresses) {
+            var found = match(address, districts);
+            if (found.isPresent()) return found;
+        }
+        return Optional.empty();
+    }
+
     /** "서울특별시" · "서울시" · "서울" → "서울", "충청북도" · "충북" → "충북" */
     private static String sido(String name) {
         for (String suffix : SIDO_SUFFIXES) {

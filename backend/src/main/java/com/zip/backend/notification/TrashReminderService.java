@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service;
 /**
  * 쓰레기 배출일 알림. 회원 주소에서 시군구를 찾고(RegionMatcher), 그 동네 쓰레기 배출표(trash_schedules)에
  * 오늘 요일이 있으면 그날 0시(자정, 한국 시간)에 알림(TRASH)을 하나 만든다.
- * 주소: 마이페이지 내 집 주소(user_settings.home_address)가 있으면 그것, 없으면 회원 주소(users.address — 주거 설문 · 내 정보에서 정함, 예전 회원은 가입 때 적은 주소).
+ * 주소: 마이페이지 내 집 주소(user_settings.home_address)로 먼저 찾고, 비었거나 동네를 못 찾으면(직접 입력이라 시군구가 빠지는 등) 회원 주소(users.address — 주거 설문 · 동네 인증으로 정함)로 다시 찾는다. 배출표 화면(GET /api/trash-schedules/me)과 같은 규칙.
  * 서버가 0시에 꺼져 있었으면 켜진 뒤 그날 안에 만든다(알릴 시각은 그날 0시). 시각은 zip.trash.reminder-hour 로 바꿀 수 있음. 같은 날 두 번 만들지 않는다.
  * 동네는 찾았는데 그 동네 배출표가 아예 없으면(공공데이터에 없는 시군구 13곳) "배출 정보가 없어요" 안내를 (회원, 동네)마다 딱 한 번만 보내고
  * 그 뒤로는 아무 알림도 보내지 않는다. 주소를 다른 동네로 바꾸면 그 동네 기준으로 다시 판단.
@@ -53,6 +53,9 @@ public class TrashReminderService {
         this.hour = hour;
     }
 
+    /** 알림 대상 회원: 내 집 주소(user_settings.home_address) · 회원 주소(users.address), 비어 있으면 null */
+    private record Owner(long userId, String homeAddress, String address) {}
+
     /** 배출표 한 종류 요약: 가장 이른 시작 시각, 장소 개수, (하나뿐일 때) 장소 */
     record TypeSummary(String type, LocalTime start, int places, String place) {}
 
@@ -65,26 +68,27 @@ public class TrashReminderService {
         Timestamp notifyAt = Timestamp.from(today.atTime(hour, 0).atZone(ZONE).toInstant());
         int weekday = today.getDayOfWeek().getValue() % 7; // DB 규칙 0=일 ~ 6=토 (Java 는 7=일)
 
-        // 주소(내 집 주소 → 없으면 회원 주소)가 있고, 알림을 켰고, 오늘 쓰레기 알림을 아직 안 받은 회원
+        // 주소(내 집 주소 · 회원 주소 중 하나라도)가 있고, 알림을 켰고, 오늘 쓰레기 알림을 아직 안 받은 회원
         var owners = jdbc.query("""
-            SELECT s.user_id, COALESCE(NULLIF(TRIM(s.home_address), ''), TRIM(u.address)) FROM user_settings s JOIN users u ON u.id = s.user_id
+            SELECT s.user_id, NULLIF(TRIM(s.home_address), ''), NULLIF(TRIM(u.address), '') FROM user_settings s JOIN users u ON u.id = s.user_id
             WHERE s.noti_on = TRUE AND COALESCE(NULLIF(TRIM(s.home_address), ''), NULLIF(TRIM(u.address), '')) IS NOT NULL
               AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.user_id = s.user_id AND n.noti_type = 'TRASH' AND n.notify_at = ?)
-            """, (rs, row) -> Map.entry(rs.getLong(1), rs.getString(2)), notifyAt);
+            """, (rs, row) -> new Owner(rs.getLong(1), rs.getString(2), rs.getString(3)), notifyAt);
         if (owners.isEmpty()) return 0;
         var districts = auth.districts();
         // 이번 확인에서 동네 배출표는 동네마다 한 번만 읽음 (같은 동네 회원이 많아도 DB 를 회원 수만큼 읽지 않게)
         var regionRows = new HashMap<Long, List<KindRow>>();
         int sent = 0;
         for (var owner : owners) {
-            String key = owner.getKey() + ":" + owner.getValue();
+            String key = owner.userId() + ":" + owner.homeAddress() + ":" + owner.address();
             if (checked.contains(key)) continue;
-            var region = RegionMatcher.match(owner.getValue(), districts);
-            if (region.isEmpty()) { checked.add(key); continue; } // 주소에서 동네를 못 찾음
+            // 내 집 주소로 못 찾으면(직접 입력이라 시군구가 빠지는 등) 회원 주소로 다시 찾음 — 배출표 화면과 같은 규칙
+            var region = RegionMatcher.matchFirst(districts, owner.homeAddress(), owner.address());
+            if (region.isEmpty()) { checked.add(key); continue; } // 두 주소 모두 동네를 못 찾음
             long regionId = Long.parseLong(region.get());
             var rows = regionRows.computeIfAbsent(regionId, this::kindRows);
             if (rows.isEmpty()) { // 배출표가 아예 없는 동네: 안내를 한 번만 (그 뒤로는 아무것도 안 보냄)
-                sent += sendNoDataOnce(owner.getKey(), regionId, districts, now);
+                sent += sendNoDataOnce(owner.userId(), regionId, districts, now);
                 checked.add(key);
                 continue;
             }
@@ -94,8 +98,8 @@ public class TrashReminderService {
                 INSERT INTO notifications (user_id, noti_type, title, body, link_view, ref_id, notify_at, created_at)
                 SELECT ?, 'TRASH', ?, ?, NULL, ?, ?, ? FROM user_settings WHERE user_id = ?
                   AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.user_id = ? AND n.noti_type = 'TRASH' AND n.notify_at = ?)
-                """, owner.getKey(), TITLE, body(schedules), regionId, notifyAt, Timestamp.from(now),
-                owner.getKey(), owner.getKey(), notifyAt);
+                """, owner.userId(), TITLE, body(schedules), regionId, notifyAt, Timestamp.from(now),
+                owner.userId(), owner.userId(), notifyAt);
             sent += inserted;
         }
         return sent;

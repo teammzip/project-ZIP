@@ -85,6 +85,14 @@ class TrashReminderTests {
         assertEquals(List.of("생활쓰레기 · 음식물 · 18:00부터 · 내 집 앞"), bodies(1));
     }
 
+    @Test void unmatchedHomeAddressFallsBackToMemberAddress() {
+        // 내 집 주소를 "마포 합정동"처럼 시군구 없이 적었어도, 회원 주소(설문 · 동네 인증)로 동네를 찾아 알림이 감
+        jdbc.update("UPDATE user_settings SET home_address = '마포 합정동 123' WHERE user_id = 1");
+        jdbc.update("UPDATE users SET address = '서울특별시 마포구 합정동' WHERE id = 1");
+        assertEquals(1, service.sendDue(seoul("2026-11-23T00:00:00")));
+        assertEquals(List.of("생활쓰레기 · 음식물 · 18:00부터 · 내 집 앞"), bodies(1));
+    }
+
     @Test void regionWithoutScheduleGetsOneNoticeThenNothing() {
         // 용산구(3)는 배출표가 없음 → "배출 정보가 없어요" 안내를 한 번만, 그 뒤로는 아무것도 안 보냄
         jdbc.update("INSERT INTO users (id, login_id, password_hash, nickname, address) VALUES (4, 'yongsan01', 'x', '용산주민', '서울 용산구 한강대로 405')");

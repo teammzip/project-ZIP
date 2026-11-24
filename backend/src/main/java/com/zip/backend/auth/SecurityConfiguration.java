@@ -71,6 +71,8 @@ public class SecurityConfiguration {
                     "/api/auth/email/verify", "/api/auth/find-id", "/api/auth/password-reset/verify", "/api/auth/password-reset").permitAll()
                 .requestMatchers("/api/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/terms").permitAll()
+                // 동네 목록 · 주변 동네: 공개 행정구역 정보 (openapi.yaml 에서도 로그인 없이)
+                .requestMatchers(HttpMethod.GET, "/api/regions", "/api/regions/*/neighbors").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/files/content/*").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")

@@ -3,13 +3,8 @@ import type { Post } from '../types'
 
 export const CATEGORIES = ['자유', '꿀팁', '질문', '동네'] as const
 
-/** 동네 → 주변 동네 (예시) */
-export const NEARBY: Record<string, string[]> = {
-  '서울 마포구': ['서울 서대문구', '서울 용산구', '서울 영등포구'],
-  '서울 서대문구': ['서울 마포구', '서울 은평구', '서울 종로구'],
-  '서울 용산구': ['서울 마포구', '서울 중구', '서울 성동구'],
-  '서울 영등포구': ['서울 마포구', '서울 동작구', '서울 양천구'],
-}
+/** 동네 → 주변 동네: 서버 DB 와 같은 전국 목록(스크립트가 만든 neighbors.ts). 예전에는 서울 4개 구 예시뿐이었음 */
+export { NEARBY } from './neighbors'
 
 export function seedPosts(): Post[] {
   const now = Date.now()

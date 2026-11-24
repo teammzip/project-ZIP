@@ -69,7 +69,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 4. [`migrations/20261122_04_region_neighbors_nationwide.sql`](migrations/20261122_04_region_neighbors_nationwide.sql) — 주변 동네를 모두 지우고 다시 넣음(예시 12줄도 바뀜). 마지막에 `파일 줄 수 1286 · 넣은 줄 수 1286 · 지역 없음 0` 이면 정상
 
 **주변 동네 기준** (`20261122_04`, 커뮤니티 "주변 동네" 탭이 씀): **육지 경계선을 함께 쓰는(맞닿은) 시 · 군 · 구**끼리 이웃이고 양쪽이 같아요. 강 가운데 경계는 이웃(마포구 ↔ 영등포구), 바다 위 경계는 빼요(제주시 ↔ 완도군 같은 바다 건너는 이웃 아님). 인천 옛 구(중구 · 동구 · 서구)는 이어받은 새 구 + 그 이웃, 맞닿은 곳이 없는 울릉군 · 진도군은 중심이 가장 가까운 2곳. 동네당 이웃은 1 ~ 12곳(평균 5.5). 예: 마포구 → 강서구 · 고양시 · 서대문구 · 영등포구 · 용산구 · 은평구 · 중구.
-OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `python db/tools/region_neighbors_import.py --fetch` 로 만들어요(받은 경계 목록은 `db/data/`, 저장소에 안 올림). 경계선 좌표는 받지 않고 경계를 이루는 선 번호 · 중심 좌표만 써요.
+OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `python db/tools/region_neighbors_import.py --fetch` 로 만들어요. 같은 실행에서 프론트 모의 모드용 이웃 목록(`frontend/src/features/community/data/neighbors.ts`)도 만들고, 동네 목록 기준인 `regions.ts` · DB 데이터 · 프론트 이웃 목록이 어긋나면 `frontend/tests/region-data-sync.test.mjs` 가 실패해요(받은 경계 목록은 `db/data/`, 저장소에 안 올림). 경계선 좌표는 받지 않고 경계를 이루는 선 번호 · 중심 좌표만 써요.
 
 `20261122_01` · `02` 는 공공데이터포털 「전국생활쓰레기배출정보표준데이터」 CSV(`db/data/`, 저장소에 안 올림)를 `python db/tools/trash_import.py` 로 바꿔 만든 파일이에요. 표 구조는 아래 [`trash_schedules`](#trash_schedules--쓰레기-배출-요일표) 항목을 보세요.
 

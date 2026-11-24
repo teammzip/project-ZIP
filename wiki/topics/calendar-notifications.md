@@ -13,7 +13,7 @@
 | 종류 | 생성 시점과 표시 |
 | --- | --- |
 | 일정·기념일 | 알림 목록 조회 시 오늘부터 3일 뒤까지 갱신합니다. 일정이 바뀌거나 완료되면 관련 미확인 알림을 갱신하거나 정리합니다. 반복 기념일은 발생 날짜별로 구분합니다. [일정 알림](../../backend/src/main/java/com/zip/backend/notification/LifeNotificationService.java) |
-| 월세·배출일 | [월세 알림](fixed-expenses.md#월세-알림) · [배출일 알림](trash-schedules.md#배출일-알림) |
+| 월세·배출일 | [월세 알림](fixed-expenses.md#월세-알림) · [배출일 알림](trash-schedules.md#배출일-알림). 배출표 조회(`GET /api/trash-schedules/me`)와 배출일 알림은 같은 주소 규칙(내 집 주소 → 못 찾으면 회원 주소, 2026-11-24)을 씁니다. [배출표 조회 서비스](../../backend/src/main/java/com/zip/backend/calendar/CalendarService.java) |
 | 댓글·운영 | 댓글·답글, 관리 조치, 문의 답변, 공지 등 해당 동작에서 생성합니다. [커뮤니티와 운영](community-operations.md) · [알림 서비스](../../backend/src/main/java/com/zip/backend/notification/NotificationService.java) |
 
 `GET /api/notifications`는 본인 알림을 `status`(`all`, `unread`, `read`)로 필터링하고 `{ items, unreadCount }`를 반환합니다. `PATCH /api/notifications/read`에 빈 `ids` 배열을 보내면 전체를 읽음 처리합니다. `DELETE /api/notifications`는 읽은 알림만 삭제합니다. 홈 위젯의 당일 숨김은 현재 브라우저에 보관되는 화면 설정입니다. [알림 API 계약](../../frontend/API.md#6-알림-) · [알림 컨트롤러](../../backend/src/main/java/com/zip/backend/notification/NotificationController.java)
