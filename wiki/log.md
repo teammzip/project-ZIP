@@ -121,3 +121,7 @@
 
 - 계속 쌓이던 세 표를 6시간마다 정리하는 작업을 추가했습니다: 만료 · 로그아웃 후 하루 지난 세션, 요청 후 하루 지난 이메일 인증, 알릴 시각 90일 지난 알림("배출 정보가 없어요" 안내 제외). [앱 구조](topics/application.md) · [알림](topics/calendar-notifications.md#알림-생성과-읽음-상태)
 - 검증: `DataCleanupTests`(지울 것 · 남길 것 · 두 번 실행). 실제 MySQL 에서 같은 조건을 개수 세기로 확인(세션 20개 중 19개 · 이메일 인증 1개 대상, 알림 0개).
+
+## [2026-11-24] record | 배출표 페이지에 알림 정리 예외 추가
+
+- PR #142 의 문서 동기화 검사가 `TrashReminderService` · `application.properties` 변경에 대해 [배출표](topics/trash-schedules.md) 갱신 누락으로 실패해, "배출 정보가 없어요" 안내가 오래된 알림 정리에서 빠진다는 내용을 배출일 알림 절에 추가했습니다.
