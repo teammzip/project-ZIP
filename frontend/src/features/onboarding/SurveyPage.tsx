@@ -18,7 +18,7 @@ import { addressTimeZone, locationTimeZone } from '@/features/life/billingTimeZo
 import { deviceTimeZone } from '@/features/life/monthlyPeriod'
 import { isMockApi } from '@/lib/apiMode'
 import { apiClient, getErrorMessage } from '@/lib/apiClient'
-import { loadHomeInfo } from '@/features/life/homeApi'
+import { loadHomeInfo, type HousingOnboardingInput } from '@/features/life/homeApi'
 
 const num = (v: string) => Math.max(0, Number(v) || 0)
 
@@ -116,7 +116,7 @@ export function SurveyPage() {
           deviceZone: deviceTimeZone(), signal: new AbortController().signal, addressZone: addressTimeZone, locationZone: locationTimeZone,
         })
         if (!sameSession()) return
-        const { data: savedUser } = await apiClient.put<typeof user>('/me/housing-onboarding', {
+        const input: HousingOnboardingInput = {
           action: 'save',
           ...(selectedAddress ? { address: selectedAddress } : {}),
           ...(f.birth ? { birth: f.birth } : {}),
@@ -129,10 +129,10 @@ export function SurveyPage() {
             ...(monthly && mgmtIncluded !== null ? { mgmtIncluded } : {}),
             ...(f.mgmtFee !== '' && !(monthly && mgmtIncluded) ? { mgmtFee } : {}),
             ...(!monthly && f.contractFee !== '' ? { contractFee: answers.contractFee } : {}),
-            ...(!monthly && hasLoan === false ? { loan: null } : {}),
             ...(!monthly && hasLoan ? { loan: loanFields } : {}),
           } } : {}),
-        })
+        }
+        const { data: savedUser } = await apiClient.put<typeof user>('/me/housing-onboarding', input)
         if (!sameSession()) return
         if (selectedAddress && savedUser.address === selectedAddress) {
           const settings = useLifeStore.getState().settings
@@ -175,7 +175,8 @@ export function SurveyPage() {
     setSaving(true)
     setError('')
     try {
-      const { data } = await apiClient.put<typeof user>('/me/housing-onboarding', { action: 'skip' })
+      const input: HousingOnboardingInput = { action: 'skip' }
+      const { data } = await apiClient.put<typeof user>('/me/housing-onboarding', input)
       if (useAuthStore.getState().sessionKey === sessionKey) updateUser(data)
     } catch (cause) {
       if (useAuthStore.getState().sessionKey === sessionKey) setError(getErrorMessage(cause, '설문을 건너뛰지 못했어요. 다시 시도해 주세요.'))

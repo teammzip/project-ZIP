@@ -7,18 +7,31 @@ import { useHousingSurveyStore } from '@/features/onboarding/store'
 import { useLoanStore } from '@/features/loan/store'
 import type { HousingLoan, LoanCharge, LoanTerms } from '@/features/loan/interest'
 import type { ContractKind } from '@/features/onboarding/store'
+import type { ServerBill } from './billsApi'
+import type { SalaryInput } from './salaryApi'
 import { useLifeStore } from './store'
 
 type Contract = { kind: ContractKind; deposit: number; mgmtIncluded: boolean; mgmtFee: number; contractFee: number }
-export type HomeInput = Contract & { homeAddress?: string; rent: number; rentDay: number; moveIn: string; contractEnd: string; loan: LoanTerms | null }
+export type HomeInput = Contract & { homeAddress?: string | null; rent: number; rentDay: number; moveIn?: string; contractEnd?: string; loan?: LoanTerms | null }
 export type SurveyLoanDraft = Partial<LoanTerms>
+type HomeWrite =
+  | { path: '/me/home-info'; input: HomeInput }
+  | { path: '/me/home-info/loan'; input: { loan: LoanTerms | null } }
+export type HousingOnboardingInput = { action: 'skip' } | {
+  action: 'save'
+  address?: string
+  birth?: string
+  salary?: Omit<SalaryInput, 'paymentDay'> & { paymentDay?: number }
+  timeZone?: string
+  home?: Pick<HomeInput, 'kind'> & Partial<Pick<HomeInput, 'deposit' | 'rent' | 'mgmtIncluded' | 'mgmtFee' | 'contractFee'>> & { loan?: SurveyLoanDraft }
+}
 type HomeResponse = {
   settings: { rent: number; rentDay: number; moveIn: string; contractEnd: string; homeAddress: string }
-  contract: Contract | null
+  contract: (Contract & { managementBillId: string | null }) | null
   loan: HousingLoan | null
-  loanDraft?: SurveyLoanDraft | null
+  loanDraft: SurveyLoanDraft | null
   charges: LoanCharge[]
-  managementBill: { id: string; name: string; defaultAmount: number; tag: string; paid: boolean; month: string } | null
+  managementBill: ServerBill | null
 }
 type HomeOwner = { id: string; sessionKey: string }
 let pendingWrite: { sessionKey: string; promise: Promise<HomeResponse> } | null = null
@@ -101,7 +114,7 @@ export function removeHomeInfo(id: string, sessionKey: string) {
   queryClient.removeQueries({ queryKey: homeInfoKey({ id, sessionKey }), exact: true })
 }
 
-async function writeHomeInfo(path: string, input: HomeInput | { loan: LoanTerms | null }) {
+async function writeHomeInfo({ path, input }: HomeWrite) {
   const owner = session()
   if (pendingWrite?.sessionKey === owner.sessionKey) throw new Error('내 집 정보를 저장하고 있어요. 잠시 후 다시 시도해 주세요.')
   const { queryKey } = homeInfoOptions(owner)
@@ -116,5 +129,5 @@ async function writeHomeInfo(path: string, input: HomeInput | { loan: LoanTerms 
   return promise
 }
 
-export const saveHomeInfo = (input: HomeInput) => writeHomeInfo('/me/home-info', input)
-export const saveHomeLoan = (loan: LoanTerms | null) => writeHomeInfo('/me/home-info/loan', { loan })
+export const saveHomeInfo = (input: HomeInput) => writeHomeInfo({ path: '/me/home-info', input })
+export const saveHomeLoan = (loan: LoanTerms | null) => writeHomeInfo({ path: '/me/home-info/loan', input: { loan } })

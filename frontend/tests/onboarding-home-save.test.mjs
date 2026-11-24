@@ -12,11 +12,12 @@ function setup(kind, failHome = false, overrides = {}) {
   const user = { id: 'member-a', nickname: '검증회원', firstLogin: true }
   const calls = []
   const updates = []
+  const { hasLoan = kind === 'jeonse', ...fields } = overrides
   const viewStates = {
-    3: '서울 마포구', 7: kind, 8: 'monthly', 9: false, 10: kind === 'jeonse',
+    3: '서울 마포구', 7: kind, 8: 'monthly', 9: false, 10: hasLoan,
     11: { birth: '1995-06-01', deposit: '10000000', rent: '550003', mgmtFee: '70000', contractFee: '20000000',
       loanAmount: '120000000', loanAnnualRate: '4', loanPaymentDay: '25', loanStartDate: '2026-11-01',
-      income: '2500000', incomePaymentDay: '25', ...overrides },
+      income: '2500000', incomePaymentDay: '25', ...fields },
   }
   let stateIndex = 0
   const stores = {
@@ -96,4 +97,12 @@ test('설문 저장 실패 시 완료 상태로 전환되지 않는다', async (
   await s.submit()
   assert.ok(s.updates.some((update) => Array.isArray(update) && update[1] === '주거 설문 저장 실패'))
   assert.ok(!s.updates.some((update) => update.firstLogin === false))
+})
+
+test('전세 대출이 없으면 설문 요청에서 loan 필드를 생략한다', async () => {
+  const s = setup('jeonse', false, { hasLoan: false })
+  await s.submit()
+  const [[, input]] = s.calls
+  assert.equal(input.home.kind, 'jeonse')
+  assert.equal(Object.hasOwn(input.home, 'loan'), false)
 })

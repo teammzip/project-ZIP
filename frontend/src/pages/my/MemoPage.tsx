@@ -1,8 +1,8 @@
 import { MemoBoard, useMemoStore, type Memo } from '@/features/memo'
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/features/auth'
-import { apiClient, getErrorMessage } from '@/lib/apiClient'
-import { ledgerMemoReturnUrl, readMemoDraft, rememberLedgerMemoInput, writeMemoDraft } from '@/features/life/ledgerMemoNavigation'
+import { getErrorMessage } from '@/lib/apiClient'
+import { ledgerMemoReturnUrl, prepareLedgerMemo, readMemoDraft, rememberLedgerMemoInput, writeMemoDraft } from '@/features/life/ledgerMemoNavigation'
 import common from '@/styles/common.module.css'
 import { isMockApi } from '@/lib/apiMode'
 import { useSearchParams } from 'react-router-dom'
@@ -38,7 +38,7 @@ function AccountMemoPage({ owner }: { owner?: string }) {
           const id = existing ? Number(existing) : store.add('', false, folderId)
           if (!existing) useMemoStore.getState().update(id, { title: draft.label.slice(0, 60), ledgerContext: draft.label, draft: true })
           data = { id: String(id) }
-        } else data = (await apiClient.post<{ id: string }>('/memos/ledger-draft', { key: draft.key, kind: draft.kind, incomeType: draft.incomeType, label: draft.label, memoId: draft.memoId })).data
+        } else data = await prepareLedgerMemo(draft)
         if (!alive) return
         const latest = readMemoDraft(draft.key, owner)
         if (!latest) return

@@ -35,8 +35,4 @@ public class LedgerMemoWriter {
         return new MapMemo(memoId,java.util.Objects.toString(row.get("title"),""),java.util.Objects.toString(row.get("body"),""));
     }
     public record MapMemo(String id,String title,String body) {}
-    public java.util.Map<String,Object> reference(long user,String source,String key) {
-        var rows=jdbc.queryForList("SELECT id,title FROM memos WHERE user_id=? AND ledger_source=? AND ledger_key=?",user,source,key);
-        return rows.isEmpty()?java.util.Map.of():java.util.Map.of("memoId",rows.get(0).get("id").toString(),"memoTitle",java.util.Objects.toString(rows.get(0).get("title"),""));
-    }
 }
