@@ -10,7 +10,7 @@
 
 ### 본인 게시글 수
 
-설정의 ‘내가 쓴 글’은 `GET /api/posts/my-count`가 반환한 `{ count }`를 사용합니다. 서버는 토큰으로 식별한 회원의 공개 게시글을 동네 범위와 관계없이 집계합니다. 모의 모드에서는 브라우저의 `zip-posts`에서 본인 글을 집계합니다. [API 계약](../../frontend/API.md#브라우저-저장-localstorage) · [프론트 조회](../../frontend/src/features/community/useCommunity.ts) · [서버 집계](../../backend/src/main/java/com/zip/backend/community/CommunityRepository.java)
+설정의 ‘내가 쓴 글’은 `GET /api/posts/my-count`가 반환한 `{ count }`를 사용합니다. 서버는 토큰으로 식별한 회원의 공개 게시글을 동네 범위와 관계없이 집계합니다. 모의 모드에서는 브라우저의 `zip-posts`에서 본인 글을 집계합니다. [게시글 집계 API 계약](../../frontend/API.md#7-커뮤니티--첨부--신고-) · [모의 모드의 브라우저 저장](../../frontend/API.md#브라우저-저장-localstorage) · [프론트 조회](../../frontend/src/features/community/useCommunity.ts) · [서버 집계](../../backend/src/main/java/com/zip/backend/community/CommunityRepository.java)
 
 ## 문의·공지·회원 제재
 

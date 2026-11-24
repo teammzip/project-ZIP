@@ -16,4 +16,4 @@
 | 월세·배출일 | [월세 알림](fixed-expenses.md#월세-알림) · [배출일 알림](trash-schedules.md#배출일-알림) |
 | 댓글·운영 | 댓글·답글, 관리 조치, 문의 답변, 공지 등 해당 동작에서 생성합니다. [커뮤니티와 운영](community-operations.md) · [알림 서비스](../../backend/src/main/java/com/zip/backend/notification/NotificationService.java) |
 
-서버 모드는 본인 알림의 읽음·읽지 않음 목록과 미확인 개수를 제공하고, 읽은 알림만 삭제합니다. 홈 위젯의 당일 숨김은 현재 브라우저에 보관되는 화면 설정입니다. 서버의 읽음·삭제와 별개로 동작합니다. [알림 API 계약](../../frontend/API.md#6-알림-) · [알림 컨트롤러](../../backend/src/main/java/com/zip/backend/notification/NotificationController.java)
+`GET /api/notifications`는 본인 알림을 `status`(`all`, `unread`, `read`)로 필터링하고 `{ items, unreadCount }`를 반환합니다. `PATCH /api/notifications/read`에 빈 `ids` 배열을 보내면 전체를 읽음 처리합니다. `DELETE /api/notifications`는 읽은 알림만 삭제합니다. 홈 위젯의 당일 숨김은 현재 브라우저에 보관되는 화면 설정입니다. [알림 API 계약](../../frontend/API.md#6-알림-) · [알림 컨트롤러](../../backend/src/main/java/com/zip/backend/notification/NotificationController.java)

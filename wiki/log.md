@@ -94,3 +94,8 @@
 
 - 같은 설명을 반복해서 관리하는 일을 줄이기 위해 [변경 기록 작성 기준](../CHANGELOG.md#작성-기준)을 갱신하고 [프로젝트 작업 규칙](../AGENTS.md#기존-문서-갱신)에서 연결했습니다.
 - 월세 자동 등록의 이전 항목에 [현재 적용되는 조건](topics/fixed-expenses.md)을 연결했습니다. [구현·검증 현황](topics/project-status.md)에는 11월 24일 변경 기록의 `backend` 반영 사실을 갱신했습니다.
+
+## [2026-11-24] record | 생활 API PR의 문서 동기화 검사 보완
+
+- [PR #139](https://github.com/teammzip/project-ZIP/pull/139)의 `2361c48`을 `dev` `1ed7ef8`과 비교해 문서 동기화 검사 종료 코드 1을 재현했습니다. 검사가 [프론트 API 문서](../frontend/API.md)의 변경을 파일 단위로 판단한 범위를 [PR 문서 동기화 안내](AGENTS.md#pr-문서-동기화)에 기록했습니다.
+- 검사에 표시된 [알림](topics/calendar-notifications.md#알림-생성과-읽음-상태), [게시글 수](topics/community-operations.md#본인-게시글-수), [장소 리뷰](topics/map-place-ids.md), [배출표](topics/trash-schedules.md)의 현행 API 계약과 근거를 보완했습니다.
