@@ -10,7 +10,7 @@
 
 ## 배출일 알림
 
-배출일 알림은 배출표 조회와 같은 주소 우선순위를 사용합니다. 서버 스케줄러는 알림을 켠 회원에게 배출일 정해진 시각 이후 한 번 생성하며, 기본 시각은 한국 시간 0시이고 서버 설정으로 바꿀 수 있습니다. 배출표가 없는 동네의 안내는 회원·지역별로 한 번만 보냅니다. [배출 알림 서비스](../../backend/src/main/java/com/zip/backend/notification/TrashReminderService.java) · [서버 설정](../../backend/src/main/resources/application.properties)
+배출일 알림은 배출표 조회와 같은 주소 우선순위를 사용합니다. 서버 스케줄러는 알림을 켠 회원에게 배출일 정해진 시각 이후 한 번 생성하며, 기본 시각은 한국 시간 0시이고 서버 설정으로 바꿀 수 있습니다. 배출표가 없는 동네의 안내는 회원·지역별로 한 번만 보냅니다. 이 "한 번만"은 안내 알림이 남아 있는지로 판단하므로, 6시간마다 도는 오래된 알림 정리(알릴 시각 90일 지난 알림 삭제, `zip.cleanup.*` 설정)에서도 이 안내는 지우지 않습니다(2026-11-24). [오래된 데이터 정리](../../backend/src/main/java/com/zip/backend/maintenance/DataCleanupService.java) · [배출 알림 서비스](../../backend/src/main/java/com/zip/backend/notification/TrashReminderService.java) · [서버 설정](../../backend/src/main/resources/application.properties)
 
 배출 자료는 시·군·구 단위라 같은 지역 안에서 동별 요일이 다른 경우에는 현장 안내와 다를 수 있습니다. 백엔드 문서는 배출 알림의 중복 방지를 단일 서버 기준으로 설명합니다. 여러 서버가 스케줄러를 함께 실행하는 환경의 발송 이력은 별도 확인이 필요합니다. [백엔드 배출 알림 설명](../../backend/IMPLEMENTATION.md#쓰레기-배출표--배출일-알림)
 

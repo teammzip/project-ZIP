@@ -116,3 +116,12 @@
 - 서버에 `GET /api/regions`(동네 목록) · `GET /api/regions/{id}/neighbors`(주변 동네)를 `openapi.yaml` · `frontend/API.md` 계약대로 만들었고 로그인 없이 열립니다. [앱 구조](topics/application.md)
 - 모의 모드의 주변 동네가 서울 4개 구 예시에서 전국 목록으로 바뀌었습니다. 이웃 변환 스크립트가 DB 이웃 데이터와 같은 내용으로 프론트 목록을 만듭니다. [커뮤니티](topics/community-operations.md) · [데이터베이스](topics/database.md)
 - `regions.ts` · DB 지역 · 이웃 데이터 · 프론트 이웃 목록이 어긋나면 실패하는 동기화 테스트를 추가했습니다.
+
+## [2026-11-24] record | 오래된 세션 · 이메일 인증 · 알림 정리
+
+- 계속 쌓이던 세 표를 6시간마다 정리하는 작업을 추가했습니다: 만료 · 로그아웃 후 하루 지난 세션, 요청 후 하루 지난 이메일 인증, 알릴 시각 90일 지난 알림("배출 정보가 없어요" 안내 제외). [앱 구조](topics/application.md) · [알림](topics/calendar-notifications.md#알림-생성과-읽음-상태)
+- 검증: `DataCleanupTests`(지울 것 · 남길 것 · 두 번 실행). 실제 MySQL 에서 같은 조건을 개수 세기로 확인(세션 20개 중 19개 · 이메일 인증 1개 대상, 알림 0개).
+
+## [2026-11-24] record | 배출표 페이지에 알림 정리 예외 추가
+
+- PR #142 의 문서 동기화 검사가 `TrashReminderService` · `application.properties` 변경에 대해 [배출표](topics/trash-schedules.md) 갱신 누락으로 실패해, "배출 정보가 없어요" 안내가 오래된 알림 정리에서 빠진다는 내용을 배출일 알림 절에 추가했습니다.

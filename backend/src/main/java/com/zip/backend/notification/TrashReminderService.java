@@ -31,7 +31,8 @@ public class TrashReminderService {
     /** 배출표가 한국 공공데이터라서 한국 시간 기준 */
     static final ZoneId ZONE = ZoneId.of("Asia/Seoul");
     static final String TITLE = "오늘은 쓰레기 배출일이에요";
-    static final String NO_DATA_TITLE = "우리 동네는 쓰레기 배출 정보가 없어요";
+    /** "배출 정보가 없어요" 안내 제목. (회원, 동네)마다 한 번만 보내는 기록이라 오래된 알림 정리(maintenance/DataCleanupService)에서도 지우지 않음 */
+    public static final String NO_DATA_TITLE = "우리 동네는 쓰레기 배출 정보가 없어요";
     /** 알림에 보이는 종류 이름 (이 순서로 나열) */
     private static final Map<String, String> TYPE_NAMES = new LinkedHashMap<>();
     static {
