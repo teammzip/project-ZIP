@@ -249,6 +249,19 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 - **쓰레기 배출일 알림** (`TrashReminderService` · `TrashReminderScheduler`): 배출일 0시에 `TRASH` 알림을 만들어요. 아래 [쓰레기 배출표 · 배출일 알림](#쓰레기-배출표--배출일-알림) 참고.
 - **검증**: `NotificationIntegrationTests`, `LifeNotificationIntegrationTests`, `RentReminderTests`, `TrashReminderTests`에서 생성 · 갱신 · 읽음 · 삭제와 종류별 생성 경로를 확인해요.
 
+## 오래된 데이터 정리
+
+`com.zip.backend.maintenance` (DataCleanupService · DataCleanupScheduler). 서버 시작 2분 뒤, 그다음 6시간마다 계속 쌓이기만 하는 표를 정리해요. 지워도 동작이 바뀌지 않는 행만 지워요.
+
+| 표 | 지우는 기준 | 안전한 이유 |
+|---|---|---|
+| `auth_sessions` | 만료됐거나 로그아웃한 지 하루 지난 세션 | 세션 행이 없으면 그 토큰은 무효 — 이미 만료 · 로그아웃이라 결과가 같음 |
+| `email_verifications` | 요청한 지 하루 지난 인증 | 인증번호 3분 · 인증 완료 값 30분 · 요청 제한(1시간 10번)보다 김 |
+| `notifications` | 알릴 시각이 90일 지난 알림(읽음 여부 무관) | 일정 · 월세 · 쓰레기 알림의 중복 방지는 최근 날짜만 봄. **쓰레기 "배출 정보가 없어요" 안내는 제외**(한 번만 보내는 기록이라 지우면 다시 감) |
+
+- 설정: `zip.cleanup.enabled`(`DATA_CLEANUP_ENABLED`, 기본 true, 테스트는 false) · `zip.cleanup.notification-days`(`NOTIFICATION_KEEP_DAYS`, 기본 90).
+- **검증**: `DataCleanupTests`(지울 것 · 남길 것 · 두 번 실행해도 같음). 실제 MySQL 에서 같은 조건을 개수 세기로 확인.
+
 ## 동네 목록
 
 `com.zip.backend.region.RegionController`. 로그인 없이 열리는 공개 정보예요(`SecurityConfiguration` 에서 GET 만 허용). 계약은 `frontend/API.md` 2장 · `openapi.yaml` "설정 · 동네".

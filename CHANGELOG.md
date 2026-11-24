@@ -30,7 +30,8 @@
 `backend/` — Spring Boot 서버 API
 
 ### 2026-11-24
-- jgkim7848-lab — 동네 목록 API `GET /api/regions` · `GET /api/regions/{id}/neighbors` 추가 — 로그인 없이, `frontend/API.md` · `openapi.yaml` 계약대로 (`region/RegionController`). [앱 구조](wiki/topics/application.md) · 검증: `RegionApiIntegrationTests` 2개
+- jgkim7848-lab — 오래된 데이터 정리를 6시간마다: 만료 · 로그아웃 후 하루 지난 로그인 세션, 요청 후 하루 지난 이메일 인증, 알릴 시각 90일 지난 알림("배출 정보가 없어요" 안내는 제외) (`maintenance/DataCleanupService`, 설정 `zip.cleanup.*`). [앱 구조](wiki/topics/application.md) · [알림](wiki/topics/calendar-notifications.md#알림-생성과-읽음-상태) · 검증: `DataCleanupTests`, 실제 MySQL 에서 같은 조건 개수 확인
+- jgkim7848-lab — 동네 목록 API `GET /api/regions` · `GET /api/regions/{id}/neighbors` 추가 — 로그인 없이, `frontend/API.md` · `openapi.yaml` 계약대로 (`region/RegionController`). [앱 구조](wiki/topics/application.md) · 검증: `RegionApiIntegrationTests` 2개, 실제 DB 로 띄운 서버에서 확인(249개 · 강남구 이웃 6곳 · 없는 번호 404)
 - jgkim7848-lab — 가계부 메모 초안이 폴더 100개 제한을 넘겨 분류 폴더를 만들던 문제 수정 — 이미 100개면 미분류로 저장 (`memo/LedgerMemoController`). [확인된 폴더 문제](wiki/topics/ledger-memos.md#확인된-폴더-문제) · 검증: `LedgerIntegrationTests` 새 테스트 1개
 - jgkim7848-lab — 쓰레기 배출일 알림 · 배출표 조회(`GET /api/trash-schedules/me`): 내 집 주소로 시 · 군 · 구를 못 찾으면 회원 주소로 다시 찾기 (`RegionMatcher.matchFirst`, 두 곳 같은 규칙). [배출표](wiki/topics/trash-schedules.md) · 검증: `RegionMatcherTests` · `TrashReminderTests` · `CalendarIntegrationTests` 새 테스트 3개
 - moon — 로그인한 회원의 공개 게시글 집계 API를 추가하고, 지도·즐겨찾기·회원 리뷰의 카카오 장소 ID 판별을 `kakao:장소ID` 기준으로 통합 (커뮤니티·지도 통합 테스트 통과).

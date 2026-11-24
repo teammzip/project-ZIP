@@ -10,6 +10,8 @@
 
 ## 알림 생성과 읽음 상태
 
+알림은 알릴 시각에서 90일(설정 `zip.cleanup.notification-days`)이 지나면 읽음 여부와 관계없이 서버가 6시간마다 지웁니다. 단 쓰레기 "배출 정보가 없어요" 안내는 (회원, 동네)마다 한 번만 보내는 기록이라 지우지 않습니다(2026-11-24). [오래된 데이터 정리](../../backend/src/main/java/com/zip/backend/maintenance/DataCleanupService.java)
+
 | 종류 | 생성 시점과 표시 |
 | --- | --- |
 | 일정·기념일 | 알림 목록 조회 시 오늘부터 3일 뒤까지 갱신합니다. 일정이 바뀌거나 완료되면 관련 미확인 알림을 갱신하거나 정리합니다. 반복 기념일은 발생 날짜별로 구분합니다. [일정 알림](../../backend/src/main/java/com/zip/backend/notification/LifeNotificationService.java) |
