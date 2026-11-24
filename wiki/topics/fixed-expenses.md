@@ -13,7 +13,7 @@
 
 ## 일반 고정 지출의 납부와 해지
 
-등록된 월별 항목은 납부 또는 납부 취소 처리가 가능합니다. 납부 완료 항목을 수정하거나 해당 월 기록을 지우려면 먼저 납부 취소가 필요합니다. 월별 삭제는 해당 월 기록을 삭제 표시하며, 해지는 입력한 적용일부터 미납·예정 기록의 집계에 적용합니다. 적용일 전 기록과 이미 납부한 기록은 보존합니다. 계약 항목의 종료 조건은 내 집 정보에서 관리합니다. [PR #111](https://github.com/teammzip/project-ZIP/pull/111) · [고정 지출 서비스](../../backend/src/main/java/com/zip/backend/bills/BillService.java) · [납부·해지 계약](../../frontend/API.md#고정-지출-납부--해지-2026-11-19)
+등록된 월별 항목은 납부 또는 납부 취소 처리가 가능합니다. 납부 완료 항목을 수정하거나 해당 월 기록을 지우려면 먼저 납부 취소가 필요합니다. 월별 삭제는 해당 월 기록을 삭제 표시하며, 해지는 입력한 적용일부터 미납·예정 기록의 집계에 적용합니다. 적용일 전 기록과 이미 납부한 기록은 보존합니다. 계약 항목의 종료 조건은 내 집 정보에서 관리합니다. [PR #111](https://github.com/teammzip/project-ZIP/pull/111) · [고정 지출 서비스](../../backend/src/main/java/com/zip/backend/bills/BillService.java) · [월별 등록·수정 요청](../../frontend/src/features/life/billsApi.ts) · [납부·해지 계약](../../frontend/API.md#고정-지출-납부--해지-2026-11-19)
 
 ## 월급 자동 등록
 

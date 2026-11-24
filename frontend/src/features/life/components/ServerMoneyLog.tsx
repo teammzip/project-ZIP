@@ -116,7 +116,9 @@ function LedgerForm({ kind, incomeType, timeZone, row, onDone }: { kind: LedgerK
     event.preventDefault(); if (pending.current || categoriesUnavailable || !selectedCat || salaryBlocked) return
     pending.current = true; setBusy(true); setError('')
     try {
-      await saveLedger(kind, timeZone, { amount: Number(amount), date, cat: selectedCat, memo, ...(memoId ? { memoId } : {}), ...(kind === 'income' ? { incomeType } : {}) }, row?.id)
+      const body = { amount: Number(amount), date, cat: selectedCat, memo, ...(memoId ? { memoId } : {}) }
+      if (kind === 'income') await saveLedger(kind, timeZone, { ...body, incomeType }, row?.id)
+      else await saveLedger(kind, timeZone, body, row?.id)
       clearMemoDraft(resume)
       await Promise.all([
         client.invalidateQueries({ queryKey: ['ledger'] }),

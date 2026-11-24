@@ -70,7 +70,7 @@
 | POST | `/api/auth/password-reset` | `{ resetToken, newPassword }` | — |
 | GET | `/api/oauth2/authorization/{kakao\|google\|naver}` | (페이지 이동) | 끝나면 `/oauth/callback#token=...`으로 보내기 |
 
-- **처음 로그인 설문**: 로그인 응답의 `user.firstLogin`이 `true`면 앱이 "우리 집 설문" 별도 페이지(`/onboarding`)로 보내요. 질문: ① 생년월일 ② 간략한 주소 ③ 계약 유형(월세: 보증금 · 월세 · 관리비 포함 여부 · 포함 아니면 관리비 / 전세: 계약금 · 대출 여부와 금액 · 관리비) ④ 한 달 수입. 서버는 로그인 처리 직전 `users.last_login_at`이 `NULL`이었는지로 판단하고 값을 채워 주세요. 현재는 브라우저 `zip-housing-survey`에 저장하지만 DB에는 `housing_surveys`가 있어요. 아래 설문 API 제안으로 연결하고, 월세 설정·관리비 항목·동네 출처 변경을 함께 처리해요.
+- **첫 주거 설문**은 로그인 응답의 `user.firstLogin`이 `true`일 때 `/onboarding`에서 표시합니다. 서버는 설문 대기 상태를 이 값으로 응답하고, 저장 또는 건너뛰기가 완료되면 `false`를 반환합니다. [첫 주거 설문 API](#첫-주거-설문)
 - 테스트용 계정(가짜 API 모드): 아이디 `a1` / 비밀번호 `b1` — 처음 로그인 설문 확인용, 로그인할 때마다 처음 로그인으로 취급돼요.
 
 ### user 모양
@@ -162,7 +162,7 @@
 
 ## 2. 설정 · 동네 ✅
 
-> **현재 서버**: `/api/me/settings` · `/api/me/region-verify` · `/api/me/home-info`(+`/loan`) · `/api/me/housing-onboarding` · `/api/me/profile-info` 가 있고 화면이 써요. 아래 "우리 집 설문 — API 추가 제안"의 `/api/me/housing-survey` 는 만들지 않고 `housing-onboarding` · `home-info` 로 바뀌었어요. `GET /api/regions` · `/api/regions/{id}/neighbors` 는 아직 없어요(화면도 쓰지 않음).
+> 화면은 `/api/me/settings`, `/api/me/region-verify`, `/api/me/home-info`와 `/loan`, `/api/me/housing-onboarding`, `/api/me/profile-info`를 호출해요. 동네 목록과 이웃 조회는 아래 설정 표의 제안 항목이에요.
 
 ### 내 집 정보 서버 연결 (2026-11-15)
 
@@ -220,30 +220,23 @@
 
 ---
 
-### 우리 집 설문 — API 추가 제안
+### 첫 주거 설문
 
-현재 `features/onboarding/store.ts`의 HousingSurvey가 기준이며 실제 요청 코드는 없어요.
-
-| 메서드 | 주소 | 보내는 값 | 받는 값 |
-|---|---|---|---|
-| GET | `/api/me/housing-survey` | — | `survey` 또는 `null` |
-| PUT | `/api/me/housing-survey` | 아래 설문 입력값 | 저장된 `survey` |
+`PUT /api/me/housing-onboarding`은 `action: "save"`와 입력한 항목만 받거나, `{"action":"skip"}`을 받습니다. 두 경우 모두 회원 정보를 `200`으로 응답합니다. 설문이 끝나면 `firstLogin`이 `false`가 되고, 저장된 계약과 대출 조건은 `GET /api/me/home-info`에서 읽습니다.
 
 ```json
 {
-  "birth": "2000-01-01", "address": "가상 동네", "addressPoint": { "lat": 37.5, "lon": 127.0 },
-  "kind": "monthly", "deposit": 10000000, "rent": 550000,
-  "mgmtIncluded": false, "mgmtFee": 50000, "contractFee": 0,
-  "hasLoan": false, "loanAmount": 0, "income": 2500000, "incomePeriod": "monthly"
+  "action": "save",
+  "birth": "2000-01-01",
+  "address": "서울 마포구",
+  "salary": { "amount": 2500000, "incomePeriod": "monthly", "paymentDay": 25 },
+  "timeZone": "Asia/Seoul",
+  "home": { "kind": "monthly", "deposit": 10000000, "rent": 550000, "mgmtIncluded": false, "mgmtFee": 50000 }
 }
 ```
 
-- 설문의 **모든 금액은 원**이에요. 설정 rent만 만원이므로 10000으로 나눠 동기화해요.
-- birth → birth_date, kind → contract_kind(MONTHLY/JEONSE), mgmtIncluded/mgmtFee → management_included/management_fee, incomePeriod → income_period(MONTHLY/ANNUAL). 나머지는 해당 snake_case 컬럼으로 저장해요.
-- addressPoint는 설문 주소 검색 당시 중심점 스냅샷이에요. 현재 위치 인증 GPS와 구분해요. 선택 값 loanAnnualRate/loanPaymentDay/loanStartDate도 해당 컬럼에 저장해요.
-- userId/answeredAt은 서버가 결정해 응답해요. 입력의 회원 번호·완료 시각을 신뢰하지 않아요. 수입 응답은 설문 스냅샷이며 incomes에 실제 수입 행으로 자동 복사하지 않아요.
-- 설문 저장·월세 설정·관리비 항목·SURVEY 위치 출처·인증 초기화를 트랜잭션으로 처리해요. 기존 대출 조건이 불완전하면 금리를 임의로 정하거나 자동 활성화하지 않아요.
-- firstLogin은 첫 로그인 여부이지 설문 저장 완료 여부가 아니에요. 이탈 후 재진입 처리는 설문 GET 결과로 판단하도록 연동 시 보완해야 해요.
+- 설문 금액은 원 단위입니다. `salary.paymentDay`를 생략하면 월급 초안을 저장합니다.
+- 전세 계약에서 입력한 대출 조건은 `home.loan`으로 보냅니다. 조건 일부만 보내면 대출 초안으로 보관합니다. 대출 정보가 없으면 `home.loan`을 생략합니다.
 
 ---
 
@@ -302,15 +295,13 @@
 
 가계부 → 지출 → **고정 지출** 화면: 월세 + 공과금 · 통신 · 구독 · 관리비 같은 매달 나가는 돈. 항목마다 **태그**를 붙여 태그별 합계를 보여 주고, **이번 달 납부 체크리스트**로 달마다 체크해요.
 
-> **현재 서버**: 화면은 아래 [4-1. 월별 고정 지출](#4-1-월별-고정-지출-현재-화면이-쓰는-api)의 `/api/bills/monthly` 묶음을 써요. 바로 아래 첫 표의 `/api/rent-payments` 는 만들지 않았고(월세는 `monthly` 응답의 `housingItems`), "전세 대출 — API 추가 제안"의 `/api/me/housing-loan` 은 `PUT /api/me/home-info/loan`(2장)으로 바뀌었어요. `/api/bills` · `/api/bills/{id}` 는 서버에 남아 있는 이전 방식이에요.
+화면은 아래 [4-1. 월별 고정 지출](#4-1-월별-고정-지출-현재-화면이-쓰는-api)의 `/api/bills/monthly`를 사용합니다. 월세는 `housingItems`에 포함되며 전세 대출은 [내 집 정보 API](#내-집-정보-서버-연결-2026-11-15)에서 관리합니다. 아래 표는 이전 방식의 고정 지출 API입니다.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
-| GET | `/api/rent-payments?from=2026-05&to=2026-10` | — | `[{ month, amount, paid, paidAt }]` |
-| PUT | `/api/rent-payments/{month}` | `{ paid: true }` | `{ month, amount, paid, paidAt }` |
 | GET | `/api/bills?month=2026-10` | — | `[bill]` (그 달 납부 상태 포함) |
 | POST | `/api/bills` | `{ name, amount, tag }` | `bill` |
-| PATCH | `/api/bills/{id}` | `{ name, amount, tag }` 중 변경값 | `bill` (추가 제안: 항목 수정) |
+| PATCH | `/api/bills/{id}` | `{ name, amount, tag }` 중 변경값 | `bill` |
 | PUT | `/api/bills/{id}/payments/{month}` | `{ paid: true }` 또는 `{ amount: 41000 }` | `bill` |
 | DELETE | `/api/bills/{id}` | — (해지: `is_active = 0`) | — |
 
@@ -329,16 +320,9 @@
 
 ---
 
-### 전세 대출·월별 이자 — API 추가 제안
+### 전세 대출·월별 이자
 
-현재 `features/loan/interest.ts`, `store.ts`, [대출 기능 설명](src/features/loan/README.md)을 기준으로 정리한 제안이며 호출 코드는 없어요.
-
-| 메서드 | 주소 | 보내는 값 | 받는 값 |
-|---|---|---|---|
-| GET | `/api/me/housing-loan` | — | `loan` 또는 `null` (중지된 설정도 포함) |
-| PUT | `/api/me/housing-loan` | `{ principal, annualRate, paymentDay, startDate }` | `loan` (설정·재개) |
-| PATCH | `/api/me/housing-loan` | `{ active: false }` | `loan` (자동 기록 중지) |
-| GET | `/api/me/loan-interest-charges?from=2026-01&to=2026-11` | — | `[charge]` |
+`GET /api/me/home-info` 응답에 `loan`, `loanDraft`, `charges`가 포함됩니다. 대출을 설정하거나 중지하려면 `PUT /api/me/home-info/loan`을 호출합니다. [내 집 정보 API](#내-집-정보-서버-연결-2026-11-15)
 
 loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, charge는 `{ id, loanId, userId, date, amount, principal, annualRate }`예요. id는 문자열, userId는 인증된 회원으로 결정해요. DB의 이자 기록 id와 브라우저의 `loanId:YYYY-MM` 합성 ID를 구분해요.
 
@@ -362,8 +346,8 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 최신 변경: 사진 등록은 AI 대화의 POST `/api/ai/conversations/{id}/bill-photo`로 이동했습니다. multipart `photo`, `question`과 query `month`, `timeZone`을 받으며 `{bill, reply}`를 반환합니다. 소유한 대화에서만 호출 가능하고 AI 답변·청구·중복 방지 해시를 함께 저장합니다. 가계부는 사진 업로드를 제공하지 않습니다. 월별 등록/수정에 선택 `memo`(200자 이내)를 추가했고 조회 응답에도 반환합니다. 아래 초기 `/api/bills/monthly/photo` 설명은 더 이상 사용하지 않습니다.
 
-- `POST /api/bills/monthly?month=YYYY-MM&timeZone=IANA`: `{name,tag,amount,dueDate}`. 로그인 회원의 선택 월 청구를 등록한다. 같은 이름·분류의 활성 항목은 재사용하고 이미 등록된 월은 409.
-- `PATCH /api/bills/monthly/{id}?month=YYYY-MM&timeZone=IANA`: `{amount,dueDate}`. 선택 월에 청구 기록이 존재해야 수정 가능하다. 미등록/타인 항목 404. 기본 금액·다른 월·납부 상태는 보존한다.
+- `POST /api/bills/monthly?month=YYYY-MM&timeZone=IANA`는 `tag`, `amount`, `dueDate`와 선택 `name`, `memo`, `memoId`를 받습니다. 같은 이름·분류의 활성 항목을 재사용할 수 있으며 해당 월에 이미 등록한 항목은 `409`입니다.
+- `PATCH /api/bills/monthly/{id}?month=YYYY-MM&timeZone=IANA`는 `amount`, `dueDate`와 선택 `memo`, `memoId`를 받습니다. 미등록·타인 항목은 `404`, 납부 완료 건은 `409`입니다. 금액이나 기한을 변경하면 조건에 맞는 이후 미납 기록에도 적용됩니다.
 - ~~`POST /api/bills/monthly/photo?month=YYYY-MM&timeZone=IANA`~~ (더 이상 없음 — 아래 "고지서 인식 후 확인 등록"으로 바뀜): multipart `photo` (JPG/PNG, 2MB). Gemini가 금액·납부 기한을 추출하고 검증 후 자동 등록한다. 사진은 보관하지 않고 중복 방지 해시를 DB에 저장한다. 실패 시 등록하지 않는다.
 - 응답은 기존 ServerBill에 `dueDate: YYYY-MM-DD | null` 추가. 월별 조회 응답의 `snapshot=true`는 등록된 월 기록, false는 미등록 예정액이다.
 - 미래 월/잘못된 입력 400, 미로그인 401, 중복 409, 불명확한 사진 422, AI 일일 제한 429, 제공자 실패 502, AI 설정 없음 503.
@@ -373,7 +357,7 @@ loan은 `{ id, userId, principal, annualRate, paymentDay, startDate, active }`, 
 
 #### 계약별 고정 지출 서버 조회 (2026-11-18)
 
-GET /api/bills/monthly는 contractKind(monthly/jeonse/null), managementIncluded, housingItems(월세/대출 이자)를 함께 반환한다. 기존 items는 공통 고지서다. 화면은 두 목록을 합산한다. 실제 이자 납부 여부는 현재 스키마로 확인할 수 없어 paid=false이며 계산 기록임을 표시한다.
+`GET /api/bills/monthly`는 `contractKind`(`monthly`·`jeonse`·`null`), `managementIncluded`, `contractPeriod`와 `housingItems`(월세·대출 이자)를 함께 반환합니다. 화면은 `items`와 `housingItems`를 합산합니다. `paid`는 등록된 납부 처리 상태이고, `snapshot: false`는 아직 저장되지 않은 예정 금액입니다.
 
 #### 계약 고정 지출 자동 등록
 
@@ -405,29 +389,25 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 
 ## 5. 가계부 (수입 · 기타 지출) ✅
 
-> **현재 서버**: 아래 표의 `/api/incomes` · `/api/expenses` · `/api/stats/*` 는 처음 제안이고, 실제로는 `GET · POST /api/ledger/{income|spend}?month=&timeZone=`, `PUT · DELETE /api/ledger/{kind}/{id}`, `GET /api/ledger/income-summary`, `GET · PUT /api/me/salary`(월급), `POST /api/memos/ledger-draft`(가계부 메모)로 만들어졌어요. 회원별 분류는 아래 "회원별 카테고리·표시 순서"의 `/api/me/ledger-categories` 그대로예요.
+`kind`는 `income` 또는 `spend`입니다. 조회와 저장에 사용하는 시간대는 `timeZone`으로 보냅니다.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
-| GET | `/api/ledger/categories?kind=INCOME` | — | `[{ id, kind, name, color }]` |
-| GET | `/api/incomes?month=2026-10&incomeType=fixed` | — | `[record]` (`incomeType`은 생략하면 전체) |
-| POST | `/api/incomes` | `{ date, categoryId, amount, memo, incomeType }` | `record` |
-| DELETE | `/api/incomes/{id}` | — | — |
-| GET | `/api/expenses?month=2026-10` | — | `[record]` |
-| POST | `/api/expenses` | `{ date, categoryId, amount, memo }` | `record` |
-| DELETE | `/api/expenses/{id}` | — | — |
-| GET | `/api/stats/monthly-income?months=6` | — | `[{ month, total }]` |
-| GET | `/api/stats/spend-breakdown?month=2026-10` | — | `[{ label, amount }]` |
+| GET | `/api/ledger/{kind}?month=2026-10&timeZone=Asia/Seoul` | 수입 조회에 선택 `incomeType` | 거래 목록 `200` |
+| POST | `/api/ledger/{kind}?timeZone=Asia/Seoul` | 아래 저장 본문 | `201` |
+| PUT | `/api/ledger/{kind}/{id}?timeZone=Asia/Seoul` | 아래 저장 본문 | `204` |
+| DELETE | `/api/ledger/{kind}/{id}` | — | `204` |
+| GET | `/api/ledger/income-summary?timeZone=Asia/Seoul` | — | 수입이 있는 최근 12개월의 `{ "YYYY-MM": 합계 }` |
+| GET | `/api/me/salary` | — | 월급 설정과 선택 초안 |
+| PUT | `/api/me/salary?timeZone=Asia/Seoul` | `{ amount, incomePeriod, paymentDay }` | 저장한 월급 설정 |
+
+저장 본문은 `date`, `cat`, `amount`와 선택 `memo`, `memoId`를 받습니다. `incomeType`은 수입 저장에 필수이며 `fixed` 또는 `other`입니다. 수입 조회에서 생략하면 `fixed`를 사용합니다. 금액은 원 단위 양의 정수이며 `memo`는 최대 100자입니다.
 
 ```json
-{ "id": "77", "date": "2026-10-20", "categoryId": "7", "cat": "식비", "color": "#1fb5a3", "amount": 8500, "memo": "점심 제육덮밥" }
+{ "id": "77", "date": "2026-10-20", "cat": "식비", "amount": 8500, "memo": "점심 제육덮밥",
+  "salaryCategory": false, "salaryManaged": false }
 ```
-- 분류는 `ledger_categories` (`kind`: `INCOME` · `EXPENSE`). 프론트는 분류 **이름**(`cat`)으로 보여 주니 이름과 색도 같이 주세요.
-- 월별 수입 VIEW는 `v_monthly_income`. 지출 VIEW `v_monthly_spend_breakdown`은 월세·전체 고정 지출·기타 지출·기록된 대출 이자를 포함하지만 **미납 청구도 포함**해요. 실제 납부 통계와 구분하고 반드시 회원 조건을 적용하세요. 사용자 태그별 고정 지출 차트는 bill_items.tag와 월별 기록으로 별도 집계해요.
-- 화면: 월별 합계 · **분류별 원형 그래프**(비율 · 금액) · 목록, 기록은 **빠른 기록**(금액 → 분류 칩 → 날짜(기본 오늘) · 메모(선택) → 기록하기). 보내는 값은 위 `POST` 그대로예요.
-- 지출 구성 VIEW의 "공과금"은 이제 **고정 지출 전체**(태그 공과금 · 통신 · 구독 · 관리비 · 기타)예요 ([4번](#4-월세--고정-지출-)).
-- **수입은 고정 · 기타 두 종류**예요 (`/my/budget/income` 고정 수입, `/my/budget/income/other` 기타 수입). `incomeType`은 `fixed` · `other`, DB `incomes.income_type`은 `FIXED` · `OTHER`로 바꿔 저장해요. 월별 수입 VIEW는 두 종류를 합쳐요.
-- 프론트 대응: `MoneyRecord { id, date, cat, amount, memo, incomeType? }`
+거래 목록에는 `id`, `date`, `cat`, `amount`, `memo`, `salaryCategory`, `salaryManaged`가 포함됩니다. 연결 메모가 있으면 `memoId`와 `memoTitle`도 반환합니다. [가계부 OpenAPI](../backend/openapi.yaml) · [프론트 요청 타입](src/features/life/ledgerApi.ts)
 
 ---
 
@@ -435,7 +415,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
-| GET | `/api/me/ledger-categories?scope=bill` | — | `{ custom: [{ name, color }], order: [name], hidden: [name] }` |
+| GET | `/api/me/ledger-categories?scope=bill` | — | `{ custom: [{ name, color }], order: [name], hidden: [name], salaryLabel }` |
 | POST | `/api/me/ledger-categories?scope=bill` | `{ action, name, target? }` | 갱신된 설정 |
 
 - `scope`는 `fixed-income`, `other-income`, `spend`, `bill`이에요. 기본 목록에서 `hidden`을 빼고 `custom`을 합쳐 `order` 순서로 표시해요.
@@ -699,9 +679,11 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
 | GET | `/api/memos?q=` | — | `[memo]` (고정 먼저, 그다음 최근 수정 순) |
-| POST | `/api/memos` | `{ title, body, color, pinned, checklist, items, folderId }` (전부 선택) | `memo` |
-| PATCH | `/api/memos/{id}` | 바꾼 칸만 (`items`는 배열 통째로) | `memo` (쓰는 대로 자동 저장 → 프론트가 0.5초 정도 모았다가 보낼게요) |
+| POST | `/api/memos` | `{ title, body, color, pinned, checklist, items, folderId }` (전부 선택) | `201`과 `memo` |
+| PATCH | `/api/memos/{id}` | 바꾼 칸만 (`items`는 배열 통째로), 가계부 초안 확정은 `complete: true` | `200`과 `memo` |
 | DELETE | `/api/memos/{id}` | — | — |
+| POST | `/api/memos/ledger-draft` | `{ kind, label, key, incomeType?, memoId? }` | `200`과 `{ id }` |
+| DELETE | `/api/memos/ledger-draft/{key}` | — | `204`, 본인의 거래에 연결하기 전인 메모만 폐기 |
 | GET | `/api/memo-folders` | — | `[{ id, name }]` 본인 폴더만 |
 | POST | `/api/memo-folders` | `{ name }` 1~40자, 회원당 100개, 중복 이름 불가 | `{ id, name }` |
 | PATCH | `/api/memo-folders/{id}` | `{ name }` | `{ id, name }` |

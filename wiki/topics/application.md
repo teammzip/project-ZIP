@@ -11,6 +11,16 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 
 서버의 로컬 설정에는 DB·JWT와 사용하는 외부 서비스의 환경 변수가 들어갑니다. 실제 설정은 Git에서 제외되는 `application-local.properties` 또는 실행 환경에서 관리합니다. OpenAPI 문서는 [백엔드 OpenAPI](../../backend/openapi.yaml), 화면별 데이터 계약은 [프론트 API 문서](../../frontend/API.md)에서 확인합니다. [백엔드 설정](../../backend/README.md#처음-설정)
 
+## API 데이터 계약과 DTO
+
+로그인·회원가입·일정 요청은 Java `record`를 사용합니다. 월별 고정 지출과 가계부는 본문을 `Map`으로 검증하고 목록 응답도 `Map`으로 조립합니다. 내 집 정보는 `Map`을 받아 `HomeInfoInput`으로 변환한 뒤 중첩 응답을 `Map`으로 반환합니다. [로그인 요청](../../backend/src/main/java/com/zip/backend/auth/AuthRequests.java) · [가입 요청](../../backend/src/main/java/com/zip/backend/auth/signup/SignupRequests.java) · [일정 요청](../../backend/src/main/java/com/zip/backend/calendar/CalendarController.java) · [내 집 정보 입력](../../backend/src/main/java/com/zip/backend/settings/HomeInfoInput.java)
+
+2026-11-24에 가계부·월별 고정 지출·내 집 정보와 연결된 월급·분류·메모 초안·첫 주거 설문 계약을 서버 구현 기준으로 OpenAPI와 프론트에 반영했습니다. OpenAPI는 수입과 기타 지출을 개별 경로로 표현하며 프론트는 각 종류에 맞는 저장 본문을 사용합니다. 월별 고정 지출의 등록·수정 본문과 내 집 정보·대출·설문 본문도 각각의 API에서 받는 키를 기준으로 정의합니다. [OpenAPI](../../backend/openapi.yaml) · [프론트 API](../../frontend/API.md) · [가계부](ledger-memos.md) · [월별 고정 지출](fixed-expenses.md) · [내 집 정보](home-info.md)
+
+개선 후보는 월별 고정 지출의 등록·수정 요청과 월별 응답, 가계부의 수입·지출 저장 요청과 목록 응답, 내 집 정보와 인증의 응답입니다. 도입 시 현재 JSON의 필드명·자료형·생략과 `null`의 의미·금액 단위·입력 검증을 유지하는지 확인합니다. 프로필 PATCH는 생략한 항목을 유지하며 선택 항목의 명시적 `null`을 처리하므로 필드 존재 여부가 필요합니다. [고정 지출 검증](../../backend/src/main/java/com/zip/backend/bills/BillInput.java) · [가계부 요청 타입](../../frontend/src/features/life/ledgerApi.ts) · [내 집 정보 계약](../../frontend/API.md#내-집-정보-서버-연결-2026-11-15) · [인증 응답](../../backend/src/main/java/com/zip/backend/auth/AuthService.java) · [프로필 PATCH](../../backend/src/main/java/com/zip/backend/auth/ProfilePatch.java)
+
+가계부 목록의 연결 메모와 자동 등록 월급 여부를 읽는 방식은 [가계부 기록과 회원별 분류](ledger-memos.md#가계부-기록과-회원별-분류)를 참고하세요.
+
 ## 인증과 토큰 재발급
 
 성공 시 백엔드는 `/oauth/callback#token=<accessToken>`으로 리디렉션합니다. 프론트는 URL 프래그먼트에서 토큰을 읽고 주소에서 제거한 뒤, 그 토큰으로 `GET /api/auth/me`를 호출합니다. 기존 `?token=...` 주소에 들어오면 주소에서 토큰을 제거하며, 로그인에는 프래그먼트의 토큰만 사용합니다. 실패 메시지는 `?error=...`로 전달됩니다. [API 계약](../../frontend/API.md#소셜-로그인) · [콜백 페이지](../../frontend/src/pages/auth/OAuthCallbackPage.tsx) · [백엔드 리디렉션](../../backend/src/main/java/com/zip/backend/auth/OAuthLoginHandler.java)

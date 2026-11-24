@@ -16,6 +16,11 @@ export type LedgerMemoDraft = {
   paused?: boolean
   updatedAt?: number
 }
+export async function prepareLedgerMemo({ key, kind, incomeType, label, memoId }: LedgerMemoDraft) {
+  const input = { key, kind, incomeType, label, memoId }
+  return (await apiClient.post<{ id: string }>('/memos/ledger-draft', input)).data
+}
+
 const prefix = 'zip-ledger-memo-draft:'
 export function readMemoDraft(key: string | null, owner: string | undefined): LedgerMemoDraft | undefined {
   if (!key || !owner || typeof window === 'undefined') return

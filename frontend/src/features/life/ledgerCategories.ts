@@ -9,7 +9,11 @@ import { useLifeStore } from './store'
 
 export type LedgerScope = 'fixed-income' | 'other-income' | 'spend' | 'bill'
 type Selection = { custom: Category[]; order: string[]; hidden?: string[]; salaryLabel?: string | null }
-type Change = { action: 'add' | 'rename' | 'delete' | 'move'; name: string; target?: string }
+type ServerSelection = Selection & { hidden: string[]; salaryLabel: string | null }
+type Change =
+  | { action: 'add' | 'delete'; name: string; target?: never }
+  | { action: 'rename' | 'move'; name: string; target: string }
+type CategoryRequest = Change | { action: 'import'; previous?: Partial<Pick<Selection, 'custom' | 'order'>> }
 type Scoped<T> = Record<string, Partial<Record<LedgerScope, T>>>
 const defaults: Record<LedgerScope, Category[]> = {
   'fixed-income': FIXED_INCOME_CATS, 'other-income': OTHER_INCOME_CATS, spend: SPEND_CATS,
@@ -93,6 +97,10 @@ function changeLocal(owner: string, scope: LedgerScope, change: Change) {
 }
 
 const path = '/me/ledger-categories'
+async function saveCategory(scope: LedgerScope, input: CategoryRequest, signal?: AbortSignal) {
+  return (await apiClient.post<ServerSelection>(path, input, { params: { scope }, signal })).data
+}
+
 export function useLedgerCategorySettings(scope: LedgerScope) {
   const owner = useAuthStore((state) => state.user?.id)
   const custom = useLedgerCategoryStore((state) => owner ? state.byUser[owner]?.[scope] : undefined)
@@ -106,9 +114,9 @@ export function useLedgerCategorySettings(scope: LedgerScope) {
     queryFn: async ({ signal }) => {
       if (owner !== useAuthStore.getState().user?.id) throw new Error('다시 로그인해 주세요.')
       if (custom?.length || order?.length) {
-        return (await apiClient.post<Selection>(path, { action: 'import', previous: { custom, order } }, { params: { scope }, signal })).data
+        return saveCategory(scope, { action: 'import', previous: { custom, order } }, signal)
       }
-      return (await apiClient.get<Selection>(path, { params: { scope }, signal })).data
+      return (await apiClient.get<ServerSelection>(path, { params: { scope }, signal })).data
     },
   })
   return {
@@ -123,7 +131,7 @@ export function useLedgerCategorySettings(scope: LedgerScope) {
       await client.cancelQueries({ queryKey: key })
       if (owner !== useAuthStore.getState().user?.id) throw new Error('다시 로그인해 주세요.')
       try {
-        const { data } = await apiClient.post<Selection>(path, change, { params: { scope } })
+        const data = await saveCategory(scope, change)
         client.setQueryData(key, data)
         if (change.action === 'rename') await client.invalidateQueries({ queryKey: [scope === 'bill' ? 'monthly-bills' : 'ledger', owner] })
       } catch (error) {

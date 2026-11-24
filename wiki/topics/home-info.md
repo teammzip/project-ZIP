@@ -18,6 +18,6 @@
 
 ## 주소와 회원 설정
 
-주거 설문은 주소·주거 조건·대출 정보를 저장하거나 건너뛸 수 있습니다. 내 집 주소는 고정 지출과 [배출표](trash-schedules.md)에 쓰입니다. [주거 설문 서버](../../backend/src/main/java/com/zip/backend/settings/HousingOnboardingService.java) · [홈 날씨 위치](service-integrations.md#홈-날씨-위치) · [동네 인증](community-operations.md#동네-글과-조회-집계)
+주거 설문은 주소·주거 조건·대출 정보를 저장하거나 건너뛸 수 있습니다. 대출 정보가 없는 설문은 `home.loan`을 생략하고, 대출 조건 일부만 입력하면 초안으로 저장합니다. 내 집 주소는 고정 지출과 [배출표](trash-schedules.md)에 쓰입니다. [설문 API 계약](../../frontend/API.md#첫-주거-설문) · [주거 설문 서버](../../backend/src/main/java/com/zip/backend/settings/HousingOnboardingService.java) · [홈 날씨 위치](service-integrations.md#홈-날씨-위치) · [동네 인증](community-operations.md#동네-글과-조회-집계)
 
 프로필 사진·캐릭터·소개와 생활 설정은 로그인한 회원의 API로 관리합니다. 개인 정보 편집, 프로필 꾸미기, 내 집 계약·대출에는 각각의 저장 경로가 있습니다. [개인 정보 API](../../backend/src/main/java/com/zip/backend/settings/ProfileInfoController.java) · [생활 설정 API](../../backend/src/main/java/com/zip/backend/settings/SettingsController.java) · [설정·프로필 API 계약](../../frontend/API.md#프로필-꾸미기-사진--한-줄-소개)
