@@ -322,6 +322,15 @@ class LedgerIntegrationTests {
             assertEquals(2,jdbc.queryForObject("SELECT COUNT(*) FROM memos m JOIN memo_folders f ON m.folder_id=f.id WHERE f.name=? AND m.user_id=f.user_id",Integer.class,entry[2]));
         }
     }
+    @Test void ledgerDraftKeepsFolderLimitAndFallsBackToUnclassified() throws Exception {
+        // 폴더가 이미 100개면 분류 폴더를 새로 만들지 않고(일반 생성과 같은 제한) 초안은 미분류로 만들어짐
+        long user=jdbc.queryForObject("SELECT id FROM users WHERE email='ledger@example.com'",Long.class);
+        for(int i=0;i<100;i++) jdbc.update("INSERT INTO memo_folders(user_id,name) VALUES (?,?)",user,"폴더"+i);
+        String draft="{\"kind\":\"spend\",\"key\":\""+"c".repeat(32)+"\",\"label\":\"기타 지출 · 식비\"}";
+        mvc.perform(post("/api/memos/ledger-draft").header("Authorization","Bearer "+token).contentType("application/json").content(draft)).andExpect(status().isOk());
+        assertEquals(100,jdbc.queryForObject("SELECT COUNT(*) FROM memo_folders WHERE user_id=?",Integer.class,user));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM memos WHERE user_id=? AND folder_id IS NULL",Integer.class,user));
+    }
     @Test void discardingUnregisteredLedgerMemoDeletesOnlyOwnedDraft() throws Exception {
         String key="b".repeat(32);
         String draft="{\"kind\":\"income\",\"key\":\""+key+"\",\"label\":\"고정 수입\"}";

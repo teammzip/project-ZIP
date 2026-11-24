@@ -99,3 +99,20 @@
 
 - [PR #139](https://github.com/teammzip/project-ZIP/pull/139)의 `2361c48`을 `dev` `1ed7ef8`과 비교해 문서 동기화 검사 종료 코드 1을 재현했습니다. 검사가 [프론트 API 문서](../frontend/API.md)의 변경을 파일 단위로 판단한 범위를 [PR 문서 동기화 안내](AGENTS.md#pr-문서-동기화)에 기록했습니다.
 - 검사에 표시된 [알림](topics/calendar-notifications.md#알림-생성과-읽음-상태), [게시글 수](topics/community-operations.md#본인-게시글-수), [장소 리뷰](topics/map-place-ids.md), [배출표](topics/trash-schedules.md)의 현행 API 계약과 근거를 보완했습니다.
+
+## [2026-11-24] record | 배출표 주소 다시 찾기 · 출처 표시
+
+- [배출표](topics/trash-schedules.md): 내 집 주소로 시·군·구를 못 찾으면 회원 주소로 다시 찾도록 배출일 알림(`TrashReminderService`)과 배출표 조회(`CalendarService.myTrashSchedule`)를 같은 규칙(`RegionMatcher.matchFirst`)으로 바꿨습니다. 이전에는 내 집 주소가 있으면 그것만 봐서, 직접 입력한 주소에 시·군·구가 빠지면 알림도 화면도 동네를 찾지 못했습니다.
+- 배출표 표 아래에 공공데이터 출처를 표시했습니다.
+- 검증: `RegionMatcherTests` · `TrashReminderTests` · `CalendarIntegrationTests`에 주소 다시 찾기 테스트 추가.
+
+## [2026-11-24] record | 메모 폴더 문제 2건 수정
+
+- [확인된 폴더 문제](topics/ledger-memos.md#확인된-폴더-문제): 폴더 목록이 화면 복귀 때 다시 조회되도록 하고, 가계부 초안이 폴더 100개 제한을 넘겨 분류 폴더를 만들지 않도록 고쳤습니다(이미 100개면 미분류 초안). [구현해야 될 부분](topics/project-status.md#구현해야-될-부분)에서 해당 항목을 지웠습니다.
+- 검증: 백엔드 `LedgerIntegrationTests` · `MemoIntegrationTests` 통과(새 테스트 1개).
+
+## [2026-11-24] record | 동네 목록 API · 모의 모드 전국 이웃
+
+- 서버에 `GET /api/regions`(동네 목록) · `GET /api/regions/{id}/neighbors`(주변 동네)를 `openapi.yaml` · `frontend/API.md` 계약대로 만들었고 로그인 없이 열립니다. [앱 구조](topics/application.md)
+- 모의 모드의 주변 동네가 서울 4개 구 예시에서 전국 목록으로 바뀌었습니다. 이웃 변환 스크립트가 DB 이웃 데이터와 같은 내용으로 프론트 목록을 만듭니다. [커뮤니티](topics/community-operations.md) · [데이터베이스](topics/database.md)
+- `regions.ts` · DB 지역 · 이웃 데이터 · 프론트 이웃 목록이 어긋나면 실패하는 동기화 테스트를 추가했습니다.

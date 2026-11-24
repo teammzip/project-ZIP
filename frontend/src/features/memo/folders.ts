@@ -12,7 +12,11 @@ export function useMemoFolders() {
   const local = useMemoStore((s) => s.folders)
   const client = useQueryClient()
   const key = ['memo-folders', userId, sessionKey]
-  const query = useQuery({ queryKey: key, queryFn: async () => (await apiClient.get<MemoFolder[]>('/memo-folders')).data, enabled: !isMockApi && !!userId })
+  // 다른 기기 · 탭에서 폴더를 바꿨을 수 있으니, 화면으로 돌아오면 늘 다시 불러옴 (공통 설정은 돌아올 때 다시 안 불러옴)
+  const query = useQuery({
+    queryKey: key, queryFn: async () => (await apiClient.get<MemoFolder[]>('/memo-folders')).data,
+    enabled: !isMockApi && !!userId, refetchOnWindowFocus: 'always',
+  })
   const folders = isMockApi ? local : query.data ?? []
   const save = async (name: string, id?: string) => {
     name = name.trim()

@@ -30,6 +30,9 @@
 `backend/` — Spring Boot 서버 API
 
 ### 2026-11-24
+- jgkim7848-lab — 동네 목록 API `GET /api/regions` · `GET /api/regions/{id}/neighbors` 추가 — 로그인 없이, `frontend/API.md` · `openapi.yaml` 계약대로 (`region/RegionController`). [앱 구조](wiki/topics/application.md) · 검증: `RegionApiIntegrationTests` 2개
+- jgkim7848-lab — 가계부 메모 초안이 폴더 100개 제한을 넘겨 분류 폴더를 만들던 문제 수정 — 이미 100개면 미분류로 저장 (`memo/LedgerMemoController`). [확인된 폴더 문제](wiki/topics/ledger-memos.md#확인된-폴더-문제) · 검증: `LedgerIntegrationTests` 새 테스트 1개
+- jgkim7848-lab — 쓰레기 배출일 알림 · 배출표 조회(`GET /api/trash-schedules/me`): 내 집 주소로 시 · 군 · 구를 못 찾으면 회원 주소로 다시 찾기 (`RegionMatcher.matchFirst`, 두 곳 같은 규칙). [배출표](wiki/topics/trash-schedules.md) · 검증: `RegionMatcherTests` · `TrashReminderTests` · `CalendarIntegrationTests` 새 테스트 3개
 - moon — 로그인한 회원의 공개 게시글 집계 API를 추가하고, 지도·즐겨찾기·회원 리뷰의 카카오 장소 ID 판별을 `kakao:장소ID` 기준으로 통합 (커뮤니티·지도 통합 테스트 통과).
 
 ### 2026-11-22
@@ -94,6 +97,7 @@
 `db/` — 표 설계(schema.sql) · 마이그레이션 · 검사. 마이그레이션 파일 설명은 [db/migrations/README.md](db/migrations/README.md)
 
 ### 2026-11-24
+- jgkim7848-lab — 동네 목록 기준을 프론트 `regions.ts` 하나로: 이웃 변환 스크립트(`db/tools/region_neighbors_import.py`)가 DB 이웃 마이그레이션(`20261122_04`)과 프론트 이웃 목록을 같은 데이터로 만들고, `regions.ts` · DB 지역(`20261122_01`) · 이웃 데이터 · 프론트 목록이 어긋나면 `frontend/tests/region-data-sync.test.mjs` 가 실패. DB 파일 내용 변경 없음. [데이터베이스와 검증](wiki/topics/database.md)
 - moon — 구형 `20261101_event_anniversary.sql`을 폐기하고 기존 기념일 데이터를 보존하도록 `20261031_02_event_anniversaries.sql`로 통합 (정적 검사 7개와 격리 MySQL 9.6의 신규 설치·구형 DB 전환·재실행 검증 통과).
 
 ### 2026-11-22
@@ -104,6 +108,7 @@
 - 곽성미 — 개인정보 처리방침 5번(처리 위탁 및 국외 이전) 빈칸 채움: AI 답변 Google LLC(미국) Gemini API, 클라우드는 출시 전 확정 안내 (DB: `20261122_06_terms_privacy_ai`)
 - jgkim7848-lab — 주변 동네(`region_neighbors`) 전국 1,286줄: 육지 경계가 맞닿은 시 · 군 · 구끼리(강 가운데 경계 포함 · 바다 위 경계 제외, 인천 옛 구는 새 구 기준, 섬 지역은 가까운 2곳). DB: 데이터 마이그레이션 `20261122_04`(동료 `20261122_03_place_reviews` 와 번호가 겹쳐서 04), 변환 `db/tools/region_neighbors_import.py`(OpenStreetMap 경계). 데이터 마이그레이션 이름 `20261121_07` · `08` → `20261122_01` · `02`(동료 `20261121_07_notices` 와 번호 겹침). **각자 DB 에 `20261122_04` 실행 필요.** 검증: 정적 검사 7/7, 임시 DB(새 DB · 두 번 실행 결과 같음 · 양쪽 이웃 일치 · 이웃 없는 동네 0), 실제 DB 적용
 - jgkim7848-lab — dev(PR #131 · #132) 합친 뒤 로컬 개발 DB 에 동료 마이그레이션 `20261121_07_notices` · `20261122_01_terms_sync` · `20261122_03_place_reviews` 적용(백업 후). 확인: `notices` · `kakao_place_reviews` · `place_review_reports` 표 생성, 약관 3종 버전 · 회원 동의 기록 9건 그대로 · 이용약관에 쓰레기 배출 공공데이터 출처 들어감. 합친 뒤 백엔드 310 · 프론트 177 · 정적 검사 7/7 통과
+- jgkim7848-lab — 로컬 개발 DB 에 동료 마이그레이션 `20261122_05_place_review_photos` · `06_terms_privacy_ai` · `07_memo_folders` 적용(백업 후, 두 번 실행해도 같음). 확인: 실제 DB 구조 · 약관 3종 본문이 `schema.sql` 로 만든 새 DB 와 같음, 메모 · 동의 기록 그대로, 미연결 업로드 정리 · 첨부 확인 쿼리가 MySQL 에서 동작
 - moon — 병합 후 누락된 `20261121_04_login_lockout.sql`을 검사 경로에 추가하고 스키마 비교 자료 재생성·중복 설정 제거, 중복 비교 값 방지 검사 보강. 검증: 정적 검사 6/6 · 생성 결과 재실행 동일 · 격리 MySQL 9.6 신규/전체·증분 이전·데이터 보존 61단계·259개 통과(잠금 기본값·밀리초 시각 저장·다른 회원 데이터 보존 포함). 기존 개발·운영 DB 적용은 별도.
 
 ### 2026-11-21
@@ -158,6 +163,9 @@
 `frontend/` — React 앱
 
 ### 2026-11-24
+- jgkim7848-lab — 모의 모드 커뮤니티 "주변 동네"를 서울 4개 구 예시에서 전국 233곳으로 (`community/data/neighbors.ts`, 이웃 변환 스크립트가 DB 이웃 데이터와 같이 만듦). [커뮤니티](wiki/topics/community-operations.md)
+- jgkim7848-lab — 메모 폴더 목록이 화면으로 돌아올 때 다시 불러와지게 — 다른 기기 · 탭에서 바꾼 폴더 반영 (`memo/folders.ts`). [확인된 폴더 문제](wiki/topics/ledger-memos.md#확인된-폴더-문제)
+- jgkim7848-lab — 일정 화면 "우리 동네 배출표 보기" 표 아래에 공공데이터 출처(행정안전부 전국생활쓰레기배출정보표준데이터, 공공데이터포털) 표시. [배출표](wiki/topics/trash-schedules.md)
 - moon — 회원별 생활 기록 저장·가계부 임시 메모 이어쓰기와 확정 처리를 공통화하고, 카카오 장소 ID와 ‘내가 쓴 글’ 집계를 정리. 설문·내 집 정보·고정 지출의 전세 대출 조회를 로그인 세션별로 통합하고, 구형 OAuth 콜백의 쿼리 토큰 처리를 제거하고 모의 API 사용 범위를 문서화 (프런트엔드 테스트 192개와 빌드 통과).
 
 ### 2026-11-22

@@ -206,6 +206,18 @@ class CalendarIntegrationTests {
             .andExpect(jsonPath("$.items.length()").value(0));
     }
 
+    @Test void myTrashScheduleFallsBackToMemberAddressWhenHomeAddressDoesNotMatch() throws Exception {
+        // 내 집 주소에 시군구가 빠져 동네를 못 찾으면 회원 주소로 다시 찾음 (쓰레기 배출 알림과 같은 규칙)
+        jdbc.update("INSERT INTO user_settings (user_id, home_address, noti_on) VALUES (1, '용산 한강대로 405', FALSE)");
+        jdbc.update("UPDATE users SET address = '서울 마포구 합정동' WHERE id = 1");
+        call(me, get("/api/trash-schedules/me"), null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.regionName").value("서울특별시 마포구"));
+        // 둘 다 못 찾으면 지역 없음
+        jdbc.update("UPDATE users SET address = '어딘가' WHERE id = 1");
+        call(me, get("/api/trash-schedules/me"), null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.regionName").isEmpty());
+    }
+
     @Test void customPresetsUpdateAndDelete() throws Exception {
         call(me, get("/api/event-categories"), null);
         String id = JsonPath.read(call(me, post("/api/event-presets"), "{\"title\":\"화분 물 주기\",\"category\":\"집 관리\"}").andReturn().getResponse().getContentAsString(), "$.id");

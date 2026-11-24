@@ -38,7 +38,9 @@
 
 ## 확인된 폴더 문제
 
-- 열린 상태로 유지한 메모 화면은 다른 세션에서 폴더를 바꾼 뒤 포커스로 돌아와도 폴더 목록을 자동 재조회하지 않습니다. `2f8ba7f` 점검에서 캐시 동작을 확인했고, `250b8d9`에서도 공통 쿼리 설정과 폴더 조회 경로가 이 동작을 유지합니다. [공통 쿼리 설정](../../frontend/src/lib/queryClient.ts) · [폴더 조회](../../frontend/src/features/memo/folders.ts)
-- 일반 생성은 폴더 100개에서 제한합니다. 필요한 분류 폴더가 없는 계정에서 가계부 초안을 만들면 101번째 폴더가 생기는 것을 `2f8ba7f`의 격리 API 검사에서 재현했습니다. 두 서버 경로는 `250b8d9`까지 동일합니다. [일반 생성](../../backend/src/main/java/com/zip/backend/memo/MemoService.java) · [가계부 초안](../../backend/src/main/java/com/zip/backend/memo/LedgerMemoController.java)
+2026-11-24 두 문제 모두 고쳤습니다. 지난 기록은 [작업 로그](../log.md)에 있습니다.
+
+- **목록 다시 불러오기**: 메모 화면을 열어 둔 채 다른 세션에서 폴더를 바꾼 뒤 화면으로 돌아오면 폴더 목록을 다시 조회합니다. 공통 쿼리 설정은 포커스 복귀 때 다시 조회하지 않으므로 폴더 조회에만 `refetchOnWindowFocus: 'always'`를 지정했습니다. [폴더 조회](../../frontend/src/features/memo/folders.ts) · [공통 쿼리 설정](../../frontend/src/lib/queryClient.ts)
+- **폴더 개수 제한**: 가계부 초안도 일반 생성과 같은 100개 제한을 지킵니다. 분류 폴더(고정 수입 · 기타 수입 · 고정 지출 · 기타 지출)가 없고 폴더가 이미 100개면 폴더를 새로 만들지 않고 초안을 미분류로 만듭니다(가계부 입력은 막지 않음). [가계부 초안](../../backend/src/main/java/com/zip/backend/memo/LedgerMemoController.java) · [일반 생성](../../backend/src/main/java/com/zip/backend/memo/MemoService.java) · 검증: `LedgerIntegrationTests.ledgerDraftKeepsFolderLimitAndFallsBackToUnclassified`
 
 [초안 이어쓰기 검증 결과](project-status.md#검증된-부분) · [서버 모드에서 추가로 확인할 범위](project-status.md#검증해야-될-부분)

@@ -85,6 +85,10 @@ function TrashScheduleTable({ open }: { open: boolean }) {
         </table>
       </div>
       <p className={common.note}>같은 지역도 장소마다 요일과 시간이 달라요. 정확한 일정은 시·군·구청 안내를 확인해 주세요.</p>
+      {/* 공공데이터 출처 표시 (이용약관 제2조 · 소개 페이지 푸터와 같은 안내) */}
+      <p className={common.note}>
+        출처: 행정안전부 「전국생활쓰레기배출정보표준데이터」 (<a href="https://www.data.go.kr/data/15025450/standard.do" target="_blank" rel="noopener noreferrer" className={common.link}>공공데이터포털</a>)
+      </p>
     </>
   )
 }
