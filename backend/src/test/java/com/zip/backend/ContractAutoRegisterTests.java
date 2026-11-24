@@ -34,11 +34,11 @@ class ContractAutoRegisterTests {
         jdbc.update("UPDATE home_contracts SET payment_effective_from='2026-11-18' WHERE user_id=1");
         var now=at("2026-11-18T03:00:00Z");
         var current=now.monthly(1,YearMonth.of(2026,11),"Asia/Seoul");
-        assertEquals(1,((List<?>)current.get("housingItems")).size());
-        assertEquals(1,((List<?>)current.get("items")).size());
+        assertEquals(1,current.housingItems().size());
+        assertEquals(1,current.items().size());
         var past=now.monthly(1,YearMonth.of(2026,10),"Asia/Seoul");
-        assertEquals(1,((List<?>)past.get("housingItems")).size());
-        assertEquals(1,((List<?>)past.get("items")).size());
+        assertEquals(1,past.housingItems().size());
+        assertEquals(1,past.items().size());
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM rent_payments",Integer.class));
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
         now.autoRegister(1,10,"Asia/Seoul");
@@ -99,9 +99,9 @@ class ContractAutoRegisterTests {
         var now=at("2026-11-18T03:00:00Z");
         now.autoRegister(1,10,"Asia/Seoul");
         assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM loan_interest_charges",Integer.class));
-        assertTrue(((List<?>)now.monthly(1,YearMonth.of(2026,11),"Asia/Seoul").get("housingItems")).isEmpty());
+        assertTrue(now.monthly(1,YearMonth.of(2026,11),"Asia/Seoul").housingItems().isEmpty());
         jdbc.update("UPDATE housing_loans SET start_date='2026-11-01' WHERE user_id=1");
-        assertEquals(1,((List<?>)now.monthly(1,YearMonth.of(2026,11),"Asia/Seoul").get("housingItems")).size());
+        assertEquals(1,now.monthly(1,YearMonth.of(2026,11),"Asia/Seoul").housingItems().size());
         now.autoRegister(1,10,"Asia/Seoul");
         now.autoRegister(1,10,"Asia/Seoul");
         assertEquals("2026-11-15",jdbc.queryForObject("SELECT charge_date FROM loan_interest_charges",java.sql.Date.class).toString());
@@ -131,7 +131,8 @@ class ContractAutoRegisterTests {
     }
     @Test void managedBillsRejectLedgerChangesAndDeletedRecordsDoNotReappear() {
         service.autoRegister(1,10,"Asia/Seoul");
-        assertEquals(409,assertThrows(ApiException.class,()->service.updateMonthly(1,10,20,"2026-12","Asia/Seoul",Map.of("amount",1,"dueDate","2026-12-31"))).status());
+        var update = BillInput.monthlyUpdate(Map.of("amount",1,"dueDate","2026-12-31"));
+        assertEquals(409,assertThrows(ApiException.class,()->service.updateMonthly(1,10,20,YearMonth.of(2026,12),"Asia/Seoul",update)).status());
         assertEquals(409,assertThrows(ApiException.class,()->service.deleteMonthly(1,10,20,"2026-12","Asia/Seoul")).status());
         assertEquals(409,assertThrows(ApiException.class,()->service.update(1,10,20,Map.of("amount",1))).status());
         assertEquals(409,assertThrows(ApiException.class,()->service.remove(1,10,20)).status());

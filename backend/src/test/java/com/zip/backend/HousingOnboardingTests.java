@@ -1,6 +1,7 @@
 package com.zip.backend;
 
 import com.zip.backend.auth.AuthService;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,7 +62,11 @@ class HousingOnboardingTests {
              "home":{"kind":"jeonse","loan":{"principal":120000000}}}
             """).andExpect(status().isOk()).andExpect(jsonPath("$.firstLogin").value(false));
         read("/api/me/home-info").andExpect(jsonPath("$.contract.kind").value("jeonse"))
-            .andExpect(jsonPath("$.loan").isEmpty()).andExpect(jsonPath("$.loanDraft.principal").value(120000000));
+            .andExpect(jsonPath("$.loan").hasJsonPath()).andExpect(jsonPath("$.loan").isEmpty())
+            .andExpect(jsonPath("$.loanDraft.principal").value(120000000))
+            .andExpect(jsonPath("$.loanDraft.annualRate").doesNotHaveJsonPath())
+            .andExpect(jsonPath("$.loanDraft.paymentDay").doesNotHaveJsonPath())
+            .andExpect(jsonPath("$.loanDraft.startDate").doesNotHaveJsonPath());
         read("/api/me/salary").andExpect(jsonPath("$.startMonth").value(""))
             .andExpect(jsonPath("$.draft.amount").value(2500000));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM salary_records", Integer.class));
@@ -74,5 +79,37 @@ class HousingOnboardingTests {
             .andExpect(jsonPath("$.region.id").value("2")).andExpect(jsonPath("$.firstLogin").value(false));
         read("/api/me/home-info").andExpect(jsonPath("$.contract").isEmpty())
             .andExpect(jsonPath("$.settings.homeAddress").value("서울 마포구"));
+    }
+
+    @Test void skipAcceptsOnlyTheActionAndCompletedSurveyIgnoresReplay() throws Exception {
+        for (String body : List.of("{\"action\":\"skip\",\"address\":null}", "{\"action\":\"save\",\"unknown\":1}",
+            "{\"action\":\"save\",\"home\":{\"kind\":\"jeonse\",\"loan\":null}}")) {
+            submit(body).andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("설문 항목을 확인해 주세요."));
+        }
+        submit("null").andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("요청 JSON 형식을 확인해 주세요."));
+        submit("{\"action\":\"save\",\"address\":null}").andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("집 주소는 문자열이어야 해요."));
+        read("/api/auth/me").andExpect(jsonPath("$.firstLogin").value(true));
+
+        submit("{\"action\":\"skip\"}").andExpect(status().isOk()).andExpect(jsonPath("$.firstLogin").value(false));
+        assertEquals("SKIPPED", jdbc.queryForObject("SELECT housing_survey_status FROM users", String.class));
+        submit("{\"action\":\"invalid\",\"address\":\"서울 마포구\"}").andExpect(status().isOk())
+            .andExpect(jsonPath("$.address").value(""));
+    }
+
+    @Test void sameContractKeepsItsLoanWhenSurveyLeavesItOut() throws Exception {
+        mvc.perform(put("/api/me/home-info").header("Authorization", "Bearer " + token).contentType("application/json")
+                .content("""
+                    {"kind":"jeonse","deposit":0,"rent":0,"rentDay":18,"mgmtIncluded":false,"mgmtFee":0,
+                     "contractFee":120000000,"loan":{"principal":90000000,"annualRate":3.25,"paymentDay":20,"startDate":"2026-01-01"}}
+                    """))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.loan.active").value(true));
+        submit("{\"action\":\"save\",\"home\":{\"kind\":\"jeonse\"}}")
+            .andExpect(status().isOk()).andExpect(jsonPath("$.firstLogin").value(false));
+        read("/api/me/home-info").andExpect(jsonPath("$.contract.contractFee").value(120000000))
+            .andExpect(jsonPath("$.settings.rentDay").value(18))
+            .andExpect(jsonPath("$.loan.active").value(true)).andExpect(jsonPath("$.loan.principal").value(90000000))
+            .andExpect(jsonPath("$.loan.annualRate").value(3.25)).andExpect(jsonPath("$.loan.paymentDay").value(20))
+            .andExpect(jsonPath("$.loan.startDate").value("2026-01-01"));
     }
 }

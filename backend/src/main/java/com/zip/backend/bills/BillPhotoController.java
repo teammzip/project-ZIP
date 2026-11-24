@@ -65,7 +65,7 @@ public class BillPhotoController {
                 var amount=root.path("amount");
                 if (!amount.isIntegralNumber() || !amount.canConvertToLong()) throw BillInput.bad("금액을 읽지 못했어요.");
                 result.put("amount",amount.longValue()); result.put("dueDate",root.path("dueDate").asText());
-                BillInput.monthly(result,true);
+                BillInput.monthlyCreate(result);
             } catch (ApiException error) { throw error; }
             catch (RuntimeException error) { throw new ApiException(502,"AI 사진 인식에 실패했어요. 잠시 후 다시 시도하거나 직접 등록해 주세요."); }
             return tx.execute(status -> {
@@ -102,7 +102,7 @@ public class BillPhotoController {
             var draft=drafts.get(0);
             if(!"PENDING".equals(draft.get("state"))) throw new ApiException(409,"이미 처리한 인식 결과예요.");
             if(!((java.sql.Timestamp)draft.get("expires_at")).toInstant().isAfter(clock.instant())) throw new ApiException(410,"인식 결과가 만료됐어요. 사진을 다시 올려 주세요.");
-            Map<String,Object> bill=null;
+            BillResponse bill = null;
             if(decision.register()) {
                 var root=json.readTree((String)draft.get("input_json"));
                 Map<String,Object> input=new LinkedHashMap<>();

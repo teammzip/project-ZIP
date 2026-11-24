@@ -8,7 +8,6 @@ import com.zip.backend.common.ApiException;
 import java.sql.Timestamp;
 import java.time.*;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,39 +41,37 @@ class BillMonthlyTests {
     private BillService at(String instant) {
         return new BillService(repository,auth,Clock.fixed(Instant.parse(instant),ZoneOffset.UTC));
     }
-    @SuppressWarnings("unchecked") private List<Map<String,Object>> items(Map<String,Object> result) { return (List<Map<String,Object>>)result.get("items"); }
-
     @Test void localMidnightStartsNewMonthWithUnpaidEstimates() {
         var before=at("2026-04-30T14:59:59Z").monthly(1,YearMonth.of(2026,4),"Asia/Seoul");
-        assertEquals("2026-04",before.get("currentMonth"));
-        assertEquals(30000L,items(before).get(0).get("amount"));
+        assertEquals("2026-04",before.currentMonth());
+        assertEquals(30000L,before.items().get(0).amount());
         var after=at("2026-04-30T15:00:00Z").monthly(1,YearMonth.of(2026,5),"Asia/Seoul");
-        assertEquals("2026-05",after.get("currentMonth"));
-        assertEquals(Instant.parse("2026-04-30T15:00:00Z"),OffsetDateTime.parse((String)after.get("periodThrough")).toInstant());
-        assertEquals(after.get("periodFrom"),after.get("periodThrough"));
-        assertEquals(1,items(after).size());
-        assertEquals(40000L,items(after).get(0).get("amount"));
-        assertEquals(false,items(after).get(0).get("snapshot"));
-        assertEquals(false,items(after).get(0).get("paid"));
+        assertEquals("2026-05",after.currentMonth());
+        assertEquals(Instant.parse("2026-04-30T15:00:00Z"),OffsetDateTime.parse(after.periodThrough()).toInstant());
+        assertEquals(after.periodFrom(),after.periodThrough());
+        assertEquals(1,after.items().size());
+        assertEquals(40000L,after.items().get(0).amount());
+        assertFalse(after.items().get(0).snapshot());
+        assertFalse(after.items().get(0).paid());
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
     }
 
     @Test void differentLocationHasDifferentCurrentMonthAtSameInstant() {
         var service=at("2026-04-30T15:00:00Z");
-        assertEquals("2026-04",service.monthly(1,YearMonth.of(2026,4),"America/New_York").get("currentMonth"));
+        assertEquals("2026-04",service.monthly(1,YearMonth.of(2026,4),"America/New_York").currentMonth());
         assertThrows(ApiException.class,()->service.monthly(1,YearMonth.of(2026,5),"America/New_York"));
-        assertEquals("2026-05",service.monthly(1,YearMonth.of(2026,5),"Asia/Seoul").get("currentMonth"));
+        assertEquals("2026-05",service.monthly(1,YearMonth.of(2026,5),"Asia/Seoul").currentMonth());
     }
 
     @Test void pastMonthUsesFullLocalPeriodAndDoesNotInventMissingHistory() {
         var service=at("2026-05-10T12:34:56Z");
         var april=service.monthly(1,YearMonth.of(2026,4),"Asia/Seoul");
-        assertEquals(Instant.parse("2026-04-30T14:59:59.999999999Z"),OffsetDateTime.parse((String)april.get("periodThrough")).toInstant());
-        assertEquals(30000L,items(april).get(0).get("amount"));
-        assertTrue(items(service.monthly(1,YearMonth.of(2026,3),"Asia/Seoul")).isEmpty());
+        assertEquals(Instant.parse("2026-04-30T14:59:59.999999999Z"),OffsetDateTime.parse(april.periodThrough()).toInstant());
+        assertEquals(30000L,april.items().get(0).amount());
+        assertTrue(service.monthly(1,YearMonth.of(2026,3),"Asia/Seoul").items().isEmpty());
         var march=service.monthly(1,YearMonth.of(2026,3),"America/New_York");
-        var start=OffsetDateTime.parse((String)march.get("periodFrom")).toInstant();
-        var end=OffsetDateTime.parse((String)march.get("periodThrough")).toInstant().plusNanos(1);
+        var start=OffsetDateTime.parse(march.periodFrom()).toInstant();
+        var end=OffsetDateTime.parse(march.periodThrough()).toInstant().plusNanos(1);
         assertEquals(743,Duration.between(start,end).toHours()); // DST가 바뀌는 31일짜리 월
     }
 
@@ -83,11 +80,11 @@ class BillMonthlyTests {
         jdbc.update("INSERT INTO bill_items(id,user_id,name,tag,default_amount,created_at) VALUES (30,1,'미래항목','공과금',10000,?)",Timestamp.from(now.plusSeconds(1)));
         jdbc.update("INSERT INTO bill_payments(bill_item_id,period_ym,amount,paid_at) VALUES (10,'2026-05',35000,?)",Timestamp.from(now.plusSeconds(1)));
         var result=at(now.toString()).monthly(1,YearMonth.of(2026,5),"Asia/Seoul");
-        assertEquals(now,OffsetDateTime.parse((String)result.get("queriedAt")).toInstant());
-        assertEquals(now,OffsetDateTime.parse((String)result.get("periodThrough")).toInstant());
-        assertEquals(1,items(result).size());
-        assertEquals(false,items(result).get(0).get("paid"));
-        assertNull(items(result).get(0).get("paidAt"));
+        assertEquals(now,OffsetDateTime.parse(result.queriedAt()).toInstant());
+        assertEquals(now,OffsetDateTime.parse(result.periodThrough()).toInstant());
+        assertEquals(1,result.items().size());
+        assertFalse(result.items().get(0).paid());
+        assertNull(result.items().get(0).paidAt());
     }
 
     @Test void endpointRequiresLoginAndValidMonthAndTimeZone() throws Exception {

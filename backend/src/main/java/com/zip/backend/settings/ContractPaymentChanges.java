@@ -3,7 +3,6 @@ package com.zip.backend.settings;
 import java.math.*;
 import java.time.*;
 import java.sql.Date;
-import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Called while the home save owns the user's transaction lock. Paid and past-due snapshots remain immutable. */
@@ -18,7 +17,7 @@ public class ContractPaymentChanges {
             && (home.end().isEmpty() || !month.isAfter(YearMonth.parse(home.end())));
     }
 
-    public void apply(long user,HomeInfoInput input,SettingsRepository.Settings previous,Map<String,Object> oldLoan,Long managed,int oldManagementDay) {
+    public void apply(long user,HomeInfoInput input,SettingsRepository.Settings previous,HomeInfoResponse.Loan oldLoan,Long managed,int oldManagementDay) {
         var zones=jdbc.query("SELECT billing_time_zone FROM home_contracts WHERE user_id=?",(rs,n)->rs.getString(1),user);
         String zone=zones.isEmpty()?null:zones.get(0);
         LocalDate today=LocalDate.now(clock.withZone(zone==null?ZoneId.of("Asia/Seoul"):ZoneId.of(zone)));
@@ -49,9 +48,9 @@ public class ContractPaymentChanges {
         }
         var loan=input.loan();
         if("jeonse".equals(input.kind()) && loan!=null && oldLoan!=null &&
-            (((Number)oldLoan.get("principal")).longValue()!=loan.principal() || ((BigDecimal)oldLoan.get("annualRate")).compareTo(loan.rate())!=0 || ((Number)oldLoan.get("paymentDay")).intValue()!=loan.day())) {
-            String id=(String)oldLoan.get("id");
-            var start=Boolean.TRUE.equals(oldLoan.get("active"))?LocalDate.parse((String)oldLoan.get("startDate")):loan.start();
+            (oldLoan.principal()!=loan.principal() || oldLoan.annualRate().compareTo(loan.rate())!=0 || oldLoan.paymentDay()!=loan.day())) {
+            String id=oldLoan.id();
+            var start=oldLoan.active()?LocalDate.parse(oldLoan.startDate()):loan.start();
             long amount=BigDecimal.valueOf(loan.principal()).multiply(loan.rate()).divide(BigDecimal.valueOf(1200),0,RoundingMode.HALF_UP).longValueExact();
             var dates=jdbc.query("SELECT charge_date FROM loan_interest_charges WHERE loan_id=? AND paid_at IS NULL AND charge_date>=?",(rs,n)->rs.getDate(1).toLocalDate(),id,Date.valueOf(today));
             for(var oldDue:dates) {

@@ -54,7 +54,7 @@ public class LedgerService {
         }
     }
 
-    public List<Map<String, Object>> list(long userId, String kind, String month, String timeZone, String incomeType) {
+    public List<LedgerRow> list(long userId, String kind, String month, String timeZone, String incomeType) {
         boolean in = income(kind);
         var selected = BillInput.month(month);
         var now = today(timeZone);
@@ -88,55 +88,55 @@ public class LedgerService {
         return jdbc.query(sql, (rs, n) -> {
             String category = rs.getString("name");
             boolean salaryCategory = fixed && category.equals("월급");
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("id", rs.getString("id"));
-            row.put("amount", rs.getLong("amount"));
-            row.put("date", rs.getDate("record_date").toString());
-            row.put("cat", salaryCategory ? salaryLabel : category);
-            row.put("memo", Objects.toString(rs.getString("memo"), ""));
-            row.put("salaryCategory", salaryCategory);
-            row.put("salaryManaged", rs.getBoolean("salary_managed"));
             String memoId = rs.getString("memo_id");
-            if (memoId != null) {
-                row.put("memoId", memoId);
-                row.put("memoTitle", Objects.toString(rs.getString("memo_title"), ""));
-            }
-            return row;
+            return new LedgerRow(rs.getString("id"), rs.getLong("amount"), rs.getDate("record_date").toString(),
+                salaryCategory ? salaryLabel : category, Objects.toString(rs.getString("memo"), ""),
+                salaryCategory, rs.getBoolean("salary_managed"), memoId,
+                memoId == null ? null : Objects.toString(rs.getString("memo_title"), ""));
         }, args.toArray());
     }
 
     @Transactional
-    public void create(long user, long session, String kind, String timeZone, Map<String, Object> body) {
-        save(user, session, kind, null, timeZone, body);
+    public void create(long user, long session, LedgerWriteRequest request) {
+        save(user, session, null, request);
     }
 
     @Transactional
-    public void update(long user, long session, String kind, String id, String timeZone, Map<String, Object> body) {
-        save(user, session, kind, BillInput.id(id), timeZone, body);
+    public void update(long user, long session, long id, LedgerWriteRequest request) {
+        save(user, session, id, request);
     }
 
-    private void save(long user, long session, String kind, Long id, String zone, Map<String, Object> body) {
+    LedgerWriteRequest prepareWrite(String kind, String zone, LedgerWriteBody body) {
         boolean in = income(kind);
-        var allowed = in ? Set.of("amount", "date", "cat", "memo", "incomeType", "memoId")
-            : Set.of("amount", "date", "cat", "memo", "memoId");
-        if (!allowed.containsAll(body.keySet())) throw bad("입력 항목을 확인해 주세요.");
-        long amount = BillInput.amount(body.get("amount"));
+        if (body.hasUnsupportedFields(in)) throw bad("입력 항목을 확인해 주세요.");
+        long amount = BillInput.amount(body.amount);
         if (amount <= 0 || amount > (in ? 999999999L : 99999999L)) throw bad("금액 범위를 확인해 주세요.");
         LocalDate date;
         try {
-            date = LocalDate.parse(Objects.toString(body.get("date"), ""));
+            date = LocalDate.parse(Objects.toString(body.date, ""));
             if (date.getYear() < 1 || date.getYear() > 9999) throw new DateTimeException("date");
         } catch (DateTimeException e) {
             throw bad("날짜를 확인해 주세요.");
         }
         var now = today(zone);
         if (date.isAfter(now)) throw bad("오늘 이후의 기록은 등록할 수 없어요.");
-        String cat = BillInput.text(body.get("cat"), "분류", 24);
-        Object rawMemo = body.getOrDefault("memo", "");
-        if (!(rawMemo instanceof String memo) || memo.length() > 100) throw bad("메모는 100자 이내로 입력해 주세요.");
-        String memoText = memo.strip();
-        String incomeType = in ? type(Objects.toString(body.get("incomeType"), "")) : null;
+        String cat = BillInput.text(body.cat, "분류", 24);
+        if (!(body.memo instanceof String memo) || memo.length() > 100) throw bad("메모는 100자 이내로 입력해 주세요.");
+        var fields = new LedgerWriteRequest.Fields(amount, date, cat, memo.strip(),
+            Objects.toString(body.memoId, null), now);
+        return in ? new LedgerWriteRequest.Income(fields, type(Objects.toString(body.incomeType(), "")))
+            : new LedgerWriteRequest.Spend(fields);
+    }
 
+    private void save(long user, long session, Long id, LedgerWriteRequest request) {
+        String incomeType = request instanceof LedgerWriteRequest.Income income ? income.incomeType() : null;
+        boolean in = incomeType != null;
+        String kind = in ? "income" : "spend";
+        var fields = request.fields();
+        long amount = fields.amount();
+        LocalDate date = fields.date();
+        String cat = fields.cat();
+        String memoText = fields.memo();
         lock(user, session);
         boolean ledgerSalary = in && "FIXED".equals(incomeType) && ("월급".equals(cat) || categories.salaryLabel(user).equals(cat));
         if (ledgerSalary) {
@@ -168,15 +168,15 @@ public class LedgerService {
                 + " WHERE id=? AND user_id=?", args.toArray());
         }
         String label = (in ? (incomeType.equals("FIXED") ? "고정 수입" : "기타 수입") : "기타 지출") + " · " + date + " · " + cat;
-        if (body.get("memoId") != null) {
-            var linked = memos.attach(user, kind, id.toString(), body.get("memoId").toString(), label);
+        if (fields.memoId() != null) {
+            var linked = memos.attach(user, kind, id.toString(), fields.memoId(), label);
             String preview = linked.body().substring(0, Math.min(100, linked.body().length()));
             jdbc.update("UPDATE " + table + " SET memo=? WHERE id=? AND user_id=?", preview, id, user);
         } else if (!Objects.equals(beforeMemo, memoText)) {
             memos.save(user, kind, id.toString(), label, memoText);
         }
         if (ledgerSalary) {
-            salary.registerLedgerSalary(user, amount, date, now);
+            salary.registerLedgerSalary(user, amount, date, fields.today());
             salary.linkLedgerSalary(user, date, id);
         }
     }

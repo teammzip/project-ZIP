@@ -74,7 +74,8 @@ class BillSettlementTests {
         assertNotNull(repository.payment(20,YearMonth.of(2027,1)).deletedAt());
         assertNull(repository.payment(20,YearMonth.of(2026,10)).deletedAt());
         assertNull(repository.payment(20,YearMonth.of(2026,12)).deletedAt());
-        assertEquals(409,assertThrows(ApiException.class,()->new BillService(repository,auth,clock).updateMonthly(1,10,20,"2026-11","Asia/Seoul",Map.of("amount",45000,"dueDate","2026-11-26"))).status());
+        var update = BillInput.monthlyUpdate(Map.of("amount",45000,"dueDate","2026-11-26"));
+        assertEquals(409,assertThrows(ApiException.class,()->new BillService(repository,auth,clock).updateMonthly(1,10,20,YearMonth.of(2026,11),"Asia/Seoul",update)).status());
         var december=Clock.fixed(Instant.parse("2026-12-26T03:00:00Z"),ZoneOffset.UTC);
         new BillSettlementService(jdbc,repository,auth,december).payment(1,10,"20","2026-12","Asia/Seoul",Map.of("paid",false));
         assertNotNull(repository.payment(20,YearMonth.of(2026,12)).deletedAt());

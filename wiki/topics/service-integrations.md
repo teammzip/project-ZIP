@@ -5,7 +5,7 @@
 | 영역 | 확인한 구현과 범위 |
 | --- | --- |
 | 이메일·소셜 로그인 | Google·Naver·Kakao는 설정된 제공자만 활성화됩니다. [가입·계정 찾기·소셜 로그인](application.md#인증과-토큰-재발급) · [이메일 인증 서비스](../../backend/src/main/java/com/zip/backend/auth/emailcheck/EmailAuthService.java) · [소셜 설정 코드](../../backend/src/main/java/com/zip/backend/auth/SocialOAuthConfiguration.java) |
-| Gemini·고지서 | 서버가 사진 인식 결과를 임시 저장하고, 회원이 확인한 뒤 고정 지출에 등록합니다. 임시 결과에는 만료 시간이 있으며 사진·문서 식별자로 중복 등록을 막습니다. [고지서 API](../../backend/src/main/java/com/zip/backend/bills/BillPhotoController.java) · [고지서 등록 테스트](../../backend/src/test/java/com/zip/backend/BillMonthlyWriteTests.java) |
+| Gemini·고지서 | 서버가 사진 인식 결과를 임시 저장하고, 회원이 확인한 뒤 고정 지출에 등록합니다. 확정할 때 일반 월별 고정 지출 등록과 같은 입력 검증을 거칩니다. 임시 결과에는 만료 시간이 있으며 사진·문서 식별자로 중복 등록을 막습니다. [월별 고정 지출 DTO](fixed-expenses.md#일반-고정-지출의-납부와-해지) · [고지서 API](../../backend/src/main/java/com/zip/backend/bills/BillPhotoController.java) · [고지서 등록 테스트](../../backend/src/test/java/com/zip/backend/BillMonthlyWriteTests.java) |
 | AI 사용량 안내 | AI 한도에 도달하면 화면에서 기능 사용법·문의 안내·질문 재전송을 사용할 수 있습니다. PR #136 시점에 임시 계정으로 WebKit PC·모바일 화면과 재전송을 확인했습니다. [AI 대화 화면](../../frontend/src/features/ai/components/AiChat.tsx) · [변경 기록](../../CHANGELOG.md#프론트엔드) |
 | 지도·날씨·GPS | [카카오 장소 식별자](map-place-ids.md) · [홈 날씨 위치](#홈-날씨-위치) |
 | 약관·소개 화면 | 개인정보 처리방침에 Gemini API의 처리 주체와 국가를 명시하고, 소개 화면에 서버 저장과 외부 서비스 출처를 안내합니다. 저장소 정책 문서는 출시 전 클라우드 업체와 데이터 보관 국가 확정을 남은 작업으로 표시합니다. [개인정보 처리방침](../../frontend/src/features/legal/content.ts) · [소개 화면 문구](../../frontend/src/features/brand/content.ts) · [약관 마이그레이션](../../db/migrations/20261122_06_terms_privacy_ai.sql) |

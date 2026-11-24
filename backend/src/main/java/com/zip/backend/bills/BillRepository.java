@@ -134,9 +134,12 @@ public class BillRepository {
         var linked=memos.attach(user,"bill",id+":"+month,memoId,"고정 지출 · "+month+" · "+find(user,id).name());
         jdbc.update("UPDATE bill_payments SET memo=? WHERE bill_item_id=? AND period_ym=?",linked.body().substring(0,Math.min(200,linked.body().length())),id,month.toString());
     }
-    public java.util.Map<String,Object> memoReference(long id,YearMonth month) {
-        var rows=jdbc.queryForList("SELECT m.id,m.title FROM memos m JOIN bill_items b ON b.user_id=m.user_id WHERE b.id=? AND m.ledger_source='bill' AND m.ledger_key=?",id,id+":"+month);
-        return rows.isEmpty()?java.util.Map.of():java.util.Map.of("memoId",rows.get(0).get("id").toString(),"memoTitle",java.util.Objects.toString(rows.get(0).get("title"),""));
+    public record MemoReference(String id, String title) {}
+
+    public MemoReference memoReference(long id, YearMonth month) {
+        var rows = jdbc.query("SELECT m.id,m.title FROM memos m JOIN bill_items b ON b.user_id=m.user_id WHERE b.id=? AND m.ledger_source='bill' AND m.ledger_key=?",
+            (rs, row) -> new MemoReference(rs.getString("id"), java.util.Objects.toString(rs.getString("title"), "")), id, id + ":" + month);
+        return rows.isEmpty() ? null : rows.get(0);
     }
 
     public void propagateMonthly(long user,long id,YearMonth editedMonth,long amount,java.time.LocalDate due,java.time.LocalDate today,boolean changeAmount,boolean changeDue) {
