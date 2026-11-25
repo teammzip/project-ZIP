@@ -14,7 +14,7 @@ SET @contract_payment_ddl = IF(
   EXISTS (SELECT 1 FROM information_schema.columns
           WHERE table_schema=DATABASE() AND table_name='loan_interest_charges' AND column_name='paid_at'),
   'SELECT ''loan_interest_charges.paid_at already exists'' AS migration_info',
-  'ALTER TABLE loan_interest_charges ADD COLUMN paid_at DATETIME NULL COMMENT ''실제 납부 완료 시각, NULL은 미납·예정'''
+  'ALTER TABLE loan_interest_charges ADD COLUMN paid_at DATETIME NULL COMMENT ''실제 납부 완료 시각'''
 );
 PREPARE contract_payment_stmt FROM @contract_payment_ddl;
 EXECUTE contract_payment_stmt;

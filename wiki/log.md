@@ -235,6 +235,20 @@
 
 - 사진 고지서 확정이 월별 고정 지출 등록 검증을 공유하는 경로를 확인했습니다. 기준 브랜치 `c3ed411`에서 고지서 컨트롤러를 참조하는 [외부 서비스와 AI](topics/service-integrations.md)에 월별 고정 지출 DTO 설명을 연결하고, 네 기능의 적용 범위와 기존 검증 결과를 [백엔드 변경 기록](../CHANGELOG.md#백엔드)에 추가했습니다. [사진 확정 컨트롤러](../backend/src/main/java/com/zip/backend/bills/BillPhotoController.java#L111) · [사진 등록 서비스](../backend/src/main/java/com/zip/backend/bills/BillService.java#L262)
 
+## [2026-11-24] record | OpenAPI 최신화 · 실제 DB 구조 맞춤 · 마이그레이션 안내 정리
+
+- [앱 구조](topics/application.md#api-데이터-계약과-dto): `openapi.yaml`을 서버 컨트롤러 전체와 대조해 빠진 경로 17개와 AI 대화 전체 삭제를 추가하고, 서버에 없는 `GET /api/ai/topics`를 지웠습니다. 문의 목록과 문의 쓰기 응답 코드도 서버에 맞췄습니다.
+- [데이터베이스](topics/database.md#db-검증-결과): 개발용 실제 DB의 `bill_photo_drafts` 인덱스 이름과 `loan_interest_charges.paid_at` 설명을 `schema.sql`과 같게 맞췄습니다(백업 후 적용). 칸 순서를 빼고 비교하면 차이는 0입니다. `20261118_07` 마이그레이션 문구를 맞췄고, `db/migrations/README.md` 끝의 옛 안내문 중복을 정리했습니다.
+
+## [2026-11-24] record | 내 집 주소 검색 · README 배출표 설명
+
+- [내 집 정보](topics/home-info.md) · [배출표](topics/trash-schedules.md): 내 정보의 내 집 주소 칸에 주소 검색(주거 설문과 같은 동네 검색)을 붙였습니다. 고르면 시·도 · 시·군·구 · 동이 채워지고 상세주소를 이어서 씁니다. 직접 입력도 그대로 됩니다.
+- 루트 README의 "배출표 화면은 아직 고정표" 문장을 지우고 연결된 기능에 배출표를 넣어, 배출표 페이지의 [문서 간 차이](topics/trash-schedules.md#문서-간-차이)를 해소했습니다.
+
+## [2026-11-24] record | 메모 화면 린트 경고 정리
+
+- [가계부와 메모](topics/ledger-memos.md): 메모 화면이 쓰던 내용을 되살린 뒤 편집 화면을 여는 시점을 메모 저장소 변경 알림으로 바꿔 `react(set-state-in-effect)` 경고를 없앴습니다. 동작은 같습니다. [프로젝트 현황](topics/project-status.md)의 남은 경고를 지도 1건으로 고쳤습니다.
+
 ## [2026-11-26] record | 동네 검색 순위·범위·API 성능 검증
 
 - 격리 MySQL과 Elasticsearch에서 현행 `LIKE`, MySQL `ngram`, Elasticsearch Nori를 같은 Spring HTTP API로 비교했습니다. 합성 게시글에서 검색 순위, 세 동네 범위, 삭제·숨김 후 인덱스 지연, 1,152개 API 요청의 응답 시간을 [격리 검색 비교 결과](topics/community-operations.md#격리-검색-비교-결과)에 기록했습니다.

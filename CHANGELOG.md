@@ -36,6 +36,7 @@
 - moon — 가계부 수입·지출 저장과 거래 목록, 월별 고정 지출, 내 집 정보 응답, 첫 주거 설문 요청에 DTO 적용. [API 데이터 계약과 DTO](wiki/topics/application.md#api-데이터-계약과-dto) · 검증: H2 백엔드 339개, 관련 프론트 54개 통과.
 
 ### 2026-11-24
+- jgkim7848-lab — `openapi.yaml` 최신화: 서버에 있는데 빠져 있던 경로 17개(공지 · 관리자 공지 · 꿀팁 지정 · 관리자 문의 목록 · 고지서 사진 인식 · AI 대화 기록 저장 · 지도 저장 리스트 · 내 정보 이름/생년월일 · 내 경고/정지 내역 · 주변 동네 안내 · 프로필 사진 버리기)와 AI 대화 전체 삭제 추가, 서버에 없는 `GET /api/ai/topics` 삭제, 문의 목록 · 쓰기 응답을 서버와 맞춤. [앱 구조](wiki/topics/application.md#api-데이터-계약과-dto) · 검증: 컨트롤러 경로 전체와 문서 경로 대조
 - jgkim7848-lab — 오래된 데이터 정리를 6시간마다: 만료 · 로그아웃 후 하루 지난 로그인 세션, 요청 후 하루 지난 이메일 인증, 알릴 시각 90일 지난 알림("배출 정보가 없어요" 안내는 제외) (`maintenance/DataCleanupService`, 설정 `zip.cleanup.*`). [앱 구조](wiki/topics/application.md) · [알림](wiki/topics/calendar-notifications.md#알림-생성과-읽음-상태) · 검증: `DataCleanupTests`, 실제 MySQL 에서 같은 조건 개수 확인
 - jgkim7848-lab — 동네 목록 API `GET /api/regions` · `GET /api/regions/{id}/neighbors` 추가 — 로그인 없이, `frontend/API.md` · `openapi.yaml` 계약대로 (`region/RegionController`). [앱 구조](wiki/topics/application.md) · 검증: `RegionApiIntegrationTests` 2개, 실제 DB 로 띄운 서버에서 확인(249개 · 강남구 이웃 6곳 · 없는 번호 404)
 - jgkim7848-lab — 가계부 메모 초안이 폴더 100개 제한을 넘겨 분류 폴더를 만들던 문제 수정 — 이미 100개면 미분류로 저장 (`memo/LedgerMemoController`). [확인된 폴더 문제](wiki/topics/ledger-memos.md#확인된-폴더-문제) · 검증: `LedgerIntegrationTests` 새 테스트 1개
@@ -106,6 +107,7 @@
 `db/` — 표 설계(schema.sql) · 마이그레이션 · 검사. 마이그레이션 파일 설명은 [db/migrations/README.md](db/migrations/README.md)
 
 ### 2026-11-24
+- jgkim7848-lab — 개발용 실제 DB를 `schema.sql` 과 똑같이: `bill_photo_drafts` 인덱스 이름(`bill_photo_drafts_ibfk_2`), `loan_interest_charges.paid_at` 설명 문구 통일(`20261118_07` 마이그레이션 문구도 맞춤). `db/migrations/README.md` 끝의 옛 안내문 중복을 지우고 남길 내용(기념일 정리 · 데이터 마이그레이션 안내 등)은 본문으로 옮김. [데이터베이스와 검증](wiki/topics/database.md#db-검증-결과) · 검증: 백업 후 적용, 새 schema.sql DB 와 `information_schema` 비교 차이 0(칸 순서 제외)
 - jgkim7848-lab — 동네 목록 기준을 프론트 `regions.ts` 하나로: 이웃 변환 스크립트(`db/tools/region_neighbors_import.py`)가 DB 이웃 마이그레이션(`20261122_04`)과 프론트 이웃 목록을 같은 데이터로 만들고, `regions.ts` · DB 지역(`20261122_01`) · 이웃 데이터 · 프론트 목록이 어긋나면 `frontend/tests/region-data-sync.test.mjs` 가 실패. DB 파일 내용 변경 없음. [데이터베이스와 검증](wiki/topics/database.md)
 - moon — 구형 `20261101_event_anniversary.sql`을 폐기하고 기존 기념일 데이터를 보존하도록 `20261031_02_event_anniversaries.sql`로 통합 (정적 검사 7개와 격리 MySQL 9.6의 신규 설치·구형 DB 전환·재실행 검증 통과).
 
@@ -175,6 +177,8 @@
 - moon — 가계부 메모 복구와 동네 지도 검색 상태 처리를 정리해 React 린트 경고를 해소. [메모 이어쓰기](wiki/topics/ledger-memos.md) · [장소 검색](wiki/topics/map-place-ids.md#장소-검색과-저장-리스트)
 
 ### 2026-11-24
+- jgkim7848-lab — 내 정보의 내 집 주소 칸에 주소 검색 추가(주거 설문과 같은 동네 검색 → 시·도 · 시·군·구 · 동을 채우고 상세주소는 이어서 입력, 직접 입력도 유지) — 쓰레기 배출 알림 · 배출표가 이 주소의 시·군·구를 씀 (`life/components/MyInfo.tsx`). 루트 README 의 "배출표 화면은 아직 고정표" 문장 정리. [내 집 정보](wiki/topics/home-info.md) · [배출표](wiki/topics/trash-schedules.md) · 검증: `housing-contract.test.mjs` 에 주소 검색 버튼 확인 추가
+- jgkim7848-lab — 메모 화면에서 가계부의 쓰던 메모 내용을 되살린 뒤 화면을 여는 부분을 메모 저장소 변경 알림으로 바꿔 린트 경고(effect 안 바로 setState) 정리, 동작은 같음 (`pages/my/MemoPage.tsx`). [가계부와 메모](wiki/topics/ledger-memos.md)
 - jgkim7848-lab — 모의 모드 커뮤니티 "주변 동네"를 서울 4개 구 예시에서 전국 233곳으로 (`community/data/neighbors.ts`, 이웃 변환 스크립트가 DB 이웃 데이터와 같이 만듦). [커뮤니티](wiki/topics/community-operations.md)
 - jgkim7848-lab — 메모 폴더 목록이 화면으로 돌아올 때 다시 불러와지게 — 다른 기기 · 탭에서 바꾼 폴더 반영 (`memo/folders.ts`). [확인된 폴더 문제](wiki/topics/ledger-memos.md#확인된-폴더-문제)
 - jgkim7848-lab — 일정 화면 "우리 동네 배출표 보기" 표 아래에 공공데이터 출처(행정안전부 전국생활쓰레기배출정보표준데이터, 공공데이터포털) 표시. [배출표](wiki/topics/trash-schedules.md)

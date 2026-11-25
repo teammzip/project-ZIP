@@ -18,6 +18,7 @@ PR #137에 해당하는 11월 24일 변경 기록은 `51cfc1a`로 `backend`에 �
 
 ## 구현해야 될 부분
 
+- 지도 화면의 `react(set-state-in-effect)` 경고 1건이 `dev` 코드에 남아 있습니다. 아래 2026-11-25 재검증의 ‘린트 경고 0건’은 지도·메모 수정이 커밋 전 작업 트리에 있을 때 결과입니다. 메모 화면 경고는 2026-11-24에 따로 정리했습니다. [MapView.tsx](../../frontend/src/features/map/components/MapView.tsx) · [MemoPage.tsx](../../frontend/src/pages/my/MemoPage.tsx)
 - 출시용 처리방침의 클라우드 업체와 데이터 보관 국가를 확정해야 합니다. [약관 현황](service-integrations.md)
 
 ## 검증된 부분

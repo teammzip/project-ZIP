@@ -58,8 +58,11 @@ function AccountMemoPage({ owner }: { owner?: string }) {
   const memoId = current?.id
   useEffect(() => {
     if (restored || memoId === undefined || !draft?.memoInput) return
+    // 가계부에서 넘어온 쓰던 내용을 메모 저장소에 되살리고, 저장소가 바뀌었다는 알림을 받은 뒤에 메모 화면을 연다
+    // (effect 안에서 바로 setState 하지 않으려는 것. update 는 늘 저장소를 바꾸므로 알림이 곧바로 옴)
+    const unsubscribe = useMemoStore.subscribe(() => { unsubscribe(); setRestored(true) })
     useMemoStore.getState().update(memoId, draft.memoInput)
-    setRestored(true)
+    return unsubscribe
   }, [draft, memoId, restored])
   const returnToLedger = draft ? (saved: Memo) => {
     try {
