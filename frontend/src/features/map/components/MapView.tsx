@@ -61,6 +61,7 @@ const useMobile = () => useSyncExternalStore(subscribeMobile, () => window.match
 
 /** named: 가게 이름 · 검색어로 찾은 결과가 있음 (카카오 키워드 검색) */
 type Found = { q: string; items: Array<{ p: PlaceItem; why: string[] }>; named: boolean; failed: boolean }
+type SearchState = { locationKey: string; result: Found | null }
 
 /** 동네 지도 (네이버 지도처럼)
  * - 모바일: 화면 가득 지도 + 위에 검색창 · 종류 칩, 오른쪽 둥근 버튼(저장 · 내 위치), 아래 끌어올리는 시트(동네 · 저장 탭, 장소 목록)
@@ -112,19 +113,21 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
   const [selId, setSelId] = useState<string | null>(null)
   const [selectedLocationKey, setSelectedLocationKey] = useState('')
   const [query, setQuery] = useState(initialNearby?.query ?? '')
-  const [mapSearch, setFound] = useState<Found | null>(null)
-  const [searching, setSearching] = useState(false)
-  const searchRequest = useRef<AbortController | null>(null)
+  const [searchState, setSearchState] = useState<SearchState | null>(null)
+  const searchRequest = useRef<{ controller: AbortController; locationKey: string } | null>(null)
   const [editing, setEditing] = useState(false)
   const [sheet, setSheet] = useState<'peek' | 'full'>('peek')
   const [focus, setFocus] = useState<{ lat: number; lon: number; n: number } | null>(null)
   const [centerRequest, setCenterRequest] = useState(0)
   const drag = useRef<number | null>(null)
 
-  useEffect(() => {
-    setFound(null)
-    setSearching(false)
-    return () => searchRequest.current?.abort()
+  const activeSearch = searchState?.locationKey === locationKey ? searchState : null
+  if (searchState && !activeSearch) setSearchState(null)
+  const searching = activeSearch !== null && activeSearch.result === null
+
+  useEffect(() => () => {
+    const request = searchRequest.current
+    if (request?.locationKey === locationKey) request.controller.abort()
   }, [locationKey])
 
   // 주소로 받은 종류가 꺼져 있으면 칩에 켬
@@ -134,7 +137,7 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
 
   const found: Found | null = nearby
     ? { q: nearby.query, items: nearby.places.map((p) => ({ p, why: [] })), named: true, failed: false }
-    : mapSearch
+    : activeSearch?.result ?? null
   const distances = new Map(nearby?.places.map((p) => [p.id, p.distanceMeters]))
   const base = (() => {
     if (found) return found.items.map((r) => r.p)
@@ -181,9 +184,9 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
     setFocus(null)
   }
   const clearSearch = () => {
-    searchRequest.current?.abort()
-    setSearching(false)
-    setFound(null)
+    searchRequest.current?.controller.abort()
+    searchRequest.current = null
+    setSearchState(null)
     setNearby(null)
     if (nearby) {
       setSelId(null)
@@ -195,8 +198,8 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
     clearSearch()
     if (!text) return
     const request = new AbortController()
-    searchRequest.current = request
-    setSearching(true)
+    searchRequest.current = { controller: request, locationKey }
+    setSearchState({ locationKey, result: null })
     let items: Found['items'] = []
     let named = false
     let failed = false
@@ -225,8 +228,8 @@ export function MapView({ initialNearby = null }: { initialNearby?: NearbyMapRes
       named = items.length > 0
     }
     setQuery(text)
-    setFound({ q: text, items, named, failed })
-    setSearching(false)
+    searchRequest.current = null
+    setSearchState({ locationKey, result: { q: text, items, named, failed } })
     setFilter('near')
     setSelId(null)
     setFocus(null)

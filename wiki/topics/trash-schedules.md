@@ -18,4 +18,4 @@ PR #136의 격리 MySQL·WebKit 검증 범위는 기본 접힘, 주소별 조회
 
 ## 문서 간 차이
 
-초기 수집 커밋의 루트 README는 화면에 고정표가 남아 있다고 설명했지만, 화면 코드는 실제 서버 모드에서 API를 조회했습니다. 2026-11-24에 README를 현재 상태(일정 화면의 배출표 서버 조회 + 배출일 알림)로 고쳐 차이가 없어졌습니다. 배포 환경의 데이터 적용 상태는 별도 확인이 필요합니다. [루트 README](../../README.md) · [배출표 조회 API 계약](../../frontend/API.md#3-일정--쓰레기-배출-) · [배출표 컴포넌트](../../frontend/src/features/life/components/TrashScheduleDisclosure.tsx)
+초기 수집 당시 루트 README의 고정표 설명과 서버 조회 코드가 서로 달랐습니다. PR #144에서 README를 일정 화면의 배출표 조회와 배출일 알림에 맞게 갱신했습니다. README에서 신규 DB에 전국 배출표 자료를 적용하는 순서도 확인할 수 있습니다. 배포 환경의 데이터 적용 상태는 [검증해야 될 부분](project-status.md#검증해야-될-부분)에서 추적합니다. [루트 README](../../README.md#지금-상태) · [전국 데이터](database.md#전국-데이터) · [배출표 조회 API 계약](../../frontend/API.md#3-일정--쓰레기-배출-)

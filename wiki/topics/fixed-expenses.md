@@ -2,7 +2,7 @@
 
 2026-11-24 확인 · [수집 기준](../raw/index.md#2026-11-24--작업과-검증-이력-보완) · [위키 색인](../index.md)
 
-입주월과 계약 만료월이 모두 저장된 월세 계약은 두 달을 모두 포함합니다. 가계부에서 계약 기간의 과거 또는 현재 월을 열면 그 달에 빠진 월세와 별도 관리비를 저장된 계약 금액으로 등록합니다. 납부일이 내 집 정보 저장일보다 앞선 달에도 같은 규칙을 적용합니다. 월별 조회는 먼저 `POST /api/bills/monthly/auto-register`를 호출한 뒤 `GET /api/bills/monthly`를 읽습니다. [내 집 정보](home-info.md) · [프론트 요청](../../frontend/src/features/life/billsApi.ts) · [자동 등록과 계약 범위](../../backend/src/main/java/com/zip/backend/bills/BillRepository.java)
+입주월과 계약 만료월이 모두 저장된 월세 계약은 두 달을 모두 포함합니다. 가계부에서 계약 기간의 과거 또는 현재 월을 열면 그 달에 빠진 월세와 별도 관리비를 저장된 계약 금액으로 등록합니다. 이 기간과 금액은 내 집 정보 API에서 저장한 계약 값으로 정합니다. 납부일이 내 집 정보 저장일보다 앞선 달에도 같은 규칙을 적용합니다. 월별 조회는 먼저 `POST /api/bills/monthly/auto-register`를 호출한 뒤 `GET /api/bills/monthly`를 읽습니다. [내 집 정보](home-info.md) · [내 집 정보 저장 API](../../frontend/API.md#내-집-정보-서버-연결-2026-11-15) · [프론트 요청](../../frontend/src/features/life/billsApi.ts) · [자동 등록과 계약 범위](../../backend/src/main/java/com/zip/backend/bills/BillRepository.java)
 
 - 신규 행은 미납으로 생성하며, 기존 월의 기록과 납부 상태·시각은 보존합니다. 화면에서 월세·계약 별도 관리비는 `미납` 또는 `납부 완료`로 표시합니다. 관리비 포함 계약은 관리비를 따로 만들지 않습니다. [월별 기록 처리](../../backend/src/main/java/com/zip/backend/bills/BillService.java) · [고정 지출 화면](../../frontend/src/features/life/components/MonthlyFixedExpense.tsx)
 - 미래 월과 계약 밖 월에는 새 계약 비용을 자동 등록하지 않습니다. 이미 저장된 월별 기록의 조회는 별도입니다. 과거 계약월 보충은 양 끝 날짜가 있는 월세 계약에 적용하며, 전세 대출 이자와 날짜가 부족한 계약은 현재 월 규칙을 따릅니다. [자동 등록 조건](../../backend/src/main/java/com/zip/backend/bills/BillRepository.java) · [전세 대출](home-info.md)

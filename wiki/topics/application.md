@@ -63,6 +63,7 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 
 - **비밀번호 로그인 제한**은 15분 안에 누적 실패가 5회에 이르면 15분 동안 잠그고, 누적 횟수와 재시도 가능 시각을 안내합니다. 정상 로그인 또는 이메일 인증을 통한 비밀번호 재설정으로 누적 실패 상태를 초기화합니다. [PR #126](https://github.com/teammzip/project-ZIP/pull/126) · [로그인 제한 구현](../../backend/src/main/java/com/zip/backend/auth/AuthService.java) · [비밀번호 재설정](../../backend/src/main/java/com/zip/backend/auth/recovery/RecoveryService.java)
 - **가입과 계정 찾기**는 이메일 인증을 사용합니다. 이메일 가입과 소셜 첫 동의 화면은 주소 입력 없이 진행하며, 주소 입력은 [주거 설문과 내 집 정보](home-info.md#주소와-회원-설정)에서 할 수 있습니다. 서버는 가입과 첫 동의의 약관 버전과 동의 여부를 확인합니다. 2026-11-25에 두 API의 선택 `address`를 실제 요청 처리에 맞춰 문서화했습니다. [OpenAPI](../../backend/openapi.yaml) · [프론트 연동 계약](../../frontend/API.md#회원가입) · [가입 처리](../../backend/src/main/java/com/zip/backend/auth/signup/SignupService.java) · [첫 동의 처리](../../backend/src/main/java/com/zip/backend/auth/AuthController.java)
+- **약관 동의 후 회원 주소 변경**은 `PATCH /api/auth/me`로 처리합니다. 서버는 비어 있지 않은 최대 200자의 주소를 저장하고 주소에서 찾은 시·군·구를 회원의 동네에 반영합니다. [회원 주소 변경 API](../../frontend/API.md#회원-주소-변경) · [주소 저장 및 동네 갱신](../../backend/src/main/java/com/zip/backend/auth/AuthService.java)
 
 ## 서버 데이터와 브라우저 저장
 
