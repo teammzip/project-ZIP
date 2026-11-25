@@ -8,7 +8,7 @@
 
 수입·기타 지출 저장 요청에 `memoId`가 있으면 `LedgerService`가 같은 회원과 가계부 종류의 메모를 찾아 임시 키를 거래 ID로 바꿉니다. 메모 ID·제목·본문을 보존하고 본문의 처음 100자를 거래에 미리보기로 저장합니다. 연결 실패 시 해당 요청에서 실행한 거래 쓰기와 연결 변경을 롤백합니다. 앞서 메모 화면에서 성공한 별도 저장은 유지됩니다. 초안 폐기는 본인의 `draft:<키>` 또는 `saved:<키>` 메모에만 적용됩니다. [가계부 저장](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java) · [메모 연결](../../backend/src/main/java/com/zip/backend/memo/LedgerMemoWriter.java) · [초안 폐기](../../backend/src/main/java/com/zip/backend/memo/LedgerMemoController.java) · [통합 테스트](../../backend/src/test/java/com/zip/backend/LedgerIntegrationTests.java)
 
-모의 모드에서는 브라우저의 메모 저장소에서 초안을 만들고 확정합니다. [메모 화면](../../frontend/src/pages/my/MemoPage.tsx) · [메모 확정](../../frontend/src/features/memo/sync.ts) · [앱 실행 모드](application.md)
+모의 모드에서는 브라우저의 메모 저장소에서 초안을 만들고 확정합니다. 메모 화면으로 돌아왔을 때 쓰던 내용이 있으면 메모 저장소에 한 번 되살리고, 저장소 변경 알림을 받은 뒤 편집 화면을 엽니다(2026-11-24, effect 안 바로 setState 경고 정리). [메모 화면](../../frontend/src/pages/my/MemoPage.tsx) · [메모 확정](../../frontend/src/features/memo/sync.ts) · [앱 실행 모드](application.md)
 
 2026-11-25 확인. 이어쓰기 화면은 준비된 메모가 목록에 들어올 때까지 기다린 뒤 해당 탭에 보관된 편집 내용을 복구합니다. 목록 동기화가 끝난 뒤 복구해야 복구한 입력도 일반 수정으로 감지됩니다. 화면을 떠나거나 회원이 바뀌면 이전 초안의 복구를 중단합니다. [메모 화면](../../frontend/src/pages/my/MemoPage.tsx) · [메모 동기화](../../frontend/src/features/memo/sync.ts)
 

@@ -20,6 +20,7 @@ import { isMockApi } from '@/features/auth/api'
 import { getErrorMessage } from '@/lib/apiClient'
 import { saveHomeInfo, useHomeInfo, type SurveyLoanDraft } from '../homeApi'
 import { MyReviews } from '@/features/map/components/MyReviews'
+import { AddressSearch } from '@/features/onboarding/AddressSearch'
 
 /* 내 정보 화면에 쓰는 생활 조각들: 수입·지출 카드, 이번 달 요약, 생활 정보 폼, 알림 스위치 */
 
@@ -119,6 +120,14 @@ export function LifeInfoFields({ onSaved, showHomeAddress = true, loanDraft }: L
     contractFee: String(survey?.contractFee ?? 0),
   })
   const change = (key: keyof typeof form, value: string) => setForm((previous) => ({ ...previous, [key]: value }))
+  // 내 집 주소: 동네 검색으로 시·도 · 시·군·구 · 동을 채우고 상세주소는 이어서 입력 (쓰레기 배출 알림 · 배출표가 이 주소의 시·군·구를 씀)
+  const [addressSearchOpen, setAddressSearchOpen] = useState(false)
+  const homeAddressInput = useRef<HTMLInputElement>(null)
+  const pickHomeAddress = (address: string) => {
+    change('homeAddress', address + ' ')
+    setAddressSearchOpen(false)
+    homeAddressInput.current?.focus()
+  }
   const [pending, setPending] = useState(false)
   const saving = useRef(false)
 
@@ -191,7 +200,12 @@ export function LifeInfoFields({ onSaved, showHomeAddress = true, loanDraft }: L
         </select>
       </label>
       <p className={common.note}>입주한 달부터 계약이 끝나는 달까지, 가계부에서 선택한 달의 월세와 별도 관리비가 고정 지출에 반영돼요. 납부일이 지났어도 기록이 없으면 미납으로 등록하고, 기존 납부 여부는 유지해요. 전세 대출 이자는 대출 조건에 따라 반영돼요.</p>
-      {showHomeAddress && <label>내 집 주소<input value={form.homeAddress} onChange={(e) => change('homeAddress', e.target.value)} maxLength={200} autoComplete="street-address" placeholder="도로명 주소와 상세주소를 입력해 주세요" /></label>}
+      {showHomeAddress && <>
+        <label>내 집 주소<input ref={homeAddressInput} value={form.homeAddress} onChange={(e) => change('homeAddress', e.target.value)} maxLength={200} autoComplete="street-address" placeholder="주소 검색으로 동네를 고른 뒤 상세주소를 이어서 입력해 주세요" /></label>
+        <Button variant="line" onClick={() => setAddressSearchOpen((open) => !open)} aria-expanded={addressSearchOpen}>{addressSearchOpen ? '주소 검색 닫기' : '주소 검색'}</Button>
+        {addressSearchOpen && <AddressSearch onSelect={pickHomeAddress} />}
+        <p className={common.note}>쓰레기 배출 알림과 배출표는 이 주소의 시·군·구로 찾아요. 비워 두면 회원 주소를 써요.</p>
+      </>}
       {monthly ? <>
         <label>보증금 (원)<AmountInput value={form.deposit} onValueChange={(value) => change('deposit', value)} max={9999990000} required /></label>
         <div className={common.two}>

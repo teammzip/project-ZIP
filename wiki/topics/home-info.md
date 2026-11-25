@@ -23,7 +23,7 @@
 
 ## 주소와 회원 설정
 
-2026-11-25에 `c3ed411`의 화면 코드를 확인했습니다. 첫 주거 설문의 ‘사는 곳’은 읽기 전용 칸입니다. ‘검색’을 열어 동네 이름을 입력한 뒤 OpenStreetMap Nominatim의 검색 결과에서 시·군·구 또는 동·읍·면 단위 주소를 선택합니다. 선택하지 않으면 설문 저장 요청에서 주소가 생략됩니다. 도로명과 상세주소를 적을 때는 마이페이지의 ‘내 집 정보’에 있는 ‘내 집 주소’ 칸에 직접 입력합니다. [설문 화면과 저장 요청](../../frontend/src/features/onboarding/SurveyPage.tsx) · [동네 검색](../../frontend/src/features/onboarding/AddressSearch.tsx) · [검색 결과 처리](../../frontend/src/features/onboarding/addressResult.ts) · [내 집 정보 입력](../../frontend/src/features/life/components/MyInfo.tsx)
+2026-11-25에 `c3ed411`의 화면 코드를 확인했습니다. 첫 주거 설문의 ‘사는 곳’은 읽기 전용 칸입니다. ‘검색’을 열어 동네 이름을 입력한 뒤 OpenStreetMap Nominatim의 검색 결과에서 시·군·구 또는 동·읍·면 단위 주소를 선택합니다. 선택하지 않으면 설문 저장 요청에서 주소가 생략됩니다. 도로명과 상세주소는 마이페이지 ‘내 집 정보’의 ‘내 집 주소’ 칸에 적습니다. 2026-11-24부터 이 칸에도 ‘주소 검색’이 있어 같은 동네 검색으로 시·도 · 시·군·구 · 동을 채운 뒤 상세주소를 이어서 입력하고, 직접 입력도 할 수 있습니다. [내 집 주소 입력](../../frontend/src/features/life/components/MyInfo.tsx) [설문 화면과 저장 요청](../../frontend/src/features/onboarding/SurveyPage.tsx) · [동네 검색](../../frontend/src/features/onboarding/AddressSearch.tsx) · [검색 결과 처리](../../frontend/src/features/onboarding/addressResult.ts) · [내 집 정보 입력](../../frontend/src/features/life/components/MyInfo.tsx)
 
 주거 설문은 주소·주거 조건·대출 정보를 저장하거나 건너뛸 수 있습니다. 대출 정보가 없는 설문은 `home.loan`을 생략하고, 대출 조건 일부만 입력하면 초안으로 저장합니다. 내 집 주소는 고정 지출과 [배출표](trash-schedules.md)에 쓰입니다. [설문 API 계약](../../frontend/API.md#첫-주거-설문) · [주거 설문 서버](../../backend/src/main/java/com/zip/backend/settings/HousingOnboardingService.java) · [홈 날씨 위치](service-integrations.md#홈-날씨-위치) · [동네 인증](community-operations.md#동네-글과-조회-집계)
 
