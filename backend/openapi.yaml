@@ -2458,6 +2458,9 @@ components:
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/Post' } }
         hasNext: { type: boolean }
+        suggestedQuery:
+          type: string
+          description: 회원 게시글 검색의 첫 페이지가 0건인 경우, 같은 동네·카테고리에서 공개 글이 있는 교정 후보가 하나일 때만 반환합니다.
     ReportReason:
       type: string
       enum: [ABUSE, FALSE_INFO, PRIVACY, AD_ILLEGAL, COPYRIGHT, OTHER]

@@ -14,6 +14,7 @@ const SEARCH_TERMS = new Set([
 const HANGUL_START = '가'.charCodeAt(0)
 const MEDIALS = 21
 const FINALS = 28
+const MAX_CANDIDATES = 4
 
 function oneJamoDifference(word: string, term: string) {
   if (word.length !== term.length) return false
@@ -33,17 +34,18 @@ function oneJamoDifference(word: string, term: string) {
 // 호출하는 화면이 같은 동네·카테고리의 결과가 없는 경우에만 사용한다.
 export function suggestLocalPostQuery(posts: Post[], query: string) {
   if (query.length < 3) return undefined
-  let candidate: string | undefined
+  const candidates: string[] = []
   for (const match of query.matchAll(/(?<!\S)[가-힣]{2,}(?!\S)/gu)) {
     const word = match[0]
     if (SEARCH_TERMS.has(word)) continue
     for (const term of SEARCH_TERMS) {
       if (!oneJamoDifference(word, term)) continue
-      if (candidate !== undefined) return undefined
-      candidate = query.slice(0, match.index) + term + query.slice(match.index + word.length)
+      if (candidates.length === MAX_CANDIDATES) return undefined
+      candidates.push(query.slice(0, match.index) + term + query.slice(match.index + word.length))
     }
   }
-  return candidate && searchLocalPosts(posts, candidate, 'latest').length ? candidate : undefined
+  const supported = candidates.filter((candidate) => searchLocalPosts(posts, candidate, 'latest').length > 0)
+  return supported.length === 1 ? supported[0] : undefined
 }
 
 export function searchLocalPosts(posts: Post[], query: string, sort: PostSort) {

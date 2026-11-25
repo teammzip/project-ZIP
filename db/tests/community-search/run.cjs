@@ -108,6 +108,7 @@ async function evaluate(request, token) {
     let requests = 0;
     async function collect(test, scope, sort) {
         const seen = new Set();
+        let suggestion = null;
         for (let page = 0; page <= posts.size; page++) {
             const params = new URLSearchParams({ scope, q: test.q, page });
             if (test.category) params.set('category', test.category);
@@ -115,13 +116,18 @@ async function evaluate(request, token) {
             const data = await request(`/api/posts?${params}`, { headers: { Authorization: `Bearer ${token}` } });
             requests++;
             assert(Array.isArray(data.items) && typeof data.hasNext === 'boolean', `${test.id}: invalid page response`);
+            if (Object.hasOwn(data, 'suggestedQuery')) {
+                assert(page === 0 && !data.hasNext && data.items.length === 0 &&
+                    typeof data.suggestedQuery === 'string' && data.suggestedQuery !== test.q, `${test.id}: invalid suggestion`);
+                suggestion = data.suggestedQuery;
+            }
             for (const item of data.items) {
                 const id = Number(item.id);
                 if (!eligible(id, scope, test.category)) unexpectedIds.push({ case: test.id, scope, sort: sort ?? 'default', id });
                 assert(!seen.has(id), `${test.id}: duplicate post ${id}`);
                 seen.add(id);
             }
-            if (!data.hasNext) return [...seen];
+            if (!data.hasNext) return { ids: [...seen], suggestion };
             assert(data.items.length > 0, `${test.id}: empty page with hasNext`);
         }
         throw new Error(`${test.id}: pagination did not terminate`);
@@ -133,11 +139,37 @@ async function evaluate(request, token) {
             const relevance = await collect(test, scope, 'relevance');
             const latest = await collect(test, scope, 'latest');
             const defaultOrder = await collect(test, scope);
-            rows.push({ case: test.id, scope, primary: scope === test.scope, expected, relevance, latest,
-                defaultMatchesRelevance: JSON.stringify(defaultOrder) === JSON.stringify(relevance) });
+            const row = { case: test.id, scope, primary: scope === test.scope, expected, relevance: relevance.ids, latest: latest.ids,
+                defaultMatchesRelevance: JSON.stringify(defaultOrder) === JSON.stringify(relevance) };
+            assert.equal(latest.suggestion, relevance.suggestion, `${test.id}: suggestion depends on sort`);
+            if (fixture.evaluateSuggestions || relevance.suggestion !== null) {
+                const suggested = relevance.suggestion;
+                const corrected = suggested ? await collect({ ...test, q: suggested }, scope, 'relevance') : null;
+                if (suggested) assert(corrected.ids.length > 0 && !corrected.suggestion, `${test.id}: suggested search has no results`);
+                row.suggestion = { actual: suggested, returnedPosts: corrected?.ids ?? [] };
+                if (fixture.evaluateSuggestions) {
+                    const correctedExpected = (test.correctedRelevant ?? []).filter(id => eligible(id, scope, test.category));
+                    row.suggestion.expected = correctedExpected.length ? test.suggestedQuery : null;
+                    row.suggestion.expectedPosts = correctedExpected;
+                }
+            }
+            rows.push(row);
         }
     }
     return { rows, requests, unexpectedIds };
+}
+
+function scoreSuggestions(rows) {
+    const expected = rows.filter(row => row.suggestion.expected !== null);
+    const negative = rows.filter(row => row.suggestion.expected === null);
+    return {
+        expected: expected.length,
+        correct: expected.filter(({ suggestion }) => suggestion.expected === suggestion.actual).length,
+        correctedHitAt1: expected.filter(({ suggestion }) => suggestion.expectedPosts.includes(suggestion.returnedPosts[0])).length,
+        correctedHitAt5: expected.filter(({ suggestion }) => suggestion.returnedPosts.slice(0, 5).some(id => suggestion.expectedPosts.includes(id))).length,
+        negative: negative.length,
+        incorrectOnNegative: negative.filter(({ suggestion }) => suggestion.actual !== null).length,
+    };
 }
 
 async function main() {
@@ -223,10 +255,11 @@ async function main() {
         primary: scoreBoth(primary),
         byScope: Object.fromEntries(Object.keys(regionsByScope).map(scope => [scope, scoreBoth(rows.filter(row => row.scope === scope))])),
     };
+    if (fixture.evaluateSuggestions) report.suggestions = { primary: scoreSuggestions(primary), allScopes: scoreSuggestions(rows) };
     const resultFile = path.join(work, 'results.json');
     const rowLines = rows.map(row => `    ${JSON.stringify(row)}`).join(',\n');
     fs.writeFileSync(resultFile, `${JSON.stringify(report, null, 2).slice(0, -2)},\n  "rows": [\n${rowLines}\n  ]\n}\n`);
-    console.log(JSON.stringify(report.primary), '\nResults:', resultFile);
+    console.log(JSON.stringify(report.suggestions ?? report.primary), '\nResults:', resultFile);
     assert.equal(unexpectedIds.length, 0, 'out-of-scope, wrong-category, hidden, deleted, or unseeded posts returned');
     assert.equal(report.defaultMatches, rows.length, 'the default search differs from relevance');
 }

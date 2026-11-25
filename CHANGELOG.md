@@ -30,7 +30,7 @@
 `backend/` — Spring Boot 서버 API
 
 ### 2026-11-26
-- moon — 공통 회원·커뮤니티 게시글·월급 설정 응답에 DTO를 적용하고, 동네 검색 정렬 및 한글 띄어쓰기 검색을 개선. 월급 설정의 가계부 고정 수입·월별 합계 반영 확인(월급·설문 통합 테스트 15개, 커뮤니티 통합 테스트 20개 통과). [응답 DTO](wiki/topics/application.md#dto-적용-검토) · [동네 검색](wiki/topics/community-operations.md#검색-정렬과-관련도) · [월급 자동 등록](wiki/topics/fixed-expenses.md#월급-자동-등록)
+- moon — 공통 회원·커뮤니티 게시글·월급 설정 응답에 DTO를 적용하고, 동네 검색 정렬·한글 띄어쓰기를 개선하고 결과가 없을 때 오타 교정 검색어를 제안. 월급 설정의 가계부 고정 수입·월별 합계 반영 확인(관련 H2 통합 테스트 70개 통과). [응답 DTO](wiki/topics/application.md#dto-적용-검토) · [동네 검색과 오타 제안](wiki/topics/community-operations.md#검색-정렬과-관련도) · [월급 자동 등록](wiki/topics/fixed-expenses.md#월급-자동-등록)
 
 ### 2026-11-25
 - moon — 가계부 수입·지출 저장과 거래 목록, 월별 고정 지출, 내 집 정보 응답, 첫 주거 설문 요청에 DTO 적용. [API 데이터 계약과 DTO](wiki/topics/application.md#api-데이터-계약과-dto) · 검증: H2 백엔드 339개, 관련 프론트 54개 통과.

@@ -51,5 +51,6 @@ test('같은 범위에 실제 결과가 있고 한 자모 차이 후보가 하�
   assert.equal(suggestLocalPostQuery(posts, '방충망 교재'), undefined)
   assert.equal(suggestLocalPostQuery(posts, '교채'), undefined)
   assert.equal(suggestLocalPostQuery(posts, '개포동'), undefined)
-  assert.equal(suggestLocalPostQuery([post(3, '동네 세탁방', '운영 시간을 알려드려요.')], '세탁빵'), undefined)
+  const both = [post(3, '동네 세탁방', '운영 시간을 알려드려요.'), post(4, '세탁망 고르는 법', '옷 크기를 기준으로 골라요.')]
+  assert.equal(suggestLocalPostQuery(both, '세탁빵'), undefined)
 })

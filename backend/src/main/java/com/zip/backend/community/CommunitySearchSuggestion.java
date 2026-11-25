@@ -1,5 +1,7 @@
 package com.zip.backend.community;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -8,6 +10,7 @@ final class CommunitySearchSuggestion {
     private static final int HANGUL_START = '가';
     private static final int MEDIALS = 21;
     private static final int FINALS = 28;
+    private static final int MAX_CANDIDATES = 4;
 
     // 생활 검색에서 자주 쓰는 단어. 정상 단어도 포함해 불필요한 교정을 막는다.
     private static final Set<String> TERMS = Set.of(
@@ -19,20 +22,20 @@ final class CommunitySearchSuggestion {
 
     private CommunitySearchSuggestion() {}
 
-    static String candidate(String query) {
-        if (query == null || query.length() < 3) return null;
-        String result = null;
+    static List<String> candidates(String query) {
+        if (query == null || query.length() < 3) return List.of();
+        var candidates = new ArrayList<String>();
         var words = KOREAN_WORD.matcher(query);
         while (words.find()) {
             String word = words.group();
             if (TERMS.contains(word)) continue;
             for (String term : TERMS) {
                 if (!oneJamoDifference(word, term)) continue;
-                if (result != null) return null;
-                result = query.substring(0, words.start()) + term + query.substring(words.end());
+                if (candidates.size() == MAX_CANDIDATES) return List.of();
+                candidates.add(query.substring(0, words.start()) + term + query.substring(words.end()));
             }
         }
-        return result;
+        return candidates;
     }
 
     private static boolean oneJamoDifference(String word, String term) {

@@ -14,7 +14,7 @@
 
 ### 게시글 응답 DTO
 
-회원 게시글 목록과 검색 결과는 `PostResponse.Page`로 `items`와 `hasNext`를 반환합니다. [검색 정렬과 관련도](#검색-정렬과-관련도)의 필터·정렬을 적용해 최대 21건을 조회하고 표시할 최대 20건을 DTO로 변환합니다. 회원 목록·홈 인기 글·홈 꿀팁은 `comments`와 `attachments`를 생략합니다. 상세·등록·수정 응답과 관리자 목록에는 두 필드가 포함되며, 항목이 없으면 빈 배열을 반환합니다. 관리자 목록은 기존대로 검색어 전체 문자열과 최신순을 사용합니다. 댓글의 `parentId`는 답글이면 문자열 ID, 최상위 댓글이면 명시적 `null`입니다. [게시글 응답 타입](../../backend/src/main/java/com/zip/backend/community/PostResponse.java) · [서버 검색과 매핑](../../backend/src/main/java/com/zip/backend/community/CommunityService.java) · [프론트 응답 타입](../../frontend/src/features/community/server.ts) · [검색 페이지 회귀 테스트](../../backend/src/test/java/com/zip/backend/community/CommunityIntegrationTests.java)
+회원 게시글 목록과 검색 결과는 `PostResponse.Page`로 `items`와 `hasNext`를 반환합니다. 첫 페이지 검색 결과가 0건이면 [오타 교정 제안](#오타-교정-검색어-제안)의 `suggestedQuery`가 포함될 수 있습니다. [검색 정렬과 관련도](#검색-정렬과-관련도)의 필터·정렬을 적용해 최대 21건을 조회하고 표시할 최대 20건을 DTO로 변환합니다. 회원 목록·홈 인기 글·홈 꿀팁은 `comments`와 `attachments`를 생략합니다. 상세·등록·수정 응답과 관리자 목록에는 두 필드가 포함되며, 항목이 없으면 빈 배열을 반환합니다. 관리자 목록은 기존대로 검색어 전체 문자열과 최신순을 사용합니다. 댓글의 `parentId`는 답글이면 문자열 ID, 최상위 댓글이면 명시적 `null`입니다. [게시글 응답 타입](../../backend/src/main/java/com/zip/backend/community/PostResponse.java) · [서버 검색과 매핑](../../backend/src/main/java/com/zip/backend/community/CommunityService.java) · [프론트 응답 타입](../../frontend/src/features/community/server.ts) · [검색 페이지 회귀 테스트](../../backend/src/test/java/com/zip/backend/community/CommunityIntegrationTests.java)
 
 ## 게시글 검색과 Elasticsearch 도입 검토
 
@@ -150,7 +150,21 @@ Windows에서 JDK 17의 `JAVA_HOME`을 설정하고 `backend`에서 `./gradlew.b
 
 품질 유지 검토에서는 전체 적중률과 검색어별 순위·누락을 함께 비교합니다. 고정 30개에서 검색별 상위 5개의 반환 항목을 합산하면 적합한 항목은 25개에서 27개로 늘었고, 적합 표시가 없는 항목은 24개로 같았습니다. 후속 변경에서는 정답이 없는 대조 검색에 생긴 새 결과와 각 검색의 기존 정답 순위 하락을 확인합니다. 검증용 검색어를 규칙 조정에 사용하게 되면 새 검증용 검색어를 미리 고정합니다. 범위 밖·숨김·삭제 글 반환은 0건을 유지하고, 속도는 동일한 부하에서 실행 순서를 번갈아 측정해 확인합니다. [고정 기대 결과](../../db/tests/community-search/fixture-v1.json) · [변경 전후 결과](../../db/tests/community-search/spacing-results-v1.json)
 
-후속 작업 후보는 결과가 비어 있는 철자 오류 검색에 올바른 검색어를 제안하는 것입니다. `방충망 교채`의 제안을 선택하면 기존 동네·카테고리에서 `방충망 교체`를 검색합니다. 평가에는 신규 오타 사례, 유효한 짧은 검색어와 동네 고유명사, 제안할 검색어가 없는 사례를 포함합니다. 고정 평가의 기존 순위와 공개 범위도 대조합니다.
+#### 오타 교정 검색어 제안
+
+회원 검색 첫 페이지에서 결과가 0건이면 생활 검색어 목록과 한글 자모 하나가 다른 후보를 비교합니다. 동일한 동네 범위·카테고리에서 공개 글을 찾을 수 있는 후보가 정확히 하나일 때 `suggestedQuery`를 반환합니다. 후보는 검색어의 한 단어만 교정하고, 둘 이상의 공개 결과 후보가 있거나 후보 자체가 4개를 넘으면 생략합니다. 예를 들어 `방충망 교채`에서 ‘방충망 교체’로 검색을 선택하면 현재 동네·카테고리·정렬을 유지해 다시 검색합니다. 두 글자 이하의 검색어, 검색 결과가 있는 요청, 첫 페이지 이후, 관리자 목록은 제안하지 않습니다. [서버 후보 규칙](../../backend/src/main/java/com/zip/backend/community/CommunitySearchSuggestion.java) · [공개 결과 확인](../../backend/src/main/java/com/zip/backend/community/CommunityService.java#L60) · [교정 버튼](../../frontend/src/features/community/components/CommunityBoard.tsx)
+
+2026-11-26 격리 MySQL 9.6.0의 Spring API에서 검색어와 기대 결과를 미리 적은 12개 사례를 평가했습니다. `방충망 교채`, `보일려 누수`, `폐건전찌 교환`, `24시간 약굳`의 네 사례에서 모두 제안을 받았고 다시 검색했을 때 기대 글이 1위였습니다. 변경 전 제안은 0/4였습니다. 정상 검색어, 짧은 검색어, 모호한 후보, 다른 카테고리, 숨김·삭제 글을 포함한 대조 사례 8개는 제안 0건을 유지했습니다. 세 동네 범위 전체에서는 예상 제안 9/9, 대조 27개에서 잘못된 제안 0건입니다. [고정 사례](../../db/tests/community-search/typo-holdout-v1.json) · [변경 전후 결과](../../db/tests/community-search/typo-results-v1.json)
+
+기존 30개 검색어의 동네 범위별 90개 조합에서 직접 검색 결과와 순위가 유지됐고, `방충망 교채`는 제안으로 적합한 글에 도달했습니다. 두 평가에서 변경 후 API 요청 390건에 지역 범위 밖·다른 카테고리·숨김·삭제 글 반환은 0건이었습니다. 커뮤니티 통합 테스트 21개, 프론트 검색 테스트 3개, 프론트 빌드·린트와 모바일 WebKit 모의 화면의 교정 선택을 확인했습니다. 오타 사례는 `node db/tests/community-search/run.cjs db/tests/community-search/typo-holdout-v1.json`으로 다시 평가합니다. [API 회귀 테스트](../../backend/src/test/java/com/zip/backend/community/AdminCommunityIntegrationTests.java) · [모의 검색 테스트](../../frontend/tests/community-post-search.test.mjs)
+
+#### 검색 품질 평가 보완점
+
+2026-11-26 검토 · 고정 평가의 직접 검색에서 적합한 글은 25개 중 16개가 1위, 24개가 상위 5개에 들었습니다. `입주 신고`는 잡담 뒤에 절차 안내가 나왔고, `야간 공구 대여`는 실제 대여 정보가 없는 글을 반환했습니다. 현재 채점은 첫 적합 글의 순위를 기준으로 집계합니다. 다음 평가에서는 상위 5개를 적합·부분 적합·부적합으로 판단하고 지표와 함께 검색어별 판정 및 순위 변화를 남기는 편을 제안합니다. [검색별 기준 결과](../../db/tests/community-search/baseline-v1.json) · [교정 후 회귀 결과](../../db/tests/community-search/typo-results-v1.json) · [채점 코드](../../db/tests/community-search/run.cjs)
+
+기존 30개는 회귀 비교에 사용하고, 개선 규칙과 별도로 새 검색어·검색 의도·기대 글을 실행 전에 고정합니다. 고정 30개의 주 평가 범위는 우리 동네 20개, 이웃과 전체가 각 5개이며, 교정용 별도 평가는 적합한 제안 4개와 대조 8개에 한정됐습니다. 새 평가는 지역명·장소명, 문장형 검색, 사전에 없는 오타, 적합한 글과 단순 언급 글이 섞인 경우를 포함합니다. 원문 검색의 순위와 교정 제안의 정확성·누락, 제안 선택 뒤 적합 글 도달을 각각 집계합니다. [고정 검색어](../../db/tests/community-search/fixture-v1.json) · [교정 평가 검색어](../../db/tests/community-search/typo-holdout-v1.json)
+
+교정 후보의 공개 결과를 확인하는 추가 조회는 별도 API 시간 측정이 남았습니다. 같은 데이터와 동시 요청 수에서 일반 검색과 0건 검색을 나누고, 0건은 후보가 없는 경우와 후보를 확인하는 경우를 나눠 변경 전후 p95와 오류율을 비교합니다. 직접 검색과 교정 후 재검색에서 지역·카테고리 범위 밖 또는 숨김·삭제 글이 한 건이라도 반환되면 도입을 보류합니다. [후보 확인 경로](../../backend/src/main/java/com/zip/backend/community/CommunityService.java#L60) · [기존 띄어쓰기 부하 결과](../../db/tests/community-search/spacing-results-v1.json)
 
 ## 문의·공지·회원 제재
 

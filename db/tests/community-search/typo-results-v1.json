@@ -1,0 +1,146 @@
+{
+  "mysql": "9.6.0",
+  "before": {
+    "gitBase": "8f2c998f5b6b1fce63a57234460ae68242c20799",
+    "jarSha256": "315d21ef224345669931b3ffa5a3b8ae3ad7ecf8ebf259f458260bdcfe38fb15"
+  },
+  "after": {
+    "gitBase": "99590964bd6c62e9e0f44cfd10fb88f826d7e672",
+    "jarSha256": "3f5ecaaf694316f9873c184ac89d1e059b15a240617c32bb1cb5c29f98bdc88b"
+  },
+  "typoFixtureSha256": "8d219f877fe8297fe141522d4121eb477d3eee9ba778da6ed840f266aa6c0578",
+  "casesBefore": {
+    "primary": {
+      "expected": 4,
+      "correct": 0,
+      "correctedHitAt1": 0,
+      "correctedHitAt5": 0,
+      "negative": 8,
+      "incorrectOnNegative": 0
+    },
+    "allScopes": {
+      "expected": 9,
+      "correct": 0,
+      "correctedHitAt1": 0,
+      "correctedHitAt5": 0,
+      "negative": 27,
+      "incorrectOnNegative": 0
+    }
+  },
+  "casesAfter": {
+    "primary": {
+      "expected": 4,
+      "correct": 4,
+      "correctedHitAt1": 4,
+      "correctedHitAt5": 4,
+      "negative": 8,
+      "incorrectOnNegative": 0
+    },
+    "allScopes": {
+      "expected": 9,
+      "correct": 9,
+      "correctedHitAt1": 9,
+      "correctedHitAt5": 9,
+      "negative": 27,
+      "incorrectOnNegative": 0
+    }
+  },
+  "qualityRegression": {
+    "fixtureSha256": "1359cf31102a06a2708daaeb7067f5bcd16003928f3254839cfc6ca418b47bb2",
+    "originalRankingsMatched": 90,
+    "primary": {
+      "relevance": {
+        "queries": 30,
+        "positive": 25,
+        "negative": 5,
+        "hitAt1": 16,
+        "hitAt5": 24,
+        "positiveEmpty": 1,
+        "positiveNoRelevantReturned": 1,
+        "negativeNonEmpty": 1
+      },
+      "latest": {
+        "queries": 30,
+        "positive": 25,
+        "negative": 5,
+        "hitAt1": 5,
+        "hitAt5": 24,
+        "positiveEmpty": 1,
+        "positiveNoRelevantReturned": 1,
+        "negativeNonEmpty": 1
+      }
+    },
+    "recovered": [
+      {
+        "case": "Q15",
+        "scope": "here",
+        "query": "방충망 교체",
+        "postIds": [
+          1501,
+          1502
+        ]
+      },
+      {
+        "case": "Q15",
+        "scope": "near",
+        "query": "방충망 교체",
+        "postIds": [
+          1503,
+          1501,
+          1502
+        ]
+      },
+      {
+        "case": "Q15",
+        "scope": "all",
+        "query": "방충망 교체",
+        "postIds": [
+          1503,
+          1501,
+          1502
+        ]
+      }
+    ]
+  },
+  "requestsBefore": 108,
+  "requestsAfter": 390,
+  "unexpectedIds": [],
+  "rows": [
+    {"case":"T01","scope":"here","primary":true,"original":[],"expected":"방충망 교체","actual":"방충망 교체","expectedPosts":[101],"returnedPosts":[101]},
+    {"case":"T01","scope":"near","primary":false,"original":[],"expected":"방충망 교체","actual":"방충망 교체","expectedPosts":[101],"returnedPosts":[101]},
+    {"case":"T01","scope":"all","primary":false,"original":[],"expected":"방충망 교체","actual":"방충망 교체","expectedPosts":[101],"returnedPosts":[101]},
+    {"case":"T02","scope":"here","primary":true,"original":[],"expected":"보일러 누수","actual":"보일러 누수","expectedPosts":[201],"returnedPosts":[201]},
+    {"case":"T02","scope":"near","primary":false,"original":[],"expected":"보일러 누수","actual":"보일러 누수","expectedPosts":[201],"returnedPosts":[201]},
+    {"case":"T02","scope":"all","primary":false,"original":[],"expected":"보일러 누수","actual":"보일러 누수","expectedPosts":[201],"returnedPosts":[201]},
+    {"case":"T03","scope":"here","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T03","scope":"near","primary":true,"original":[],"expected":"폐건전지 교환","actual":"폐건전지 교환","expectedPosts":[301],"returnedPosts":[301]},
+    {"case":"T03","scope":"all","primary":false,"original":[],"expected":"폐건전지 교환","actual":"폐건전지 교환","expectedPosts":[301],"returnedPosts":[301]},
+    {"case":"T04","scope":"here","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T04","scope":"near","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T04","scope":"all","primary":true,"original":[],"expected":"24시간 약국","actual":"24시간 약국","expectedPosts":[401],"returnedPosts":[401]},
+    {"case":"T05","scope":"here","primary":true,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T05","scope":"near","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T05","scope":"all","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T06","scope":"here","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T06","scope":"near","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T06","scope":"all","primary":true,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T07","scope":"here","primary":true,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T07","scope":"near","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T07","scope":"all","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T08","scope":"here","primary":true,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T08","scope":"near","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T08","scope":"all","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T09","scope":"here","primary":true,"original":[901],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T09","scope":"near","primary":false,"original":[901],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T09","scope":"all","primary":false,"original":[901],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T10","scope":"here","primary":true,"original":[1001],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T10","scope":"near","primary":false,"original":[1001],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T10","scope":"all","primary":false,"original":[1001],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T11","scope":"here","primary":true,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T11","scope":"near","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T11","scope":"all","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T12","scope":"here","primary":true,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T12","scope":"near","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]},
+    {"case":"T12","scope":"all","primary":false,"original":[],"expected":null,"actual":null,"expectedPosts":[],"returnedPosts":[]}
+  ]
+}

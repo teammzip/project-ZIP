@@ -74,9 +74,13 @@ public class CommunityService {
         var items = rows.stream().limit(PAGE_SIZE).map(p -> postSummary(p, viewerId)).toList();
         String suggestion = null;
         if (page == 0 && rows.isEmpty()) {
-            String candidate = CommunitySearchSuggestion.candidate(filter.keyword());
-            if (candidate != null && !repository.searchPosts(viewerId, regions, filter.category(), candidate,
-                CommunityRepository.PostSort.LATEST, 1, 0).isEmpty()) {
+            for (String candidate : CommunitySearchSuggestion.candidates(filter.keyword())) {
+                if (repository.searchPosts(viewerId, regions, filter.category(), candidate,
+                    CommunityRepository.PostSort.LATEST, 1, 0).isEmpty()) continue;
+                if (suggestion != null) {
+                    suggestion = null;
+                    break;
+                }
                 suggestion = candidate;
             }
         }
