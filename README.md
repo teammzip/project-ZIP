@@ -31,7 +31,8 @@ npm run dev      # → 브라우저에서 http://localhost:3000
 준비물: Java 17, MySQL 8, `db/schema.sql`로 만든 DB.
 
 1. `backend/application-local.properties.example`을 참고해 `backend/application-local.properties`를 만들고 `DB_URL` · `DB_USERNAME` · `DB_PASSWORD` · `JWT_SECRET`(Base64, 32바이트 이상)을 채워요. MySQL 포트와 DB 이름은 각자 환경에 맞게 `DB_URL`에 적어요. 메일 인증은 `MAIL_*`, 지도 · 동네 인증은 `KAKAO_REST_KEY` 값이 필요해요(example 참고). 이 파일은 깃에 올라가지 않아요.
-   - 이미 쓰던 DB는 새로 받은 코드에 맞게 [db/migrations](db/migrations/README.md)의 새 파일을 적용해요. 새 DB는 `db/schema.sql`만 실행하면 돼요.
+   - 새 DB는 [db/schema.sql](db/schema.sql)로 구조를 만들어요. 전국 배출표와 주변 동네 기능을 사용하려면 [신규 DB용 데이터 적용 순서](db/migrations/README.md)를 따라 지역·배출표·이웃 관계를 넣어요.
+   - 이미 쓰던 DB는 [기존 DB 마이그레이션 안내](db/migrations/README.md)에 따라 새 파일을 적용해요.
 2. (선택) 소셜 로그인: 키가 있는 공급자만 켜져요. 값은 `backend/application-local.properties`나 아래 파일에 넣어요(깃에 올라가지 않아요).
 
    | 공급자 | 파일 | 키 이름 | 콘솔에 등록할 리디렉션 URI |
@@ -64,6 +65,8 @@ secrets/       (선택) 로컬 비밀값(구글 키 등). 깃에 올리지 않�
 
 **서버까지 연결된 기능**: 회원가입 · 로그인(구글 · 네이버 · 카카오) · 이메일 인증 · 아이디/비밀번호 찾기 · 탈퇴, 프로필 · 설정 · 동네 인증 · 주거 설문 · 내 집 정보, 일정 · 기념일, 메모, 가계부(수입 · 지출 · 월급) · 고정 지출 · 고지서 사진 인식(AI), 알림(댓글 · 답글 · 경고 · 문의 답변 · 일정 · 쓰레기 배출 · 월세), 우리 동네 쓰레기 배출표(일정 화면, 전국 공공데이터), 공지사항, 커뮤니티(글 · 댓글 · 공감 · 첨부 · 신고 · 인기 글), 지도(장소 · 저장 리스트 · AI 검색), AI 대화, 고객센터, 관리자(회원 · 경고 · 정지 · 신고 · 게시글 · 문의 · 공지).
 
+서버 모드에서는 로그인 후 일정 화면의 ‘우리 동네 쓰레기 배출표’를 펼치면 주소에 해당하는 정보를 조회해요. [배출표 조회와 알림](wiki/topics/trash-schedules.md)
+
 **남은 것**
 - 약관: 클라우드 업체 · 보관 국가 확정 후 처리방침 5번 고치기, 출시 전 법률 검토
 
@@ -71,6 +74,7 @@ secrets/       (선택) 로컬 비밀값(구글 키 등). 깃에 올리지 않�
 | 보고 싶은 것 | 문서 |
 |---|---|
 | 프론트 · 백엔드 · DB 에서 누가 언제 무엇을 했는지 (PR 마다 한 줄씩 추가) | [CHANGELOG.md](CHANGELOG.md) |
+| 기능별 동작, 결정 이유, 검증 결과 | [Second Brain](wiki/index.md) |
 | 프론트 ↔ 서버 API 전체와 기능별 상태 | [frontend/API.md](frontend/API.md) |
 | 프론트 폴더 · 실행 | [frontend/README.md](frontend/README.md) |
 | 백엔드 실행 · 기능별 구현 설명 | [backend/README.md](backend/README.md) · [backend/IMPLEMENTATION.md](backend/IMPLEMENTATION.md) |

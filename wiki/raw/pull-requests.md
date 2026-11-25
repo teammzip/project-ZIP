@@ -1,8 +1,8 @@
 # 전체 PR 원자료
 
-2026-11-24 수집 · GitHub `dev` `250b8d9` · [원자료 목록](index.md) · [위키 색인](../index.md)
+2026-11-25 확인 · GitHub `dev` `c3ed411` · [원자료 목록](index.md) · [위키 색인](../index.md)
 
-GitHub에 등록된 PR #1~#137 전부를 수록했습니다. `dev` 직접 병합 130건, `backend` 병합 4건, 병합 없이 닫힌 PR 3건입니다. 등록 번호는 GitHub의 전체 목록을 오래된 순과 최신순으로 조회하고 `dev`의 첫 번째 부모 이력과 대조했습니다. [GitHub PR 목록](https://github.com/teammzip/project-ZIP/pulls?q=is%3Apr)
+GitHub에 등록된 PR #1~#142 전부를 수록했습니다. `dev` 직접 병합 134건, `backend` 병합 5건, 병합 없이 닫힌 PR 3건입니다. 기존 #1~#137은 GitHub의 전체 목록과 `dev`의 첫 번째 부모 이력을 대조했고, 추가 #138~#142는 개별 PR의 병합 정보와 커밋을 확인했습니다. [GitHub PR 목록](https://github.com/teammzip/project-ZIP/pulls?q=is%3Apr)
 
 PR 번호를 누르면 설명·검토 이력, 변경 파일 링크를 누르면 원본 변경 내용을 볼 수 있습니다. Git 열에는 병합 커밋을, 병합 없이 닫힌 PR에는 제출 브랜치의 마지막 커밋을 기록했습니다. 병합 커밋이 로컬에 있으면 `git diff <병합커밋>^1 <병합커밋>`으로 대상 브랜치에 들어간 전체 변경을, `git show <커밋>:<경로>`로 당시 파일을 읽을 수 있습니다. PR #49의 제목은 데모 접속 정보를 제외한 기능명으로 적었습니다.
 
@@ -145,10 +145,15 @@ PR 번호를 누르면 설명·검토 이력, 변경 파일 링크를 누르면 
 | [#135](https://github.com/teammzip/project-ZIP/pull/135) | 개인정보 처리방침 국외 이전 채움 · 소개 페이지 푸터 · 추천 카드 | `front` → `dev` | 병합 | [`1762d93`](https://github.com/teammzip/project-ZIP/commit/1762d93779fe41bf0423b8f0156b1957126bd8f9) | [변경 파일](https://github.com/teammzip/project-ZIP/pull/135/files) |
 | [#136](https://github.com/teammzip/project-ZIP/pull/136) | feat: 메모 폴더·가계부 연동, 동네 배출표, 내 리뷰와 AI 안내 개선 | `backend` → `dev` | 병합 | [`2f8ba7f`](https://github.com/teammzip/project-ZIP/commit/2f8ba7f909c0e99bfa0246230ad8500dae17e3db) | [변경 파일](https://github.com/teammzip/project-ZIP/pull/136/files) |
 | [#137](https://github.com/teammzip/project-ZIP/pull/137) | refactor: 회원별 데이터 조회·저장 통합 및 레거시 경로 정리 | `backend` → `dev` | 병합 | [`250b8d9`](https://github.com/teammzip/project-ZIP/commit/250b8d9d740a6edf444a763087ba401cc14acf66) | [변경 파일](https://github.com/teammzip/project-ZIP/pull/137/files) |
+| [#138](https://github.com/teammzip/project-ZIP/pull/138) | chore: Second Brain 구축 및 문서 동기화·민감정보 검사 추가 | `backend` → `dev` | 병합 | [`1ed7ef8`](https://github.com/teammzip/project-ZIP/commit/1ed7ef8e42c36df74b9036d032c07ac765d4e828) | [변경 파일](https://github.com/teammzip/project-ZIP/pull/138/files) |
+| [#139](https://github.com/teammzip/project-ZIP/pull/139) | refactor: 가계부 조회·저장 개선 및 생활 API 계약 동기화 | `backend` → `dev` | 병합 | [`d47a36f`](https://github.com/teammzip/project-ZIP/commit/d47a36f6acea9882132adef895528565269734c3) | [변경 파일](https://github.com/teammzip/project-ZIP/pull/139/files) |
+| [#140](https://github.com/teammzip/project-ZIP/pull/140) | refactor: 가계부 조회·저장 개선 및 생활 API 계약 동기화 | `dev` → `backend` | 병합 | [`d42841d`](https://github.com/teammzip/project-ZIP/commit/d42841d07b9bbe2e37966e721fbdec04b005b72c) | [변경 파일](https://github.com/teammzip/project-ZIP/pull/140/files) · 0개, PR #139 이력에 포함 |
+| [#141](https://github.com/teammzip/project-ZIP/pull/141) | 배출표 주소 재탐색·출처 표시, 메모 폴더 버그 수정, 동네 목록 API·모의 모드 전국 주변 동네 추가 | `test` → `dev` | 병합 | [`ba38001`](https://github.com/teammzip/project-ZIP/commit/ba38001334f93ec25b40c9523667762a0e38c177) | [변경 파일](https://github.com/teammzip/project-ZIP/pull/141/files) |
+| [#142](https://github.com/teammzip/project-ZIP/pull/142) | 오래된 로그인 세션·이메일 인증·알림 자동 정리 추가 | `test` → `dev` | 병합 | [`c3ed411`](https://github.com/teammzip/project-ZIP/commit/c3ed4115470eb3044c3ba8508d6a539744c44812) | [변경 파일](https://github.com/teammzip/project-ZIP/pull/142/files) |
 
 ## PR 병합 커밋 외의 dev 이력
 
-첫 번째 부모 이력에서 PR 병합 메시지가 없는 커밋입니다. [전체 커밋 이력](https://github.com/teammzip/project-ZIP/commits/250b8d9d740a6edf444a763087ba401cc14acf66/)
+첫 번째 부모 이력에서 PR 병합 메시지가 없는 커밋입니다. [전체 커밋 이력](https://github.com/teammzip/project-ZIP/commits/c3ed4115470eb3044c3ba8508d6a539744c44812/)
 
 | Git | 제목 |
 | --- | --- |

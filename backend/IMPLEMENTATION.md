@@ -155,7 +155,7 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 
 ## 약관 점검
 
-**2026-11-22**: 화면이 `GET /api/terms` 를 보여 줘요. 문구를 고치면 `content.ts` → `node db/tools/terms-sync.cjs <마이그레이션 이름>` 으로 `schema.sql` 과 기존 DB 마이그레이션을 만들고, `frontend/tests/legal-terms.test.mjs` 가 화면 문구 = DB 기본 약관인지 확인해요. 주소는 가입 필수가 아니라 가입 후 주거 설문 · 내 정보에서 입력(선택)이에요 (가입 `address` · 소셜 첫 동의 `address` 는 선택).
+**2026-11-22**: 화면이 `GET /api/terms` 를 보여 줘요. 문구를 고치면 `content.ts` → `node db/tools/terms-sync.cjs <마이그레이션 이름>` 으로 `schema.sql` 과 기존 DB 마이그레이션을 만들고, `frontend/tests/legal-terms.test.mjs` 가 화면 문구 = DB 기본 약관인지 확인해요. 가입과 소셜 첫 동의의 주소 입력 경로와 API 규칙은 [회원가입 연동 문서](../frontend/API.md#회원가입)에서 확인할 수 있어요.
 
 프론트 `frontend/src/features/legal/content.ts`와 `db/schema.sql`의 SERVICE/PRIVACY/POLICY 제목·본문·버전 `2026-10-18`·동의 방식(AGREE/CONFIRM)은 자동 대조합니다. 개인정보 처리방침은 CONFIRM, 나머지 두 문서는 AGREE입니다. 만 14세 이상 확인은 별도 회원 필드입니다.
 
@@ -169,7 +169,7 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 
 | API | 현재 동작 |
 |---|---|
-| GET `/api/posts?scope=here|near|all&category=&q=&page=0` | 보이는 글(VISIBLE) 새 글부터 20개 + `hasNext`. here = 내 동네(`users.region_id`), near = 내 동네 + `region_neighbors`(전국 1,286줄 — 육지 경계가 맞닿은 시 · 군 · 구, `db/migrations/20261122_04`), all = 전체. 동네가 없으면 here · near 는 빈 목록. `q` 는 제목 · 본문(40자) |
+| GET `/api/posts?scope=here\|near\|all&category=&q=&sort=&page=0` | 공개 글 20개 + `hasNext`. here = 내 동네(`users.region_id`), near = 내 동네 + `region_neighbors`(전국 1,286줄 — 육지 경계가 맞닿은 시 · 군 · 구, `db/migrations/20261122_04`), all = 전체. 동네가 없으면 here · near 는 빈 목록. 검색·정렬은 [커뮤니티 API 계약](../frontend/API.md#7-커뮤니티--첨부--신고-) 참고 |
 | GET `/api/posts/home-tips` | `is_home_tip` 글 최대 3개 (지정은 관리자 기능 단계에서) |
 | GET `/api/posts/neighbors` | "주변 동네" 탭 안내: 내 동네(`users.region_id`)와 이웃 동네 이름 `{ region, neighbors: [{ id, name, sido }] }`. 이웃은 같은 시 · 도 먼저 · 이름 순, 동네가 없으면 `region: null` |
 | GET `/api/posts/{id}` | 댓글(VISIBLE) · 첨부 포함, `mine` · `liked` · `reported` 는 토큰 기준 |

@@ -1,5 +1,5 @@
 import { MemoBoard, useMemoStore, type Memo } from '@/features/memo'
-import { useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { useAuthStore } from '@/features/auth'
 import { getErrorMessage } from '@/lib/apiClient'
 import { ledgerMemoReturnUrl, prepareLedgerMemo, readMemoDraft, rememberLedgerMemoInput, writeMemoDraft } from '@/features/life/ledgerMemoNavigation'
@@ -10,19 +10,27 @@ import { useSearchParams } from 'react-router-dom'
 export function MemoPage() {
   const owner = useAuthStore((state) => state.user?.id)
   const [params] = useSearchParams()
-  return <AccountMemoPage key={`${owner}:${params.get('ledgerDraft') ?? ''}`} owner={owner} />
+  const draftKey = params.get('ledgerDraft')
+  return <AccountMemoPage key={`${owner}:${draftKey ?? ''}`} owner={owner} draftKey={draftKey} />
 }
 
-function AccountMemoPage({ owner }: { owner?: string }) {
-  const [, setParams] = useSearchParams()
-  const [draft, setDraft] = useState(() => readMemoDraft(new URLSearchParams(window.location.search).get('ledgerDraft'), owner))
-  const [error, setError] = useState(''), [ready, setReady] = useState(!draft)
-  const [restored, setRestored] = useState(!draft?.memoInput)
-  const memos = useMemoStore((state) => state.memos)
+function AccountMemoPage({ owner, draftKey }: { owner?: string; draftKey: string | null }) {
+  const [params, setParams] = useSearchParams()
+  const [draft] = useState(() => readMemoDraft(draftKey, owner))
+  const [error, setError] = useState('')
+  const [memoId, setMemoId] = useState<string>()
+  const memoExists = useMemoStore((state) => !!memoId && state.memos.some((memo) => String(memo.id) === memoId))
+  const openMemo = useEffectEvent((id: string) => {
+    if (params.get('id') === id) return
+    const next = new URLSearchParams(params)
+    next.set('id', id)
+    setParams(next, { replace: true })
+  })
   useEffect(() => { window.dispatchEvent(new Event('zip-memos-refresh')) }, [])
   useEffect(() => {
     if (!draft || draft.paused) return
     let alive = true
+    let stopWaiting: (() => void) | undefined
     const prepare = async () => {
       try {
         let data: { id: string }
@@ -39,31 +47,38 @@ function AccountMemoPage({ owner }: { owner?: string }) {
           if (!existing) useMemoStore.getState().update(id, { title: draft.label.slice(0, 60), ledgerContext: draft.label, draft: true })
           data = { id: String(id) }
         } else data = await prepareLedgerMemo(draft)
-        if (!alive) return
+        if (!alive || useAuthStore.getState().user?.id !== owner) return
         const latest = readMemoDraft(draft.key, owner)
         if (!latest) return
         if (latest.memoId !== data.id) writeMemoDraft({ ...latest, memoId: data.id })
-        setDraft((previous) => previous?.memoId === data.id ? previous : previous ? { ...previous, memoId: data.id } : previous)
-        if (new URLSearchParams(window.location.search).get('id') !== data.id) {
-          setParams((previous) => { const next = new URLSearchParams(previous); next.set('id', data.id); return next }, { replace: true })
-        }
-        window.dispatchEvent(new Event('zip-memos-refresh'))
-        setReady(true)
+        const memo = await new Promise<Memo | undefined>((resolve) => {
+          const check = ({ memos }: ReturnType<typeof useMemoStore.getState>) => {
+            const found = memos.find((entry) => String(entry.id) === data.id)
+            if (!found) return
+            unsubscribe()
+            resolve(found)
+          }
+          const unsubscribe = useMemoStore.subscribe(check)
+          stopWaiting = () => {
+            unsubscribe()
+            resolve(undefined)
+          }
+          check(useMemoStore.getState())
+          window.dispatchEvent(new Event('zip-memos-refresh'))
+        })
+        if (!alive || !memo || useAuthStore.getState().user?.id !== owner) return
+        // 목록 동기화가 스토어 쓰기를 마친 뒤 보관한 입력을 복구한다.
+        if (latest.memoInput) useMemoStore.getState().update(memo.id, latest.memoInput)
+        openMemo(data.id)
+        setMemoId(data.id)
       } catch (cause) { if (alive) setError(getErrorMessage(cause, '메모를 열지 못했어요.')) }
     }
     void prepare()
-    return () => { alive = false }
-  }, [draft, owner, setParams])
-  const current = draft?.memoId ? memos.find((memo) => String(memo.id) === draft.memoId) : undefined
-  const memoId = current?.id
-  useEffect(() => {
-    if (restored || memoId === undefined || !draft?.memoInput) return
-    // 가계부에서 넘어온 쓰던 내용을 메모 저장소에 되살리고, 저장소가 바뀌었다는 알림을 받은 뒤에 메모 화면을 연다
-    // (effect 안에서 바로 setState 하지 않으려는 것. update 는 늘 저장소를 바꾸므로 알림이 곧바로 옴)
-    const unsubscribe = useMemoStore.subscribe(() => { unsubscribe(); setRestored(true) })
-    useMemoStore.getState().update(memoId, draft.memoInput)
-    return unsubscribe
-  }, [draft, memoId, restored])
+    return () => {
+      alive = false
+      stopWaiting?.()
+    }
+  }, [draft, owner])
   const returnToLedger = draft ? (saved: Memo) => {
     try {
       const latest = readMemoDraft(draft.key, owner)
@@ -78,8 +93,8 @@ function AccountMemoPage({ owner }: { owner?: string }) {
   } : undefined
   return <div className={common.stack}>
     {error && <p role="alert">{error}</p>}
-    {ready && restored && (!draft || current)
-      ? <MemoBoard editableLedgerMemoId={draft?.memoId} onLedgerMemoSaved={returnToLedger} onLedgerMemoEdit={draft ? (memo) => rememberLedgerMemoInput(draft, memo) : undefined} />
+    {(!draft || memoExists)
+      ? <MemoBoard editableLedgerMemoId={memoId} onLedgerMemoSaved={returnToLedger} onLedgerMemoEdit={draft ? (memo) => rememberLedgerMemoInput(draft, memo) : undefined} />
       : <p role="status">메모를 여는 중이에요.</p>}
   </div>
 }

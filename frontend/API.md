@@ -49,7 +49,7 @@
 
 ## 1. 인증 · 내 정보 ✅
 
-현재 백엔드의 PATCH `/api/auth/me`는 닉네임·한 줄 소개·캐릭터·배경색·프로필 사진 연결, 그리고 소셜 첫 가입의 주소·약관 동의(`address`, `agreeTerms`, `agreePrivacy`, `agreePolicy`, `ageOver14`, `termsVersion`; 한 번만 가능)를 지원해요. 사용자 ID·권한 등 지원하지 않는 키를 보내면 400이에요.
+PATCH `/api/auth/me`는 프로필 수정, [소셜 첫 약관 동의](#소셜-로그인), [회원 주소 변경](#회원-주소-변경)을 지원해요. 사용자 ID·권한 등 지원하지 않는 키를 보내면 400이에요.
 
 > 로그인·토큰 재발급·로그아웃·내 정보·비밀번호 변경·프로필·회원 탈퇴·구글/네이버/카카오 소셜 로그인·회원가입·이메일 인증·아이디 찾기·비밀번호 재설정을 지원해요. 메일은 Gmail SMTP를 사용해요. 개발 중에는 `MAIL_LOG_ONLY=true`로 메일 발송을 대신할 수 있어요.
 
@@ -60,7 +60,7 @@
 | POST | `/api/auth/refresh` | `zip_refresh` 쿠키, `X-Zip-Session` 헤더(JWT의 `sid`) | `{ accessToken }`, 갱신된 `zip_refresh` 쿠키 |
 | POST | `/api/auth/logout` | — | — (`auth_sessions.revoked_at` 채움) |
 | GET | `/api/auth/me` | — | `user` |
-| PATCH | `/api/auth/me` | `{ nickname }` 또는 [소셜 첫 가입](#소셜-로그인) 정보 | `user` |
+| PATCH | `/api/auth/me` | 프로필 수정, [소셜 첫 동의](#소셜-로그인) 또는 회원 주소 변경 | `user` |
 | PATCH | `/api/auth/me/password` | `{ currentPassword, newPassword }` | — (현재 비밀번호가 틀리면 400) |
 | DELETE | `/api/auth/me` | — (회원 탈퇴) | — |
 | POST | `/api/auth/email/send` | `{ email, purpose }` | — |
@@ -87,6 +87,7 @@
 | 키 | DB | 설명 |
 |---|---|---|
 | `username` | `users.login_id` | 현재 User 타입은 선택 문자열이므로 없으면 키 생략. DB NULL을 그대로 응답하려면 프론트 타입 확장이 필요해요 |
+| `address` | `users.address` | 회원 주소가 미등록이면 빈 문자열 `""` |
 | `region` | `users.region_id` → `regions` | 주소에서 구를 찾아 연결. 못 찾으면 `null` |
 | `provider` | `users.signup_provider` | `EMAIL` → `email` 처럼 **소문자**로 |
 | `role` | `users.role` | `ADMIN`은 로그인하면 관리자 화면(`/admin`)만 보여요 |
@@ -96,7 +97,7 @@
 | `bio` · `avatar*` | `user_profiles` + `uploaded_files` | [프로필 꾸미기](#프로필-꾸미기-사진--한-줄-소개) |
 | `suspension` · `warnCount` · `unseenWarnings` | `user_sanctions` | [11번 화면](#11-관리자--이용-정지-) — 정지 화면 · 경고 창 |
 
-위 예시의 lastLoginAt, suspension, warnCount, unseenWarnings와 regionVerifiedAt/home는 **연동 시 확장 제안**이에요. bio·avatarFileId·avatarUrl·avatarEmoji·avatarColor는 현재 User 타입과 실제 인증 응답에 포함돼요. 이메일·주소가 없는 소셜 회원의 응답은 현재 필수 문자열 타입에 맞춰 빈 문자열을 써요. 정지 화면은 현재 별도 브라우저 저장소를 사용해요.
+위 예시의 lastLoginAt, suspension, warnCount, unseenWarnings와 regionVerifiedAt/home는 **연동 시 확장 제안**이에요. bio·avatarFileId·avatarUrl·avatarEmoji·avatarColor는 현재 User 타입과 실제 인증 응답에 포함돼요. 이메일이 없는 소셜 회원의 응답은 빈 문자열을 써요. 정지 화면은 현재 별도 브라우저 저장소를 사용해요.
 
 ### 로그인
 - `loginId`는 **아이디 또는 이메일** (`users.login_id` 또는 `users.email`로 찾기).
@@ -107,16 +108,23 @@
 - 보호 API에서 액세스 토큰 만료로 401을 받으면 재발급 후 원래 요청을 한 번 재시도해요. 통신 장애에는 로그인 상태를 유지하며 다음 요청에서 다시 시도해요. 로그아웃은 현재 세션을 해제하고, 비밀번호 변경·재설정은 해당 계정의 모든 세션을 해제해요. 정지 상태에서는 재발급도 403이에요.
 - 프론트와 API는 동일 오리진으로 연결해요. 운영 HTTPS 프록시가 백엔드에 HTTP로 전달하면 `ZIP_AUTH_COOKIE_SECURE=true`를 설정해요. 기능 반영 전 발급된 로그인은 새 재발급 쿠키가 필요하므로 만료 후 한 번 다시 로그인해야 해요.
 
+### 회원 주소 변경
+
+이미 약관에 동의한 회원은 `PATCH /api/auth/me`에 약관 필드 없이 `address`를 보냅니다. 서버는 앞뒤 공백을 제거해 비어 있지 않은 최대 200자의 주소를 `users.address`에 저장하고, 주소에서 시·군·구를 찾아 `users.region_id`를 갱신합니다. 마이페이지 ‘내 집 정보’의 상세주소는 [`PUT /api/me/home-info`](#내-집-정보-서버-연결-2026-11-15)에 `homeAddress`로 보냅니다.
+
 ### 회원가입
+이메일 가입과 소셜 첫 동의 화면에서는 주소를 입력하지 않아요. 가입 후 [첫 주거 설문](#첫-주거-설문)에서 동네를 선택하거나 마이페이지의 ‘내 집 정보’에 상세주소를 입력할 수 있어요.
+
 ```json
 { "username": "tester01", "password": "abcd123!", "nickname": "테스터",
-  "email": "t@zip.com", "emailVerificationToken": "…", "address": "서울 마포구 합정동",
+  "email": "t@zip.com", "emailVerificationToken": "…",
   "agreeTerms": true, "agreePrivacy": true, "agreePolicy": true, "ageOver14": true,
   "termsVersion": "2026-10-18" }
 ```
 - **입력 규칙** (`src/features/auth/schema.ts`와 같게 서버에서도 검사)
-  - 이메일은 가입 화면에서 필수·최대 100자이고 **인증을 마쳐야 가입 버튼이 켜져요**(DB `users.email`은 소셜 가입에서 못 받을 수 있어 NULL 허용). 주소는 공백 제거 후 필수·최대 200자예요. 소셜 첫 동의의 주소에도 같은 제한을 적용해요.
-  - 동의 4개는 모두 true여야 하며 termsVersion은 서버가 유효한 동의 대상 버전인지 검사해요. 소셜 첫 동의도 주소·동의 4개·termsVersion을 함께 검사하고 일반 닉네임 수정에는 동의를 다시 요구하지 않아요.
+  - 이메일은 가입 화면에서 필수·최대 100자이고 **인증을 마쳐야 가입 버튼이 켜져요**(DB `users.email`은 소셜 가입에서 못 받을 수 있어 NULL 허용).
+  - 가입 API와 소셜 첫 동의 API에서 `address`는 최대 200자의 선택 필드예요. 생략하거나 `null`, 빈 문자열, 공백만 보내면 주소를 저장하지 않아요.
+  - 가입과 소셜 첫 동의에는 동의 4개를 모두 `true`로 보내야 하며, 서버는 `termsVersion`이 유효한 동의 대상 버전인지 검사해요.
   - 아이디 6~16자 영문 소문자·숫자 / 비밀번호 8~16자 영문·숫자·특수문자 모두 / 닉네임 2~12자
   - 아이디 · 이메일은 겹치면 안 돼요 (`uk_users_*`)
 - **저장할 곳**
@@ -138,8 +146,7 @@
    - 같은 이메일로 가입한 다른 계정이 있으면 합치지 않고 오류(`EMAIL_EXISTS`)로 알려요. 카카오는 비즈 앱이 아니면 이메일이 없을 수 있고, 그래도 가입돼요.
 3. 처음 온 사람(`agreedAt: null`)은 동의 화면에서 `PATCH /api/auth/me`로 아래를 보내요
 ```json
-{ "address": "서울 마포구 합정동",
-  "agreeTerms": true, "agreePrivacy": true, "agreePolicy": true, "ageOver14": true, "termsVersion": "2026-10-18" }
+{ "agreeTerms": true, "agreePrivacy": true, "agreePolicy": true, "ageOver14": true, "termsVersion": "2026-10-18" }
 ```
 
 ### 프로필 꾸미기 (사진 · 한 줄 소개)
@@ -204,7 +211,7 @@
 - DB NULL은 homeAddress 빈 문자열, regionLocation `null`로 줘요. `backend/openapi.yaml`의 `Settings` · `RegionLocation`과 같아요.
 - 프론트 저장 모델로 변환할 때 regionLocation과 point의 null은 생략으로 바꾸고, regionLocation에 로그인 회원의 userId를 붙여요. 서버 요청에는 userId와 다른 회원의 homeAddresses를 보내지 않아요.
 - verified 출처는 서버의 실제 인증 기록으로 검사하며 요청 값만으로 인증을 부여하지 않아요. 동네 식별자와 표시명이 다른 동네를 가리키면 400으로 거절해요.
-- 가입 주소 users.address, 실제 집 주소 home_address, 현재 동네 region_name, 설문 주소 스냅샷을 구분하세요. GPS 인증 좌표를 집 좌표로 덮어쓰지 않아요.
+- 회원 주소 `users.address`, 실제 집 주소 `home_address`, 현재 동네 `region_name`, 설문 주소 스냅샷은 용도가 달라요. GPS 인증 좌표는 집 좌표로 덮어쓰지 않아요.
 - 닉네임은 설정이 아니라 `PATCH /api/auth/me`로 바꿔요.
 - 가입하면 `user_settings` 기본 줄을 같이 만들어 주세요.
 
@@ -459,7 +466,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
-| GET | `/api/posts?scope=here\|near\|all&category=TIP&q=&page=0` | — | `{ items: [post], hasNext }` |
+| GET | `/api/posts?scope=here\|near\|all&category=TIP&q=&sort=&page=0` | — | `{ items: [post], hasNext, suggestedQuery? }` |
 | GET | `/api/posts/my-count` | — | `{ count }` (로그인한 회원의 전체 공개 게시글 수) |
 | GET | `/api/posts/popular` | — | `[post]` (내 동네 공개 글, 조회 수순 최대 3개) |
 | GET | `/api/posts/neighbors` | — | `{ region: { id, name, sido } \| null, neighbors: [{ id, name, sido }] }` — "주변 동네" 탭 안내. 내 동네(`users.region_id`, 주거 설문 · 내 정보 주소로 정해짐)와 이웃 동네(`region_neighbors`, 같은 시 · 도 먼저 · 이름 순). `scope=near` 글 목록과 같은 기준. 동네가 없으면 `region: null` |
@@ -475,6 +482,21 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | DELETE | `/api/comments/{id}` | — | — (내 댓글만) |
 | POST | `/api/files` | `multipart/form-data` (`file`) | `{ id, name, type, size, url }` |
 | POST | `/api/reports` | `{ targetType, targetId, reason, detail }` | — |
+
+### 동네 게시글 검색
+
+검색어 `q`는 앞뒤 공백을 뺀 뒤 40자까지 입력할 수 있습니다. 공백으로 나눈 각 단어가 제목이나 본문에 포함된 공개 글을 동네·주제 범위에서 찾습니다. 한글 음절 3자 이상으로만 된 한 단어는 제목과 본문에서 일반 공백을 각각 제거한 뒤 비교하므로, `층간소음`으로 `층간 소음`이 들어간 글도 찾을 수 있습니다. `sort`를 생략하면 검색어가 있을 때 `relevance`, 없을 때 `latest`가 적용됩니다.
+
+검색어가 있고 첫 페이지가 0건이면 `suggestedQuery`가 포함될 수 있습니다. 생활 검색어 목록을 기준으로 한글 자모 하나가 다른 교정 후보를 확인해, 같은 동네 범위와 카테고리에서 공개 글을 찾을 수 있는 후보가 하나일 때 반환합니다. 원래 응답의 `items`는 빈 배열이고, 화면에서 제안을 선택하면 검색어를 바꾸고 현재 범위·카테고리·정렬로 다시 요청합니다. [오타 교정 제안 규칙](../wiki/topics/community-operations.md#오타-교정-검색어-제안)
+
+| `sort` | 정렬 기준 |
+| --- | --- |
+| `latest` | 작성 시각 내림차순 |
+| `views` | 누적 조회수 내림차순 |
+| `popular` | 공감 수 + 2 × 댓글 수 내림차순 |
+| `relevance` | 여러 단어의 연속 구문이 제목이나 본문에 일치하는 글을 우선합니다. 같은 그룹에서는 모든 검색 단어가 제목과 본문 양쪽에 있는 글을 앞에 둡니다. 일반 공백을 제거해 검색하는 경우 양쪽 일치가 같으면 제목 일치를 우선합니다. 검색어가 없으면 최신순과 같습니다. |
+
+동점은 작성 시각, 게시글 ID 내림차순으로 정렬합니다. 정의되지 않은 `sort`는 HTTP 400을 반환합니다.
 
 ```json
 { "id": "10", "region": { "id": "2", "name": "마포구" }, "category": "TIP",

@@ -18,6 +18,16 @@ npm run lint     # 코드 검사
 - **찾기 체험:** 닉네임 `지기` · 아이디 `zipdemo` · 이메일 `demo@zip.com`
 - **실제 서버에 붙일 때:** `.env.example`을 `.env.local`로 복사하고 `VITE_USE_MOCK=false`로 바꿔요.
 
+## 변경 검증
+
+`frontend/`에서 실행해요. 린트는 [Oxlint 설정](.oxlintrc.json)을 사용하고, `--deny-warnings`를 붙이면 경고가 있을 때 실패해요.
+
+```bash
+npm run lint -- --deny-warnings
+node --test tests/*.test.mjs
+npm run build
+```
+
 ## 화면 주소
 
 | 주소 | 화면 |
