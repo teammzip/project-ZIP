@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/apiClient'
 import { PHOTO_TYPES } from './attachments'
+import type { PostSort } from './postSearch'
 import type { Attachment, Comment, Post, PostDraft } from './types'
 
 /* 커뮤니티 서버 API (frontend/API.md 7장 · backend community). VITE_USE_MOCK=false 일 때만 씀.
@@ -54,7 +55,8 @@ export const toPost = (p: ServerPost): Post => ({
 })
 
 export type Scope = 'here' | 'near' | 'all'
-export type PostPage = { items: Post[]; hasNext: boolean }
+type PostList<T> = { items: T[]; hasNext: boolean; suggestedQuery?: string }
+export type PostPage = PostList<Post>
 /** "주변 동네" 탭 안내용 동네 이름 (sido: 시 · 도 이름, 시 · 도 자체면 null) */
 export type NeighborRegion = { id: string; name: string; sido: string | null }
 /** GET /api/posts/neighbors: 내 동네(주거 설문 · 내 정보 주소 기준)와 이웃 동네. 동네가 없으면 region = null */
@@ -82,12 +84,12 @@ const postBody = async (draft: PostDraft) => ({
 })
 
 export const communityApi = {
-  posts: async (scope: Scope, cat: string, q: string, page: number): Promise<PostPage> => {
-    const params: Record<string, string | number> = { scope, page }
+  posts: async (scope: Scope, cat: string, q: string, sort: PostSort, page: number, signal: AbortSignal): Promise<PostPage> => {
+    const params: Record<string, string | number> = { scope, sort, page }
     if (cat !== '전체') params.category = CATEGORY_CODE[cat] ?? cat
     if (q.trim()) params.q = q.trim()
-    const data = (await apiClient.get<{ items: ServerPost[]; hasNext: boolean }>('/posts', { params })).data
-    return { items: data.items.map(toPost), hasNext: data.hasNext }
+    const { items, ...pageInfo } = (await apiClient.get<PostList<ServerPost>>('/posts', { params, signal })).data
+    return { ...pageInfo, items: items.map(toPost) }
   },
   myPostCount: async (signal: AbortSignal) => (await apiClient.get<{ count: number }>('/posts/my-count', { signal })).data.count,
   post: async (id: number) => toPost((await apiClient.get<ServerPost>(`/posts/${id}`)).data),

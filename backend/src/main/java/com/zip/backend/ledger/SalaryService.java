@@ -24,20 +24,21 @@ public class SalaryService {
         try { return LocalDate.now(clock.withZone(ZoneId.of(zone))); }
         catch (DateTimeException | NullPointerException error) { throw new ApiException(400,"시간대를 확인해 주세요."); }
     }
-    public Map<String,Object> get(long user) {
-        return jdbc.query("SELECT amount,income_period,payment_day,start_month FROM salary_settings WHERE user_id=?", (rs,n) -> {
-            Map<String,Object> result=new LinkedHashMap<>();
-            long amount=rs.getLong("amount"); String period=rs.getString("income_period");
-            result.put("amount",amount); result.put("incomePeriod",period); result.put("monthlyAmount",period.equals("annual")?amount/12:amount); result.put("paymentDay",rs.getInt("payment_day")); result.put("startMonth",rs.getString("start_month"));
-            return result;
-        },user).stream().findFirst().orElseGet(() -> Map.of("amount",0L,"incomePeriod","monthly","monthlyAmount",0L,"paymentDay",25,"startMonth",""));
+    private SalarySettingsResponse loadSettings(long user) {
+        return jdbc.query("SELECT amount,income_period,payment_day,start_month FROM salary_settings WHERE user_id=?", (rs, row) -> {
+            long amount = rs.getLong("amount");
+            String incomePeriod = rs.getString("income_period");
+            long monthlyAmount = incomePeriod.equals("annual") ? amount / 12 : amount;
+            return new SalarySettingsResponse(amount, incomePeriod, monthlyAmount, rs.getInt("payment_day"),
+                rs.getString("start_month"), null);
+        }, user).stream().findFirst().orElseGet(() -> new SalarySettingsResponse(0, "monthly", 0, 25, "", null));
     }
     @Transactional
-    public Map<String,Object> getWithDraft(long user) {
+    public SalarySettingsResponse getWithDraft(long user) {
         auth.lockUser(user);
-        var settings = get(user);
+        var settings = loadSettings(user);
         String draft = jdbc.queryForObject("SELECT housing_salary_draft FROM users WHERE id=?", String.class, user);
-        if (draft == null && settings.get("startMonth").equals("") && !hasDeletedSalary(user)) {
+        if (draft == null && settings.startMonth().isEmpty() && !hasDeletedSalary(user)) {
             var latest = jdbc.query("""
                 SELECT i.amount,i.income_date FROM incomes i JOIN ledger_categories c ON c.id=i.category_id
                 WHERE i.user_id=? AND i.income_type='FIXED' AND c.kind='INCOME' AND c.name='월급'
@@ -47,12 +48,10 @@ public class SalaryService {
             if (!latest.isEmpty()) {
                 var record = latest.get(0);
                 registerLedgerSalary(user, record.amount(), record.date(), LocalDate.now(clock));
-                settings = get(user);
+                settings = loadSettings(user);
             }
         }
-        var result = new LinkedHashMap<>(settings);
-        if (draft != null) result.put("draft", json.readTree(draft));
-        return result;
+        return draft == null ? settings : settings.withDraft(json.readValue(draft, SalarySettingsResponse.Draft.class));
     }
 
     private record LegacySalary(long amount, LocalDate date) {}
@@ -125,7 +124,7 @@ public class SalaryService {
         return new Terms(amount, period, day);
     }
     @Transactional
-    public Map<String,Object> save(long user,long session,String zone,Map<String,Object> input) {
+    public SalarySettingsResponse save(long user,long session,String zone,Map<String,Object> input) {
         var terms = validate(input);
         var period = terms.period();
         long amount = terms.amount(), day = terms.day();
@@ -134,14 +133,14 @@ public class SalaryService {
         if(!auth.sessionActive(session,user,clock.instant())) throw new ApiException(401,"다시 로그인해 주세요.");
         // 변경 전에 기존 설정으로 수령일이 지난 달까지 확정한다.
         syncLocked(user,now);
-        var previous=get(user);
-        boolean exists=!previous.get("startMonth").toString().isEmpty();
+        var previous=loadSettings(user);
+        boolean exists=!previous.startMonth().isEmpty();
         String start=YearMonth.from(now).toString();
         if(exists) jdbc.update("UPDATE salary_settings SET amount=?,income_period=?,payment_day=?,start_month=? WHERE user_id=?",amount,period,day,start,user);
         else jdbc.update("INSERT INTO salary_settings(user_id,amount,income_period,payment_day,start_month) VALUES (?,?,?,?,?)",user,amount,period,day,start);
         syncLocked(user,now);
         jdbc.update("UPDATE users SET housing_salary_draft=NULL WHERE id=?",user);
-        return get(user);
+        return loadSettings(user);
     }
     @Transactional
     public void sync(long user,String zone) {
@@ -150,12 +149,12 @@ public class SalaryService {
         syncLocked(user,now);
     }
     private void syncLocked(long user,LocalDate now) {
-        var settings=get(user);
-        long original=((Number)settings.get("amount")).longValue();
+        var settings=loadSettings(user);
+        long original=settings.amount();
         if(original==0) return;
-        boolean annual=settings.get("incomePeriod").equals("annual");
-        int day=((Number)settings.get("paymentDay")).intValue();
-        var start=YearMonth.parse(settings.get("startMonth").toString());
+        boolean annual=settings.incomePeriod().equals("annual");
+        int day=settings.paymentDay();
+        var start=YearMonth.parse(settings.startMonth());
         var end=YearMonth.from(now);
         var categories=jdbc.queryForList("SELECT id FROM ledger_categories WHERE kind='INCOME' AND name='월급'",Long.class);
         if(categories.isEmpty()) {

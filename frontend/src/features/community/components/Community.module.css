@@ -138,6 +138,26 @@
   box-shadow: 0 0 0 2px var(--color-primary);
 }
 
+.sort {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin: 0 22px 10px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.sort select {
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-card);
+  color: var(--color-text);
+  font: inherit;
+}
+
 /* 새 글 쓰기 (입력창 모양 버튼) */
 .composeBar {
   display: flex;
@@ -1153,6 +1173,13 @@
 }
 
 .moreBtn:hover:not(:disabled) {
+  color: var(--color-primary);
+}
+
+.searchSuggestion {
+  width: fit-content;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   color: var(--color-primary);
 }
 

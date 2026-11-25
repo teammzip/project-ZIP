@@ -8,7 +8,7 @@ import { relTime } from '@/lib/date'
 import { CAT_ICON, shortRegion } from '../data/display'
 import { CATEGORIES, NEARBY } from '../data/seed'
 import { serverNearNote } from '../neighborNote'
-import { communityApi } from '../server'
+import { popularityOf, searchLocalPosts, suggestLocalPostQuery, type PostSort } from '../postSearch'
 import { useCommunityStore } from '../store'
 import { commentCountOf, type Post } from '../types'
 import { useCommunityActions, useServerNeighbors, useServerPost, useServerPosts } from '../useCommunity'
@@ -36,6 +36,15 @@ const SCOPES: Array<{ value: Scope; label: string }> = [
   { value: 'all', label: '전체' },
 ]
 
+// 주변 동네 표는 시·군·구 단위이므로 모의 주소에 행정동이 붙어도 같은 키를 사용한다.
+function mockRegionKey(value: string) {
+  const normalized = normRegion(value)
+  const words = normalized.split(' ')
+  const cityOrDistrict = words.slice(0, 2).join(' ')
+  if (Object.hasOwn(NEARBY, cityOrDistrict)) return cityOrDistrict
+  return Object.hasOwn(NEARBY, words[0]) ? words[0] : normalized
+}
+
 /** 커뮤니티 "동네생활" (당근 동네생활 구성 + 에브리타임처럼 깔끔한 목록)
  * - 머리말: "○○구 동네생활" + 동네 범위(우리 동네 · 주변 동네 · 전체) + 검색
  * - 주제 칩 → 글 목록(제목 · 본문 두 줄 · 동네 · 주제 · 시간 · 공감 · 댓글, 사진이 있으면 오른쪽 썸네일)
@@ -47,13 +56,16 @@ export function CommunityBoard(props: Props) {
 }
 
 function VerifiedCommunityBoard({ region, author, uid }: Props) {
-  const { posts: localPosts, recordView } = useCommunityStore()
+  const localPosts = useCommunityStore((state) => state.posts)
   const actions = useCommunityActions()
+  const { recordView } = actions
   const ban = useActiveBan(author, uid)
   const [params, setParams] = useSearchParams()
   const [scope, setScope] = useState<Scope>('here')
   const [cat, setCat] = useState('전체')
   const [query, setQuery] = useState('')
+  const [browseSort, setBrowseSort] = useState<Exclude<PostSort, 'relevance'>>('latest')
+  const [searchSort, setSearchSort] = useState<PostSort>('relevance')
   const [writing, setWriting] = useState(false)
   // 동네 인증 창 (인증을 마치면 하려던 동작을 이어서: 글쓰기면 글쓰기 화면 열기)
   const [verifyFor, setVerifyFor] = useState<'write' | 'act' | null>(null)
@@ -62,29 +74,44 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
   const locked = !!ban
   const place = region ? shortRegion(region) : '우리 동네'
 
-  // 동네 이름은 '서울시 마포구' · '서울특별시 마포구' · '서울 마포구'를 같은 동네로 봄
-  const here = normRegion(region)
-  const near = NEARBY[here] ?? []
-  const inScope = (p: Post) => !region || scope === 'all' || (scope === 'near' ? near.includes(normRegion(p.region)) : normRegion(p.region) === here)
-  const q = query.trim().toLowerCase()
+  const here = mockRegionKey(region)
+  const near = Object.hasOwn(NEARBY, here) ? NEARBY[here] : []
+  const inScope = (post: Post) => {
+    const postRegion = mockRegionKey(post.region)
+    return scope === 'all' || (!!here && (postRegion === here || (scope === 'near' && near.includes(postRegion))))
+  }
+  const q = query.trim()
+  const sort = q ? searchSort : browseSort
+  const changeQuery = (value: string) => {
+    if (!q && value.trim()) setSearchSort('relevance')
+    setQuery(value)
+  }
+  const changeSort = (value: PostSort) => {
+    if (q) setSearchSort(value)
+    else if (value !== 'relevance') setBrowseSort(value)
+  }
   // 서버 모드: 검색어는 0.3초 멈추면 서버에 물어봄 (글자마다 부르지 않게)
   const [serverQ, setServerQ] = useState(query)
   useEffect(() => {
     const timer = setTimeout(() => setServerQ(query), 300)
     return () => clearTimeout(timer)
   }, [query])
-  const server = useServerPosts(scope, cat, serverQ)
+  const serverQuery = serverQ.trim()
+  const server = useServerPosts(scope, cat, serverQuery, serverQuery ? searchSort : browseSort)
   // 서버 모드 "주변 동네" 탭: 내 동네와 이웃 동네 이름을 서버에서 받아 안내 (탭을 열 때만)
   const serverNeighbors = useServerNeighbors(scope === 'near')
   const serverPost = useServerPost(selectedId)
-  const serverItems = server.data?.pages.flatMap((page) => page.items) ?? []
+  const serverItems = [...new Map(server.data?.pages.flatMap((page) => page.items.map((post) => [post.id, post] as const))).values()]
   // 가짜 API 모드는 이 브라우저 글을 여기서 거르고, 서버 모드는 서버가 걸러 준 글
-  const items = isMockApi
-    ? localPosts.filter((p) => inScope(p) && (cat === '전체' || p.cat === cat) && (!q || `${p.title} ${p.body}`.toLowerCase().includes(q))).sort((a, b) => b.ts - a.ts)
-    : serverItems
+  const scopedLocalPosts = isMockApi ? localPosts.filter((p) => inScope(p) && (cat === '전체' || p.cat === cat)) : []
+  const items = isMockApi ? searchLocalPosts(scopedLocalPosts, q, sort) : serverItems
+  const showEmpty = !items.length && (isMockApi || (serverQuery === q && server.isSuccess && !server.isFetching))
+  const suggestedQuery = showEmpty && q
+    ? (isMockApi ? suggestLocalPostQuery(scopedLocalPosts, q) : server.data?.pages[0]?.suggestedQuery)
+    : undefined
   // 지금 뜨는 이야기: 공감 + 댓글×2 가 많은 순 (지금 보는 동네 범위 안에서)
   const hot = (isMockApi ? localPosts.filter(inScope) : serverItems)
-    .map((p) => ({ p, score: p.likes + commentCountOf(p) * 2 }))
+    .map((p) => ({ p, score: popularityOf(p) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 5)
     .map((x) => x.p)
@@ -93,10 +120,7 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
   const viewedId = selected?.id
   const lastView = useRef<number | undefined>(undefined)
   useEffect(() => {
-    if (viewedId && lastView.current !== viewedId) {
-      if (isMockApi) recordView(viewedId)
-      else void communityApi.recordView(viewedId).catch(() => undefined)
-    }
+    if (viewedId && lastView.current !== viewedId) recordView(viewedId)
     lastView.current = viewedId
   }, [viewedId, recordView])
 
@@ -176,7 +200,8 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
                 <input
                   type="search"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  maxLength={40}
+                  onChange={(e) => changeQuery(e.target.value)}
                   placeholder={`${scope === 'all' ? '전체' : scope === 'near' ? '주변 동네' : place} 이야기 검색`}
                   aria-label="동네 이야기 검색"
                 />
@@ -208,10 +233,20 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
               ))}
             </div>
 
+            <label className={styles.sort}>
+              정렬
+              <select value={sort} onChange={(event) => changeSort(event.target.value as PostSort)}>
+                {q && <option value="relevance">관련도순</option>}
+                <option value="latest">최신순</option>
+                <option value="views">조회순</option>
+                <option value="popular">인기순</option>
+              </select>
+            </label>
+
             {/* 글 목록 */}
             <ul className={styles.feed}>
               {items.map((p) => (
-                <FeedItem key={p.id} post={p} onOpen={() => open(p.id)} />
+                <FeedItem key={p.id} post={p} showViews={sort === 'views'} onOpen={() => open(p.id)} />
               ))}
             </ul>
             {!isMockApi && server.isError && (
@@ -224,11 +259,15 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
                 {server.isFetchingNextPage ? '불러오는 중…' : '글 더 보기'}
               </button>
             )}
-            {!items.length && !(!isMockApi && server.isLoading) && (
-              <div className={styles.empty}>
+            {showEmpty && (
+              <div className={styles.empty} aria-live="polite">
                 <span aria-hidden="true">🌱</span>
                 <b>{q ? `"${query}" 이야기를 찾지 못했어요` : '아직 글이 없어요'}</b>
-                <small>{q ? '다른 말로 찾아보세요.' : '첫 이야기를 남겨 보세요!'}</small>
+                {suggestedQuery ? (
+                  <button type="button" className={cx(styles.moreBtn, styles.searchSuggestion)} onClick={() => changeQuery(suggestedQuery)}>
+                    ‘{suggestedQuery}’로 검색
+                  </button>
+                ) : <small>{q ? '다른 말로 찾아보세요.' : '첫 이야기를 남겨 보세요!'}</small>}
               </div>
             )}
           </>
@@ -266,7 +305,7 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
                 key={w}
                 type="button"
                 onClick={() => {
-                  setQuery(w)
+                  changeQuery(w)
                   open(null)
                 }}
               >
@@ -297,6 +336,7 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
             setCat('전체')
             setScope('here')
             setQuery('')
+            setBrowseSort('latest')
             open(null)
           }
           return problem
@@ -307,7 +347,7 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
 }
 
 /** 글 목록 한 줄: 왼쪽 제목 · 본문 두 줄 · 동네 · 주제 · 시간 · 공감 · 댓글 / 오른쪽 사진 썸네일 */
-function FeedItem({ post, onOpen }: { post: Post; onOpen: () => void }) {
+function FeedItem({ post, showViews, onOpen }: { post: Post; showViews: boolean; onOpen: () => void }) {
   const thumb = post.attachments?.find((a) => a.type.startsWith('image/') && a.data.startsWith('data:'))
   return (
     <li>
@@ -320,6 +360,7 @@ function FeedItem({ post, onOpen }: { post: Post; onOpen: () => void }) {
               {shortRegion(post.region)} · {post.cat} · {relTime(post.ts)}
             </span>
             <span className={styles.counts}>
+              {showViews && <span>조회 {post.views ?? 0}</span>}
               {post.likes > 0 && <span className={styles.likeCount}>♡ {post.likes}</span>}
               {commentCountOf(post) > 0 && <span className={styles.cmtCountSm}>💬 {commentCountOf(post)}</span>}
             </span>

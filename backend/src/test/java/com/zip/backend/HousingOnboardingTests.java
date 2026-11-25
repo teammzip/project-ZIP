@@ -10,6 +10,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -79,6 +80,50 @@ class HousingOnboardingTests {
             .andExpect(jsonPath("$.region.id").value("2")).andExpect(jsonPath("$.firstLogin").value(false));
         read("/api/me/home-info").andExpect(jsonPath("$.contract").isEmpty())
             .andExpect(jsonPath("$.settings.homeAddress").value("서울 마포구"));
+    }
+
+    @Test void incomeSettingsSaveSurveyDraftAndReturnTheSameValuesOnReread() throws Exception {
+        submit("""
+            {"action":"save","salary":{"amount":2500000,"incomePeriod":"monthly"}}
+            """).andExpect(status().isOk()).andExpect(jsonPath("$.firstLogin").value(false));
+        read("/api/me/salary").andExpect(status().isOk()).andExpect(content().json("""
+            {"amount":0,"incomePeriod":"monthly","monthlyAmount":0,"paymentDay":25,"startMonth":"",
+             "draft":{"amount":2500000,"incomePeriod":"monthly"}}
+            """, JsonCompareMode.STRICT));
+
+        var saved = mvc.perform(put("/api/me/salary").param("timeZone", "Asia/Seoul")
+                .header("Authorization", "Bearer " + token).contentType("application/json")
+                .content("""
+                    {"amount":30000001,"incomePeriod":"annual","paymentDay":25}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.amount").value(30000001))
+            .andExpect(jsonPath("$.incomePeriod").value("annual"))
+            .andExpect(jsonPath("$.monthlyAmount").value(2500000))
+            .andExpect(jsonPath("$.paymentDay").value(25))
+            .andExpect(jsonPath("$.startMonth").isNotEmpty())
+            .andExpect(jsonPath("$.draft").doesNotHaveJsonPath())
+            .andReturn().getResponse().getContentAsString();
+
+        submit("""
+            {"action":"save","salary":{"amount":1000000,"incomePeriod":"monthly","paymentDay":1}}
+            """).andExpect(status().isOk()).andExpect(jsonPath("$.firstLogin").value(false));
+        read("/api/me/salary").andExpect(status().isOk()).andExpect(content().json(saved, JsonCompareMode.STRICT));
+        assertEquals(30000001L, jdbc.queryForObject("SELECT amount FROM salary_settings", Long.class));
+    }
+
+    @Test void completeSurveySalaryIsAvailableInIncomeSettingsWithoutDraft() throws Exception {
+        submit("""
+            {"action":"save","timeZone":"Asia/Seoul",
+             "salary":{"amount":2500000,"incomePeriod":"monthly","paymentDay":25}}
+            """).andExpect(status().isOk()).andExpect(jsonPath("$.firstLogin").value(false));
+        read("/api/me/salary").andExpect(status().isOk())
+            .andExpect(jsonPath("$.amount").value(2500000))
+            .andExpect(jsonPath("$.incomePeriod").value("monthly"))
+            .andExpect(jsonPath("$.monthlyAmount").value(2500000))
+            .andExpect(jsonPath("$.paymentDay").value(25))
+            .andExpect(jsonPath("$.startMonth").isNotEmpty())
+            .andExpect(jsonPath("$.draft").doesNotHaveJsonPath());
     }
 
     @Test void skipAcceptsOnlyTheActionAndCompletedSurveyIgnoresReplay() throws Exception {

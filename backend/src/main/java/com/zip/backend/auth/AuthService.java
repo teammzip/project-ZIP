@@ -6,12 +6,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.LinkedHashMap;
 import java.util.Locale;
-import java.util.Map;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.NullNode;
+import tools.jackson.databind.node.StringNode;
 
 @Service
 public class AuthService {
@@ -113,7 +114,7 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> me(long userId) {
+    public UserResponse me(long userId) {
         return userResponse(repository.findById(userId).orElseThrow(() -> new ApiException(401, "로그인 정보가 없어요.")));
     }
 
@@ -123,7 +124,7 @@ public class AuthService {
      * given once; a plain nickname or address change never asks for consent again.
      */
     @Transactional
-    public Map<String, Object> updateMe(long userId, long sessionId, AuthRequests.UpdateMe request) {
+    public UserResponse updateMe(long userId, long sessionId, AuthRequests.UpdateMe request) {
         repository.lockUser(userId);
         var now = clock.instant();
         if (!repository.sessionActive(sessionId, userId, now)) throw new ApiException(401, "로그인이 만료됐어요.");
@@ -183,38 +184,29 @@ public class AuthService {
         return new ApiException(403, detail.toString(), "SUSPENDED");
     }
 
-    private Map<String, Object> userResponse(AuthRepository.Account user) {
-        var result = new LinkedHashMap<String, Object>();
-        result.put("id", Long.toString(user.id()));
-        if (user.username() != null) result.put("username", user.username());
-        result.put("email", user.email() == null ? "" : user.email());
-        result.put("nickname", user.nickname());
+    private UserResponse userResponse(AuthRepository.Account user) {
         var personalBirth = repository.personalBirth(user.id());
-        if (!personalBirth.isEmpty()) result.put("birth", personalBirth.get(0).isEmpty() ? null : personalBirth.get(0));
-        result.put("address", user.address() == null ? "" : user.address());
-        result.put("provider", user.provider().toLowerCase(Locale.ROOT));
-        result.put("role", user.role());
-        result.put("status", user.status());
-        result.put("firstLogin", "PENDING".equals(repository.housingSurveyStatus(user.id())));
+        JsonNode birth = null;
+        // No personal-info row omits the field. A row with no date reports an explicit null.
+        if (!personalBirth.isEmpty()) {
+            String date = personalBirth.get(0);
+            birth = date.isEmpty() ? NullNode.getInstance() : StringNode.valueOf(date);
+        }
+        boolean firstLogin = "PENDING".equals(repository.housingSurveyStatus(user.id()));
         var agreedAt = repository.agreedAt(user.id());
-        result.put("agreedAt", agreedAt == null ? null : agreedAt.toString());
-        result.put("region", user.regionId() == null ? null : Map.of("id", user.regionId(), "name", user.regionName()));
-        // 경고 · 정지 (frontend/API.md 11장). 정지 중이면 로그인 · 요청이 막혀서 suspension 은 늘 null
+        var region = user.regionId() == null ? null : new UserResponse.Region(user.regionId(), user.regionName());
         var counts = repository.sanctionCounts(user.id());
-        result.put("warnCount", counts.warns());
-        result.put("banCount", counts.bans());
-        result.put("unseenWarnings", repository.unseenWarnings(user.id()).stream()
-            .map(w -> Map.of("id", Long.toString(w.id()), "reason", w.reason() == null ? "" : w.reason(), "at", w.at().toString())).toList());
-        result.put("suspension", null);
+        var warnings = repository.unseenWarnings(user.id()).stream()
+            .map(w -> new UserResponse.Warning(Long.toString(w.id()), w.reason() == null ? "" : w.reason(), w.at().toString()))
+            .toList();
         // 동네 인증 (30일 유지). 지났거나 동네가 바뀌었으면 null
-        result.put("regionVerifiedAt", regionVerify.verifiedAt(user.id()).map(Object::toString).orElse(null));
+        String regionVerifiedAt = regionVerify.verifiedAt(user.id()).map(Object::toString).orElse(null);
         var profile = repository.profile(user.id());
-        result.put("bio", profile.bio());
-        result.put("avatarFileId", profile.avatarFileId());
-        result.put("avatarUrl", profile.avatarUrl());
-        result.put("avatarEmoji", profile.avatarEmoji());
-        result.put("avatarColor", profile.avatarColor());
-        return result;
+        return new UserResponse(Long.toString(user.id()), user.username(), user.email() == null ? "" : user.email(),
+            user.nickname(), birth, user.address() == null ? "" : user.address(), user.provider().toLowerCase(Locale.ROOT),
+            user.role(), user.status(), firstLogin, agreedAt == null ? null : agreedAt.toString(), region,
+            counts.warns(), counts.bans(), warnings, regionVerifiedAt, profile.bio(), profile.avatarFileId(),
+            profile.avatarUrl(), profile.avatarEmoji(), profile.avatarColor());
     }
 
     @Transactional
@@ -244,7 +236,7 @@ public class AuthService {
     }
 
     @Transactional
-    public Map<String, Object> updateProfile(long userId, long sessionId, ProfilePatch patch) {
+    public UserResponse updateProfile(long userId, long sessionId, ProfilePatch patch) {
         repository.lockUser(userId);
         if (!repository.sessionActive(sessionId, userId, clock.instant())) throw new ApiException(401, "로그인이 만료됐어요.");
         if (patch.has("nickname")) repository.updateNickname(userId, patch.value("nickname"));

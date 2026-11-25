@@ -1,0 +1,296 @@
+{
+  "mysql": "9.6.0",
+  "gitBase": "8f2c998f5b6b1fce63a57234460ae68242c20799",
+  "beforeJarSha256": "ae6eae2411b2766854d8f7f8b08a6b35ce99041c5ed5cb8bbd9a1e90c10272ff",
+  "afterJarSha256": "315d21ef224345669931b3ffa5a3b8ae3ad7ecf8ebf259f458260bdcfe38fb15",
+  "fixed": {
+    "fixture": "community-search-v1",
+    "fixtureSha256": "1359cf31102a06a2708daaeb7067f5bcd16003928f3254839cfc6ca418b47bb2",
+    "postCount": 66,
+    "searchRequests": 270,
+    "matchingDefaultOrders": 90,
+    "unexpectedIds": [],
+    "before": {
+      "relevance": {
+        "queries": 30,
+        "positive": 25,
+        "negative": 5,
+        "hitAt1": 14,
+        "hitAt5": 22,
+        "positiveEmpty": 2,
+        "positiveNoRelevantReturned": 3,
+        "negativeNonEmpty": 1
+      },
+      "latest": {
+        "queries": 30,
+        "positive": 25,
+        "negative": 5,
+        "hitAt1": 4,
+        "hitAt5": 22,
+        "positiveEmpty": 2,
+        "positiveNoRelevantReturned": 3,
+        "negativeNonEmpty": 1
+      }
+    },
+    "after": {
+      "relevance": {
+        "queries": 30,
+        "positive": 25,
+        "negative": 5,
+        "hitAt1": 16,
+        "hitAt5": 24,
+        "positiveEmpty": 1,
+        "positiveNoRelevantReturned": 1,
+        "negativeNonEmpty": 1
+      },
+      "latest": {
+        "queries": 30,
+        "positive": 25,
+        "negative": 5,
+        "hitAt1": 5,
+        "hitAt5": 24,
+        "positiveEmpty": 1,
+        "positiveNoRelevantReturned": 1,
+        "negativeNonEmpty": 1
+      }
+    },
+    "changedPrimary": [
+      {
+        "case": "Q07",
+        "q": "분리배출",
+        "expected": [
+          701
+        ],
+        "beforeFirstRank": null,
+        "afterFirstRank": 1,
+        "beforeIds": [],
+        "afterIds": [
+          701
+        ]
+      },
+      {
+        "case": "Q10",
+        "q": "층간소음",
+        "expected": [
+          1001
+        ],
+        "beforeFirstRank": null,
+        "afterFirstRank": 1,
+        "beforeIds": [
+          1002
+        ],
+        "afterIds": [
+          1001,
+          1002
+        ]
+      }
+    ]
+  },
+  "holdout": {
+    "fixture": "community-search-spacing-holdout-v1",
+    "fixtureSha256": "eb1951599f7d37e00733d6c18f4e52adb78e352144bb72a6697a3133de19df0a",
+    "postCount": 13,
+    "searchRequests": 63,
+    "matchingDefaultOrders": 21,
+    "unexpectedIds": [],
+    "before": {
+      "relevance": {
+        "queries": 7,
+        "positive": 6,
+        "negative": 1,
+        "hitAt1": 2,
+        "hitAt5": 2,
+        "positiveEmpty": 3,
+        "positiveNoRelevantReturned": 4,
+        "negativeNonEmpty": 0
+      },
+      "latest": {
+        "queries": 7,
+        "positive": 6,
+        "negative": 1,
+        "hitAt1": 2,
+        "hitAt5": 2,
+        "positiveEmpty": 3,
+        "positiveNoRelevantReturned": 4,
+        "negativeNonEmpty": 0
+      }
+    },
+    "after": {
+      "relevance": {
+        "queries": 7,
+        "positive": 6,
+        "negative": 1,
+        "hitAt1": 6,
+        "hitAt5": 6,
+        "positiveEmpty": 0,
+        "positiveNoRelevantReturned": 0,
+        "negativeNonEmpty": 0
+      },
+      "latest": {
+        "queries": 7,
+        "positive": 6,
+        "negative": 1,
+        "hitAt1": 5,
+        "hitAt5": 6,
+        "positiveEmpty": 0,
+        "positiveNoRelevantReturned": 0,
+        "negativeNonEmpty": 0
+      }
+    },
+    "changedPrimary": [
+      {
+        "case": "S01",
+        "q": "공동현관",
+        "expected": [
+          101
+        ],
+        "beforeFirstRank": null,
+        "afterFirstRank": 1,
+        "beforeIds": [
+          102
+        ],
+        "afterIds": [
+          101,
+          102
+        ]
+      },
+      {
+        "case": "S02",
+        "q": "재활용품",
+        "expected": [
+          201
+        ],
+        "beforeFirstRank": null,
+        "afterFirstRank": 1,
+        "beforeIds": [],
+        "afterIds": [
+          201
+        ]
+      },
+      {
+        "case": "S03",
+        "q": "주차차단기",
+        "expected": [
+          301
+        ],
+        "beforeFirstRank": null,
+        "afterFirstRank": 1,
+        "beforeIds": [],
+        "afterIds": [
+          301
+        ]
+      },
+      {
+        "case": "S04",
+        "q": "수도계량기",
+        "expected": [
+          401
+        ],
+        "beforeFirstRank": null,
+        "afterFirstRank": 1,
+        "beforeIds": [],
+        "afterIds": [
+          401
+        ]
+      }
+    ]
+  },
+  "apiLatency": {
+    "workload": {
+      "posts": 10000,
+      "compact": [
+        "분리배출",
+        "층간소음",
+        "공동현관"
+      ],
+      "unchanged": [
+        "공용 현관",
+        "보일러 점검",
+        "정류장 위치"
+      ],
+      "concurrency": 4,
+      "perCondition": 128
+    },
+    "runsPerVersion": 1,
+    "order": [
+      "before",
+      "after"
+    ],
+    "requests": 3072,
+    "errors": 0,
+    "cases": [
+      {
+        "label": "here-page0-compact",
+        "requestsPerVersion": 128,
+        "beforeP95Ms": 49.51,
+        "afterP95Ms": 44.37
+      },
+      {
+        "label": "here-page0-unchanged",
+        "requestsPerVersion": 128,
+        "beforeP95Ms": 46.25,
+        "afterP95Ms": 32.15
+      },
+      {
+        "label": "here-page1-compact",
+        "requestsPerVersion": 128,
+        "beforeP95Ms": 39.21,
+        "afterP95Ms": 35.03
+      },
+      {
+        "label": "here-page1-unchanged",
+        "requestsPerVersion": 128,
+        "beforeP95Ms": 40.53,
+        "afterP95Ms": 31.42
+      },
+      {
+        "label": "near-page0-compact",
+        "requestsPerVersion": 128,
+        "beforeP95Ms": 79.25,
+        "afterP95Ms": 66.95
+      },
+      {
+        "label": "near-page0-unchanged",
+        "requestsPerVersion": 128,
+        "beforeP95Ms": 85.5,
+        "afterP95Ms": 57.61
+      },
+      {
+        "label": "near-page1-compact",
+        "requestsPerVersion": 128,
+        "beforeP95Ms": 83.6,
+        "afterP95Ms": 65.91
+      },
+      {
+        "label": "near-page1-unchanged",
+        "requestsPerVersion": 128,
+        "beforeP95Ms": 91.2,
+        "afterP95Ms": 60.14
+      },
+      {
+        "label": "all-page0-compact",
+        "requestsPerVersion": 128,
+        "beforeP95Ms": 83.8,
+        "afterP95Ms": 78.6
+      },
+      {
+        "label": "all-page0-unchanged",
+        "requestsPerVersion": 128,
+        "beforeP95Ms": 90.63,
+        "afterP95Ms": 73.59
+      },
+      {
+        "label": "all-page1-compact",
+        "requestsPerVersion": 128,
+        "beforeP95Ms": 82.74,
+        "afterP95Ms": 79.92
+      },
+      {
+        "label": "all-page1-unchanged",
+        "requestsPerVersion": 128,
+        "beforeP95Ms": 93.99,
+        "afterP95Ms": 62.7
+      }
+    ]
+  }
+}

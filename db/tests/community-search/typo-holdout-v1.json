@@ -1,0 +1,32 @@
+{
+  "version": "community-search-typo-v1",
+  "evaluateSuggestions": true,
+  "cases": [
+    {"id":"T01","q":"방충망 교채","scope":"here","category":"TIP","intent":"방충망 교체 안내","relevant":[],"suggestedQuery":"방충망 교체","correctedRelevant":[101]},
+    {"id":"T02","q":"보일려 누수","scope":"here","intent":"보일러 누수 대처 글","relevant":[],"suggestedQuery":"보일러 누수","correctedRelevant":[201]},
+    {"id":"T03","q":"폐건전찌 교환","scope":"near","intent":"이웃 동네의 폐건전지 교환처","relevant":[],"suggestedQuery":"폐건전지 교환","correctedRelevant":[301]},
+    {"id":"T04","q":"24시간 약굳","scope":"all","intent":"24시간 약국 위치","relevant":[],"suggestedQuery":"24시간 약국","correctedRelevant":[401]},
+    {"id":"T05","q":"주차장","scope":"here","intent":"정상 검색어로 주차장 찾기","relevant":[]},
+    {"id":"T06","q":"수도계량긱","scope":"all","intent":"수도계량기 검침 절차","relevant":[]},
+    {"id":"T07","q":"공동현괌","scope":"here","category":"TIP","intent":"꿀팁 카테고리의 공동현관 안내","relevant":[]},
+    {"id":"T08","q":"개포동","scope":"here","intent":"정상 지역명으로 검색","relevant":[]},
+    {"id":"T09","q":"쌀","scope":"here","intent":"쌀 나눔 글","relevant":[901]},
+    {"id":"T10","q":"세탁밥","scope":"here","intent":"검색어가 그대로 들어간 글","relevant":[1001]},
+    {"id":"T11","q":"세탁빵","scope":"here","intent":"교정 후보가 세탁방과 세탁망으로 모호한 검색","relevant":[]},
+    {"id":"T12","q":"교채","scope":"here","intent":"두 글자로만 된 짧은 검색","relevant":[]}
+  ],
+  "postFields": ["id","region","category","status","title","body"],
+  "posts": [
+    [101,"home","TIP","VISIBLE","방충망 교체 직접 하는 방법","망 사이즈를 재고 새 망을 끼우는 순서입니다."],
+    [201,"home","TIP","VISIBLE","보일러 누수 초기 대처","보일러 전원을 끄고 관리실에 연락할 때 필요한 정보입니다."],
+    [301,"neighbor","TOWN","VISIBLE","폐건전지 교환 창구 안내","가상 주민센터에서 폐건전지 교환을 할 수 있습니다."],
+    [401,"other","TOWN","VISIBLE","다른 동네 24시간 약국","가상로터리 옆에 밤에도 운영하는 약국이 있습니다."],
+    [601,"home","TIP","HIDDEN","수도 계량기 검침 안내","신고로 숨김 처리된 가상 글입니다."],
+    [602,"neighbor","TIP","DELETED","수도계량기 검침 방법","삭제된 가상 글입니다."],
+    [701,"home","TOWN","VISIBLE","공동 현관 출입 안내","점검 일시와 출입 순서를 정리했습니다."],
+    [901,"home","FREE","VISIBLE","먹는 쌀 나눔합니다","미개봉 쌀 한 봉지를 나눕니다."],
+    [1001,"home","FREE","VISIBLE","세탁밥이라는 이름의 책","동네 책 모임에서 읽은 가상 책 제목입니다."],
+    [1101,"home","TOWN","VISIBLE","새로 생긴 셀프 세탁방","세탁기 위치와 운영시간을 올립니다."],
+    [1102,"home","TIP","VISIBLE","세탁망 고르는 방법","옷의 크기에 맞는 망을 고르세요."]
+  ]
+}

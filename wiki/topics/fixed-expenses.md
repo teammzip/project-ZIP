@@ -19,7 +19,13 @@
 
 ## 월급 자동 등록
 
-월급 자동 등록은 별도입니다. 등록을 시작한 월부터 지급일이 지난 누락 월을 채우며, 회원·월별 등록 기록으로 중복 생성과 삭제 후 재등록을 막습니다. [월급 서비스](../../backend/src/main/java/com/zip/backend/ledger/SalaryService.java) · [월급 회귀 테스트](../../backend/src/test/java/com/zip/backend/SalaryIntegrationTests.java)
+서버 연결 모드에서 월급 설정을 저장한 달부터, 선택한 시간대에서 수령일이 된 월급을 가계부 고정 수입에 등록하고 월별 수입 합계에 포함합니다. 설정 저장과 가계부 수입 조회 때 누락 기록을 채웁니다. 회원·월별 등록 기록으로 중복 생성과 삭제 후 재등록을 막습니다. 수입 정보 화면은 저장 후 가계부 조회를 갱신합니다. [월급 서비스](../../backend/src/main/java/com/zip/backend/ledger/SalaryService.java) · [가계부 수입 조회와 합계](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java) · [수입 정보 화면](../../frontend/src/features/life/components/SalaryInfo.tsx) · [월급 회귀 테스트](../../backend/src/test/java/com/zip/backend/SalaryIntegrationTests.java)
+
+### 월급 설정 응답 DTO
+
+첫 주거 설문은 `PENDING` 상태에서만 답변을 반영합니다. 수령일 없는 월급 답변은 금액과 수입 기준을 초안으로 보관합니다. 마이페이지의 수입 정보에서는 `GET /api/me/salary`로 설정 또는 초안을 읽고 `PUT /api/me/salary`로 금액·월/연 기준·수령일을 저장합니다. 저장이 성공하면 초안은 지워지고 이미 등록된 월급 기록은 보존됩니다. [첫 주거 설문](home-info.md#내-집-정보와-첫-주거-설문의-dto) · [월급 API](../../backend/src/main/java/com/zip/backend/ledger/SalaryController.java) · [수입 정보 화면](../../frontend/src/features/life/components/SalaryInfo.tsx)
+
+월급 `GET`·`PUT`은 `SalarySettingsResponse`를 반환합니다. 수령일까지 설문에 입력했으면 수입 정보에서 확정 설정을 바로 조회합니다. 수령일이 없으면 조회 응답의 `draft`에 금액과 월·연 기준이 포함되며, 수입 정보에서 저장한 뒤에는 확정 설정만 돌아옵니다. 미설정 `startMonth: ""`, 초안이 없을 때의 `draft` 생략, 0원 자동 등록 중단을 유지합니다. 설문 완료는 계속 `UserResponse`를 반환합니다. [응답 DTO](../../backend/src/main/java/com/zip/backend/ledger/SalarySettingsResponse.java) · [응답 스키마](../../backend/openapi.yaml) · [프론트 응답 타입](../../frontend/src/features/life/salaryApi.ts) · [설문·수입 정보 통합 테스트](../../backend/src/test/java/com/zip/backend/HousingOnboardingTests.java)
 
 ## 검증 결과
 

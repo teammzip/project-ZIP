@@ -17,10 +17,10 @@ public class CommunityController {
     private static long userId(Jwt jwt) { return Long.parseLong(jwt.getSubject()); }
 
     @GetMapping("/api/posts")
-    public Map<String, Object> posts(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String scope,
+    public PostResponse.Page posts(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String scope,
         @RequestParam(required = false) String category, @RequestParam(required = false) String q,
-        @RequestParam(defaultValue = "0") int page) {
-        return community.posts(userId(jwt), scope, category, q, page);
+        @RequestParam(required = false) String sort, @RequestParam(defaultValue = "0") int page) {
+        return community.posts(userId(jwt), scope, category, q, sort, page);
     }
 
     @GetMapping("/api/posts/my-count")
@@ -29,17 +29,17 @@ public class CommunityController {
     }
 
     @GetMapping("/api/posts/home-tips")
-    public List<Map<String, Object>> homeTips(@AuthenticationPrincipal Jwt jwt) { return community.homeTips(userId(jwt)); }
+    public List<PostResponse> homeTips(@AuthenticationPrincipal Jwt jwt) { return community.homeTips(userId(jwt)); }
 
     /** "주변 동네" 탭 안내: 내 동네와 이웃 동네 이름 (글 목록 scope=near 와 같은 기준) */
     @GetMapping("/api/posts/neighbors")
     public Map<String, Object> neighbors(@AuthenticationPrincipal Jwt jwt) { return community.neighbors(userId(jwt)); }
 
     @GetMapping("/api/posts/popular")
-    public List<Map<String, Object>> popularPosts(@AuthenticationPrincipal Jwt jwt) { return community.popularPosts(userId(jwt)); }
+    public List<PostResponse> popularPosts(@AuthenticationPrincipal Jwt jwt) { return community.popularPosts(userId(jwt)); }
 
     @GetMapping("/api/posts/{id}")
-    public Map<String, Object> post(@AuthenticationPrincipal Jwt jwt, @PathVariable String id) { return community.post(userId(jwt), id); }
+    public PostResponse post(@AuthenticationPrincipal Jwt jwt, @PathVariable String id) { return community.post(userId(jwt), id); }
 
     @PostMapping("/api/posts/{id}/views")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -47,12 +47,12 @@ public class CommunityController {
 
     @PostMapping("/api/posts")
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Object> create(@AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) CommunityRequests.PostInput input) {
+    public PostResponse create(@AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) CommunityRequests.PostInput input) {
         return community.createPost(userId(jwt), input);
     }
 
     @PatchMapping("/api/posts/{id}")
-    public Map<String, Object> update(@AuthenticationPrincipal Jwt jwt, @PathVariable String id,
+    public PostResponse update(@AuthenticationPrincipal Jwt jwt, @PathVariable String id,
         @RequestBody(required = false) CommunityRequests.PostInput input) {
         return community.updatePost(userId(jwt), id, input);
     }
@@ -69,13 +69,13 @@ public class CommunityController {
 
     @PostMapping("/api/posts/{id}/comments")
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Object> addComment(@AuthenticationPrincipal Jwt jwt, @PathVariable String id,
+    public PostResponse.Comment addComment(@AuthenticationPrincipal Jwt jwt, @PathVariable String id,
         @RequestBody(required = false) CommunityRequests.CommentInput input) {
         return community.addComment(userId(jwt), id, input);
     }
 
     @PatchMapping("/api/comments/{id}")
-    public Map<String, Object> updateComment(@AuthenticationPrincipal Jwt jwt, @PathVariable String id,
+    public PostResponse.Comment updateComment(@AuthenticationPrincipal Jwt jwt, @PathVariable String id,
         @RequestBody(required = false) CommunityRequests.CommentInput input) {
         return community.updateComment(userId(jwt), id, input);
     }

@@ -21,18 +21,24 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 
 ### DTO 적용 검토
 
-2026-11-25에 `c3ed411`의 컨트롤러·서비스와 프론트 타입을 대조했습니다. 월별 고정 지출과 가계부, 내 집 정보 응답과 첫 주거 설문 요청에 DTO를 적용했고, 인증 응답은 후속 개선 후보입니다.
+2026-11-26에 `backend`의 `8f2c998`과 커뮤니티 검색 작업 트리를 기준으로 컨트롤러·서비스와 프론트 타입을 대조했습니다. 생활 API에 이어 인증의 공통 회원 응답에도 DTO를 적용했습니다.
 
-| 우선순위 | 경계 | 적용 이유 |
+| 상태 | 경계 | 적용 이유 |
 | --- | --- | --- |
-| 1 | 월별 고정 지출 등록·수정 요청과 월별 조회 응답 | 등록에는 `tag`와 선택 `name`이 있고 수정에는 둘 다 없습니다. `items`, `housingItems`, `contractPeriod`를 응답 타입으로 표현합니다. [월별 고정 지출 DTO](fixed-expenses.md#일반-고정-지출의-납부와-해지) |
-| 2 | 가계부 수입·지출 저장 요청과 거래 목록 응답 | `incomeType`은 수입에만 필요하고 금액 상한도 수입·지출이 다릅니다. `LedgerRow`는 월급 플래그와 선택 메모 필드를 반환합니다. [가계부 DTO](ledger-memos.md#가계부-저장-트랜잭션) |
-| 3 | 내 집 정보 응답과 첫 주거 설문 요청 | 중첩 응답과 설문의 `save`·`skip`을 타입으로 표현합니다. [내 집 정보와 설문 DTO](home-info.md#내-집-정보와-첫-주거-설문의-dto) |
-| 4 | 로그인·가입·내 정보의 공통 회원 응답 | `AuthService`가 조립하는 공개 필드와 `username` 생략, `region: null`, 경고·프로필 필드의 의미를 명시할 수 있습니다. [인증 응답](../../backend/src/main/java/com/zip/backend/auth/AuthService.java) · [프론트 회원 타입](../../frontend/src/features/auth/types.ts) |
+| 적용 완료 | 월별 고정 지출 등록·수정 입력과 월별 조회 응답 | 등록에는 `tag`와 선택 `name`이 있고 수정에는 둘 다 없습니다. 검증한 입력과 `items`, `housingItems`, `contractPeriod`를 타입으로 표현합니다. [월별 고정 지출 DTO](fixed-expenses.md#일반-고정-지출의-납부와-해지) |
+| 적용 완료 | 가계부 수입·지출 저장 요청과 거래 목록 응답 | `incomeType`은 수입에만 필요하고 금액 상한도 수입·지출이 다릅니다. `LedgerRow`는 월급 플래그와 선택 메모 필드를 반환합니다. [가계부 DTO](ledger-memos.md#가계부-저장-트랜잭션) |
+| 적용 완료 | 내 집 정보 응답과 첫 주거 설문 요청 | 중첩 응답과 설문의 `save`·`skip`을 타입으로 표현합니다. [내 집 정보와 설문 DTO](home-info.md#내-집-정보와-첫-주거-설문의-dto) |
+| 적용 완료 | 로그인·가입·내 정보·설문 완료의 공통 회원 응답 | [공통 회원 응답 DTO](#공통-회원-응답-dto) |
+| 적용 완료 | 커뮤니티 게시글 목록·상세 응답 | [게시글 응답 DTO](community-operations.md#게시글-응답-dto) |
+| 적용 완료 | 월급 설정·설문 월급 초안 응답 | 마이페이지 수입 정보의 조회·저장에 `SalarySettingsResponse`를 사용합니다. [월급 설정 응답 DTO](fixed-expenses.md#월급-설정-응답-dto) |
 
 로그인·가입·일정·일반 메모와 가계부 분류 요청은 기존 `record`를 활용할 수 있습니다. 약관 응답도 이미 타입이 있습니다. 회원 게시글 수처럼 작은 고정 응답과 월별 수입 합계처럼 월이 키인 `Map<String, Long>`은 현재 표현으로 충분합니다. 내부 JDBC 행과 서비스 값은 공개 응답에서 의미나 필드가 달라질 때 분리합니다. 프로필 PATCH는 필드 생략과 명시적 `null`을 구별하는 현재 파서를 유지하는 것이 적합합니다. [일반 메모 입력](../../backend/src/main/java/com/zip/backend/memo/MemoService.java) · [가계부 분류](../../backend/src/main/java/com/zip/backend/ledger/LedgerCategoryService.java) · [약관 응답](../../backend/src/main/java/com/zip/backend/legal/TermsController.java) · [프로필 PATCH](../../backend/src/main/java/com/zip/backend/auth/ProfilePatch.java)
 
 적용할 때는 JSON 필드명·자료형·금액 단위·필드 생략과 `null`·검증 오류 상태를 기존 HTTP 테스트로 비교합니다. 요청 `record`가 이미 있는 경계도 API 계약과 대조합니다.
+
+#### 공통 회원 응답 DTO
+
+로그인과 회원가입은 `accessToken`과 `user`를 담은 `LoginResponse`를 반환합니다. 내 정보 조회·수정과 첫 주거 설문 완료 응답은 `UserResponse`를 바로 반환합니다. 회원 ID는 문자열입니다. 로그인 아이디가 없으면 `username`을 생략하고, 동네가 없으면 `region`을 `null`로 보냅니다. 개인정보 행이 없으면 `birth`를 생략하고, 행에 생년월일이 없으면 명시적 `null`을 보냅니다. 경고가 없으면 `unseenWarnings`는 빈 배열입니다. [회원 DTO](../../backend/src/main/java/com/zip/backend/auth/UserResponse.java) · [회원 응답 조립](../../backend/src/main/java/com/zip/backend/auth/AuthService.java#L187) · [로그인·가입 응답](../../backend/src/main/java/com/zip/backend/auth/AuthSessions.java) · [응답 통합 테스트](../../backend/src/test/java/com/zip/backend/AuthIntegrationTests.java)
 
 #### 월별 고정 지출과 가계부의 DTO 도입 시 확인할 동작
 
@@ -44,6 +50,7 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 
 - 가계부 등록의 `SELECT MAX(id)`를 INSERT에서 반환한 키로 대체하고, 수정의 존재 확인과 기존 메모 조회를 한 번으로 줄이는 방안을 검토합니다. 같은 회원의 동시 저장·메모 연결·롤백 검증이 필요합니다. 목록의 메모·월급 여부 일괄 조회는 이미 반영돼 있습니다. [가계부와 메모](ledger-memos.md#가계부-기록과-회원별-분류) · [가계부 저장](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java) · [생성 키 사용 예](../../backend/src/main/java/com/zip/backend/bills/BillRepository.java)
 - 고정 지출 등록·수정에서 금액과 납부 날짜는 요청 DTO 변환 때 한 번 파싱합니다. 선택 월과 납부 기한이 속한 월의 검증에서 같은 계약과 저장 시간대를 재사용하는 방안은 후속 후보입니다. [월별 입력 검증](../../backend/src/main/java/com/zip/backend/bills/BillInput.java) · [계약 월 검증](../../backend/src/main/java/com/zip/backend/bills/BillService.java)
+- 회원 응답 조립에서 계정 조회와 별도로 생년월일, 설문 상태, 동의 시각, 제재 집계, 미확인 경고, 동네 인증, 프로필을 조회합니다. 실행 시간과 SQL 수를 기록한 뒤 계정과 함께 조회할 단일 행 정보를 검토합니다. 미확인 경고는 여러 건일 수 있어 회원 행이 중복되지 않도록 확인합니다. [회원 응답 조립](../../backend/src/main/java/com/zip/backend/auth/AuthService.java#L187) · [인증 조회](../../backend/src/main/java/com/zip/backend/auth/AuthRepository.java)
 - OpenAPI 스키마와 실제 HTTP 응답을 CI에서 비교하면 Java 타입 추가와 별개로 계약 누락을 발견할 수 있습니다. 가계부의 메모 필드 생략과 내 집 정보의 대출 초안처럼 기존 테스트에서 다루는 응답부터 적용할 수 있습니다. [가계부 통합 테스트](../../backend/src/test/java/com/zip/backend/LedgerIntegrationTests.java) · [설문 통합 테스트](../../backend/src/test/java/com/zip/backend/HousingOnboardingTests.java)
 
 ## 인증과 토큰 재발급

@@ -25,7 +25,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public Map<String, Object> login(@Valid @RequestBody AuthRequests.Login request,
+    public AuthSessions.LoginResponse login(@Valid @RequestBody AuthRequests.Login request,
         HttpServletRequest servlet, HttpServletResponse response) {
         var result = auth.login(request);
         cookie.write(servlet, response, result.session());
@@ -42,7 +42,7 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public Map<String, Object> me(@AuthenticationPrincipal Jwt jwt) { return auth.me(Long.parseLong(jwt.getSubject())); }
+    public UserResponse me(@AuthenticationPrincipal Jwt jwt) { return auth.me(Long.parseLong(jwt.getSubject())); }
 
     private static final java.util.Set<String> CONSENT_KEYS =
         java.util.Set.of("address", "agreeTerms", "agreePrivacy", "agreePolicy", "ageOver14", "termsVersion");
@@ -52,7 +52,7 @@ public class AuthController {
      * otherwise a profile edit (nickname, bio, avatar...).
      */
     @PatchMapping("/me")
-    public Map<String, Object> updateMe(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, Object> request) {
+    public UserResponse updateMe(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, Object> request) {
         long userId = Long.parseLong(jwt.getSubject());
         long sessionId = Long.parseLong(jwt.getClaimAsString("sid"));
         if (request.keySet().stream().anyMatch(CONSENT_KEYS::contains)) {

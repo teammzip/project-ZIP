@@ -32,6 +32,16 @@ class ConsentAndProfileTests {
         return mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/api/auth/me").header("Authorization", "Bearer " + token).contentType("application/json").content(body));
     }
 
+    @Test void socialMemberWithoutLoginIdKeepsOptionalFieldsAndDefaults() throws Exception {
+        String token = auth.socialLogin("GOOGLE", "no-email", null, "김지기").accessToken();
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token)).andExpect(status().isOk())
+            .andExpect(jsonPath("$.username").doesNotHaveJsonPath())
+            .andExpect(jsonPath("$.email").value("")).andExpect(jsonPath("$.address").value(""))
+            .andExpect(jsonPath("$.provider").value("google"))
+            .andExpect(jsonPath("$.agreedAt").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.region").value(org.hamcrest.Matchers.nullValue()));
+    }
+
     @Test void firstConsentSavesAddressAgreementsAndAge() throws Exception {
         String token = socialToken();
         updateMe(token, CONSENT.formatted("2026-10-18")).andExpect(status().isOk())

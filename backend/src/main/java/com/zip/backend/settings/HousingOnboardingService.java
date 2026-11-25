@@ -3,6 +3,7 @@ package com.zip.backend.settings;
 import com.zip.backend.auth.AuthRepository;
 import com.zip.backend.auth.AuthRequests;
 import com.zip.backend.auth.AuthService;
+import com.zip.backend.auth.UserResponse;
 import com.zip.backend.common.ApiException;
 import com.zip.backend.ledger.SalaryService;
 import java.time.Clock;
@@ -38,7 +39,7 @@ public class HousingOnboardingService {
     }
 
     @Transactional
-    public Map<String, Object> save(long user, long session, HousingOnboardingRequest input) {
+    public UserResponse save(long user, long session, HousingOnboardingRequest input) {
         accounts.lockUser(user);
         if (!accounts.sessionActive(session, user, clock.instant())) throw new ApiException(401, "로그인이 만료됐어요.");
         if (!"PENDING".equals(accounts.housingSurveyStatus(user))) return auth.me(user);

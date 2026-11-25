@@ -5,7 +5,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Map;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -38,9 +37,11 @@ public class AuthSessions {
 
     public record Issued(long id, String accessToken, String refreshToken, Duration cookieLifetime) {}
 
-    public record Login(Issued session, Map<String, Object> user) {
-        public Map<String, Object> body() {
-            return Map.of("accessToken", session.accessToken(), "user", user);
+    public record LoginResponse(String accessToken, UserResponse user) {}
+
+    public record Login(Issued session, UserResponse user) {
+        public LoginResponse body() {
+            return new LoginResponse(session.accessToken(), user);
         }
     }
 

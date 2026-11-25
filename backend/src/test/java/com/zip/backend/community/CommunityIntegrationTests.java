@@ -113,10 +113,34 @@ class CommunityIntegrationTests {
             .andExpect(jsonPath("$.items[0].title").value("용산 이야기"));
         call(mapo, get("/api/posts").param("q", "락스"), null).andExpect(jsonPath("$.items.length()").value(1));
         // 동네가 없으면 우리 동네 글은 비어 있고, 글쓰기는 막힘
-        call(nowhere, get("/api/posts").param("scope", "here"), null).andExpect(jsonPath("$.items.length()").value(0));
+        call(nowhere, get("/api/posts").param("scope", "here"), null).andExpect(jsonPath("$.items.length()").value(0))
+            .andExpect(jsonPath("$.hasNext").value(false));
         call(nowhere, get("/api/posts").param("scope", "all"), null).andExpect(jsonPath("$.items.length()").value(2));
         call(nowhere, post("/api/posts"), "{\"category\":\"FREE\",\"title\":\"제목\",\"body\":\"내용\"}")
             .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("REGION_REQUIRED"));
+    }
+
+    @Test void searchPagePreservesSortedRowsAndOmitsDetailFields() throws Exception {
+        String mapo = login("mapo01");
+        for (int id = 1; id <= 21; id++) {
+            jdbc.update("""
+                INSERT INTO posts (id,user_id,region_id,category,title,body,view_count)
+                VALUES (?,1,2,'TIP','곰팡이 제거','청소 방법',?)
+                """, id, 22 - id);
+        }
+
+        call(mapo, get("/api/posts").param("scope", "here").param("category", "TIP")
+            .param("q", "곰팡이 청소").param("sort", "views"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.hasNext").value(true))
+            .andExpect(jsonPath("$.items.length()").value(20))
+            .andExpect(jsonPath("$.items[0].id").value("1")).andExpect(jsonPath("$.items[0].views").value(21))
+            .andExpect(jsonPath("$.items[0].comments").doesNotHaveJsonPath())
+            .andExpect(jsonPath("$.items[0].attachments").doesNotHaveJsonPath())
+            .andExpect(jsonPath("$.items[19].id").value("20"));
+        call(mapo, get("/api/posts").param("scope", "here").param("category", "TIP")
+            .param("q", "곰팡이 청소").param("sort", "views").param("page", "1"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.hasNext").value(false))
+            .andExpect(jsonPath("$.items.length()").value(1)).andExpect(jsonPath("$.items[0].id").value("21"));
     }
 
     @Test void invalidInputIsRejected() throws Exception {
@@ -158,6 +182,7 @@ class CommunityIntegrationTests {
 
         String response = call(yongsan, post("/api/posts/{id}/comments", id), "{\"body\":\" 감사해요! \"}")
             .andExpect(status().isCreated()).andExpect(jsonPath("$.body").value("감사해요!")).andExpect(jsonPath("$.mine").value(true))
+            .andExpect(jsonPath("$.parentId").value(org.hamcrest.Matchers.nullValue()))
             .andReturn().getResponse().getContentAsString();
         String commentId = JsonPath.read(response, "$.id");
         call(mapo, post("/api/posts/{id}/comments", id), "{\"body\":\"고마워요\"}").andExpect(status().isCreated());
