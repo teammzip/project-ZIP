@@ -55,6 +55,7 @@ function setup(kind) {
     if (name === '../homeApi') return {}
     if (name === '@/lib/apiClient') return { getErrorMessage: (cause) => cause.message }
     if (name === '@/features/map/components/MyReviews') return { MyReviews: () => null }
+    if (name === '@/features/onboarding/AddressSearch') return { AddressSearch: () => null }
     if (name === './interest') return interest
     if (name === './MyInfo') return info
     if (name === './MonthlyFixedExpense') return { MonthlyFixedExpense: () => null }
@@ -117,6 +118,8 @@ test('생활 정보도 계약 유형별 입력칸만 표시한다', () => {
   const monthly = setup('monthly').info()
   assert.match(monthly, /<option value="monthly" selected="">월세<\/option>/)
   assert.match(monthly, /월세 납부일/)
+  assert.match(monthly, /내 집 주소/)
+  assert.match(monthly, />주소 검색</)
   assert.doesNotMatch(monthly, /전세 계약금|대출 금액 \(원\)|이자 납부일/)
   const jeonse = setup('jeonse').info()
   assert.match(jeonse, /<option value="jeonse" selected="">전세<\/option>/)

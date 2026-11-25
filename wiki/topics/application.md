@@ -17,6 +17,8 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 
 2026-11-24에 가계부·월별 고정 지출·내 집 정보와 연결된 월급·분류·메모 초안·첫 주거 설문 계약을 서버 구현 기준으로 OpenAPI와 프론트에 반영했습니다. OpenAPI는 수입과 기타 지출을 개별 경로로 표현하며 프론트는 각 종류에 맞는 저장 본문을 사용합니다. 월별 고정 지출의 등록·수정 본문과 내 집 정보·대출·설문 본문도 각각의 API에서 받는 키를 기준으로 정의합니다. [OpenAPI](../../backend/openapi.yaml) · [프론트 API](../../frontend/API.md) · [가계부](ledger-memos.md) · [월별 고정 지출](fixed-expenses.md) · [내 집 정보](home-info.md)
 
+같은 날 [OpenAPI](../../backend/openapi.yaml)를 서버 컨트롤러 전체와 대조해, 빠져 있던 경로 17개와 AI 대화 전체 삭제(공지 · 관리자 공지, 관리자 꿀팁 지정, 관리자 전체 문의, 고지서 사진 인식 · 등록 결정, AI 대화 기록 저장, 프로필 사진 버리기, 지도 저장 리스트, 내 정보 이름 · 생년월일, 내 경고 · 정지 내역, 주변 동네 안내)를 추가하고 서버에 없는 `GET /api/ai/topics`를 지웠습니다. 내 문의 목록은 본인 것만, 문의 쓰기는 201로 서버와 맞췄습니다. 가계부 `/api/ledger/{kind}`는 `income` · `spend` 경로로 나눠 적습니다. [공지](../../backend/src/main/java/com/zip/backend/notice/NoticeController.java) · [고지서 사진](../../backend/src/main/java/com/zip/backend/bills/BillPhotoController.java) · [지도](../../backend/src/main/java/com/zip/backend/map/MapController.java) · [고객센터](../../backend/src/main/java/com/zip/backend/support/SupportController.java)
+
 ### DTO 적용 검토
 
 2026-11-25에 `c3ed411`의 컨트롤러·서비스와 프론트 타입을 대조했습니다. 월별 고정 지출과 가계부, 내 집 정보 응답과 첫 주거 설문 요청에 DTO를 적용했고, 인증 응답은 후속 개선 후보입니다.
