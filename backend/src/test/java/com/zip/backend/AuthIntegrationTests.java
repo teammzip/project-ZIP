@@ -3,6 +3,7 @@ package com.zip.backend;
 import com.zip.backend.auth.TokenService;
 import jakarta.servlet.http.Cookie;
 import java.time.Instant;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -28,6 +30,7 @@ class AuthIntegrationTests {
     @Autowired PasswordEncoder passwords;
     @Autowired TokenService tokens;
     @Autowired JwtDecoder decoder;
+    @Autowired JsonMapper json;
 
     @BeforeEach
     void seedAccount() {
@@ -114,6 +117,35 @@ class AuthIntegrationTests {
             .andExpect(jsonPath("$.agreedAt").isString());
         mvc.perform(post("/api/auth/logout").header("Authorization", "Bearer " + token)).andExpect(status().isNoContent());
         mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token)).andExpect(status().isUnauthorized());
+    }
+
+    @Test void loginAndMeReturnTheSameMemberFields() throws Exception {
+        var login = loginResponse(false);
+        var body = json.readTree(login.getContentAsString());
+        assertEquals(Set.of("accessToken", "user"), Set.copyOf(body.propertyNames()));
+        var user = body.path("user");
+        assertEquals(Set.of("id", "username", "email", "nickname", "address", "provider", "role", "status",
+            "firstLogin", "agreedAt", "region", "warnCount", "banCount", "unseenWarnings", "suspension",
+            "regionVerifiedAt", "bio", "avatarFileId", "avatarUrl", "avatarEmoji", "avatarColor"),
+            Set.copyOf(user.propertyNames()));
+        for (String field : Set.of("region", "suspension", "regionVerifiedAt", "avatarFileId", "avatarUrl", "avatarEmoji", "avatarColor")) {
+            assertTrue(user.path(field).isNull(), field);
+        }
+        assertEquals(json.readTree("[]"), user.path("unseenWarnings"));
+        var me = mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + accessToken(login)))
+            .andExpect(status().isOk()).andReturn().getResponse();
+        assertEquals(user, json.readTree(me.getContentAsString()));
+    }
+
+    @Test void birthDistinguishesMissingPersonalInfoFromAnEmptyDate() throws Exception {
+        var me = get("/api/auth/me").header("Authorization", "Bearer " + login());
+        mvc.perform(me).andExpect(status().isOk()).andExpect(jsonPath("$.birth").doesNotHaveJsonPath());
+
+        jdbc.update("INSERT INTO user_personal_info(user_id,birth_date) VALUES (1,NULL)");
+        mvc.perform(me).andExpect(jsonPath("$.birth").value(org.hamcrest.Matchers.nullValue()));
+
+        jdbc.update("UPDATE user_personal_info SET birth_date=? WHERE user_id=1", java.sql.Date.valueOf("2000-02-29"));
+        mvc.perform(me).andExpect(jsonPath("$.birth").value("2000-02-29"));
     }
 
     @Test void firstLoginAndEmailLogin() throws Exception {

@@ -880,11 +880,16 @@ paths:
       parameters:
         - { name: scope, in: query, schema: { type: string, enum: [here, near, all], default: here } }
         - { name: category, in: query, schema: { $ref: '#/components/schemas/PostCategory' } }
-        - { name: q, in: query, schema: { type: string } }
+        - { name: q, in: query, description: '앞뒤 공백을 뺀 뒤 40자까지. 공백으로 나눈 각 단어가 제목이나 본문에 포함되어야 합니다. 한글 음절 3자 이상으로만 된 한 단어는 제목과 본문의 일반 공백을 제거한 뒤 비교합니다.', schema: { type: string } }
+        - name: sort
+          in: query
+          description: '생략 시 검색어가 있으면 relevance, 없으면 latest. views는 누적 조회수, popular는 공감 수 + 2 × 댓글 수로 정렬합니다. relevance는 연속 구문 일치와 제목·본문 양쪽의 단어 일치를 순서대로 비교합니다. 일반 공백을 제거해 검색하는 경우 양쪽 일치가 같으면 제목 일치를 우선합니다. 동점은 작성 시각과 ID 내림차순입니다.'
+          schema: { type: string, enum: [latest, views, popular, relevance] }
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
         '200': { description: 글 목록, content: { application/json: { schema: { $ref: '#/components/schemas/PostPage' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
     post:
       tags: [커뮤니티 · 첨부 · 신고]
       summary: 글쓰기 (동네 인증 · 정지 아님 필요)
@@ -1914,7 +1919,7 @@ components:
         username: { type: string, example: zipdemo, description: '소셜 가입자처럼 아이디가 없으면 키를 생략 (null 을 보내지 않음)' }
         email: { type: string, example: demo@zip.com, description: '소셜 회원처럼 없으면 빈 문자열 "" (현재 프론트 타입이 필수 문자열)' }
         nickname: { type: string, example: 지기 }
-        address: { type: string, example: 서울시 마포구 합정동, description: '가입 주소 (날씨 · 동네의 마지막 기본값). 없으면 빈 문자열 ""' }
+        address: { type: string, example: 서울시 마포구 합정동, description: '회원 주소(users.address). 등록된 주소가 없으면 빈 문자열 ""' }
         region: { allOf: [{ $ref: '#/components/schemas/RegionRef' }], nullable: true }
         regionVerifiedAt: { type: string, format: date-time, nullable: true, description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음) 30일 지났거나 동네가 바뀌면 null' }
         provider: { type: string, enum: [email, kakao, google, naver] }
@@ -1949,14 +1954,14 @@ components:
               at: { type: string, format: date-time }
     SignupRequest:
       type: object
-      required: [username, password, nickname, email, emailVerificationToken, address, agreeTerms, agreePrivacy, agreePolicy, ageOver14, termsVersion]
+      required: [username, password, nickname, email, emailVerificationToken, agreeTerms, agreePrivacy, agreePolicy, ageOver14, termsVersion]
       properties:
         username: { type: string, pattern: '^[a-z0-9]{6,16}$', example: tester01 }
         password: { type: string, format: password, minLength: 8, maxLength: 16, description: 영문 · 숫자 · 특수문자 모두 }
         nickname: { type: string, minLength: 2, maxLength: 12 }
         email: { type: string, format: email, maxLength: 100, description: '필수 (frontend/src/features/auth/schema.ts 와 같은 규칙), 겹치면 안 됨' }
         emailVerificationToken: { type: string, description: 이메일 인증 뒤 받은 값 }
-        address: { type: string, minLength: 1, maxLength: 200, example: 서울 마포구 합정동, description: 필수 }
+        address: { type: string, maxLength: 200, nullable: true, description: '선택. 생략, null, 빈 문자열, 공백만 있는 문자열은 주소 미등록으로 처리. 현재 가입 화면에서는 생략.' }
         agreeTerms: { type: boolean, enum: [true] }
         agreePrivacy: { type: boolean, enum: [true] }
         agreePolicy: { type: boolean, enum: [true] }
@@ -1964,14 +1969,19 @@ components:
         termsVersion: { type: string, minLength: 1, example: '2026-10-18', description: 서버가 동의 대상 약관 버전인지 검증 }
     UpdateMeRequest:
       type: object
-      description: 현재 nickname/bio/avatarFileId/avatarEmoji/avatarColor만 지원하며 하나 이상 필요. 생략한 필드는 유지, bio의 null은 빈 문자열, 다른 선택 프로필 필드의 null은 제거. 사진은 본인 소유의 삭제되지 않은 JPEG/PNG만 연결. address와 소셜 첫 동의 필드는 후속 계약이며 현재 전송하면 400.
+      description: |
+        프로필 수정에는 nickname, bio, avatarFileId, avatarEmoji, avatarColor 중 하나 이상을 보냅니다.
+        생략한 프로필 필드는 유지하고, bio의 null은 빈 문자열로 처리합니다. 다른 선택 프로필 필드의 null은 기존 값을 지웁니다.
+        사진은 본인 소유의 삭제되지 않은 JPEG/PNG만 연결할 수 있습니다.
+        소셜 첫 동의에는 agreeTerms, agreePrivacy, agreePolicy, ageOver14를 모두 true로 보내고 유효한 termsVersion을 함께 보냅니다. 동의는 한 번만 가능합니다.
+        약관 동의를 마친 회원은 약관 필드 없이 address를 보내 회원 주소를 변경할 수 있습니다.
       properties:
         nickname: { type: string, minLength: 2, maxLength: 12 }
         bio: { type: string, maxLength: 30, nullable: true }
         avatarFileId: { type: string, nullable: true }
         avatarEmoji: { type: string, maxLength: 20, nullable: true }
         avatarColor: { type: string, pattern: '^#[0-9a-fA-F]{6}$', nullable: true }
-        address: { type: string, minLength: 1, maxLength: 200, description: 소셜 첫 가입 }
+        address: { type: string, maxLength: 200, nullable: true, description: '첫 동의에서는 선택이며, 생략하거나 null 또는 공백만 보내면 주소를 저장하지 않음. 현재 동의 화면에서는 생략. 주소 변경으로 보낼 때는 비어 있지 않은 주소가 필요.' }
         agreeTerms: { type: boolean, enum: [true] }
         agreePrivacy: { type: boolean, enum: [true] }
         agreePolicy: { type: boolean, enum: [true] }
@@ -1986,7 +1996,7 @@ components:
       properties:
         regionId: { type: string, nullable: true, example: '2' }
         regionName: { type: string, example: 서울 마포구 }
-        homeAddress: { type: string, maxLength: 200, description: '실제 사는 상세 주소 (user_settings.home_address) — 가입 주소 · 동네와 별개. DB NULL이면 빈 문자열' }
+        homeAddress: { type: string, maxLength: 200, description: '실제 사는 상세 주소(user_settings.home_address). 회원 주소(users.address)와 동네 정보는 별도 필드로 관리. DB NULL이면 빈 문자열' }
         rent: { type: number, minimum: 0, maximum: 9999999999.9999, multipleOf: 0.0001, example: 55, description: 월세 (**만원 단위**), 55.0001은 550001원 }
         rentDay: { type: integer, minimum: 1, maximum: 31, example: 15 }
         moveIn: { type: string, example: '2026-02', description: 'YYYY-MM 또는 미설정 빈 문자열' }

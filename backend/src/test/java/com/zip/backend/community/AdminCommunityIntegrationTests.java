@@ -1,5 +1,7 @@
 package com.zip.backend.community;
 
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -56,7 +58,12 @@ class AdminCommunityIntegrationTests {
     }
 
     private String writePost(String title) throws Exception {
-        return json(call(member, post("/api/posts"), "{\"category\":\"FREE\",\"title\":\"" + title + "\",\"body\":\"내용\"}").andExpect(status().isCreated()), "$.id");
+        return writePost(member, "FREE", title, "내용");
+    }
+
+    private String writePost(String token, String category, String title, String body) throws Exception {
+        return json(call(token, post("/api/posts"), "{\"category\":\"" + category + "\",\"title\":\"" + title + "\",\"body\":\"" + body + "\"}")
+            .andExpect(status().isCreated()), "$.id");
     }
 
     @Test void onlyAdminsCanUseAdminApi() throws Exception {
@@ -116,6 +123,122 @@ class AdminCommunityIntegrationTests {
         call(member, get("/api/posts/{id}", hide), null).andExpect(status().isNotFound());
         assertEquals("HIDDEN", jdbc.queryForObject("SELECT status FROM posts WHERE id = ?", String.class, Long.parseLong(hide)));
         call(admin, patch("/api/admin/reports/{id}", reportId), "{\"status\":\"RECEIVED\"}").andExpect(status().isBadRequest());
+    }
+
+    @Test void postSearchUsesNewestFirstAndExcludesHiddenDeletedAndOutOfScopePosts() throws Exception {
+        jdbc.update("INSERT INTO regions (id, parent_id, name, level) VALUES (20, 1, '강남구', 2)");
+        jdbc.update("""
+            INSERT INTO users (id, login_id, password_hash, nickname, region_id, region_verified_at)
+            VALUES (20, 'gangnam20', ?, '강남주민', 20, CURRENT_TIMESTAMP)
+            """, passwords.encode("abcd123!"));
+
+        String guide = writePost("곰팡이 제거 방법");
+        String incidental = writePost(member, "FREE", "이사 후기", "곰팡이 제거 업체를 불렀어요");
+        jdbc.update("UPDATE posts SET created_at = '2026-01-01 00:00:00' WHERE id = ?", Long.parseLong(guide));
+        String neighbor = writePost(reporter, "FREE", "곰팡이 제거 후기", "용산구 글입니다");
+        String distant = writePost(login("gangnam20"), "FREE", "곰팡이 제거 질문", "강남구 글입니다");
+        String hidden = writePost("곰팡이 제거 숨김 대상");
+        String deleted = writePost("곰팡이 제거 삭제 대상");
+        writePost(member, "TIP", "곰팡이 제거 팁", "다른 카테고리입니다");
+
+        String query = "곰팡이 제거";
+        call(member, get("/api/posts").param("scope", "here").param("category", "FREE").param("q", query), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", containsInAnyOrder(guide, incidental, hidden, deleted)));
+
+        call(reporter, post("/api/reports"), "{\"targetType\":\"POST\",\"targetId\":\"" + hidden + "\",\"reason\":\"ABUSE\"}")
+            .andExpect(status().isNoContent());
+        call(admin, patch("/api/admin/reports").param("targetType", "POST").param("targetId", hidden), "{\"status\":\"HIDDEN\"}")
+            .andExpect(status().isNoContent());
+        call(member, delete("/api/posts/{id}", deleted), null).andExpect(status().isNoContent());
+
+        call(member, get("/api/posts").param("scope", "here").param("category", "FREE").param("q", query).param("sort", "latest"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(2))
+            .andExpect(jsonPath("$.items[0].id").value(incidental)).andExpect(jsonPath("$.items[1].id").value(guide));
+        for (String sort : new String[] {"latest", "views", "popular", "relevance"}) {
+            call(member, get("/api/posts").param("scope", "here").param("category", "FREE").param("q", query).param("sort", sort), null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", containsInAnyOrder(guide, incidental)));
+            call(member, get("/api/posts").param("scope", "near").param("category", "FREE").param("q", query).param("sort", sort), null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", containsInAnyOrder(guide, incidental, neighbor)));
+            call(member, get("/api/posts").param("scope", "all").param("category", "FREE").param("q", query).param("sort", sort), null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", containsInAnyOrder(guide, incidental, neighbor, distant)));
+        }
+    }
+
+    @Test void searchOrdersTheSameMatchesByLatestViewsPopularityOrRelevance() throws Exception {
+        String guide = writePost(member, "FREE", "곰팡이 제거 방법", "곰팡이를 제거할 때는 먼저 환기하세요.");
+        String viewed = writePost(member, "FREE", "이사 기록", "곰팡이 제거 업체에 갔어요.");
+        String discussed = writePost(member, "FREE", "곰팡이 업체 이야기", "다음 달에 벽지를 제거할 예정이에요.");
+        String latest = writePost(member, "FREE", "청소 기록", "곰팡이 제거 얘기를 들었어요.");
+        jdbc.update("UPDATE posts SET created_at = '2026-01-01 00:00:00' WHERE id = ?", Long.parseLong(guide));
+        jdbc.update("UPDATE posts SET view_count = 100 WHERE id = ?", Long.parseLong(viewed));
+        jdbc.update("UPDATE posts SET like_count = 1, comment_count = 4 WHERE id = ?", Long.parseLong(discussed));
+        jdbc.update("UPDATE posts SET like_count = 6 WHERE id = ?", Long.parseLong(viewed));
+
+        String query = "곰팡이 제거";
+        var match = get("/api/posts").param("scope", "here").param("q", query);
+        call(member, match, null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[*].id", contains(guide, latest, viewed, discussed)));
+        call(member, get("/api/posts").param("scope", "here").param("q", query).param("sort", "latest"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(latest, discussed, viewed, guide)));
+        call(member, get("/api/posts").param("scope", "here").param("q", query).param("sort", "views"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(viewed, latest, discussed, guide)));
+        call(member, get("/api/posts").param("scope", "here").param("q", query).param("sort", "popular"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(discussed, viewed, latest, guide)));
+        call(member, get("/api/posts").param("scope", "here").param("sort", "relevance"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(latest, discussed, viewed, guide)));
+        call(member, get("/api/posts").param("sort", "invalid"), null).andExpect(status().isBadRequest());
+
+        String compact = writePost(member, "TIP", "분리수거 요령 50%_!", "요일마다 품목을 확인하세요.");
+        writePost(member, "TIP", "분리수거 대조 글 50AX!", "와일드카드 대조 사례입니다.");
+        call(member, get("/api/posts").param("scope", "here").param("q", "분리 수거 50%_!"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(compact)));
+    }
+
+    @Test void compactKoreanSearchFindsSpacedTitlesAndBodiesWithinTheSelectedScope() throws Exception {
+        String guide = writePost(member, "TIP", "층간 소음 상담 안내", "관리실에 먼저 중재를 요청하세요.");
+        String incidental = writePost(member, "TIP", "소설 설정", "층간소음 때문에 이사하는 인물입니다.");
+        String neighbor = writePost(reporter, "TIP", "층간 소음 대응", "이웃 동네 상담 후기입니다.");
+        String deleted = writePost(member, "TIP", "층간 소음 지난 공지", "삭제할 글입니다.");
+        writePost(member, "FREE", "층간 소음 이야기", "다른 카테고리입니다.");
+        call(member, delete("/api/posts/{id}", deleted), null).andExpect(status().isNoContent());
+
+        var search = get("/api/posts").param("scope", "here").param("category", "TIP").param("q", "층간소음");
+        call(member, search, null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[*].id", contains(guide, incidental)));
+        call(member, get("/api/posts").param("scope", "near").param("category", "TIP").param("q", "층간소음").param("sort", "latest"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(neighbor, incidental, guide)));
+
+        String bodyMatch = writePost(member, "TIP", "투명 페트병 배출", "플라스틱은 재활용 품목에 해당합니다.");
+        call(member, get("/api/posts").param("scope", "here").param("q", "재활용품"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(bodyMatch)));
+        call(admin, get("/api/admin/posts").param("q", "층간소음"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(incidental)));
+    }
+
+    @Test void emptySearchSuggestsOnlyCorrectionsThatMatchVisiblePostsInTheSameScope() throws Exception {
+        writePost(member, "FREE", "방충망 교체 후기", "우리 동네 자유 글입니다.");
+        String guide = writePost(reporter, "TIP", "방충망 교체 안내", "이웃 동네 꿀팁입니다.");
+
+        call(member, get("/api/posts").param("scope", "here").param("category", "TIP").param("q", "방충망 교채"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(0))
+            .andExpect(jsonPath("$.suggestedQuery").doesNotExist());
+        call(member, get("/api/posts").param("scope", "near").param("category", "TIP").param("q", "방충망 교채"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items.length()").value(0))
+            .andExpect(jsonPath("$.suggestedQuery").value("방충망 교체"));
+        call(member, get("/api/posts").param("scope", "near").param("category", "TIP").param("q", "방충망 교체"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(guide)))
+            .andExpect(jsonPath("$.suggestedQuery").doesNotExist());
+        call(member, get("/api/posts").param("scope", "near").param("category", "TIP").param("q", "방충망 교채").param("page", "1"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.suggestedQuery").doesNotExist());
+        call(admin, get("/api/admin/posts").param("q", "방충망 교채"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.suggestedQuery").doesNotExist());
+
+        call(member, post("/api/reports"), "{\"targetType\":\"POST\",\"targetId\":\"" + guide + "\",\"reason\":\"ABUSE\"}")
+            .andExpect(status().isNoContent());
+        call(admin, patch("/api/admin/reports").param("targetType", "POST").param("targetId", guide), "{\"status\":\"HIDDEN\"}")
+            .andExpect(status().isNoContent());
+        call(member, get("/api/posts").param("scope", "near").param("category", "TIP").param("q", "방충망 교채"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.suggestedQuery").doesNotExist());
     }
 
     @Test void homeTipsAreChosenByAdmin() throws Exception {

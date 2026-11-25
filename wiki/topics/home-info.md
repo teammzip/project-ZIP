@@ -20,6 +20,7 @@
 
 - 2026-11-25 적용. 조회와 두 저장 API가 `HomeInfoResponse`를 반환합니다. `settings`는 생활 설정 API와 `SettingsResponse`를 공유합니다. 계약·대출·초안·관리비가 없을 때 명시적 `null`, 이자 기록이 없을 때 빈 배열, 대출 초안에서 생략한 필드를 보존합니다. 첫 주거 설문 서비스는 기존 계약·대출을 DTO에서 읽어 생략된 답변에 적용합니다. [내 집 정보 응답 DTO](../../backend/src/main/java/com/zip/backend/settings/HomeInfoResponse.java) · [공통 생활 설정 DTO](../../backend/src/main/java/com/zip/backend/settings/SettingsResponse.java) · [응답 통합 테스트](../../backend/src/test/java/com/zip/backend/HomeInfoTests.java)
 - 설문 컨트롤러는 `HousingOnboardingRequest`로 본문을 받고 건너뛰기 `skip`과 부분 답변 `save`를 구분합니다. 생략과 명시적 `null`을 구별하고, 회원과 설문 상태 확인 뒤 답변을 검증합니다. 계약 저장에는 기존 `HomeInfoInput`을 사용합니다. 완료된 설문 재요청은 기존 값을 보존하며, 설문 처리 중 오류가 발생하면 같은 트랜잭션의 주소·생년월일·월급·계약 저장을 롤백합니다. [설문 요청 DTO](../../backend/src/main/java/com/zip/backend/settings/HousingOnboardingRequest.java) · [설문 저장](../../backend/src/main/java/com/zip/backend/settings/HousingOnboardingService.java) · [설문 통합 테스트](../../backend/src/test/java/com/zip/backend/HousingOnboardingTests.java)
+- 설문 저장·건너뛰기·완료 후 재요청은 인증 API와 같은 [공통 회원 응답 DTO](application.md#공통-회원-응답-dto)를 반환합니다. [설문 응답](../../backend/src/main/java/com/zip/backend/settings/HousingOnboardingController.java)
 
 ## 주소와 회원 설정
 

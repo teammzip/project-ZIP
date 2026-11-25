@@ -1,6 +1,6 @@
 package com.zip.backend.settings;
 
-import java.util.Map;
+import com.zip.backend.auth.UserResponse;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -16,7 +16,7 @@ public class HousingOnboardingController {
     }
 
     @PutMapping("/api/me/housing-onboarding")
-    public Map<String, Object> save(@AuthenticationPrincipal Jwt jwt, @RequestBody HousingOnboardingRequest input) {
+    public UserResponse save(@AuthenticationPrincipal Jwt jwt, @RequestBody HousingOnboardingRequest input) {
         return onboarding.save(Long.parseLong(jwt.getSubject()), Long.parseLong(jwt.getClaimAsString("sid")), input);
     }
 }

@@ -24,7 +24,7 @@ public class AdminCommunityController {
     public record Resolution(String status) {}
 
     @GetMapping("/posts")
-    public Map<String, Object> posts(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String category,
+    public PostResponse.Page posts(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String category,
         @RequestParam(required = false) String q, @RequestParam(defaultValue = "0") int page) {
         return community.adminPosts(adminId(jwt), category, q, page);
     }
@@ -43,7 +43,7 @@ public class AdminCommunityController {
 
     @PostMapping("/posts/{id}/comments")
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Object> staffComment(@AuthenticationPrincipal Jwt jwt, @PathVariable String id,
+    public PostResponse.Comment staffComment(@AuthenticationPrincipal Jwt jwt, @PathVariable String id,
         @RequestBody(required = false) CommunityRequests.CommentInput input) {
         return community.adminComment(adminId(jwt), id, input);
     }

@@ -1,0 +1,28 @@
+{
+  "version": "community-search-spacing-holdout-v1",
+  "cases": [
+    {"id":"S01","q":"공동현관","scope":"here","intent":"공동 현관 고장 접수 안내","relevant":[101]},
+    {"id":"S02","q":"재활용품","scope":"here","intent":"재활용품 수거 방법","relevant":[201]},
+    {"id":"S03","q":"주차차단기","scope":"near","category":"TOWN","intent":"주차 차단기 점검 안내","relevant":[301]},
+    {"id":"S04","q":"수도계량기","scope":"all","intent":"수도 계량기 검침 방법","relevant":[401]},
+    {"id":"S05","q":"세탁","scope":"here","intent":"옷 세탁 방법","relevant":[501]},
+    {"id":"S06","q":"가스밸브","scope":"here","intent":"가스 밸브에 대한 안내","relevant":[]},
+    {"id":"S07","q":"자전거 수리","scope":"here","intent":"자전거를 수리할 수 있는 곳","relevant":[701]}
+  ],
+  "postFields": ["id","region","category","status","title","body"],
+  "posts": [
+    [101,"home","TIP","VISIBLE","공동 현관 출입문 점검 안내","문이 닫히지 않으면 관리실에 출입문 위치와 고장 시간을 알려 주세요."],
+    [102,"home","FREE","VISIBLE","오늘 비가 많이 왔어요","공동현관을 지나 우산을 폈다는 일기입니다."],
+    [201,"home","TIP","VISIBLE","비닐과 페트병 배출 요령","재활용 품목의 라벨과 이물질을 제거하고 종류별로 모아서 배출하세요."],
+    [301,"neighbor","TOWN","VISIBLE","주차 차단기 점검 일정","점검 시간에는 차량 통로를 옆 입구로 바꿉니다."],
+    [302,"other","TOWN","VISIBLE","다른 동네 주차 차단기 일정","차단기 센서를 교체하는 다른 지역의 공지입니다."],
+    [303,"home","FREE","VISIBLE","주차 차단기 사진","여행지에서 본 차단기 사진입니다."],
+    [304,"home","TOWN","HIDDEN","주차 차단기 이전 공지","숨김 상태의 가상 글입니다."],
+    [305,"neighbor","TOWN","DELETED","주차 차단기 삭제 공지","삭제 상태의 가상 글입니다."],
+    [401,"other","TIP","VISIBLE","수도 계량기 자가 검침 절차","수도 계량기의 검은 숫자를 읽고 입력란에 옮겨 적으세요."],
+    [501,"home","TIP","VISIBLE","니트 세탁 요령","세탁 전에 옷의 취급 표시를 확인하세요."],
+    [502,"home","FREE","VISIBLE","체육 대회 참가 안내","준우승 상품으로 생수 세 탁자는 준비했습니다."],
+    [601,"home","FREE","VISIBLE","공방 창고에 있는 물건 목록","가스 - 밸브 - 호스라는 이름의 세 상자를 정리했습니다."],
+    [701,"home","TOWN","VISIBLE","시장 입구 자전거수리점","타이어와 체인을 수리하는 가상 가게입니다."]
+  ]
+}

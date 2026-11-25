@@ -1,7 +1,9 @@
+import { useCallback } from 'react'
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import { isMockApi, useAuthStore } from '@/features/auth'
 import { getErrorMessage } from '@/lib/apiClient'
 import { STORAGE_FULL } from './attachments'
+import type { PostSort } from './postSearch'
 import { useReportStore, type ReportReason } from './reports'
 import { communityApi, type PostPage, type Scope } from './server'
 import { useCommunityStore } from './store'
@@ -37,10 +39,10 @@ export function useServerNeighbors(enabled: boolean) {
 }
 
 /** 서버 모드 글 목록 (동네 범위 · 주제 · 검색은 서버가 걸러 줌, 20개씩 더 보기) */
-export function useServerPosts(scope: Scope, cat: string, q: string) {
+export function useServerPosts(scope: Scope, cat: string, q: string, sort: PostSort) {
   return useInfiniteQuery({
-    queryKey: [...KEY, 'posts', scope, cat, q],
-    queryFn: ({ pageParam }) => communityApi.posts(scope, cat, q, pageParam),
+    queryKey: [...KEY, 'posts', sort, scope, cat, q],
+    queryFn: ({ pageParam, signal }) => communityApi.posts(scope, cat, q, sort, pageParam, signal),
     initialPageParam: 0,
     getNextPageParam: (last, pages) => (last.hasNext ? pages.length : undefined),
     enabled: !isMockApi,
@@ -72,6 +74,16 @@ type Result = Promise<string | null>
 export function useCommunityActions() {
   const client = useQueryClient()
   const local = useCommunityStore()
+  const recordLocalView = local.recordView
+  const recordView = useCallback((id: number) => {
+    if (isMockApi) {
+      recordLocalView(id)
+      return
+    }
+    void communityApi.recordView(id)
+      .then(() => client.invalidateQueries({ queryKey: [...KEY, 'posts', 'views'] }))
+      .catch(() => undefined)
+  }, [client, recordLocalView])
   const addLocalReport = useReportStore((s) => s.add)
   const refresh = () => client.invalidateQueries({ queryKey: KEY })
   /** onConflict: 409 일 때 돌려줄 값 (그때도 목록은 새로 받음) */
@@ -98,6 +110,7 @@ export function useCommunityActions() {
   }
 
   return {
+    recordView,
     /** 새 글: 성공이면 null, 실패면 화면에 보일 문구 (가짜 API 모드에서 저장 공간이 부족하면 STORAGE_FULL 문구) */
     addPost: (draft: PostDraft, region: string, author: string): Result =>
       isMockApi ? Promise.resolve(local.addPost({ ...draft, region, author }) ? null : STORAGE_FULL) : run(() => communityApi.create(draft)),
@@ -109,6 +122,7 @@ export function useCommunityActions() {
       try {
         const result = await communityApi.like(post.id, !post.liked)
         setLike(post.id, result.liked, result.likes)
+        void client.invalidateQueries({ queryKey: [...KEY, 'posts', 'popular'] })
         return null
       } catch (error) {
         return getErrorMessage(error)

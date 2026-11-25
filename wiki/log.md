@@ -234,3 +234,79 @@
 ## [2026-11-25] record | 생활 API DTO PR 문서 정리
 
 - 사진 고지서 확정이 월별 고정 지출 등록 검증을 공유하는 경로를 확인했습니다. 기준 브랜치 `c3ed411`에서 고지서 컨트롤러를 참조하는 [외부 서비스와 AI](topics/service-integrations.md)에 월별 고정 지출 DTO 설명을 연결하고, 네 기능의 적용 범위와 기존 검증 결과를 [백엔드 변경 기록](../CHANGELOG.md#백엔드)에 추가했습니다. [사진 확정 컨트롤러](../backend/src/main/java/com/zip/backend/bills/BillPhotoController.java#L111) · [사진 등록 서비스](../backend/src/main/java/com/zip/backend/bills/BillService.java#L262)
+
+## [2026-11-26] record | 동네 검색 순위·범위·API 성능 검증
+
+- 격리 MySQL과 Elasticsearch에서 현행 `LIKE`, MySQL `ngram`, Elasticsearch Nori를 같은 Spring HTTP API로 비교했습니다. 합성 게시글에서 검색 순위, 세 동네 범위, 삭제·숨김 후 인덱스 지연, 1,152개 API 요청의 응답 시간을 [격리 검색 비교 결과](topics/community-operations.md#격리-검색-비교-결과)에 기록했습니다.
+- 현행 API 회귀 테스트를 추가했고 커뮤니티 통합 테스트 17개가 통과했습니다. 검색 후보는 격리 시제품으로 실행했습니다. [검색 회귀 테스트](../backend/src/test/java/com/zip/backend/community/AdminCommunityIntegrationTests.java#L127)
+
+## [2026-11-26] record | 동네 검색 최신순과 제목 일치 우선 비교
+
+- 같은 격리 MySQL과 Spring HTTP API에서 두 정렬의 검색 순위, 세 지역의 공개 범위, 숨김·삭제, 페이지 경계, 특수문자 입력을 확인했습니다. 합성 게시글 10,067건에서 두 차례 측정한 API 요청 5,760건과 MySQL 실행 계획을 기록했습니다. 일부 검색의 순위는 개선됐지만 모든 측정 조건에서 p95가 올라 현행 최신순 유지를 제안합니다. [최신순과 제목 일치 우선 정렬 비교](topics/community-operations.md#최신순과-제목-일치-우선-정렬-비교)
+
+## [2026-11-26] record | 동네 검색의 조회순과 인기순 검토
+
+- 게시글 검색의 최신순과 홈 인기 글의 누적 조회순을 구분했습니다. 검색 기본 최신순, 선택 조회순, 관련도 평가 기준과 조회수 변화 시 페이지 확인 항목을 검토했습니다. 이후 구현은 [검색 정렬과 관련도](topics/community-operations.md#검색-정렬과-관련도)에 기록했습니다.
+
+## [2026-11-26] record | 동네 검색 정렬과 관련도 구현·비교
+
+- 회원 게시글 검색에 최신순·조회순·인기순·관련도순을 연결하고, 검색어가 있을 때 관련도순을 적용했습니다. 격리 MySQL에서 합성 검색어의 순위, 공개 범위, 삭제·숨김, 페이지 경계와 HTTP 요청 3,072건을 검증했습니다. [검색 정렬과 관련도](topics/community-operations.md#검색-정렬과-관련도)
+
+## [2026-11-26] record | 원격 dev PR 143·144 병합 확인
+
+- GitHub `dev`의 최신 커밋은 `f14b6f8`입니다. 이전 확인 기준 `c3ed411` 이후 PR 2건, 커밋 4개, 파일 50개가 바뀌었습니다. [커밋 및 파일 비교](https://github.com/teammzip/project-ZIP/compare/c3ed4115470eb3044c3ba8508d6a539744c44812...f14b6f876232eabe32d30b78c6e65ab8e0804a95)
+- 원격 `backend`의 DTO 커밋 `8f2c998`은 [PR #143](https://github.com/teammzip/project-ZIP/pull/143/files)으로 `dev`에 병합됐습니다. [PR #144](https://github.com/teammzip/project-ZIP/pull/144/files)는 내 집 주소 검색, 메모 복구 시점, OpenAPI 경로와 개발 DB·마이그레이션 안내를 갱신했습니다. [커밋 기준 변경 기록](https://github.com/teammzip/project-ZIP/blob/f14b6f876232eabe32d30b78c6e65ab8e0804a95/CHANGELOG.md)
+- 변경 파일과 기록을 대조했습니다. 테스트와 배포는 이번 점검에서 실행하지 않았습니다. 로컬의 커뮤니티 검색·지도 수정은 미커밋 상태로 확인했습니다.
+
+## [2026-11-26] record | 생활 API DTO 적용 이후 후속 검토
+
+- `backend` `8f2c998`과 커뮤니티 검색 작업 트리에서 [DTO 적용 범위](topics/application.md#dto-적용-검토)를 다시 확인했습니다. 공통 회원 응답을 우선 후보로 두고, 게시글과 월급 설정 응답은 관련 기능을 변경할 때 검토하도록 정리했습니다. 회원 응답 조립의 분리 조회, 가계부 저장과 고정 지출 검증의 중복 조회를 [코드 최적화 후보](topics/application.md#dto와-별도로-검토할-최적화)에 연결했습니다. 코드 구현과 응답 시간 측정은 수행하지 않았습니다.
+
+## [2026-11-26] record | 공통 회원 응답에 DTO 적용
+
+- 로그인·가입, 내 정보 조회·수정, 첫 주거 설문 완료에 [공통 회원 응답 DTO](topics/application.md#공통-회원-응답-dto)를 연결했습니다. 로그인·가입 본문은 `accessToken`과 `user`를 반환하고 재발급 토큰은 쿠키로 발급합니다. [설문 응답](topics/home-info.md#내-집-정보와-첫-주거-설문의-dto)
+- `8f2c998` 기준 작업 트리에서 별도 Gradle 출력으로 H2 백엔드 전체 344개를 실행해 실패·오류·건너뜀 0건을 확인했습니다. 프론트 인증 재발급, 소셜 콜백, 설문 저장, 내 정보 테스트 20개가 통과했습니다. [회원 응답 테스트](../backend/src/test/java/com/zip/backend/AuthIntegrationTests.java) · [소셜 회원 응답 테스트](../backend/src/test/java/com/zip/backend/ConsentAndProfileTests.java)
+- 실제 응답과 프론트 회원 타입의 `birth`·`banCount`는 로컬 [OpenAPI `User`](../backend/openapi.yaml) 스키마에 기재돼 있지 않습니다. 이번 검증은 기존 HTTP 응답을 기준으로 했습니다. [프론트 회원 타입](../frontend/src/features/auth/types.ts)
+
+## [2026-11-26] record | 새 동네 검색의 관련도순 기본값
+
+- 목록을 조회순으로 보던 중 새 검색을 시작하면 관련도순이 적용되고, 검색어를 지우면 목록 정렬이 복원됩니다. 모바일 WebKit의 모의 화면에서 새 검색과 검색 재시작의 기본값을 확인했습니다. [검색 정렬과 관련도](topics/community-operations.md#검색-정렬과-관련도)
+
+## [2026-11-26] record | 동네 검색 후속 작업 검토
+
+- [관련도순 적용 후 검증 후보](topics/community-operations.md#관련도순-적용-후-검증-후보)에 대표 검색어의 순위·누락, 동네 범위 확인, 실제 API 응답 시간 측정을 우선순위로 기록했습니다. 저장소의 코드와 기존 측정 결과를 확인했으며 새 측정은 수행하지 않았습니다.
+
+## [2026-11-26] record | 동네 검색 대표 검색어 30개 기준 점수
+
+- [검색어·기대 결과·합성 글 66건](../db/tests/community-search/fixture-v1.json)을 실행 전에 고정했습니다. 격리 MySQL 9.6.0의 Spring API를 270회 호출해 관련도순과 최신순의 순위, 검색 누락, 정렬 생략, 범위·공개 상태를 확인했습니다. 관련도순은 적합한 글이 있는 25개 중 1위 14개, 상위 5개 22개를 기록했습니다. [평가 결과와 재실행](topics/community-operations.md#대표-검색어-30개-기준-평가)
+
+## [2026-11-26] record | 커뮤니티 게시글 응답에 DTO 적용
+
+- `8f2c998` 기반 작업 트리의 공백 단위 검색, 동네·카테고리 필터와 네 정렬 옵션을 사용한 뒤 검색 결과를 [게시글 응답 DTO](topics/community-operations.md#게시글-응답-dto)로 변환합니다. 회원 목록의 상세 필드 생략과 글 상세·관리자 목록의 댓글·첨부 배열을 유지했습니다.
+- 별도 Gradle 출력에서 H2 백엔드 전체 345개가 실패·오류·건너뜀 없이 통과했습니다. 커뮤니티 테스트 19개에서 네 정렬과 지역·공개 범위, 검색 결과 21건의 두 페이지, 댓글·첨부 응답을 확인했습니다. 프론트 전체 테스트 195개와 빌드도 통과했습니다. [검색 페이지 회귀 테스트](../backend/src/test/java/com/zip/backend/community/CommunityIntegrationTests.java#L123) · [정렬·범위 통합 테스트](../backend/src/test/java/com/zip/backend/community/AdminCommunityIntegrationTests.java)
+- 검증 기준은 현재 HTTP 응답입니다. 기존 [OpenAPI 스키마](../backend/openapi.yaml)의 `Post`에는 `reported`·`homeTip`, `Comment`에는 `reported`·`parentId`가 기재돼 있지 않습니다. [프론트 응답 타입](../frontend/src/features/community/server.ts)
+
+## [2026-11-26] record | 월급 설정 응답 DTO 적용 범위 검토
+
+- 가입 후 첫 주거 설문과 마이페이지 수입 정보의 호출 경로를 대조했습니다. 월급 조회·저장 응답과 선택 초안에 적용할 범위와 회귀 확인 항목을 [월급 설정 응답 DTO](topics/fixed-expenses.md#월급-설정-응답-dto)에 기록했습니다. 구현과 테스트 재실행은 이번 검토 범위에 포함하지 않았습니다.
+
+## [2026-11-26] record | 월급 설정 응답에 DTO 적용
+
+- 월급 조회·저장에 [월급 설정 응답 DTO](topics/fixed-expenses.md#월급-설정-응답-dto)를 적용했습니다. 완성된 설문 월급 값의 조회, 수령일 없는 초안 조회, 수입 정보 저장 후 재조회 값 일치와 초안 제거, 설문 재요청 시 수정 내용 보존을 통합 테스트로 확인했습니다. [설문·수입 정보 통합 테스트](../backend/src/test/java/com/zip/backend/HousingOnboardingTests.java#L85)
+- `8f2c998` 기준 작업 트리의 별도 Gradle 출력에서 H2 백엔드 전체 347개가 실패·오류·건너뜀 없이 통과했습니다. 프론트 월급·설문 요청 테스트 5개가 통과했습니다. [월급 회귀 테스트](../backend/src/test/java/com/zip/backend/SalaryIntegrationTests.java) · [프론트 월급 테스트](../frontend/tests/salary.test.mjs)
+
+## [2026-11-26] record | 수입 정보의 가계부 월급 반영 확인
+
+- [월급 자동 등록](topics/fixed-expenses.md#월급-자동-등록)에서 수입 정보의 저장 값이 가계부 고정 수입과 월별 합계에 반영되는 경로를 확인했습니다. H2 설문·월급 테스트 15개와 프론트 가계부·설문·월급 테스트 11개를 다시 실행해 모두 통과했습니다. 테스트는 수령일 전 등록 보류, 중복 방지, 설정 변경 시 기존 월급 금액 보존을 포함합니다. [백엔드 월급 회귀 테스트](../backend/src/test/java/com/zip/backend/SalaryIntegrationTests.java#L70) · [프론트 가계부 테스트](../frontend/tests/ledger.test.mjs)
+
+## [2026-11-26] record | 동네 검색 기본 관련도순 유지 검토
+
+- [기준 평가](topics/community-operations.md#대표-검색어-30개-기준-평가)의 순위를 대조해 관련도순에서 적합한 글이 새로 1위에 오른 검색 10개와 최신순 1위가 유지된 검색 4개를 확인했습니다. 기본 관련도순 유지와 띄어쓰기 차이로 인한 검색 누락 개선을 제안했습니다. 기존 결과와 코드로 검토했습니다.
+
+## [2026-11-26] record | 동네 검색의 띄어쓰기 누락 개선
+
+- 3자 이상 한글 음절을 붙여 검색할 때 제목·본문의 일반 공백을 각각 빼고 비교하도록 회원 API와 모의 검색을 갱신했습니다. 격리 MySQL의 고정 평가에서 적합한 글 누락은 3/25에서 1/25로 줄었고, 별도 평가에서는 4/6에서 0/6으로 줄었습니다. 동네·카테고리·공개 상태와 관련도순 기본값, 합성 게시글 1만 건 API 부하를 확인했습니다. [검색 품질·응답 시간과 재실행](topics/community-operations.md#띄어쓰기-누락-개선-검증)
+
+## [2026-11-26] record | 동네 검색 개선안의 품질 유지 기준 검토
+
+- 고정 30개의 상위 5개 반환 항목을 다시 집계해 적합한 항목은 25개에서 27개로 증가하고 적합 표시가 없는 항목은 24개로 유지된 것을 확인했습니다. 검색어별 순위 하락, 대조 검색의 새 결과 확인, 결과가 비어 있는 철자 오류 검색의 제안 후보를 [품질 유지 검토](topics/community-operations.md#띄어쓰기-누락-개선-검증)에 기록했습니다.

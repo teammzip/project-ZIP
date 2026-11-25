@@ -57,25 +57,34 @@ public class CommunityService {
         return repository.countVisiblePostsByUser(userId);
     }
 
-    public Map<String, Object> posts(long viewerId, String scope, String category, String q, int page) {
+    public PostResponse.Page posts(long viewerId, String scope, String category, String q, String sort, int page) {
         var range = scope == null || scope.isBlank() ? "all" : scope;
         if (!SCOPES.contains(range)) throw new ApiException(400, "scope 는 here, near, all 중 하나예요.");
         var filter = filter(category, q, page);
+        var order = postSort(sort, filter.keyword());
 
         List<Long> regions = null;
         if (!range.equals("all")) {
             var home = repository.userRegion(viewerId);
-            if (home.isEmpty()) return Map.of("items", List.of(), "hasNext", false); // 동네가 없으면 우리 동네 · 주변 동네 글도 없음
+            if (home.isEmpty()) return new PostResponse.Page(List.of(), false); // 동네가 없으면 우리 동네 · 주변 동네 글도 없음
             regions = range.equals("here") ? List.of(home.get()) : repository.regionWithNeighbors(home.get());
         }
-        var rows = repository.posts(viewerId, regions, filter.category(), filter.keyword(), PAGE_SIZE + 1, page * PAGE_SIZE);
+        var rows = repository.searchPosts(viewerId, regions, filter.category(), filter.keyword(), order, PAGE_SIZE + 1, page * PAGE_SIZE);
         boolean hasNext = rows.size() > PAGE_SIZE;
-        var items = rows.stream().limit(PAGE_SIZE).map(p -> post(p, viewerId, null, null)).toList();
-        return Map.of("items", items, "hasNext", hasNext);
+        var items = rows.stream().limit(PAGE_SIZE).map(p -> postSummary(p, viewerId)).toList();
+        String suggestion = null;
+        if (page == 0 && rows.isEmpty()) {
+            String candidate = CommunitySearchSuggestion.candidate(filter.keyword());
+            if (candidate != null && !repository.searchPosts(viewerId, regions, filter.category(), candidate,
+                CommunityRepository.PostSort.LATEST, 1, 0).isEmpty()) {
+                suggestion = candidate;
+            }
+        }
+        return new PostResponse.Page(items, hasNext, suggestion);
     }
 
-    public List<Map<String, Object>> homeTips(long viewerId) {
-        return repository.homeTips(viewerId, HOME_POST_LIMIT).stream().map(p -> post(p, viewerId, null, null)).toList();
+    public List<PostResponse> homeTips(long viewerId) {
+        return repository.homeTips(viewerId, HOME_POST_LIMIT).stream().map(p -> postSummary(p, viewerId)).toList();
     }
 
     /**
@@ -104,18 +113,18 @@ public class CommunityService {
         return view;
     }
 
-    public List<Map<String, Object>> popularPosts(long viewerId) {
+    public List<PostResponse> popularPosts(long viewerId) {
         var region = repository.userRegion(viewerId);
         if (region.isEmpty()) return List.of();
         return repository.popularPosts(viewerId, region.get(), HOME_POST_LIMIT).stream()
-            .map(p -> post(p, viewerId, null, null)).toList();
+            .map(p -> postSummary(p, viewerId)).toList();
     }
 
     public void recordView(String postId) {
         if (!repository.incrementViews(id(postId, "글"))) throw notFound("글");
     }
 
-    public Map<String, Object> post(long viewerId, String postId) {
+    public PostResponse post(long viewerId, String postId) {
         var row = repository.visiblePost(viewerId, id(postId, "글")).orElseThrow(() -> notFound("글"));
         var ids = List.of(row.id());
         return post(row, viewerId, repository.comments(viewerId, ids).getOrDefault(row.id(), List.of()),
@@ -125,7 +134,7 @@ public class CommunityService {
     // ---------- 글 ----------
 
     @Transactional
-    public Map<String, Object> createPost(long userId, CommunityRequests.PostInput input) {
+    public PostResponse createPost(long userId, CommunityRequests.PostInput input) {
         var region = requireRegion(userId);
         var valid = validPost(input);
         var attachments = validAttachments(userId, input == null ? null : input.attachmentIds(), null);
@@ -135,7 +144,7 @@ public class CommunityService {
     }
 
     @Transactional
-    public Map<String, Object> updatePost(long userId, String postId, CommunityRequests.PostInput input) {
+    public PostResponse updatePost(long userId, String postId, CommunityRequests.PostInput input) {
         long id = id(postId, "글");
         requireOwner(repository.lockVisiblePostOwner(id).orElseThrow(() -> notFound("글")), userId, "글");
         var valid = validPost(input);
@@ -167,7 +176,7 @@ public class CommunityService {
     // ---------- 댓글 ----------
 
     @Transactional
-    public Map<String, Object> addComment(long userId, String postId, CommunityRequests.CommentInput input) {
+    public PostResponse.Comment addComment(long userId, String postId, CommunityRequests.CommentInput input) {
         long id = id(postId, "글");
         requireRegion(userId);
         var body = validComment(input);
@@ -180,7 +189,7 @@ public class CommunityService {
     }
 
     @Transactional
-    public Map<String, Object> updateComment(long userId, String commentId, CommunityRequests.CommentInput input) {
+    public PostResponse.Comment updateComment(long userId, String commentId, CommunityRequests.CommentInput input) {
         long id = id(commentId, "댓글");
         var lock = repository.lockVisibleComment(id).orElseThrow(() -> notFound("댓글"));
         requireOwner(lock.ownerId(), userId, "댓글");
@@ -226,9 +235,9 @@ public class CommunityService {
     private static final Set<String> RESOLUTIONS = Set.of("HIDDEN", "DISMISSED");
 
     /** 관리자 게시글 관리: 보이는 글 전체 (댓글 · 첨부 · 홈 꿀팁 여부 포함), 50개씩 */
-    public Map<String, Object> adminPosts(long adminId, String category, String q, int page) {
+    public PostResponse.Page adminPosts(long adminId, String category, String q, int page) {
         var filter = filter(category, q, page);
-        var rows = repository.posts(adminId, null, filter.category(), filter.keyword(), ADMIN_PAGE_SIZE + 1, page * ADMIN_PAGE_SIZE);
+        var rows = repository.adminPosts(adminId, filter.category(), filter.keyword(), ADMIN_PAGE_SIZE + 1, page * ADMIN_PAGE_SIZE);
         var shown = rows.stream().limit(ADMIN_PAGE_SIZE).toList();
         // 댓글 · 첨부는 이 쪽의 글 전부를 한 번씩만 읽어요
         var ids = shown.stream().map(CommunityRepository.PostRow::id).toList();
@@ -236,7 +245,7 @@ public class CommunityService {
         var attachments = repository.attachments(ids);
         var items = shown.stream()
             .map(p -> post(p, adminId, comments.getOrDefault(p.id(), List.of()), attachments.getOrDefault(p.id(), List.of()))).toList();
-        return Map.of("items", items, "hasNext", rows.size() > ADMIN_PAGE_SIZE);
+        return new PostResponse.Page(items, rows.size() > ADMIN_PAGE_SIZE);
     }
 
     /** 관리자 글 삭제: 작성자와 상관없이 DELETED, 이 글과 댓글에 들어온 접수 중 신고는 '삭제함'(HIDDEN) */
@@ -269,7 +278,7 @@ public class CommunityService {
 
     /** 운영자 댓글 (커뮤니티에 "운영자" 표시). 관리자는 동네가 없어도 돼요 */
     @Transactional
-    public Map<String, Object> adminComment(long adminId, String postId, CommunityRequests.CommentInput input) {
+    public PostResponse.Comment adminComment(long adminId, String postId, CommunityRequests.CommentInput input) {
         long id = id(postId, "글");
         var body = validComment(input);
         long owner = repository.lockVisiblePostOwner(id).orElseThrow(() -> notFound("글"));
@@ -352,6 +361,17 @@ public class CommunityService {
 
     /** 목록 거르기: 주제(없으면 전부) · 검색어(앞뒤 공백 뺌, 40자) */
     private record Filter(String category, String keyword) {}
+
+    private static CommunityRepository.PostSort postSort(String requested, String keyword) {
+        if (requested == null) return keyword == null ? CommunityRepository.PostSort.LATEST : CommunityRepository.PostSort.RELEVANCE;
+        return switch (requested) {
+            case "latest" -> CommunityRepository.PostSort.LATEST;
+            case "views" -> CommunityRepository.PostSort.VIEWS;
+            case "popular" -> CommunityRepository.PostSort.POPULAR;
+            case "relevance" -> CommunityRepository.PostSort.RELEVANCE;
+            default -> throw new ApiException(400, "sort 는 latest, views, popular, relevance 중 하나예요.");
+        };
+    }
 
     private static Filter filter(String category, String q, int page) {
         var kind = category == null || category.isBlank() ? null : category;
@@ -463,42 +483,28 @@ public class CommunityService {
 
     // ---------- 응답 모양 (frontend/API.md 7장) ----------
 
-    private static Map<String, Object> post(CommunityRepository.PostRow p, long viewerId,
-        List<CommunityRepository.CommentRow> comments, List<CommunityRepository.AttachmentRow> attachments) {
-        var result = new LinkedHashMap<String, Object>();
-        result.put("id", Long.toString(p.id()));
-        result.put("region", Map.of("id", Long.toString(p.regionId()), "name", p.regionName()));
-        result.put("category", p.category());
-        result.put("title", p.title());
-        result.put("body", p.body());
-        result.put("author", Map.of("id", Long.toString(p.userId()), "nickname", p.nickname()));
-        result.put("mine", p.userId() == viewerId);
-        result.put("createdAt", p.createdAt().toString());
-        result.put("updatedAt", p.updatedAt() == null ? p.createdAt().toString() : p.updatedAt().toString());
-        result.put("likes", p.likes());
-        result.put("liked", p.liked());
-        result.put("reported", p.reported());
-        result.put("commentCount", p.comments());
-        result.put("views", p.views());
-        result.put("homeTip", p.homeTip());
-        if (attachments != null) {
-            result.put("attachments", attachments.stream().map(a -> Map.<String, Object>of("id", Long.toString(a.fileId()),
-                "name", a.name(), "type", a.type(), "size", a.size(), "url", a.url())).toList());
-        }
-        if (comments != null) result.put("comments", comments.stream().map(c -> comment(c, viewerId)).toList());
-        return result;
+    private static PostResponse postSummary(CommunityRepository.PostRow row, long viewerId) {
+        return post(row, viewerId, null, null);
     }
 
-    private static Map<String, Object> comment(CommunityRepository.CommentRow c, long viewerId) {
-        var result = new LinkedHashMap<String, Object>();
-        result.put("id", Long.toString(c.id()));
-        result.put("author", Map.of("id", Long.toString(c.userId()), "nickname", c.nickname()));
-        result.put("body", c.body());
-        result.put("mine", c.userId() == viewerId);
-        result.put("reported", c.reported());
-        result.put("staff", c.staff());
-        result.put("parentId", c.parentId() == null ? null : Long.toString(c.parentId()));
-        result.put("createdAt", c.createdAt().toString());
-        return result;
+    private static PostResponse post(CommunityRepository.PostRow row, long viewerId,
+        List<CommunityRepository.CommentRow> comments, List<CommunityRepository.AttachmentRow> attachments) {
+        var region = new PostResponse.Region(Long.toString(row.regionId()), row.regionName());
+        var author = new PostResponse.Author(Long.toString(row.userId()), row.nickname());
+        String createdAt = row.createdAt().toString();
+        String updatedAt = row.updatedAt() == null ? createdAt : row.updatedAt().toString();
+        var attachmentResponses = attachments == null ? null : attachments.stream()
+            .map(a -> new PostResponse.Attachment(Long.toString(a.fileId()), a.name(), a.type(), a.size(), a.url())).toList();
+        var commentResponses = comments == null ? null : comments.stream().map(c -> comment(c, viewerId)).toList();
+        return new PostResponse(Long.toString(row.id()), region, row.category(), row.title(), row.body(), author,
+            row.userId() == viewerId, createdAt, updatedAt, row.likes(), row.liked(), row.reported(), row.comments(),
+            row.views(), row.homeTip(), attachmentResponses, commentResponses);
+    }
+
+    private static PostResponse.Comment comment(CommunityRepository.CommentRow row, long viewerId) {
+        var author = new PostResponse.Author(Long.toString(row.userId()), row.nickname());
+        String parentId = row.parentId() == null ? null : Long.toString(row.parentId());
+        return new PostResponse.Comment(Long.toString(row.id()), author, row.body(), row.userId() == viewerId,
+            row.reported(), row.staff(), parentId, row.createdAt().toString());
     }
 }

@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -19,6 +20,8 @@ import org.springframework.stereotype.Repository;
 /** 커뮤니티 표: posts · comments · post_likes · post_attachments · reports (db/schema.sql 4장) */
 @Repository
 public class CommunityRepository {
+    private static final Pattern SEARCH_WHITESPACE = Pattern.compile("\\s+", Pattern.UNICODE_CHARACTER_CLASS);
+    private static final Pattern COMPACT_KOREAN_QUERY = Pattern.compile("[가-힣]{3,}");
     private final JdbcTemplate jdbc;
 
     public CommunityRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
@@ -112,8 +115,27 @@ public class CommunityRepository {
         return jdbc.queryForObject("SELECT COUNT(*) FROM posts WHERE user_id = ? AND status = 'VISIBLE'", Long.class, userId);
     }
 
-    /** 보이는 글 목록, 새 글부터. regions 가 null 이면 전체 동네. limit+1 개를 읽어 다음 쪽이 있는지 판단은 부르는 쪽에서 */
-    public List<PostRow> posts(long viewerId, List<Long> regions, String category, String keyword, int limit, int offset) {
+    enum PostSort { LATEST, VIEWS, POPULAR, RELEVANCE }
+
+    /** 관리자 목록은 검색어 전체 문자열과 최신순을 사용. */
+    List<PostRow> adminPosts(long viewerId, String category, String keyword, int limit, int offset) {
+        var terms = keyword == null ? List.<String>of() : List.of(Sql.likeContains(keyword));
+        return posts(viewerId, null, category, terms, null, false, PostSort.LATEST, limit, offset);
+    }
+
+    List<PostRow> searchPosts(long viewerId, List<Long> regions, String category, String keyword, PostSort sort, int limit, int offset) {
+        var terms = keyword == null ? List.<String>of() : SEARCH_WHITESPACE.splitAsStream(keyword)
+            .filter(term -> !term.isEmpty()).distinct().map(Sql::likeContains).toList();
+        var phrase = keyword == null ? null : Sql.likeContains(keyword);
+        boolean ignoreSpaces = keyword != null && COMPACT_KOREAN_QUERY.matcher(keyword).matches();
+        return posts(viewerId, regions, category, terms, phrase, ignoreSpaces, sort, limit, offset);
+    }
+
+    /** regions 가 null 이면 전체 동네. limit+1 개를 읽어 다음 쪽이 있는지 판단은 부르는 쪽에서. */
+    private List<PostRow> posts(long viewerId, List<Long> regions, String category, List<String> terms, String phrase, boolean ignoreSpaces,
+        PostSort sort, int limit, int offset) {
+        var titleMatch = (ignoreSpaces ? "REPLACE(p.title, ' ', '')" : "p.title") + " LIKE ? ESCAPE '!'";
+        var bodyMatch = (ignoreSpaces ? "REPLACE(p.body, ' ', '')" : "p.body") + " LIKE ? ESCAPE '!'";
         var sql = new StringBuilder(POST_SQL).append(" WHERE p.status = 'VISIBLE'");
         var args = new ArrayList<Object>(List.of(viewerId, viewerId));
         if (regions != null) {
@@ -124,16 +146,48 @@ public class CommunityRepository {
             sql.append(" AND p.category = ?");
             args.add(category);
         }
-        if (keyword != null) {
-            sql.append(" AND (p.title LIKE ? ESCAPE '!' OR p.body LIKE ? ESCAPE '!')");
-            var like = Sql.likeContains(keyword);
-            args.add(like);
-            args.add(like);
+        for (var term : terms) {
+            sql.append(" AND (").append(titleMatch).append(" OR ").append(bodyMatch).append(")");
+            args.add(term);
+            args.add(term);
         }
-        sql.append(" ORDER BY p.created_at DESC, p.id DESC LIMIT ? OFFSET ?");
+        sql.append(" ORDER BY ");
+        switch (sort) {
+            case VIEWS -> sql.append("p.view_count DESC, ");
+            case POPULAR -> sql.append("(p.like_count + 2 * p.comment_count) DESC, ");
+            case RELEVANCE -> {
+                if (!terms.isEmpty()) {
+                    appendRelevanceOrder(sql, args, terms, phrase, titleMatch, bodyMatch);
+                    if (ignoreSpaces) {
+                        sql.append("(").append(titleMatch).append(") DESC, ");
+                        args.add(terms.get(0));
+                    }
+                }
+            }
+            case LATEST -> { }
+        }
+        sql.append("p.created_at DESC, p.id DESC LIMIT ? OFFSET ?");
         args.add(limit);
         args.add(offset);
         return jdbc.query(sql.toString(), CommunityRepository::post, args.toArray());
+    }
+
+    private static void appendRelevanceOrder(StringBuilder sql, List<Object> args, List<String> terms, String phrase,
+        String titleMatch, String bodyMatch) {
+        if (terms.size() > 1) {
+            sql.append("(p.title LIKE ? ESCAPE '!' OR p.body LIKE ? ESCAPE '!') DESC, ");
+            args.add(phrase);
+            args.add(phrase);
+        }
+        // 제목과 본문 모두에서 검색어를 확인할 수 있는 글을 같은 구문 일치 그룹 안에서 앞에 둔다.
+        sql.append("(");
+        for (int index = 0; index < terms.size(); index++) {
+            if (index > 0) sql.append(" AND ");
+            sql.append(titleMatch).append(" AND ").append(bodyMatch);
+            args.add(terms.get(index));
+            args.add(terms.get(index));
+        }
+        sql.append(") DESC, ");
     }
 
     public List<PostRow> homeTips(long viewerId, int limit) {
