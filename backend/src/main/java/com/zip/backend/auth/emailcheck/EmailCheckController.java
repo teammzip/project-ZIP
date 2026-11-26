@@ -1,5 +1,6 @@
 package com.zip.backend.auth.emailcheck;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -19,8 +20,9 @@ public class EmailCheckController {
 
     @PostMapping("/send")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void sendEmailCode(@Valid @RequestBody EmailCheckRequests.EmailSend request) {
-        emailAuth.send(request.email(), request.purpose());
+    public void sendEmailCode(@Valid @RequestBody EmailCheckRequests.EmailSend request, HttpServletRequest servlet) {
+        // 접속한 곳(IP)마다 발송 횟수를 셈. 프록시 뒤에서는 server.forward-headers-strategy 를 켜야 진짜 IP 가 들어옴
+        emailAuth.send(request.email(), request.purpose(), servlet.getRemoteAddr());
     }
 
     @PostMapping("/verify")

@@ -231,6 +231,18 @@ public class AuthRepository {
         }
     }
 
+    /**
+     * 회원 동네의 전체 이름("서울특별시 중구"). 날씨 · 지도가 같은 이름의 다른 구(서울 · 부산 · 대구 중구)와 헷갈리지 않게 시 · 도를 붙인다.
+     * 로그인 조회(FOR UPDATE)에 합치면 같은 시 · 도 행까지 잠겨 로그인끼리 기다리게 되므로 잠그지 않는 별도 조회로 둔다.
+     */
+    public String regionFullName(String regionId) {
+        return jdbc.query("SELECT r.name, p.name AS parent_name FROM regions r LEFT JOIN regions p ON p.id = r.parent_id WHERE r.id = ?",
+            (rs, row) -> {
+                String name = rs.getString("name"), parent = rs.getString("parent_name");
+                return parent == null ? name : parent + " " + name;
+            }, regionId).stream().findFirst().orElse(null);
+    }
+
     public Instant agreedAt(long userId) {
         List<Instant> dates = jdbc.query("""
             SELECT MAX(a.agreed_at) AS agreed_at FROM user_term_agreements a

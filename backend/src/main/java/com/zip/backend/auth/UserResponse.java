@@ -30,7 +30,8 @@ public record UserResponse(
     String avatarEmoji,
     String avatarColor
 ) {
-    public record Region(String id, String name) {}
+    /** name 은 구 이름("중구"), fullName 은 시 · 도를 붙인 이름("서울특별시 중구") */
+    public record Region(String id, String name, String fullName) {}
 
     public record Warning(String id, String reason, String at) {}
 

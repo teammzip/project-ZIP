@@ -137,6 +137,21 @@ class AuthIntegrationTests {
         assertEquals(user, json.readTree(me.getContentAsString()));
     }
 
+    /** 다른 기기에서 인증한 회원의 날씨 · 지도가 같은 이름의 다른 구와 헷갈리지 않게 시 · 도를 붙인 동네 이름도 준다 */
+    @Test void memberRegionIncludesTheProvinceName() throws Exception {
+        jdbc.update("UPDATE users SET region_id = 2 WHERE id = 1");
+        String token = login();
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.region.id").value("2"))
+            .andExpect(jsonPath("$.region.name").value("마포구"))
+            .andExpect(jsonPath("$.region.fullName").value("서울특별시 마포구"));
+        // 시 · 도 자체가 회원 동네면 그 이름만
+        jdbc.update("UPDATE users SET region_id = 1 WHERE id = 1");
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+            .andExpect(jsonPath("$.region.fullName").value("서울특별시"));
+    }
+
     @Test void birthDistinguishesMissingPersonalInfoFromAnEmptyDate() throws Exception {
         var me = get("/api/auth/me").header("Authorization", "Bearer " + login());
         mvc.perform(me).andExpect(status().isOk()).andExpect(jsonPath("$.birth").doesNotHaveJsonPath());

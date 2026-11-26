@@ -1,0 +1,79 @@
+# PR 과 dev 에 들어온 코드를 GitHub 가 자동으로 검사한다 (각자 PC 에서 돌렸다고 적는 대신 PR 화면에 결과가 뜸).
+# 백엔드 테스트(H2, 외부 서비스 · 비밀값 없이 돎) · 프론트 테스트 · 빌드 · 린트 · DB 정적 검사.
+# pull_request 는 PR 쪽 코드를 읽기 권한만으로 돌려서 저장소 비밀값에 닿지 않는다.
+name: Tests
+
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Backend tests
+        run: bash ./gradlew test --no-daemon
+      - name: Keep test reports when tests fail
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: backend/build/reports/tests/test
+          retention-days: 7
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Frontend tests
+        run: node --test 'tests/*.test.mjs'
+      - name: Lint
+        run: npm run lint
+      - name: Build (type check included)
+        run: npm run build
+
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: DB static checks
+        run: node --test db/tests/schema-assets.test.cjs

@@ -7,7 +7,7 @@ import { dayDiff, fmt, monthDay, monthKeyOf, todayStr } from '@/lib/date'
 import { TRASH, trashIco } from './data/catalog'
 import { useLifeStore } from './store'
 import type { Bill, CalEvent, LifeSettings, MoneyRecord, TrashEvent } from './types'
-import { regionVerification } from './regionVerification'
+import { regionVerification, serverRegionName, serverRegionVerification } from './regionVerification'
 import type { LoanCharge } from '@/features/loan/interest'
 import type { ContractKind } from '@/features/onboarding/store'
 import { useHousingContract } from '@/features/onboarding/useHousingContract'
@@ -181,8 +181,10 @@ export function useRegionVerify() {
   // 서버 모드: 서버가 저장한 인증 시각(30일 지났으면 null)을 지금 동네의 인증으로 봄.
   // 서버는 regionVerifiedAt 을 늘(없으면 null) 주고, 가짜 API 모드 회원에는 이 칸이 없어서(undefined) 구분돼요
   const serverAt = useAuthStore((s) => s.user?.regionVerifiedAt)
+  // 다른 기기에서 인증해 이 브라우저에 동네 이름이 없을 때 쓰는 서버의 회원 동네 ("서울특별시 중구" → "서울 중구", 날씨 · 지도와 같은 이름)
+  const serverRegion = useAuthStore((s) => serverRegionName(s.user?.region))
   if (serverAt !== undefined) {
-    return regionVerification(region, serverAt && userId ? { region, at: Date.parse(serverAt), userId } : null, userId, now)
+    return serverRegionVerification(region, serverRegion, serverAt, userId, now)
   }
   return regionVerification(region, verify, userId, now)
 }

@@ -6,7 +6,7 @@ ZIP은 앱에서 카카오 장소를 `kakao:<장소ID>`로 식별합니다. 접�
 
 지도 검색 결과와 저장 목록에는 접두사가 붙은 앱용 키가 들어갑니다. 카카오 즐겨찾기와 리뷰 테이블에서는 접두사를 벗긴 원본 ID를 사용합니다. 이 경계에서 원본 ID를 숫자로 변환하면 선행 0이나 긴 ID가 달라질 수 있으므로 문자열 그대로 전달합니다. [지도 서비스](../../backend/src/main/java/com/zip/backend/map/MapService.java) · [리뷰 저장](../../backend/src/main/java/com/zip/backend/map/PlaceReviewRepository.java) · [앱 구조](application.md)
 
-`GET /api/places/reviews/mine`은 로그인한 회원의 ZIP DB 장소 리뷰와 카카오 장소 리뷰를 최신순으로 함께 반환합니다. 리뷰에는 사진을 최대 5장 첨부할 수 있으며, 첨부 해제·리뷰 삭제 후 불필요해진 사진은 정리합니다. 작성 도중 올리고 연결하지 않은 파일도 일정 시간이 지나면 정리 대상이 됩니다. [리뷰 API 계약](../../frontend/API.md#9-지도-) · [리뷰 컨트롤러](../../backend/src/main/java/com/zip/backend/map/PlaceReviewController.java) · [리뷰 처리](../../backend/src/main/java/com/zip/backend/map/PlaceReviewService.java) · [파일 정리](../../backend/src/main/java/com/zip/backend/files/ProfileFileService.java)
+`GET /api/places/reviews/mine`은 로그인한 회원의 ZIP DB 장소 리뷰와 카카오 장소 리뷰를 최신순으로 함께 반환합니다. 리뷰에는 사진을 최대 5장 첨부할 수 있으며, 첨부 해제·리뷰 삭제 후 불필요해진 사진은 정리합니다. 작성 도중 올리고 연결하지 않은 파일도 7일이 지나면 정리됩니다. 업로드는 회원마다 24시간 50장, 아직 연결하지 않은 사진 20장까지이고 넘으면 429를 반환합니다(2026-11-25, 모든 사진 업로드 공통). [리뷰 API 계약](../../frontend/API.md#9-지도-) · [리뷰 컨트롤러](../../backend/src/main/java/com/zip/backend/map/PlaceReviewController.java) · [리뷰 처리](../../backend/src/main/java/com/zip/backend/map/PlaceReviewService.java) · [파일 정리](../../backend/src/main/java/com/zip/backend/files/ProfileFileService.java)
 
 [주변 동네 탭과 글 필터](community-operations.md#동네-글과-조회-집계) · [전국 이웃 데이터](database.md#전국-데이터)
 

@@ -19,6 +19,8 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 
 같은 날 [OpenAPI](../../backend/openapi.yaml)를 서버 컨트롤러 전체와 대조해, 빠져 있던 경로 17개와 AI 대화 전체 삭제(공지 · 관리자 공지, 관리자 꿀팁 지정, 관리자 전체 문의, 고지서 사진 인식 · 등록 결정, AI 대화 기록 저장, 프로필 사진 버리기, 지도 저장 리스트, 내 정보 이름 · 생년월일, 내 경고 · 정지 내역, 주변 동네 안내)를 추가하고 서버에 없는 `GET /api/ai/topics`를 지웠습니다. 내 문의 목록은 본인 것만, 문의 쓰기는 201로 서버와 맞췄습니다. 가계부 `/api/ledger/{kind}`는 `income` · `spend` 경로로 나눠 적습니다. [공지](../../backend/src/main/java/com/zip/backend/notice/NoticeController.java) · [고지서 사진](../../backend/src/main/java/com/zip/backend/bills/BillPhotoController.java) · [지도](../../backend/src/main/java/com/zip/backend/map/MapController.java) · [고객센터](../../backend/src/main/java/com/zip/backend/support/SupportController.java)
 
+2026-11-25에 [OpenAPI](../../backend/openapi.yaml)에 남아 있던 서버와 다른 설명 세 개를 서버 코드 기준으로 고쳤습니다. 글 목록 `GET /api/posts`는 `scope`를 생략하면 `all`이고, 읽기에는 동네 인증이 필요 없습니다(인증은 글쓰기 · 댓글 · 공감만). 이메일 가입의 `address`는 선택입니다. `PATCH /api/auth/me`는 프로필 편집, 소셜 첫 동의(주소 선택), 동의 뒤 주소만 변경의 세 가지 모양을 받습니다. [글 목록 기본값](../../backend/src/main/java/com/zip/backend/community/CommunityService.java) · [가입 주소](../../backend/src/main/java/com/zip/backend/auth/signup/SignupService.java) · [내 정보 수정](../../backend/src/main/java/com/zip/backend/auth/AuthController.java)
+
 ### DTO 적용 검토
 
 2026-11-26에 `backend`의 `8f2c998`과 커뮤니티 검색 작업 트리를 기준으로 컨트롤러·서비스와 프론트 타입을 대조했습니다. 생활 API에 이어 인증의 공통 회원 응답에도 DTO를 적용했습니다.
@@ -38,7 +40,7 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 
 #### 공통 회원 응답 DTO
 
-로그인과 회원가입은 `accessToken`과 `user`를 담은 `LoginResponse`를 반환합니다. 내 정보 조회·수정과 첫 주거 설문 완료 응답은 `UserResponse`를 바로 반환합니다. 회원 ID는 문자열입니다. 로그인 아이디가 없으면 `username`을 생략하고, 동네가 없으면 `region`을 `null`로 보냅니다. 개인정보 행이 없으면 `birth`를 생략하고, 행에 생년월일이 없으면 명시적 `null`을 보냅니다. 경고가 없으면 `unseenWarnings`는 빈 배열입니다. [회원 DTO](../../backend/src/main/java/com/zip/backend/auth/UserResponse.java) · [회원 응답 조립](../../backend/src/main/java/com/zip/backend/auth/AuthService.java#L187) · [로그인·가입 응답](../../backend/src/main/java/com/zip/backend/auth/AuthSessions.java) · [응답 통합 테스트](../../backend/src/test/java/com/zip/backend/AuthIntegrationTests.java)
+로그인과 회원가입은 `accessToken`과 `user`를 담은 `LoginResponse`를 반환합니다. 내 정보 조회·수정과 첫 주거 설문 완료 응답은 `UserResponse`를 바로 반환합니다. 회원 ID는 문자열입니다. 로그인 아이디가 없으면 `username`을 생략하고, 동네가 없으면 `region`을 `null`로 보냅니다. `region`은 `id`·`name`(구 이름)과 함께 시·도를 붙인 `fullName`(예: `서울특별시 중구`)을 보냅니다(2026-11-26 추가). 다른 기기에서 동네를 인증해 브라우저에 고른 동네가 없는 회원의 커뮤니티 입장·날씨·지도가 이 값을 씁니다. [동네 선택 순서](service-integrations.md#홈-날씨-위치) · [회원 응답](../../backend/src/main/java/com/zip/backend/auth/UserResponse.java) · [응답 테스트](../../backend/src/test/java/com/zip/backend/AuthIntegrationTests.java) 개인정보 행이 없으면 `birth`를 생략하고, 행에 생년월일이 없으면 명시적 `null`을 보냅니다. 경고가 없으면 `unseenWarnings`는 빈 배열입니다. [회원 DTO](../../backend/src/main/java/com/zip/backend/auth/UserResponse.java) · [회원 응답 조립](../../backend/src/main/java/com/zip/backend/auth/AuthService.java#L187) · [로그인·가입 응답](../../backend/src/main/java/com/zip/backend/auth/AuthSessions.java) · [응답 통합 테스트](../../backend/src/test/java/com/zip/backend/AuthIntegrationTests.java)
 
 #### 월별 고정 지출과 가계부의 DTO 도입 시 확인할 동작
 
@@ -62,6 +64,7 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 만료됐거나 로그아웃한 지 하루 지난 세션(`auth_sessions`)과 요청한 지 하루 지난 이메일 인증(`email_verifications`)은 서버가 6시간마다 지웁니다. 세션 행이 없으면 그 토큰은 무효라 결과가 같고, 인증번호(3분) · 인증 완료 값(30분) · 요청 제한(1시간)보다 깁니다(2026-11-24). [오래된 데이터 정리](../../backend/src/main/java/com/zip/backend/maintenance/DataCleanupService.java)
 
 - **비밀번호 로그인 제한**은 15분 안에 누적 실패가 5회에 이르면 15분 동안 잠그고, 누적 횟수와 재시도 가능 시각을 안내합니다. 정상 로그인 또는 이메일 인증을 통한 비밀번호 재설정으로 누적 실패 상태를 초기화합니다. [PR #126](https://github.com/teammzip/project-ZIP/pull/126) · [로그인 제한 구현](../../backend/src/main/java/com/zip/backend/auth/AuthService.java) · [비밀번호 재설정](../../backend/src/main/java/com/zip/backend/auth/recovery/RecoveryService.java)
+- **인증 메일 발송 제한**은 이메일 주소마다 1분 1통·1시간 10통에 더해, 같은 IP에서 10분 5통·하루 20통, 서버 전체 시간당 100통·하루 400통입니다(2026-11-25). 주소를 바꿔 가며 보내는 가입 인증 남용을 막고, 메일 계정의 발송 한도에 걸려 모든 회원의 가입·계정 찾기가 멈추는 일을 막습니다. 서버 전체 상한을 먼저 확인해 막힐 요청이 IP 횟수를 쓰지 않으며, IP 제한은 서버 메모리에서 세므로 재시작하면 초기화됩니다. 프록시 뒤에서는 실제 IP 설정이 필요합니다. 숫자는 [백엔드 설정](../../backend/README.md#처음-설정)의 환경 변수로 바꿉니다. [이메일 인증](../../backend/src/main/java/com/zip/backend/auth/emailcheck/EmailAuthService.java) · [IP 제한](../../backend/src/main/java/com/zip/backend/common/IpWindowLimit.java) · [발송 요청](../../backend/src/main/java/com/zip/backend/auth/emailcheck/EmailCheckController.java) · [검증](../../backend/src/test/java/com/zip/backend/RateLimitTests.java)
 - **가입과 계정 찾기**는 이메일 인증을 사용합니다. 이메일 가입과 소셜 첫 동의 화면은 주소 입력 없이 진행하며, 주소 입력은 [주거 설문과 내 집 정보](home-info.md#주소와-회원-설정)에서 할 수 있습니다. 서버는 가입과 첫 동의의 약관 버전과 동의 여부를 확인합니다. 2026-11-25에 두 API의 선택 `address`를 실제 요청 처리에 맞춰 문서화했습니다. [OpenAPI](../../backend/openapi.yaml) · [프론트 연동 계약](../../frontend/API.md#회원가입) · [가입 처리](../../backend/src/main/java/com/zip/backend/auth/signup/SignupService.java) · [첫 동의 처리](../../backend/src/main/java/com/zip/backend/auth/AuthController.java)
 - **약관 동의 후 회원 주소 변경**은 `PATCH /api/auth/me`로 처리합니다. 서버는 비어 있지 않은 최대 200자의 주소를 저장하고 주소에서 찾은 시·군·구를 회원의 동네에 반영합니다. [회원 주소 변경 API](../../frontend/API.md#회원-주소-변경) · [주소 저장 및 동네 갱신](../../backend/src/main/java/com/zip/backend/auth/AuthService.java)
 
@@ -76,5 +79,7 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 ## 화면 접근과 공통 모달
 
 라우터는 홈·지도·관리자 화면 등을 주소에 처음 접근할 때 불러옵니다. 공개 약관과 동네 목록(`GET /api/regions`, `GET /api/regions/{id}/neighbors`, 2026-11-24)은 로그인 전에도 열 수 있고, 서버는 관리자 API에서 관리자 역할을 검사합니다. [동네 목록 API](../../backend/src/main/java/com/zip/backend/region/RegionController.java) 공통 모달은 열릴 때 내부로 포커스를 옮기고, `Tab`과 `Shift+Tab`을 내부에서 순환시킵니다. 닫으면 기존 조작 요소로 포커스를 돌립니다. [라우터](../../frontend/src/app/router.tsx) · [공통 모달](../../frontend/src/components/ui/Modal.tsx) · [서버 권한](../../backend/src/main/java/com/zip/backend/auth/SecurityConfiguration.java)
+
+화면 코드에서 오류가 나면 최상위 경로의 `errorElement`가 앱 전체의 빈 화면 대신 [오류 화면](../../frontend/src/pages/RouteErrorPage.tsx)을 보여 줍니다(2026-11-25). 화면 파일은 주소에 처음 갈 때 받으므로, 새 버전 배포 뒤 옛 화면을 열어 둔 사용자는 사라진 파일을 받지 못할 수 있습니다. 이 오류는 [옛 파일 판별](../../frontend/src/lib/staleChunk.ts)이 브라우저별 문구로 알아보고, 이 탭에서 10초 안에 다시 하지 않았을 때만 한 번 자동 새로고침합니다. 그 밖의 오류는 새로고침 · 홈으로 가기를 안내하고 개발자 도구에 원인을 남깁니다. [라우터](../../frontend/src/app/router.tsx) · [검증](../../frontend/tests/route-error.test.mjs)
 
 관련 흐름은 [내 집 정보와 대출](home-info.md), [지도 장소 식별자](map-place-ids.md), [배출표 조회](trash-schedules.md)에서 확인할 수 있습니다.
