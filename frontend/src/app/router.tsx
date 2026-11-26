@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AccountLayout } from '@/components/layout/AccountLayout'
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { RouteErrorPage } from '@/pages/RouteErrorPage'
 import { GuestRoute, ProtectedRoute } from './guards'
 
 /** 화면 코드를 그 주소에 처음 갈 때 받아 옴 (앱을 처음 여는 속도를 빠르게 — 지도 · 관리자 · 시작 화면 코드는 들어갈 때만) */
@@ -16,6 +17,8 @@ export const router = createBrowserRouter([
   {
     // 첫 화면 코드를 받는 동안: 앱 배경색만 (깜빡임 없이)
     hydrateFallbackElement: <div style={{ minHeight: '100dvh', background: 'var(--color-bg)' }} />,
+    // 어느 화면에서 오류가 나도 흰 화면 대신 안내 화면 (배포 직후 옛 화면 파일을 못 받으면 한 번 저절로 새로고침)
+    errorElement: <RouteErrorPage />,
     children: [
       // 로그인 안 한 사람만
       {

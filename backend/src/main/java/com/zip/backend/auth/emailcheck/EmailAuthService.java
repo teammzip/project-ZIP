@@ -1,6 +1,7 @@
 package com.zip.backend.auth.emailcheck;
 
 import com.zip.backend.common.ApiException;
+import com.zip.backend.common.IpWindowLimit;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -33,6 +34,11 @@ public class EmailAuthService {
     private static final Duration RESEND_WAIT = Duration.ofSeconds(60);
     private static final int MAX_ATTEMPTS = 5;
     private static final int MAX_PER_HOUR = 10;
+    // 위 두 제한은 이메일 주소마다라서, 주소를 바꿔 가며 보내는 남용(주로 아무 주소로나 보낼 수 있는 가입 인증)은 아래 두 제한이 막는다:
+    // 같은 IP 에서 짧은 시간 · 하루 횟수, 그리고 메일 계정(Gmail 하루 약 500통) 정지를 막는 서버 전체 시간당 · 하루 상한.
+    private final IpWindowLimit ipLimit;
+    private final int globalPerHour;
+    private final int globalPerDay;
 
     private final EmailCheckRepository repository;
     private final MailService mail;
@@ -41,7 +47,14 @@ public class EmailAuthService {
     private final SecureRandom random = new SecureRandom();
 
     public EmailAuthService(EmailCheckRepository repository, MailService mail, Clock clock,
-        @Value("${zip.auth.jwt-secret}") String secret) {
+        @Value("${zip.auth.jwt-secret}") String secret,
+        @Value("${zip.mail.ip-window-minutes:10}") int ipWindowMinutes, @Value("${zip.mail.ip-per-window:5}") int ipPerWindow,
+        @Value("${zip.mail.ip-per-day:20}") int ipPerDay,
+        @Value("${zip.mail.global-per-hour:100}") int globalPerHour, @Value("${zip.mail.global-per-day:400}") int globalPerDay) {
+        if (globalPerHour <= 0 || globalPerDay < globalPerHour) throw new IllegalArgumentException("zip.mail.global-per-hour · global-per-day 를 확인해 주세요");
+        this.ipLimit = new IpWindowLimit(Duration.ofMinutes(ipWindowMinutes), ipPerWindow, ipPerDay);
+        this.globalPerHour = globalPerHour;
+        this.globalPerDay = globalPerDay;
         this.repository = repository;
         this.mail = mail;
         this.clock = clock;
@@ -62,7 +75,7 @@ public class EmailAuthService {
     }
 
     @Transactional
-    public void send(String rawEmail, String rawPurpose) {
+    public void send(String rawEmail, String rawPurpose, String clientIp) {
         String email = normalize(rawEmail);
         String purpose = purpose(rawPurpose);
         var now = clock.instant();
@@ -79,6 +92,16 @@ public class EmailAuthService {
         }
         if (repository.verificationRequestsSince(email, now.minus(Duration.ofHours(1))) >= MAX_PER_HOUR) {
             throw new ApiException(429, "인증번호 요청이 너무 많아요. 한 시간 뒤에 다시 시도해 주세요.", "EMAIL_TOO_MANY");
+        }
+        // 서버 전체 상한을 먼저 봐서, 막힐 요청이 IP 횟수를 쓰지 않게 함. 동시에 몰리면 몇 통 넘을 수 있지만 메일 계정 한도보다 넉넉히 낮게 잡아 둠
+        if (repository.allVerificationRequestsSince(now.minus(Duration.ofHours(1))) >= globalPerHour
+            || repository.allVerificationRequestsSince(now.minus(Duration.ofDays(1))) >= globalPerDay) {
+            throw new ApiException(429, "지금 인증 메일 요청이 많아요. 잠시 뒤에 다시 시도해 주세요.", "EMAIL_BUSY");
+        }
+        switch (ipLimit.acquire(clientIp, now)) {
+            case SHORT_LIMIT -> throw new ApiException(429, "인증번호 요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요.", "EMAIL_IP_LIMIT");
+            case DAY_LIMIT -> throw new ApiException(429, "오늘은 인증번호를 더 받을 수 없어요. 내일 다시 시도해 주세요.", "EMAIL_IP_LIMIT");
+            case OK -> { }
         }
         String code = String.format("%06d", random.nextInt(1_000_000));
         long id = repository.insertVerification(purpose, email, userId, hash(code), now, now.plus(CODE_LIFE));

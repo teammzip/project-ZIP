@@ -17,9 +17,10 @@ function evaluate(file, mocks = {}, globals = {}) {
 const pointApi = evaluate('../src/features/map/location.ts')
 const dateApi = evaluate('../src/lib/date.ts')
 const paymentApi = evaluate('../src/features/life/payments.ts')
-const policy = evaluate('../src/features/life/neighborhood.ts', { '@/features/map/location': pointApi })
+const regionNames = evaluate('../src/features/life/locateRegion.ts')
 const addressApi = evaluate('../src/features/onboarding/addressResult.ts', { '@/features/map/location': pointApi })
-const regionApi = evaluate('../src/features/life/regionVerification.ts')
+const regionApi = evaluate('../src/features/life/regionVerification.ts', { './locateRegion': regionNames })
+const policy = evaluate('../src/features/life/neighborhood.ts', { '@/features/map/location': pointApi, './regionVerification': regionApi })
 const member = { id: 'member-a', address: '서울특별시 마포구' }
 const surveyPoint = { lat: 37.55, lon: 126.91 }
 const verifiedPoint = { lat: 35.16, lon: 129.06 }
@@ -223,4 +224,32 @@ test('소유자가 없는 기존 공용 데이터는 보존하되 어느 계정�
   assert.equal(ctx.saved()['zip-life'], legacy)
   ctx.login({ id: 'member-b' })
   assert.equal(ctx.store.getState().bills.length, 0)
+})
+
+test('다른 기기에서 인증한 동네는 이 브라우저에 고른 동네가 없을 때 설문 주소보다 먼저 쓴다', () => {
+  const remote = { ...member, address: '', region: { id: '8', name: '중구', fullName: '서울특별시 중구' }, regionVerifiedAt: '2026-11-26T04:44:28Z' }
+  const empty = { region: '' }
+  // 시 · 도를 붙인 이름이라 부산 · 대구 중구와 헷갈리지 않음
+  const fromServer = policy.selectNeighborhood(remote, empty, null, null)
+  assert.equal(fromServer.region, '서울 중구')
+  assert.equal(fromServer.point, null)
+  assert.equal(fromServer.source, 'verified')
+  assert.equal(policy.selectNeighborhood(remote, empty, survey, null).region, '서울 중구')
+  // 이 브라우저의 설문 선택보다도 서버 인증이 먼저
+  const surveyPicked = { region: survey.address, regionLocation: { userId: member.id, region: survey.address, point: surveyPoint, source: 'survey' } }
+  assert.equal(policy.selectNeighborhood(remote, surveyPicked, survey, null).source, 'verified')
+  // 이 브라우저에서 직접 인증 · 변경한 동네는 그대로 우선
+  const manual = { region: '대전 유성구', regionLocation: { userId: member.id, region: '대전 유성구', source: 'manual' } }
+  assert.equal(policy.selectNeighborhood(remote, manual, survey, null).region, '대전 유성구')
+})
+
+test('서버 인증이 없으면 지금처럼 설문 · 가입 주소를 쓰고, 둘 다 없으면 서버의 회원 동네를 쓴다', () => {
+  const expired = { ...member, address: '', region: { id: '8', name: '중구', fullName: '서울특별시 중구' }, regionVerifiedAt: null }
+  assert.equal(policy.selectNeighborhood(expired, { region: '' }, survey, null).source, 'survey')
+  const account = policy.selectNeighborhood(expired, { region: '' }, null, null)
+  assert.equal(account.region, '서울 중구')
+  assert.equal(account.source, 'account')
+  assert.equal(policy.selectNeighborhood({ ...expired, region: null }, { region: '' }, null, null).source, 'none')
+  // 모의 모드 회원(동네 · 인증 칸 없음)은 예전 그대로
+  assert.equal(policy.selectNeighborhood({ id: 'm', address: '서울 마포구' }, { region: '' }, null, null).source, 'account')
 })

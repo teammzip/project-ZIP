@@ -26,7 +26,16 @@ public class ProfileFileService {
     private final AuthRepository auth;
     private final java.time.Clock clock;
 
-    public ProfileFileService(@Value("${zip.files.directory:./var/uploads}") String directory, JdbcTemplate jdbc, AuthRepository auth, java.time.Clock clock) {
+    // 회원 한 명이 사진을 끝없이 올려 서버 디스크를 채우지 못하게: 최근 24시간 업로드 수 · 아직 어디에도 안 붙인 사진 수 상한
+    // (안 붙인 사진은 cleanupUnusedUploads 가 7일 뒤 지우지만 그 사이에 쌓이는 것을 막음)
+    private final int dailyLimit;
+    private final int pendingLimit;
+
+    public ProfileFileService(@Value("${zip.files.directory:./var/uploads}") String directory, JdbcTemplate jdbc, AuthRepository auth, java.time.Clock clock,
+        @Value("${zip.files.daily-limit:50}") int dailyLimit, @Value("${zip.files.pending-limit:20}") int pendingLimit) {
+        if (dailyLimit <= 0 || pendingLimit <= 0) throw new IllegalArgumentException("zip.files.daily-limit · pending-limit 는 1 이상이어야 해요");
+        this.dailyLimit = dailyLimit;
+        this.pendingLimit = pendingLimit;
         if (directory.isBlank()) throw new IllegalArgumentException("ZIP_UPLOAD_DIR must not be blank");
         this.root = Path.of(directory).toAbsolutePath().normalize();
         this.jdbc = jdbc;
@@ -72,6 +81,14 @@ public class ProfileFileService {
         auth.lockUser(userId);
         if (!auth.sessionActive(sessionId, userId, clock.instant())) throw new ApiException(401, "로그인이 만료됐어요.");
         if (file.isEmpty()) throw new ApiException(400, "사진 파일을 골라 주세요.");
+        // 위에서 회원을 잠갔으므로 동시에 올려도 정확히 셈
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM uploaded_files WHERE user_id = ? AND created_at > ?", Long.class,
+            userId, java.sql.Timestamp.from(clock.instant().minus(java.time.Duration.ofDays(1)))) >= dailyLimit) {
+            throw new ApiException(429, "오늘은 사진을 " + dailyLimit + "장까지 올릴 수 있어요. 내일 다시 올려 주세요.", "UPLOAD_DAILY_LIMIT");
+        }
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM uploaded_files WHERE user_id = ? AND deleted_at IS NULL AND " + UNUSED, Long.class, userId) >= pendingLimit) {
+            throw new ApiException(429, "아직 쓰지 않은 사진이 많아요. 올린 사진을 글이나 프로필에 붙이거나 지운 뒤 다시 올려 주세요.", "UPLOAD_PENDING_LIMIT");
+        }
         if (file.getSize() > MAX_BYTES) throw new ApiException(413, "사진은 2MB 이하여야 해요.");
         String declared = file.getContentType();
         if (!"image/jpeg".equals(declared) && !"image/png".equals(declared)) {

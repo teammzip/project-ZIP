@@ -33,6 +33,11 @@ public class EmailCheckRepository {
             Long.class, email, Timestamp.from(since));
     }
 
+    /** 모든 주소에 보낸 인증 메일 수 (서버 전체 발송 상한용). 하루 지난 기록은 정리 작업이 지우므로 표가 작게 유지됨 */
+    public long allVerificationRequestsSince(Instant since) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM email_verifications WHERE requested_at > ?", Long.class, Timestamp.from(since));
+    }
+
     public long insertVerification(String purpose, String email, Long userId, String codeHash, Instant now, Instant expires) {
         var keys = new GeneratedKeyHolder();
         jdbc.update(connection -> {

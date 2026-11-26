@@ -12,8 +12,8 @@ export type User = {
   nickname: string
   birth?: string | null
   address: string
-  /** 사는 동네 (DB users.region_id → regions). 주소에서 동네를 못 찾으면 없음 */
-  region?: { id: string; name: string } | null
+  /** 사는 동네 (DB users.region_id → regions). name 은 구 이름, fullName 은 시 · 도를 붙인 이름("서울특별시 중구"). 주소에서 동네를 못 찾으면 없음 */
+  region?: { id: string; name: string; fullName?: string } | null
   /** 가입 경로 (DB users.signup_provider 의 소문자) */
   provider: 'email' | SocialProvider
   /** 권한. ADMIN 만 관리자 화면(/admin)에 들어갈 수 있음 (DB users.role) */

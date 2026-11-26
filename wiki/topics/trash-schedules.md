@@ -7,6 +7,7 @@
 3. 화면은 `regionName`이 `null`이면 주소로 지역을 찾지 못했다는 안내를 표시합니다. 지역 이름이 있고 `items`가 비어 있으면 해당 지역의 배출표가 없다는 안내를 표시합니다. 전국 자료가 필요한 DB의 적용 순서는 DB 문서에서 확인할 수 있습니다. [배출표 컴포넌트](../../frontend/src/features/life/components/TrashScheduleDisclosure.tsx) · [DB 안내](../../db/README.md) · [데이터베이스와 검증](database.md)
 
 4. 표 아래에 공공데이터 출처(행정안전부 「전국생활쓰레기배출정보표준데이터」, 공공데이터포털)를 표시합니다. 이용약관 제2조 · 소개 페이지 푸터에도 같은 출처가 있습니다. [배출표 컴포넌트](../../frontend/src/features/life/components/TrashScheduleDisclosure.tsx)
+5. 배출표와 배출일 알림은 주소(내 집 주소 → 회원 주소)로만 지역을 찾고 회원 동네 인증(`users.region_id`)은 쓰지 않습니다. 2026-11-26 회원 응답 `region.fullName` 추가와 날씨·지도의 동네 선택 변경, [공용 API 문서](../../frontend/API.md)의 회원 동네 설명 수정은 이 경로에 영향이 없습니다(임시 DB 서버에서 `GET /api/trash-schedules/me` 200 확인). [일정 쪽 조회](../../backend/src/main/java/com/zip/backend/calendar/CalendarService.java) · [알림 쪽 조회](../../backend/src/main/java/com/zip/backend/notification/TrashReminderService.java)
 
 ## 배출일 알림
 

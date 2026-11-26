@@ -4,7 +4,7 @@
 
 | 영역 | 확인한 구현과 범위 |
 | --- | --- |
-| 이메일·소셜 로그인 | Google·Naver·Kakao는 설정된 제공자만 활성화됩니다. [가입·계정 찾기·소셜 로그인](application.md#인증과-토큰-재발급) · [이메일 인증 서비스](../../backend/src/main/java/com/zip/backend/auth/emailcheck/EmailAuthService.java) · [소셜 설정 코드](../../backend/src/main/java/com/zip/backend/auth/SocialOAuthConfiguration.java) |
+| 이메일·소셜 로그인 | Google·Naver·Kakao는 설정된 제공자만 활성화됩니다. [가입·계정 찾기·소셜 로그인](application.md#인증과-토큰-재발급) · [이메일 인증 서비스](../../backend/src/main/java/com/zip/backend/auth/emailcheck/EmailAuthService.java)(메일 계정 발송 한도를 넘지 않게 서버 전체·IP별 상한, [발송 제한](application.md#인증과-토큰-재발급)) · [소셜 설정 코드](../../backend/src/main/java/com/zip/backend/auth/SocialOAuthConfiguration.java) |
 | Gemini·고지서 | 서버가 사진 인식 결과를 임시 저장하고, 회원이 확인한 뒤 고정 지출에 등록합니다. 확정할 때 일반 월별 고정 지출 등록과 같은 입력 검증을 거칩니다. 임시 결과에는 만료 시간이 있으며 사진·문서 식별자로 중복 등록을 막습니다. [월별 고정 지출 DTO](fixed-expenses.md#일반-고정-지출의-납부와-해지) · [고지서 API](../../backend/src/main/java/com/zip/backend/bills/BillPhotoController.java) · [고지서 등록 테스트](../../backend/src/test/java/com/zip/backend/BillMonthlyWriteTests.java) |
 | AI 사용량 안내 | AI 한도에 도달하면 화면에서 기능 사용법·문의 안내·질문 재전송을 사용할 수 있습니다. PR #136 시점에 임시 계정으로 WebKit PC·모바일 화면과 재전송을 확인했습니다. [AI 대화 화면](../../frontend/src/features/ai/components/AiChat.tsx) · [변경 기록](../../CHANGELOG.md#프론트엔드) |
 | 지도·날씨·GPS | [카카오 장소 식별자](map-place-ids.md) · [홈 날씨 위치](#홈-날씨-위치) |
@@ -17,6 +17,8 @@
 ## 홈 날씨 위치
 
 홈 날씨는 주거 설문 주소를 우선하고, 주소를 해석할 때 지번 등 세부 주소를 줄여 다시 찾습니다. [날씨 위치 선택](../../frontend/src/features/weather/useWeatherLocation.ts) · [주소 후보](../../frontend/src/features/weather/addressRegion.ts)
+
+설문 주소가 없으면 날씨와 홈·동네 지도는 같은 우리 동네를 씁니다. 순서는 이 브라우저에서 직접 인증·변경한 동네 → 서버(DB)에 남은 동네 인증(다른 기기에서 인증한 경우, 서버 회원 응답의 `region.fullName`을 `서울 중구`처럼 줄여 사용) → 설문 주소 → 가입 주소 → 서버의 회원 동네입니다. 서버 인증은 이 브라우저의 설문 선택보다 앞섭니다. 서버에는 인증 좌표가 없어서 다른 기기에서 인증한 동네는 이름으로 위치를 찾습니다(2026-11-26). [동네 선택](../../frontend/src/features/life/neighborhood.ts) · [기준 위치](../../frontend/src/features/life/useNeighborhoodLocation.ts) · [선택 순서 테스트](../../frontend/tests/neighborhood-location.test.mjs)
 
 ## 검증 범위
 

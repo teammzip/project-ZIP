@@ -194,7 +194,9 @@ public class AuthService {
         }
         boolean firstLogin = "PENDING".equals(repository.housingSurveyStatus(user.id()));
         var agreedAt = repository.agreedAt(user.id());
-        var region = user.regionId() == null ? null : new UserResponse.Region(user.regionId(), user.regionName());
+        // 동네 전체 이름(fullName)은 다른 기기에서 인증한 회원의 날씨 · 지도 위치를 찾을 때 씀
+        var region = user.regionId() == null ? null
+            : new UserResponse.Region(user.regionId(), user.regionName(), repository.regionFullName(user.regionId()));
         var counts = repository.sanctionCounts(user.id());
         var warnings = repository.unseenWarnings(user.id()).stream()
             .map(w -> new UserResponse.Warning(Long.toString(w.id()), w.reason() == null ? "" : w.reason(), w.at().toString()))

@@ -30,9 +30,12 @@
 `backend/` — Spring Boot 서버 API
 
 ### 2026-11-26
+- jgkim7848-lab — 회원 응답(`/api/auth/me` · 로그인 · 가입)의 `region` 에 시 · 도를 붙인 `fullName`(예: `서울특별시 중구`) 추가. 다른 기기에서 동네를 인증한 회원의 날씨 · 지도 위치를 같은 이름의 다른 구와 구분하려고. 로그인 잠금을 넓히지 않게 별도 조회 (`auth/AuthRepository` `regionFullName` · `AuthService` · `UserResponse`, `openapi.yaml` User.region, 테스트 `AuthIntegrationTests`). [공통 회원 응답 DTO](wiki/topics/application.md#공통-회원-응답-dto)
 - moon — 공통 회원·커뮤니티 게시글·월급 설정 응답에 DTO를 적용하고, 동네 검색 정렬·한글 띄어쓰기를 개선하고 결과가 없을 때 오타 교정 검색어를 제안. 월급 설정의 가계부 고정 수입·월별 합계 반영 확인(관련 H2 통합 테스트 70개 통과). [응답 DTO](wiki/topics/application.md#dto-적용-검토) · [동네 검색과 오타 제안](wiki/topics/community-operations.md#검색-정렬과-관련도) · [월급 자동 등록](wiki/topics/fixed-expenses.md#월급-자동-등록)
 
 ### 2026-11-25
+- jgkim7848-lab — 남용 방지 제한: 인증 메일은 같은 IP 10분 5통 · 하루 20통, 서버 전체 시간당 100통 · 하루 400통(메일 계정 발송 한도 보호, `auth/emailcheck/EmailAuthService.java` · 새 `common/IpWindowLimit.java`). 사진 업로드는 회원당 24시간 50장 · 안 붙인 사진 20장(`files/ProfileFileService.java`). 숫자는 환경변수로 변경(`backend/README.md`). [앱 구조](wiki/topics/application.md#인증과-토큰-재발급) · 검증: `RateLimitTests` 4 · `IpWindowLimitTests` 2 · 백엔드 345 · 임시 MySQL DB 로 서버를 띄워 IP · 서버 전체 · 사진 제한 동작 확인 · 실제 메일 계정으로 가입 인증 메일 수신 → 가입 완료 확인(로컬)
+- jgkim7848-lab — `openapi.yaml` 에 남은 서버와 다른 설명 3개를 서버 코드 기준으로: 글 목록 `scope` 기본값 `all` · 읽기에 동네 인증 불필요, 이메일 가입 `address` 선택, `PATCH /api/auth/me` 세 가지 모양(프로필 편집 · 소셜 첫 동의 · 주소만 변경). [앱 구조](wiki/topics/application.md#api-데이터-계약과-dto) · 검증: YAML 파싱 · 참조 누락 0
 - moon — 가계부 수입·지출 저장과 거래 목록, 월별 고정 지출, 내 집 정보 응답, 첫 주거 설문 요청에 DTO 적용. [API 데이터 계약과 DTO](wiki/topics/application.md#api-데이터-계약과-dto) · 검증: H2 백엔드 339개, 관련 프론트 54개 통과.
 
 ### 2026-11-24
@@ -106,6 +109,9 @@
 
 `db/` — 표 설계(schema.sql) · 마이그레이션 · 검사. 마이그레이션 파일 설명은 [db/migrations/README.md](db/migrations/README.md)
 
+### 2026-11-25
+- jgkim7848-lab — 로컬 개발 DB 에서 일반 회원 2명 삭제(실제 메일 발송 시험을 위해 같은 이메일로 다시 가입, 관리자 계정은 유지, 삭제 전 전체 백업). 스키마 · 마이그레이션 변경 없음
+
 ### 2026-11-24
 - jgkim7848-lab — 개발용 실제 DB를 `schema.sql` 과 똑같이: `bill_photo_drafts` 인덱스 이름(`bill_photo_drafts_ibfk_2`), `loan_interest_charges.paid_at` 설명 문구 통일(`20261118_07` 마이그레이션 문구도 맞춤). `db/migrations/README.md` 끝의 옛 안내문 중복을 지우고 남길 내용(기념일 정리 · 데이터 마이그레이션 안내 등)은 본문으로 옮김. [데이터베이스와 검증](wiki/topics/database.md#db-검증-결과) · 검증: 백업 후 적용, 새 schema.sql DB 와 `information_schema` 비교 차이 0(칸 순서 제외)
 - jgkim7848-lab — 동네 목록 기준을 프론트 `regions.ts` 하나로: 이웃 변환 스크립트(`db/tools/region_neighbors_import.py`)가 DB 이웃 마이그레이션(`20261122_04`)과 프론트 이웃 목록을 같은 데이터로 만들고, `regions.ts` · DB 지역(`20261122_01`) · 이웃 데이터 · 프론트 목록이 어긋나면 `frontend/tests/region-data-sync.test.mjs` 가 실패. DB 파일 내용 변경 없음. [데이터베이스와 검증](wiki/topics/database.md)
@@ -173,7 +179,13 @@
 
 `frontend/` — React 앱
 
+### 2026-11-26
+- jgkim7848-lab — 날씨 · 홈 · 동네 지도도 다른 기기에서 한 동네 인증을 사용: 이 브라우저에 고른 동네가 없으면 서버의 동네 인증(`region.fullName`)을 설문 주소보다 먼저 씀 (`life/neighborhood.ts` · `life/regionVerification.ts` `serverRegionName`, 테스트 `neighborhood-location.test.mjs`). 임시 DB 서버 · 화면에서 확인. [홈 날씨 위치](wiki/topics/service-integrations.md#홈-날씨-위치)
+- jgkim7848-lab — 다른 기기에서 동네 인증을 했거나 브라우저 데이터를 지운 회원이 커뮤니티에 들어갈 때 다시 인증하라고 막히던 문제 수정: 서버 모드는 브라우저의 동네 이름이 비면 서버의 회원 동네로 인증을 판정 (`life/regionVerification.ts` `serverRegionVerification` · `life/derive.ts`, 테스트 `region-verify-server.test.mjs`). 임시 DB 서버 · 화면에서 확인. [커뮤니티 동네 인증](wiki/topics/community-operations.md#동네-글과-조회-집계)
+
 ### 2026-11-25
+- jgkim7848-lab — 화면 오류 때 흰 화면 대신 안내 화면(새로고침 · 홈으로), 배포 직후 옛 화면 파일을 못 받으면 한 번 자동 새로고침 (`pages/RouteErrorPage.tsx` · `lib/staleChunk.ts` · `app/router.tsx` 의 `errorElement`). [앱 구조](wiki/topics/application.md#화면-접근과-공통-모달) · 검증: `route-error.test.mjs` 4개 · 프론트 199 · 빌드 · 빌드 미리보기에서 화면 파일을 지워 자동 새로고침 1번 → 안내 화면 → [새로고침] 복구 확인
+- jgkim7848-lab — PR 자동 테스트(CI) 추가: `dev` 대상 PR · `dev` 푸시마다 백엔드 테스트 · 프론트 테스트 · 린트 · 빌드 · DB 정적 검사 (`.github/workflows/test.yml`). [구현·검증 현황](wiki/topics/project-status.md#구현해야-될-부분)
 - moon — 가계부 메모 복구와 동네 지도 검색 상태 처리를 정리해 React 린트 경고를 해소. [메모 이어쓰기](wiki/topics/ledger-memos.md) · [장소 검색](wiki/topics/map-place-ids.md#장소-검색과-저장-리스트)
 
 ### 2026-11-24

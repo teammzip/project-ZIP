@@ -12,7 +12,7 @@
 | 영역 | 상태 | DB 표 |
 |---|---|---|
 | [인증 · 내 정보](#1-인증--내-정보-) | ✅ | `users` `social_accounts` `auth_sessions` `email_verifications` `password_resets` `user_term_agreements` `withdrawal_logs` `user_profiles` `user_personal_info` |
-| [설정 · 동네 · 설문 · 내 집 정보](#2-설정--동네-) | ✅ | `user_settings` `home_contracts` `housing_surveys` `regions` `region_neighbors` · `users.region_verified_at` (동네 목록 API 는 아직 없음) |
+| [설정 · 동네 · 설문 · 내 집 정보](#2-설정--동네-) | ✅ | `user_settings` `home_contracts` `housing_surveys` `regions` `region_neighbors` · `users.region_verified_at` (동네 목록 · 이웃 조회 API 있음, 화면은 아직 안 씀) |
 | [일정 · 쓰레기 배출](#3-일정--쓰레기-배출-) | ✅ | `events`(기념일·매년 반복 포함) `event_categories` `event_presets` `trash_schedules` |
 | [월세 · 고정 지출 · 대출](#4-월세--고정-지출-) | ✅ | `bill_items` `bill_payments` `bill_document_keys` `bill_photo_imports` `bill_photo_drafts` `rent_payments` `housing_loans` `loan_interest_charges` |
 | [가계부 · 월급](#5-가계부-수입--기타-지출-) | ✅ | `ledger_categories` `incomes` `expenses` `salary_settings` `salary_records` + VIEW 2개 |
@@ -77,7 +77,7 @@ PATCH `/api/auth/me`는 프로필 수정, [소셜 첫 약관 동의](#소셜-로
 ```json
 {
   "id": "1", "username": "zipdemo", "email": "demo@zip.com", "nickname": "지기",
-  "address": "서울시 마포구 합정동", "region": { "id": "2", "name": "마포구" },
+  "address": "서울시 마포구 합정동", "region": { "id": "2", "name": "마포구", "fullName": "서울특별시 마포구" },
   "provider": "email", "role": "USER", "status": "ACTIVE",
   "firstLogin": false, "agreedAt": "2026-10-18T00:00:00+09:00", "lastLoginAt": "2026-10-24T11:33:00+09:00",
   "bio": "요리 연습 중", "avatarUrl": null, "avatarEmoji": "🐻", "avatarColor": "#ffd6a5",
@@ -88,7 +88,7 @@ PATCH `/api/auth/me`는 프로필 수정, [소셜 첫 약관 동의](#소셜-로
 |---|---|---|
 | `username` | `users.login_id` | 현재 User 타입은 선택 문자열이므로 없으면 키 생략. DB NULL을 그대로 응답하려면 프론트 타입 확장이 필요해요 |
 | `address` | `users.address` | 회원 주소가 미등록이면 빈 문자열 `""` |
-| `region` | `users.region_id` → `regions` | 주소에서 구를 찾아 연결. 못 찾으면 `null` |
+| `region` | `users.region_id` → `regions` | 주소에서 구를 찾아 연결(동네 인증도 바꿈). 못 찾으면 `null`. `name` 은 구 이름, `fullName` 은 시 · 도를 붙인 이름(2026-11-26 추가) — 다른 기기에서 동네를 인증한 회원의 커뮤니티 입장 · 날씨 · 지도 동네로 씀 |
 | `provider` | `users.signup_provider` | `EMAIL` → `email` 처럼 **소문자**로 |
 | `role` | `users.role` | `ADMIN`은 로그인하면 관리자 화면(`/admin`)만 보여요 |
 | `status` | `users.status` | 현재 인증 타입의 상태. 정지 계정 로그인은 403으로 거부하는 계약이며, 브라우저의 정지 화면 데모와 서버 인증 정책을 구분해요 |
@@ -169,7 +169,7 @@ PATCH `/api/auth/me`는 프로필 수정, [소셜 첫 약관 동의](#소셜-로
 
 ## 2. 설정 · 동네 ✅
 
-> 화면은 `/api/me/settings`, `/api/me/region-verify`, `/api/me/home-info`와 `/loan`, `/api/me/housing-onboarding`, `/api/me/profile-info`를 호출해요. 동네 목록과 이웃 조회는 아래 설정 표의 제안 항목이에요.
+> 화면은 `/api/me/region-verify`, `/api/me/home-info`와 `/loan`, `/api/me/housing-onboarding`, `/api/me/profile-info`를 호출해요. `/api/me/settings` 는 서버에 있지만 2026-11-24 리팩토링(`b0a937d`) 뒤 화면은 부르지 않아요(우리 동네는 브라우저 생활 설정 + 로그인 응답의 `region` · `regionVerifiedAt`). 동네 목록 `GET /api/regions` 와 이웃 조회 `GET /api/regions/{id}/neighbors` 는 서버에 있고(로그인 없이), 화면의 "주변 동네" 안내는 `/api/posts/neighbors` 를 써요.
 
 ### 내 집 정보 서버 연결 (2026-11-15)
 

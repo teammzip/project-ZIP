@@ -21,6 +21,14 @@ Java 17 · Spring Boot 4 · JdbcTemplate · MySQL · Spring Security + JWT(DB �
    | `GOOGLE_*` · `NAVER_*` · `KAKAO_LOGIN_*` | 소셜 로그인 (키가 있는 공급자만 켜짐, 루트 [README](../README.md#백엔드-실행-선택) 참고) |
 
    IntelliJ 실행 구성의 환경변수로 넣어도 되고, 환경변수가 이 파일보다 우선해요. `.env` 파일은 읽지 않아요.
+
+   남용 방지 제한은 기본값으로 돌아가고, 바꿀 때만 환경변수를 넣어요(Spring 이 `ZIP_MAIL_IP_PER_WINDOW` → `zip.mail.ip-per-window` 처럼 자동으로 읽음).
+
+   | 환경변수 (기본값) | 뜻 |
+   |---|---|
+   | `ZIP_MAIL_IP_WINDOW_MINUTES`(10) · `ZIP_MAIL_IP_PER_WINDOW`(5) · `ZIP_MAIL_IP_PER_DAY`(20) | 인증 메일: 같은 IP 에서 10분에 5통 · 하루 20통. 프록시 뒤에서는 `server.forward-headers-strategy` 를 켜야 사람마다 나뉨 |
+   | `ZIP_MAIL_GLOBAL_PER_HOUR`(100) · `ZIP_MAIL_GLOBAL_PER_DAY`(400) | 인증 메일: 서버 전체 시간당 · 하루 상한. 메일 계정 발송 한도(Gmail 하루 약 500통)보다 낮게 |
+   | `ZIP_FILES_DAILY_LIMIT`(50) · `ZIP_FILES_PENDING_LIMIT`(20) | 사진: 회원 한 명이 24시간에 올릴 수 있는 장수 · 아직 글 · 프로필 · 리뷰에 안 붙인 사진 장수 |
 3. IntelliJ 에서 JDK 17 을 고르고 Gradle 을 새로고침해요.
 
 DB 구조는 `db/` 의 SQL 로만 관리해요(Hibernate 자동 생성 · Spring SQL 자동 실행은 꺼져 있음). DB 에 접속하지 못하면 서버가 켜지지 않아요.

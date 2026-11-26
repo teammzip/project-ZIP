@@ -26,6 +26,8 @@
 
 `LedgerService`의 공개 등록·수정·삭제 메서드에서 각각 트랜잭션을 시작합니다. 회원 행을 잠근 뒤 세션을 다시 확인하고 소유권과 저장 규칙을 적용합니다. 등록·수정 중 발생한 거래·분류·메모 변경과 첫 월급 설정·원본 연결은 같은 트랜잭션에 포함됩니다. [가계부 서비스](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java) · [회원 잠금](../../backend/src/main/java/com/zip/backend/auth/AuthRepository.java)
 
+2026-11-26 [인증 저장소](../../backend/src/main/java/com/zip/backend/auth/AuthRepository.java)에는 회원 응답용 동네 전체 이름 조회만 추가됐고, 가계부 저장이 쓰는 회원 잠금은 바뀌지 않았습니다. 백엔드 전체 356개 테스트가 통과했습니다.
+
 `LedgerCategoryService`는 회원별 분류 설정과 월급 표시 이름을 읽고, 거래 저장 시 분류 ID를 찾아 반환합니다. 여러 회원이 같은 새 분류를 저장할 때는 분류 종류·이름의 유일 키와 삽입 후 잠금 조회를 사용합니다. 격리 MySQL 9.6의 `REPEATABLE READ`에서 기존 스냅샷에는 다른 트랜잭션이 생성한 분류가 보이지 않는 경우에도 잠금 조회는 해당 ID를 반환하는 것을 확인했습니다. [분류 서비스](../../backend/src/main/java/com/zip/backend/ledger/LedgerCategoryService.java) · [분류 유일 키](../../db/schema.sql)
 
 가계부 통합 테스트는 메모 연결이 거부될 때 거래 등록·수정과 새 분류가 롤백되는 경우, 월급 원본 연결이 실패할 때 수입·메모·월급 설정이 롤백되는 경우를 검증합니다. 각기 다른 세션에서 동시에 올린 지출은 각각의 메모를 유지하고, 첫 월급 동시 등록은 한 건만 성공합니다. 서로 다른 회원이 같은 새 분류로 저장하는 경우도 검사합니다. `backend`에서 아래 명령을 실행하면 H2 MySQL 호환 모드에서 이 테스트들을 다시 실행할 수 있습니다. [가계부 통합 테스트](../../backend/src/test/java/com/zip/backend/LedgerIntegrationTests.java)
