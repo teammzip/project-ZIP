@@ -69,7 +69,7 @@
 
 ## 마이그레이션 정합성 점검
 
-로그인 잠금 마이그레이션 `20261121_04_login_lockout.sql`을 검사 목록에 추가하고, 신규 스키마와 업그레이드 결과를 비교하는 자료를 재생성했습니다. SQL 파일명 전체로 적용 순서를 확인합니다. 같은 날짜·번호가 붙은 게시글 인덱스 파일도 검사 목록에 있습니다. 메모 폴더의 적용 파일은 `20261122_07_memo_folders.sql`입니다. [정합성 수정 커밋](https://github.com/teammzip/project-ZIP/commit/4f0db63) · [적용 순서](../../db/tests/migration-path.cjs) · [스키마 비교 자료](../../db/tests/schema_expected.json) · [검사 및 재생성 절차](../../db/tests/README.md)
+로그인 잠금 마이그레이션 `20261121_04_login_lockout.sql`을 검사 목록에 추가하고, 신규 스키마와 업그레이드 결과를 비교하는 자료를 재생성했습니다. SQL 파일명 전체로 적용 순서를 확인합니다. 같은 날짜·번호가 붙은 게시글 인덱스 파일도 검사 목록에 있습니다. 메모 폴더의 적용 파일은 `20261122_07_memo_folders.sql`입니다. 약관 본문만 바꾸는 `20261127_01_terms_privacy_transfers.sql`도 같은 순서 목록과 업그레이드 묶음 끝에 있습니다. 표 구조는 바꾸지 않습니다. 2026-11-27에 격리 MySQL 8.0에서 새 `schema.sql` DB와, 이전 `schema.sql`에 이 파일을 적용한 DB의 약관 3종 본문이 같은 것을 확인했습니다. [약관 동기화 도구](../../db/tools/terms-sync.cjs) [정합성 수정 커밋](https://github.com/teammzip/project-ZIP/commit/4f0db63) · [적용 순서](../../db/tests/migration-path.cjs) · [스키마 비교 자료](../../db/tests/schema_expected.json) · [검사 및 재생성 절차](../../db/tests/README.md)
 
 ## 기념일 마이그레이션
 
