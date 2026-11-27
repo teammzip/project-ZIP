@@ -30,6 +30,7 @@
 `backend/` — Spring Boot 서버 API
 
 ### 2026-11-27
+- 곽성미 — 전체 오류 처리 보완(`ApiExceptionHandler`): 서비스가 막지 못한 중복 · 제약 위반은 409, 예상하지 못한 오류는 500 + 한국어 안내(SQL · 스택은 응답에 넣지 않고 서버 로그에만), 값 형식 오류는 400. 없는 주소 404 · 메서드 405 등 Spring 이 정한 상태와 로그인 · 권한 오류(401 · 403)는 그대로, 응답 모양만 `{ message }` 로 통일. 검증: `ApiExceptionHandlerTests` 5개, 월급 연결 중복 시 롤백 테스트(`LedgerIntegrationTests`)는 처리 안 된 예외 대신 409 를 기대하도록 바꾸고 롤백 확인은 그대로, 백엔드 전체 363개 통과 [오류 응답](wiki/topics/application.md#api-데이터-계약과-dto)
 - 곽성미 — 프록시(nginx · Render · 로드밸런서) 뒤 배포 대비: `server.forward-headers-strategy=native` 기본값(환경변수 `SERVER_FORWARD_HEADERS_STRATEGY`). 인증 메일 IP 제한이 실제 IP 마다 나뉘고, https 로 들어온 요청은 refresh 쿠키에 Secure, 소셜 로그인 돌아올 주소도 https. 내부 주소에서 온 헤더만 믿어 직접 접속으로는 IP 를 속일 수 없음. 검증: 실제 Tomcat 으로 띄우는 `ForwardedHeadersTests` 2개 추가(설정을 `none` 으로 끄면 두 테스트 모두 실패하는 것도 확인) [프록시 헤더](wiki/topics/application.md#인증과-토큰-재발급)
 
 ### 2026-11-26

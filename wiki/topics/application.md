@@ -22,6 +22,8 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 
 2026-11-25에 [OpenAPI](../../backend/openapi.yaml)에 남아 있던 서버와 다른 설명 세 개를 서버 코드 기준으로 고쳤습니다. 글 목록 `GET /api/posts`는 `scope`를 생략하면 `all`이고, 읽기에는 동네 인증이 필요 없습니다(인증은 글쓰기 · 댓글 · 공감만). 이메일 가입의 `address`는 선택입니다. `PATCH /api/auth/me`는 프로필 편집, 소셜 첫 동의(주소 선택), 동의 뒤 주소만 변경의 세 가지 모양을 받습니다. [글 목록 기본값](../../backend/src/main/java/com/zip/backend/community/CommunityService.java) · [가입 주소](../../backend/src/main/java/com/zip/backend/auth/signup/SignupService.java) · [내 정보 수정](../../backend/src/main/java/com/zip/backend/auth/AuthController.java)
 
+오류 응답은 모두 `{ "message" }` 모양입니다. 서비스가 정한 오류는 `code`도 함께 보냅니다. 2026-11-27부터는 서비스가 미리 막지 못한 중복·제약 위반을 409로 보냅니다. 예상하지 못한 오류는 500과 한국어 안내로 보내고, SQL·스택 같은 내부 내용은 서버 로그에만 남깁니다. 로그인·권한 오류는 Spring Security의 401·403 처리에 그대로 넘깁니다. Spring이 상태를 정한 오류(없는 주소 404, 지원하지 않는 메서드 405, 빠진 값·형식 오류 400)는 상태를 유지하고 본문만 같은 모양으로 맞춥니다. [오류 응답 처리](../../backend/src/main/java/com/zip/backend/common/ApiExceptionHandler.java) · [검증](../../backend/src/test/java/com/zip/backend/common/ApiExceptionHandlerTests.java)
+
 ### DTO 적용 검토
 
 2026-11-26에 `backend`의 `8f2c998`과 커뮤니티 검색 작업 트리를 기준으로 컨트롤러·서비스와 프론트 타입을 대조했습니다. 생활 API에 이어 인증의 공통 회원 응답에도 DTO를 적용했습니다.

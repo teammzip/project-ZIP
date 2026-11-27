@@ -1,7 +1,6 @@
 package com.zip.backend;
 
 import com.zip.backend.auth.AuthService;
-import jakarta.servlet.ServletException;
 import java.time.*;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -12,7 +11,6 @@ import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
@@ -185,8 +183,8 @@ class LedgerIntegrationTests {
         jdbc.update("INSERT INTO salary_records (user_id, period_ym, income_id) SELECT user_id, ?, id FROM incomes WHERE id=?",
             month, incomeId);
 
-        var failure = assertThrows(ServletException.class, () -> postLedgerRecord("income", token, body(5000, "월급", "fixed")));
-        assertInstanceOf(DuplicateKeyException.class, failure.getCause());
+        // The duplicate salary link is answered as 409 (ApiExceptionHandler) and everything written before it is rolled back.
+        assertEquals(409, postLedgerRecord("income", token, body(5000, "월급", "fixed")));
         assertEquals(List.of(incomeId), jdbc.queryForList("SELECT id FROM incomes", Long.class));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM memos", Integer.class));
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM salary_settings", Integer.class));
