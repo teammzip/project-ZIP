@@ -1,0 +1,561 @@
+{
+  "mysql": "9.6.0",
+  "beforeGitBase": "a9e9ad9cd5b60fee6d6004efcbccb110977d81c4",
+  "afterGitBase": "e543b6bf88c3d3246e8d1443b5223cc9435c9593",
+  "beforeJarSha256": "3f5ecaaf694316f9873c184ac89d1e059b15a240617c32bb1cb5c29f98bdc88b",
+  "afterJarSha256": "e8262be5ed4517acf17c70836110cbf832b79a69eecee47aa9abb93ed2d61982",
+  "independent": {
+    "fixtureSha256": "dee7669430418ea9d89b3ee1c2a27410aa07c83650dff96f06d933b04ad6f082",
+    "before": {
+      "relevance": {
+        "queries": 30,
+        "positive": 18,
+        "negative": 12,
+        "hitAt1": 0,
+        "hitAt5": 9,
+        "positiveEmpty": 0,
+        "positiveNoRelevantReturned": 9,
+        "negativeNonEmpty": 0
+      },
+      "latest": {
+        "queries": 30,
+        "positive": 18,
+        "negative": 12,
+        "hitAt1": 0,
+        "hitAt5": 9,
+        "positiveEmpty": 0,
+        "positiveNoRelevantReturned": 9,
+        "negativeNonEmpty": 0
+      }
+    },
+    "after": {
+      "relevance": {
+        "queries": 30,
+        "positive": 18,
+        "negative": 12,
+        "hitAt1": 0,
+        "hitAt5": 13,
+        "positiveEmpty": 0,
+        "positiveNoRelevantReturned": 5,
+        "negativeNonEmpty": 0
+      },
+      "latest": {
+        "queries": 30,
+        "positive": 18,
+        "negative": 12,
+        "hitAt1": 0,
+        "hitAt5": 13,
+        "positiveEmpty": 0,
+        "positiveNoRelevantReturned": 5,
+        "negativeNonEmpty": 0
+      }
+    },
+    "beforeTop5Quality": {
+      "relevance": {
+        "queries": 18,
+        "relevant": 11,
+        "partiallyRelevant": 18,
+        "irrelevant": 3,
+        "ndcgAt5": 0.5047
+      },
+      "latest": {
+        "queries": 18,
+        "relevant": 11,
+        "partiallyRelevant": 18,
+        "irrelevant": 3,
+        "ndcgAt5": 0.5047
+      }
+    },
+    "afterTop5Quality": {
+      "relevance": {
+        "queries": 18,
+        "relevant": 15,
+        "partiallyRelevant": 18,
+        "irrelevant": 3,
+        "ndcgAt5": 0.6206
+      },
+      "latest": {
+        "queries": 18,
+        "relevant": 15,
+        "partiallyRelevant": 18,
+        "irrelevant": 3,
+        "ndcgAt5": 0.6206
+      }
+    },
+    "suggestions": {
+      "primary": {
+        "expected": 8,
+        "correct": 4,
+        "correctedHitAt1": 4,
+        "correctedHitAt5": 4,
+        "negative": 22,
+        "incorrectOnNegative": 0
+      },
+      "allScopes": {
+        "expected": 17,
+        "correct": 9,
+        "correctedHitAt1": 9,
+        "correctedHitAt5": 9,
+        "negative": 73,
+        "incorrectOnNegative": 0
+      }
+    },
+    "changedPrimary": [
+      {
+        "case": "I04",
+        "expected": [
+          401
+        ],
+        "beforeIds": [
+          402
+        ],
+        "afterIds": [
+          402,
+          401
+        ],
+        "afterFirstRank": 2
+      },
+      {
+        "case": "I05",
+        "expected": [
+          501
+        ],
+        "beforeIds": [
+          502
+        ],
+        "afterIds": [
+          502,
+          501
+        ],
+        "afterFirstRank": 2
+      },
+      {
+        "case": "I08",
+        "expected": [
+          801
+        ],
+        "beforeIds": [
+          802
+        ],
+        "afterIds": [
+          802,
+          801
+        ],
+        "afterFirstRank": 2
+      },
+      {
+        "case": "I14",
+        "expected": [
+          1401
+        ],
+        "beforeIds": [
+          1402
+        ],
+        "afterIds": [
+          1402,
+          1401
+        ],
+        "afterFirstRank": 2
+      }
+    ]
+  },
+  "newHoldout": {
+    "fixtureSha256": "60bd0e616400e409dd3f172ea9c5f75a8c60264ebc1b9e7535b7a2abb21a8904",
+    "before": {
+      "relevance": {
+        "queries": 10,
+        "positive": 5,
+        "negative": 5,
+        "hitAt1": 1,
+        "hitAt5": 1,
+        "positiveEmpty": 3,
+        "positiveNoRelevantReturned": 4,
+        "negativeNonEmpty": 0
+      },
+      "latest": {
+        "queries": 10,
+        "positive": 5,
+        "negative": 5,
+        "hitAt1": 1,
+        "hitAt5": 1,
+        "positiveEmpty": 3,
+        "positiveNoRelevantReturned": 4,
+        "negativeNonEmpty": 0
+      }
+    },
+    "after": {
+      "relevance": {
+        "queries": 10,
+        "positive": 5,
+        "negative": 5,
+        "hitAt1": 4,
+        "hitAt5": 5,
+        "positiveEmpty": 0,
+        "positiveNoRelevantReturned": 0,
+        "negativeNonEmpty": 0
+      },
+      "latest": {
+        "queries": 10,
+        "positive": 5,
+        "negative": 5,
+        "hitAt1": 4,
+        "hitAt5": 5,
+        "positiveEmpty": 0,
+        "positiveNoRelevantReturned": 0,
+        "negativeNonEmpty": 0
+      }
+    },
+    "primaryRows": [
+      {
+        "case": "M01",
+        "scope": "here",
+        "expected": [
+          101
+        ],
+        "beforeIds": [
+          102
+        ],
+        "afterIds": [
+          102,
+          101
+        ]
+      },
+      {
+        "case": "M02",
+        "scope": "near",
+        "expected": [
+          201
+        ],
+        "beforeIds": [],
+        "afterIds": [
+          201
+        ]
+      },
+      {
+        "case": "M03",
+        "scope": "here",
+        "expected": [
+          301
+        ],
+        "beforeIds": [],
+        "afterIds": [
+          301
+        ]
+      },
+      {
+        "case": "M04",
+        "scope": "all",
+        "expected": [
+          401
+        ],
+        "beforeIds": [],
+        "afterIds": [
+          401
+        ]
+      },
+      {
+        "case": "M05",
+        "scope": "here",
+        "expected": [
+          501
+        ],
+        "beforeIds": [
+          501
+        ],
+        "afterIds": [
+          501
+        ]
+      },
+      {
+        "case": "M06",
+        "scope": "here",
+        "expected": [],
+        "beforeIds": [],
+        "afterIds": []
+      },
+      {
+        "case": "M07",
+        "scope": "here",
+        "expected": [],
+        "beforeIds": [],
+        "afterIds": []
+      },
+      {
+        "case": "M08",
+        "scope": "here",
+        "expected": [],
+        "beforeIds": [],
+        "afterIds": []
+      },
+      {
+        "case": "M09",
+        "scope": "here",
+        "expected": [],
+        "beforeIds": [],
+        "afterIds": []
+      },
+      {
+        "case": "M10",
+        "scope": "here",
+        "expected": [],
+        "beforeIds": [],
+        "afterIds": []
+      }
+    ]
+  },
+  "regressions": {
+    "fixedMatchingRankOrders": 90,
+    "firstSpacingHoldout": {
+      "relevance": {
+        "queries": 7,
+        "positive": 6,
+        "negative": 1,
+        "hitAt1": 6,
+        "hitAt5": 6,
+        "positiveEmpty": 0,
+        "positiveNoRelevantReturned": 0,
+        "negativeNonEmpty": 0
+      },
+      "latest": {
+        "queries": 7,
+        "positive": 6,
+        "negative": 1,
+        "hitAt1": 5,
+        "hitAt5": 6,
+        "positiveEmpty": 0,
+        "positiveNoRelevantReturned": 0,
+        "negativeNonEmpty": 0
+      }
+    },
+    "typoHoldout": {
+      "primary": {
+        "expected": 4,
+        "correct": 4,
+        "correctedHitAt1": 4,
+        "correctedHitAt5": 4,
+        "negative": 8,
+        "incorrectOnNegative": 0
+      },
+      "allScopes": {
+        "expected": 9,
+        "correct": 9,
+        "correctedHitAt1": 9,
+        "correctedHitAt5": 9,
+        "negative": 27,
+        "incorrectOnNegative": 0
+      }
+    }
+  },
+  "afterSearchRequests": {
+    "community-search-independent-v1": 279,
+    "community-search-multiword-spacing-holdout-v1": 90,
+    "community-search-v1": 273,
+    "community-search-typo-v1": 117,
+    "community-search-spacing-holdout-v1": 63
+  },
+  "afterSearchRequestsTotal": 822,
+  "matchingDefaultOrders": 267,
+  "unexpectedIds": [],
+  "apiLatency": {
+    "workload": {
+      "posts": 10000,
+      "groups": {
+        "multiword": [
+          "무인택배함 비밀번호",
+          "우산수리 일정",
+          "야간진료 시간"
+        ],
+        "control": [
+          "시장 위치",
+          "버스 시간",
+          "화단 정리"
+        ]
+      },
+      "concurrency": 4,
+      "warmupPerCondition": 32,
+      "samplesPerRound": 64,
+      "rounds": 2
+    },
+    "roundOrder": [
+      [
+        "before",
+        "after"
+      ],
+      [
+        "after",
+        "before"
+      ]
+    ],
+    "measuredRequests": 3072,
+    "conditions": {
+      "here-page0-multiword": {
+        "before": {
+          "count": 128,
+          "errors": 0,
+          "p50": 28.93,
+          "p95": 33.77
+        },
+        "after": {
+          "count": 128,
+          "errors": 0,
+          "p50": 34.07,
+          "p95": 41.51
+        }
+      },
+      "here-page0-control": {
+        "before": {
+          "count": 128,
+          "errors": 0,
+          "p50": 26.63,
+          "p95": 32.8
+        },
+        "after": {
+          "count": 128,
+          "errors": 0,
+          "p50": 28.67,
+          "p95": 32.54
+        }
+      },
+      "here-page1-multiword": {
+        "before": {
+          "count": 128,
+          "errors": 0,
+          "p50": 24.88,
+          "p95": 34.76
+        },
+        "after": {
+          "count": 128,
+          "errors": 0,
+          "p50": 29.64,
+          "p95": 37.46
+        }
+      },
+      "here-page1-control": {
+        "before": {
+          "count": 128,
+          "errors": 0,
+          "p50": 23.54,
+          "p95": 27.56
+        },
+        "after": {
+          "count": 128,
+          "errors": 0,
+          "p50": 24.81,
+          "p95": 27.88
+        }
+      },
+      "near-page0-multiword": {
+        "before": {
+          "count": 128,
+          "errors": 0,
+          "p50": 48.06,
+          "p95": 57.05
+        },
+        "after": {
+          "count": 128,
+          "errors": 0,
+          "p50": 60.51,
+          "p95": 70.6
+        }
+      },
+      "near-page0-control": {
+        "before": {
+          "count": 128,
+          "errors": 0,
+          "p50": 51.9,
+          "p95": 57.69
+        },
+        "after": {
+          "count": 128,
+          "errors": 0,
+          "p50": 55.62,
+          "p95": 62.11
+        }
+      },
+      "near-page1-multiword": {
+        "before": {
+          "count": 128,
+          "errors": 0,
+          "p50": 47.76,
+          "p95": 55.51
+        },
+        "after": {
+          "count": 128,
+          "errors": 0,
+          "p50": 60.56,
+          "p95": 70.69
+        }
+      },
+      "near-page1-control": {
+        "before": {
+          "count": 128,
+          "errors": 0,
+          "p50": 51.94,
+          "p95": 57.94
+        },
+        "after": {
+          "count": 128,
+          "errors": 0,
+          "p50": 51.44,
+          "p95": 56.78
+        }
+      },
+      "all-page0-multiword": {
+        "before": {
+          "count": 128,
+          "errors": 0,
+          "p50": 54.75,
+          "p95": 59.5
+        },
+        "after": {
+          "count": 128,
+          "errors": 0,
+          "p50": 68.78,
+          "p95": 76.98
+        }
+      },
+      "all-page0-control": {
+        "before": {
+          "count": 128,
+          "errors": 0,
+          "p50": 55.34,
+          "p95": 61.06
+        },
+        "after": {
+          "count": 128,
+          "errors": 0,
+          "p50": 54.54,
+          "p95": 64.44
+        }
+      },
+      "all-page1-multiword": {
+        "before": {
+          "count": 128,
+          "errors": 0,
+          "p50": 53.69,
+          "p95": 59.49
+        },
+        "after": {
+          "count": 128,
+          "errors": 0,
+          "p50": 68.86,
+          "p95": 80.1
+        }
+      },
+      "all-page1-control": {
+        "before": {
+          "count": 128,
+          "errors": 0,
+          "p50": 55.17,
+          "p95": 61.36
+        },
+        "after": {
+          "count": 128,
+          "errors": 0,
+          "p50": 54.19,
+          "p95": 64.78
+        }
+      }
+    }
+  }
+}

@@ -102,6 +102,27 @@ function score(rows, sort) {
     };
 }
 
+function gradeTopFive(ids, expected, partial) {
+    return ids.slice(0, 5).map(id => expected.includes(id) ? 2 : partial.includes(id) ? 1 : 0);
+}
+
+function scoreTopFive(rows, sort) {
+    const positives = rows.filter(row => row.expected.length > 0);
+    const dcg = grades => grades.reduce((sum, grade, index) => sum + (2 ** grade - 1) / Math.log2(index + 2), 0);
+    const grades = positives.flatMap(row => row.top5Grades[sort]);
+    const ndcgSum = positives.reduce((sum, row) => {
+        const ideal = [...row.expected.map(() => 2), ...row.partial.map(() => 1)].slice(0, 5);
+        return sum + dcg(row.top5Grades[sort]) / dcg(ideal);
+    }, 0);
+    return {
+        queries: positives.length,
+        relevant: grades.filter(grade => grade === 2).length,
+        partiallyRelevant: grades.filter(grade => grade === 1).length,
+        irrelevant: grades.filter(grade => grade === 0).length,
+        ndcgAt5: positives.length ? Number((ndcgSum / positives.length).toFixed(4)) : null,
+    };
+}
+
 async function evaluate(request, token) {
     const rows = [];
     const unexpectedIds = [];
@@ -141,6 +162,10 @@ async function evaluate(request, token) {
             const defaultOrder = await collect(test, scope);
             const row = { case: test.id, scope, primary: scope === test.scope, expected, relevance: relevance.ids, latest: latest.ids,
                 defaultMatchesRelevance: JSON.stringify(defaultOrder) === JSON.stringify(relevance) };
+            if (fixture.evaluateGradedRelevance) {
+                row.partial = (test.partiallyRelevant ?? []).filter(id => eligible(id, scope, test.category));
+                row.top5Grades = Object.fromEntries(sorts.map(sort => [sort, gradeTopFive(row[sort], expected, row.partial)]));
+            }
             assert.equal(latest.suggestion, relevance.suggestion, `${test.id}: suggestion depends on sort`);
             if (fixture.evaluateSuggestions || relevance.suggestion !== null) {
                 const suggested = relevance.suggestion;
@@ -181,7 +206,10 @@ async function main() {
     assert.equal(new Set(fixture.cases.map(test => test.q)).size, fixture.cases.length);
     assert.equal(posts.size, fixture.posts.length, 'duplicate fixture post IDs');
     assert(fixture.cases.every(test => test.q.trim() && test.q.length <= 40 && test.scope in regionsByScope &&
-        test.relevant.every(id => posts.get(id)?.status === 'VISIBLE')), 'invalid query, scope or expected post');
+        [test.relevant, test.partiallyRelevant ?? [], test.correctedRelevant ?? []].flat()
+            .every(id => posts.get(id)?.status === 'VISIBLE')), 'invalid query, scope or expected post');
+    assert(fixture.cases.every(test => (test.partiallyRelevant ?? []).every(id => !test.relevant.includes(id))),
+        'a post cannot be both fully and partially relevant');
 
     const privateDir = path.join(root, 'db/private');
     fs.mkdirSync(privateDir, { recursive: true });
@@ -255,6 +283,7 @@ async function main() {
         primary: scoreBoth(primary),
         byScope: Object.fromEntries(Object.keys(regionsByScope).map(scope => [scope, scoreBoth(rows.filter(row => row.scope === scope))])),
     };
+    if (fixture.evaluateGradedRelevance) report.primaryTop5Quality = Object.fromEntries(sorts.map(sort => [sort, scoreTopFive(primary, sort)]));
     if (fixture.evaluateSuggestions) report.suggestions = { primary: scoreSuggestions(primary), allScopes: scoreSuggestions(rows) };
     const resultFile = path.join(work, 'results.json');
     const rowLines = rows.map(row => `    ${JSON.stringify(row)}`).join(',\n');

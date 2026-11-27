@@ -29,6 +29,9 @@
 
 `backend/` — Spring Boot 서버 API
 
+### 2026-11-28
+- moon — 여러 단어로 동네 글을 검색할 때 한글 3음절 이상의 단어를 제목·본문의 띄어쓰기 차이에도 찾도록 개선했습니다. 최신 `dev` 병합 후 백엔드 369개와 격리 MySQL의 합성 검색 사례 40개를 검증했습니다. [검색 규칙과 검증 결과](wiki/topics/community-operations.md#여러-단어-검색의-띄어쓰기-개선-검증)
+
 ### 2026-11-27
 - 곽성미 — 문서 정리: `backend/IMPLEMENTATION.md` 의 낡은 내용(refresh 쿠키 없음 · 토큰 1시간 → 현재 15분 · 12시간 · 7일과 refresh 흐름, 없는 테스트 경로 → `frontend/tests/legal-terms.test.mjs`, 해당 없어진 문자 업체 · banned_identities, 잘린 마이그레이션 경로, 11-27 처리방침 외부 전송) 고침. 루트 `README.md` 의 지금 단계 · 남은 것 · 문서 안내표(운영 배포 · 운영 빌드 · ERD · 시스템 구성 · 운영 DB) 갱신. 문서 안 경로 · 링크 모두 실제 파일 확인
 - 곽성미 — `openapi.yaml` 을 서버와 대조: 경로 누락 · 잔존 0건(가계부 `{kind}` 분리 표기 · Security 가 처리하는 OAuth 시작 경로는 같은 API). 응답 DTO 7개 칸 대조로 `User`(+`birth` · `banCount`, −`lastLoginAt`, 이미 연동된 칸의 "확장 제안" 문구 정리) · `Post`(+`reported` · `homeTip`, −`reportCount`) · `Bill`(+`homeManaged`) 수정, `frontend/API.md` 회원 응답 예시도 서버와 같게. SnakeYAML 로 해석 확인(경로 115 · 스키마 78 유지, 중복 키 없음) [API 계약](wiki/topics/application.md#api-데이터-계약과-dto)
@@ -192,6 +195,9 @@
 ## 프론트엔드
 
 `frontend/` — React 앱
+
+### 2026-11-28
+- moon — 모의 API의 동네 글 검색에 서버와 같은 복합어 매칭을 적용했습니다. 최신 `dev` 병합 후 프론트 테스트 213개, 린트, 운영 빌드를 통과했습니다. [모의 검색과 서버 비교](wiki/topics/community-operations.md#검색-정렬과-관련도)
 
 ### 2026-11-27
 - 곽성미 — `frontend/README.md` 에 "운영 빌드": `npm ci` · `npm run build` → `dist/`, 항상 서버 모드(확인 방법), 같은 도메인 구성, 없는 주소도 `index.html` 로(새로고침 404 방지), 빌드 환경변수 표. `vite-env.d.ts` 에 `VITE_WEATHER_*` 타입 추가 (린트 · 빌드 · 프론트 212개 통과)

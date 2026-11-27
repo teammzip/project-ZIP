@@ -15,6 +15,7 @@ const HANGUL_START = '가'.charCodeAt(0)
 const MEDIALS = 21
 const FINALS = 28
 const MAX_CANDIDATES = 4
+const COMPACT_KOREAN_TERM = /^[가-힣]{3,}$/
 
 function oneJamoDifference(word: string, term: string) {
   if (word.length !== term.length) return false
@@ -51,19 +52,27 @@ export function suggestLocalPostQuery(posts: Post[], query: string) {
 export function searchLocalPosts(posts: Post[], query: string, sort: PostSort) {
   const phrase = query.trim().toLowerCase()
   const terms = [...new Set(phrase.split(/\s+/).filter(Boolean))]
-  const ignoreSpaces = /^[가-힣]{3,}$/.test(phrase)
+  const compactTerms = new Set(terms.filter((term) => COMPACT_KOREAN_TERM.test(term)))
+  const compactSingleQuery = COMPACT_KOREAN_TERM.test(phrase)
   return posts.flatMap((post) => {
-    const title = (ignoreSpaces ? post.title.replaceAll(' ', '') : post.title).toLowerCase()
-    const body = (ignoreSpaces ? post.body.replaceAll(' ', '') : post.body).toLowerCase()
-    if (!terms.every((word) => title.includes(word) || body.includes(word))) return []
+    const title = post.title.toLowerCase()
+    const body = post.body.toLowerCase()
+    const compactTitle = compactTerms.size ? title.replaceAll(' ', '') : title
+    const compactBody = compactTerms.size ? body.replaceAll(' ', '') : body
+    if (!terms.every((word) => {
+      if (compactTerms.has(word)) return compactTitle.includes(word) || compactBody.includes(word)
+      return title.includes(word) || body.includes(word)
+    })) return []
 
     let score = 0
     if (sort === 'views') score = post.views ?? 0
     if (sort === 'popular') score = popularityOf(post)
     if (sort === 'relevance' && terms.length) {
       const phraseMatch = terms.length > 1 && (title.includes(phrase) || body.includes(phrase))
-      const bothFields = terms.every((word) => title.includes(word) && body.includes(word))
-      const titleMatch = ignoreSpaces && title.includes(phrase)
+      const rankedTitle = compactSingleQuery ? compactTitle : title
+      const rankedBody = compactSingleQuery ? compactBody : body
+      const bothFields = terms.every((word) => rankedTitle.includes(word) && rankedBody.includes(word))
+      const titleMatch = compactSingleQuery && rankedTitle.includes(phrase)
       score = 4 * Number(phraseMatch) + 2 * Number(bothFields) + Number(titleMatch)
     }
     return [{ post, score }]

@@ -14,7 +14,7 @@
 
 ## 가계부 기록과 회원별 분류
 
-수입·기타 지출은 `/api/ledger/{income|spend}`에서 회원·월별로 조회합니다. 수입은 고정과 기타로 나누고, 등록·수정·삭제 시 서버에서 소유권과 입력값을 확인합니다. 저장 본문에는 분류명 `cat`을 보내고 수입에는 `incomeType`도 필수입니다. 고정 지출은 납부 상태를 포함한 별도의 월별 API를 사용합니다. [수입·지출 처리](../../backend/src/main/java/com/zip/backend/ledger/LedgerController.java) · [가계부 API 계약](../../frontend/API.md#5-가계부-수입--기타-지출-) · [가계부 요청 타입](../../frontend/src/features/life/ledgerApi.ts) · [계약 고정 지출](fixed-expenses.md)
+수입·기타 지출은 `/api/ledger/{income|spend}`에서 회원·월별로 조회합니다. 수입은 고정과 기타로 나누고, 등록·수정·삭제 시 서버에서 소유권과 입력값을 확인합니다. 저장 본문에는 분류명 `cat`을 보내고 수입에는 `incomeType`도 필수입니다. 연결한 메모가 있으면 거래 목록에서 `memoId`와 `memoTitle`을 받습니다. 고정 지출은 납부 상태를 포함한 별도의 월별 API를 사용합니다. [수입·지출 처리](../../backend/src/main/java/com/zip/backend/ledger/LedgerController.java) · [가계부 API 계약](../../frontend/API.md#5-가계부-수입--기타-지출-) · [가계부 요청 타입](../../frontend/src/features/life/ledgerApi.ts) · [계약 고정 지출](fixed-expenses.md)
 
 수입·기타 지출 목록은 연결 메모를 회원·기록 종류·문자열 기록 ID로 조인합니다. 수입은 같은 쿼리에서 자동 등록 월급 여부도 조회합니다. 목록은 문자열 ID와 월급 플래그를 포함하는 `LedgerRow`를 반환합니다. 연결 메모가 없으면 `memoId`와 `memoTitle`을 생략합니다. 수입 조회에 앞서 월급 자동 등록을 동기화하고, 고정 수입 목록의 월급 표시 이름도 조회합니다. 회원이나 기록 종류가 다른 메모와 숫자 표기가 비슷한 메모 키를 구분하는지 통합 테스트에서 확인합니다. [목록 SQL](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java) · [응답 DTO](../../backend/src/main/java/com/zip/backend/ledger/LedgerRow.java) · [조인 키 제약](../../db/schema.sql) · [통합 테스트](../../backend/src/test/java/com/zip/backend/LedgerIntegrationTests.java)
 
