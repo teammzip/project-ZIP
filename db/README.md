@@ -157,6 +157,145 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 
 ## 4. 테이블 한눈에 보기
 
+### 관계도 (ERD)
+
+[schema.sql](schema.sql)의 외래키 84개를 기능별로 나눠 그렸어요. 회원(`users`)처럼 여러 기능에 걸친 표는 그림마다 다시 나와요. 선 위 글자는 외래키 칸, 기호는 `||` 반드시 하나 · `|o` 없거나 하나 · `o{` 여러 개 · `o|` 많아야 하나(1:1)예요. 칸 · 키의 자세한 내용은 [5장](#5-전체-컬럼과-제약조건)을 봐요.
+
+#### 회원 · 인증 · 약관
+
+```mermaid
+erDiagram
+    regions |o--o{ users : "region_id"
+    regions |o--o{ regions : "parent_id"
+    users ||--o{ social_accounts : "user_id"
+    users ||--o{ auth_sessions : "user_id"
+    users |o--o{ email_verifications : "user_id"
+    users ||--o{ password_resets : "user_id"
+    users ||--o{ user_term_agreements : "user_id"
+    terms_documents ||--o{ user_term_agreements : "terms_id"
+    users ||--o| user_settings : "user_id"
+    users ||--o| user_profiles : "user_id"
+    uploaded_files |o--o{ user_profiles : "avatar_file_id"
+    users ||--o| user_personal_info : "user_id"
+    users ||--o{ uploaded_files : "user_id"
+    withdrawal_logs {
+        bigint id PK
+    }
+```
+
+#### 주거 · 가계부 · 고정 지출
+
+```mermaid
+erDiagram
+    users ||--o| housing_surveys : "user_id"
+    users ||--o| housing_loans : "user_id"
+    housing_loans ||--o{ loan_interest_charges : "loan_id"
+    users ||--o| home_contracts : "user_id"
+    bill_items |o--o{ home_contracts : "management_bill_id"
+    users ||--o{ rent_payments : "user_id"
+    users ||--o{ bill_items : "user_id"
+    bill_items ||--o{ bill_payments : "bill_item_id"
+    users ||--o{ bill_document_keys : "user_id"
+    bill_items ||--o{ bill_document_keys : "bill_item_id"
+    users ||--o{ bill_photo_imports : "user_id"
+    bill_items ||--o{ bill_photo_imports : "bill_item_id"
+    users ||--o{ bill_photo_drafts : "user_id"
+    ai_conversations ||--o{ bill_photo_drafts : "conversation_id"
+    users ||--o{ ai_conversations : "user_id"
+    users ||--o{ incomes : "user_id"
+    ledger_categories ||--o{ incomes : "category_id"
+    users ||--o{ expenses : "user_id"
+    ledger_categories ||--o{ expenses : "category_id"
+    users ||--o| salary_settings : "user_id"
+    users ||--o{ salary_records : "user_id"
+    incomes |o--o| salary_records : "income_id"
+```
+
+#### 일정 · 메모 · 알림 · 배출표
+
+```mermaid
+erDiagram
+    regions |o--o{ users : "region_id"
+    regions |o--o{ regions : "parent_id"
+    users ||--o{ event_categories : "user_id"
+    users ||--o{ event_presets : "user_id"
+    event_categories ||--o{ event_presets : "category_id"
+    event_categories |o--o{ events : "category_id"
+    users ||--o{ events : "user_id"
+    users ||--o{ memo_folders : "user_id"
+    users ||--o{ memos : "user_id"
+    memo_folders |o--o{ memos : "folder_id"
+    users ||--o{ notifications : "user_id"
+    regions ||--o{ trash_schedules : "region_id"
+```
+
+#### 동네 · 커뮤니티 · 운영
+
+```mermaid
+erDiagram
+    regions |o--o{ users : "region_id"
+    regions |o--o{ regions : "parent_id"
+    regions ||--o{ region_neighbors : "region_id"
+    regions ||--o{ region_neighbors : "neighbor_region_id"
+    users ||--o{ posts : "user_id"
+    regions ||--o{ posts : "region_id"
+    users |o--o{ posts : "deleted_by"
+    posts ||--o{ post_likes : "post_id"
+    users ||--o{ post_likes : "user_id"
+    posts ||--o{ comments : "post_id"
+    users ||--o{ comments : "user_id"
+    comments |o--o{ comments : "parent_id"
+    users |o--o{ comments : "deleted_by"
+    posts ||--o{ post_attachments : "post_id"
+    uploaded_files ||--o| post_attachments : "file_id"
+    users ||--o{ uploaded_files : "user_id"
+    users ||--o{ reports : "reporter_id"
+    users |o--o{ reports : "handled_by"
+    users |o--o{ user_sanctions : "revoked_by"
+    users ||--o{ user_sanctions : "user_id"
+    reports |o--o{ user_sanctions : "report_id"
+    users |o--o{ user_sanctions : "created_by"
+    users ||--o{ support_inquiries : "user_id"
+    users |o--o{ support_inquiries : "answered_by"
+    users |o--o{ notices : "created_by"
+```
+
+#### 지도 · 장소 · 리뷰
+
+```mermaid
+erDiagram
+    regions |o--o{ users : "region_id"
+    regions |o--o{ regions : "parent_id"
+    regions ||--o{ places : "region_id"
+    place_categories ||--o{ places : "category_id"
+    users ||--o{ place_favorites : "user_id"
+    places ||--o{ place_favorites : "place_id"
+    places ||--o{ place_reviews : "place_id"
+    users ||--o{ place_reviews : "user_id"
+    users ||--o{ place_lists : "user_id"
+    place_lists ||--o{ place_list_items : "list_id"
+    users ||--o{ kakao_place_favorites : "user_id"
+    users ||--o{ kakao_place_reviews : "user_id"
+    uploaded_files ||--o| place_review_photos : "file_id"
+    users ||--o{ place_review_reports : "reporter_id"
+    users |o--o{ place_review_reports : "handled_by"
+    users ||--o{ uploaded_files : "user_id"
+```
+
+#### AI 대화
+
+```mermaid
+erDiagram
+    users ||--o{ ai_conversations : "user_id"
+    ai_topics |o--o{ ai_conversations : "topic_id"
+    ai_conversations ||--o{ ai_messages : "conversation_id"
+    uploaded_files |o--o{ ai_messages : "attachment_id"
+    users ||--o{ ai_usage_daily : "user_id"
+    users ||--o{ uploaded_files : "user_id"
+```
+
+### 표 목록
+
 | 테이블 | 역할 |
 |---|---|
 | `regions` | 동네 |

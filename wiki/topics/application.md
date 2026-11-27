@@ -12,6 +12,46 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 
 서버의 로컬 설정에는 DB·JWT와 사용하는 외부 서비스의 환경 변수가 들어갑니다. 실제 설정은 Git에서 제외되는 `application-local.properties` 또는 실행 환경에서 관리합니다. OpenAPI 문서는 [백엔드 OpenAPI](../../backend/openapi.yaml), 화면별 데이터 계약은 [프론트 API 문서](../../frontend/API.md)에서 확인합니다. [백엔드 설정](../../backend/README.md#처음-설정)
 
+## 시스템 구성
+
+운영에서는 화면과 API를 한 도메인에서 내보냅니다. 서버에 CORS 설정이 없고 refresh 쿠키가 같은 출처에서만 동작하기 때문입니다. 백엔드는 한 대만 띄웁니다. 예약 작업 4개와 남용 방지 횟수가 서버 메모리에 있기 때문입니다. 지도 타일·주소 검색·날씨는 서버를 거치지 않고 브라우저가 직접 호출합니다(2026-11-27 코드 기준). [운영 배포 설정](../../backend/README.md#운영-배포-설정) · [프론트 운영 빌드](../../frontend/README.md#운영-빌드) · [DB 관계도](../../db/README.md#관계도-erd)
+
+```mermaid
+flowchart LR
+    subgraph Browser["브라우저 (React · Vite 빌드)"]
+        UI["화면 dist/"]
+    end
+    subgraph Domain["한 도메인 (https)"]
+        Static["정적 파일 · 없는 주소는 index.html"]
+        Api["/api/** · /login/oauth2/code/**"]
+    end
+    subgraph Backend["Spring Boot 백엔드 (1대)"]
+        App["API · Spring Security · JWT"]
+        Jobs["예약 작업 4개<br/>계약 자동 등록 · 월세 알림 · 배출 알림 · 데이터 정리"]
+    end
+    DB[("MySQL zip")]
+    Files[("업로드 폴더 ZIP_UPLOAD_DIR")]
+    Kakao["카카오 로컬 API<br/>장소 검색 · 동네 인증"]
+    Gemini["Google Gemini<br/>AI 대화 · 고지서 인식"]
+    Mail["메일 서버 SMTP<br/>인증 메일"]
+    OAuth["Google · Naver · Kakao 로그인"]
+    OSM["OpenStreetMap<br/>지도 타일 · Nominatim 주소 검색"]
+    Meteo["Open-Meteo<br/>날씨 · 시간대"]
+
+    UI --> Static
+    UI --> Api
+    Api --> App
+    App --> DB
+    App --> Files
+    Jobs --> DB
+    App --> Kakao
+    App --> Gemini
+    App --> Mail
+    App <--> OAuth
+    UI --> OSM
+    UI --> Meteo
+```
+
 ## API 데이터 계약과 DTO
 
 로그인·회원가입·일정 요청은 Java `record`를 사용합니다. 월별 고정 지출과 가계부는 검증한 저장 요청과 조회 응답에 `record`를 사용합니다. 가계부 컨트롤러는 저장 JSON도 요청 DTO로 받습니다. 내 집 정보는 응답 DTO를 반환하고, 첫 주거 설문은 요청 DTO를 받습니다. [로그인 요청](../../backend/src/main/java/com/zip/backend/auth/AuthRequests.java) · [가입 요청](../../backend/src/main/java/com/zip/backend/auth/signup/SignupRequests.java) · [일정 요청](../../backend/src/main/java/com/zip/backend/calendar/CalendarController.java) · [가계부 DTO](ledger-memos.md#가계부-저장-트랜잭션) · [내 집 정보와 설문 DTO](home-info.md#내-집-정보와-첫-주거-설문의-dto)
