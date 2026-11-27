@@ -29,6 +29,9 @@
 
 `backend/` — Spring Boot 서버 API
 
+### 2026-11-27
+- 곽성미 — 프록시(nginx · Render · 로드밸런서) 뒤 배포 대비: `server.forward-headers-strategy=native` 기본값(환경변수 `SERVER_FORWARD_HEADERS_STRATEGY`). 인증 메일 IP 제한이 실제 IP 마다 나뉘고, https 로 들어온 요청은 refresh 쿠키에 Secure, 소셜 로그인 돌아올 주소도 https. 내부 주소에서 온 헤더만 믿어 직접 접속으로는 IP 를 속일 수 없음. 검증: 실제 Tomcat 으로 띄우는 `ForwardedHeadersTests` 2개 추가(설정을 `none` 으로 끄면 두 테스트 모두 실패하는 것도 확인) [프록시 헤더](wiki/topics/application.md#인증과-토큰-재발급)
+
 ### 2026-11-26
 - jgkim7848-lab — 회원 응답(`/api/auth/me` · 로그인 · 가입)의 `region` 에 시 · 도를 붙인 `fullName`(예: `서울특별시 중구`) 추가. 다른 기기에서 동네를 인증한 회원의 날씨 · 지도 위치를 같은 이름의 다른 구와 구분하려고. 로그인 잠금을 넓히지 않게 별도 조회 (`auth/AuthRepository` `regionFullName` · `AuthService` · `UserResponse`, `openapi.yaml` User.region, 테스트 `AuthIntegrationTests`). [공통 회원 응답 DTO](wiki/topics/application.md#공통-회원-응답-dto)
 - moon — 공통 회원·커뮤니티 게시글·월급 설정 응답에 DTO를 적용하고, 동네 검색 정렬·한글 띄어쓰기를 개선하고 결과가 없을 때 오타 교정 검색어를 제안. 월급 설정의 가계부 고정 수입·월별 합계 반영 확인(관련 H2 통합 테스트 70개 통과). [응답 DTO](wiki/topics/application.md#dto-적용-검토) · [동네 검색과 오타 제안](wiki/topics/community-operations.md#검색-정렬과-관련도) · [월급 자동 등록](wiki/topics/fixed-expenses.md#월급-자동-등록)

@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 접속한 곳(IP)마다 "짧은 시간 N번 · 하루 M번"까지만 허락하는 메모리 제한.
  * 로그인 전 API(인증 메일 등)는 회원으로 구분할 수 없어서 IP 로 센다. 서버를 다시 켜면 처음부터 셈(남용 방지용이라 충분).
- * 서버가 여러 대면 각자 따로 세고, 프록시 뒤에서는 진짜 IP 설정(server.forward-headers-strategy)이 있어야 사람마다 나뉜다.
+ * 서버가 여러 대면 각자 따로 세요. 프록시 뒤에서는 server.forward-headers-strategy=native(기본값)가 진짜 IP 를 넘겨줘서 사람마다 나뉜다 (ForwardedHeadersTests).
  * 나중에 로그인 IP 제한에도 그대로 쓸 수 있게 일반 클래스로 둠.
  */
 public class IpWindowLimit {
