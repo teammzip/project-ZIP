@@ -30,6 +30,7 @@
 `backend/` — Spring Boot 서버 API
 
 ### 2026-11-27
+- 곽성미 — `backend/README.md` 에 "운영 배포 설정": `bootJar` 빌드 · 실행, 같은 도메인 · 백엔드 한 대 전제, 운영 필수 환경변수와 위험한 기본값(`ZIP_AUTH_COOKIE_SECURE` · `FRONTEND_URL` · `ZIP_UPLOAD_DIR` · `MAIL_LOG_ONLY` 등), 기본값 그대로 써도 되는 값. `application.properties` 의 Gemini 키 없을 때 주석을 현재 동작(안내 문구)으로 고침
 - 곽성미 — `Map` 으로 요청을 받는 API 14곳의 잘못된 입력 점검 테스트 추가(`MalformedInputTests`): 정상 요청에서 칸 하나씩만 다른 타입 · 빈 값 · 아주 큰 수 · 5000자 글 · 없는 날짜 · 객체 · 배열로 바꿔 보내도 서버 오류(5xx) 0건, 긴 글은 DB 전에 400. 코드 변경 없음, 백엔드 전체 368개 통과 [검증 결과](wiki/topics/project-status.md#검증된-부분)
 - 곽성미 — 전체 오류 처리 보완(`ApiExceptionHandler`): 서비스가 막지 못한 중복 · 제약 위반은 409, 예상하지 못한 오류는 500 + 한국어 안내(SQL · 스택은 응답에 넣지 않고 서버 로그에만), 값 형식 오류는 400. 없는 주소 404 · 메서드 405 등 Spring 이 정한 상태와 로그인 · 권한 오류(401 · 403)는 그대로, 응답 모양만 `{ message }` 로 통일. 검증: `ApiExceptionHandlerTests` 5개, 월급 연결 중복 시 롤백 테스트(`LedgerIntegrationTests`)는 처리 안 된 예외 대신 409 를 기대하도록 바꾸고 롤백 확인은 그대로, 백엔드 전체 363개 통과 [오류 응답](wiki/topics/application.md#api-데이터-계약과-dto)
 - 곽성미 — 프록시(nginx · Render · 로드밸런서) 뒤 배포 대비: `server.forward-headers-strategy=native` 기본값(환경변수 `SERVER_FORWARD_HEADERS_STRATEGY`). 인증 메일 IP 제한이 실제 IP 마다 나뉘고, https 로 들어온 요청은 refresh 쿠키에 Secure, 소셜 로그인 돌아올 주소도 https. 내부 주소에서 온 헤더만 믿어 직접 접속으로는 IP 를 속일 수 없음. 검증: 실제 Tomcat 으로 띄우는 `ForwardedHeadersTests` 2개 추가(설정을 `none` 으로 끄면 두 테스트 모두 실패하는 것도 확인) [프록시 헤더](wiki/topics/application.md#인증과-토큰-재발급)
@@ -190,6 +191,7 @@
 `frontend/` — React 앱
 
 ### 2026-11-27
+- 곽성미 — `frontend/README.md` 에 "운영 빌드": `npm ci` · `npm run build` → `dist/`, 항상 서버 모드(확인 방법), 같은 도메인 구성, 없는 주소도 `index.html` 로(새로고침 404 방지), 빌드 환경변수 표. `vite-env.d.ts` 에 `VITE_WEATHER_*` 타입 추가 (린트 · 빌드 · 프론트 212개 통과)
 - 곽성미 — 배포용 빌드(`npm run build`)는 명령에서 `VITE_USE_MOCK`을 주지 않으면 실제 서버 모드로 고정: `.env.local` 값과 관계없이 모의 API가 운영 빌드에 들어가지 않음. 데모용 모의 빌드는 `VITE_USE_MOCK=true npm run build` (`vite.config.ts`). 빌드 결과물에 데모 계정 코드가 없는 것을 확인. [앱 실행 모드](wiki/topics/application.md)
 - 곽성미 — 서버 모드에서 AI 서버에 닿지 못하면(응답 없음 · 처리하지 않은 오류 · 빈 답 · 대화방 생성 실패) 데모 답변 대신 "AI 서버에 연결하지 못했어요" 안내. 데모 답변은 모의 모드에서만 (`ai/api.ts` `askAi`, 테스트 `ai-quota.test.mjs`). 프론트 테스트 212개 · 린트 · 빌드 통과
 
