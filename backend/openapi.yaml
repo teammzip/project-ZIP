@@ -929,10 +929,10 @@ paths:
       parameters:
         - { name: scope, in: query, description: '생략하거나 비우면 all. here = 내 동네, near = 내 동네 + 이웃 동네', schema: { type: string, enum: [here, near, all], default: all } }
         - { name: category, in: query, schema: { $ref: '#/components/schemas/PostCategory' } }
-        - { name: q, in: query, description: '앞뒤 공백을 뺀 뒤 40자까지. 공백으로 나눈 각 단어가 제목이나 본문에 포함되어야 합니다. 한글 음절 3자 이상으로만 된 한 단어는 제목과 본문의 일반 공백을 제거한 뒤 비교합니다.', schema: { type: string } }
+        - { name: q, in: query, description: '앞뒤 공백을 뺀 뒤 40자까지. 공백으로 나눈 각 단어가 제목이나 본문에 포함되어야 합니다. 이 중 한글 음절만 3자 이상인 단어는 제목과 본문의 일반 공백을 각각 제거한 뒤 비교합니다.', schema: { type: string } }
         - name: sort
           in: query
-          description: '생략 시 검색어가 있으면 relevance, 없으면 latest. views는 누적 조회수, popular는 공감 수 + 2 × 댓글 수로 정렬합니다. relevance는 연속 구문 일치와 제목·본문 양쪽의 단어 일치를 순서대로 비교합니다. 일반 공백을 제거해 검색하는 경우 양쪽 일치가 같으면 제목 일치를 우선합니다. 동점은 작성 시각과 ID 내림차순입니다.'
+          description: '생략 시 검색어가 있으면 relevance, 없으면 latest. views는 누적 조회수, popular는 공감 수 + 2 × 댓글 수로 정렬합니다. 여러 단어의 relevance는 원문의 연속 구문 일치와 제목·본문 양쪽의 단어 일치를 순서대로 비교합니다. 검색어 전체가 한글 음절만 3자 이상인 한 단어면 일반 공백을 제거해 양쪽 일치를 비교하며 동점에서 제목 일치를 우선합니다. 최종 동점은 작성 시각과 ID 내림차순입니다.'
           schema: { type: string, enum: [latest, views, popular, relevance] }
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'

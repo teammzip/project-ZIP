@@ -26,7 +26,7 @@
 
 회원 주소 `users.address`와 내 집 상세주소는 별도로 저장합니다. ‘내 집 정보’ 화면의 상세주소는 계약 정보와 함께 `PUT /api/me/home-info`의 `homeAddress`로 전달합니다. 배출표는 내 집 주소로 시·군·구를 찾지 못하면 회원 주소를 확인합니다. [회원 주소 변경 API](../../frontend/API.md#회원-주소-변경) · [내 집 정보 API](../../frontend/API.md#내-집-정보-서버-연결-2026-11-15) · [배출표 조회](trash-schedules.md)
 
-설문 주소와 동네 인증이 둘 다 있으면 홈 날씨는 지금처럼 설문 주소를 쓰고, 홈·동네 지도는 동네 인증을 먼저 씁니다. 2026-11-26부터 다른 기기에서 한 인증도 서버 회원 응답의 `region`(`fullName` 포함)으로 반영돼, 이 브라우저의 설문 선택보다 앞섭니다. [동네 선택 순서](service-integrations.md#홈-날씨-위치) · [회원 응답 계약](../../frontend/API.md#2-설정--동네-)
+설문 주소와 동네 인증이 둘 다 있으면 홈 날씨는 지금처럼 설문 주소를 쓰고, 홈·동네 지도는 동네 인증을 먼저 씁니다. 2026-11-26부터 다른 기기에서 한 인증도 서버 회원 응답의 `region`(`fullName` 포함)으로 반영돼, 이 브라우저의 설문 선택보다 앞섭니다. [동네 선택 순서](service-integrations.md#홈-날씨-위치) · [회원 응답 계약](../../frontend/API.md#user-모양)
 
 2026-11-25에 `c3ed411`의 화면 코드를 확인했습니다. 첫 주거 설문의 ‘사는 곳’은 읽기 전용 칸입니다. ‘검색’을 열어 동네 이름을 입력한 뒤 OpenStreetMap Nominatim의 검색 결과에서 시·군·구 또는 동·읍·면 단위 주소를 선택합니다. 선택하지 않으면 설문 저장 요청에서 주소가 생략됩니다. 도로명과 상세주소는 마이페이지 ‘내 집 정보’의 ‘내 집 주소’ 칸에 적습니다. 2026-11-24부터 이 칸에도 ‘주소 검색’이 있어 같은 동네 검색으로 시·도 · 시·군·구 · 동을 채운 뒤 상세주소를 이어서 입력하고, 직접 입력도 할 수 있습니다. [내 집 주소 입력](../../frontend/src/features/life/components/MyInfo.tsx) [설문 화면과 저장 요청](../../frontend/src/features/onboarding/SurveyPage.tsx) · [동네 검색](../../frontend/src/features/onboarding/AddressSearch.tsx) · [검색 결과 처리](../../frontend/src/features/onboarding/addressResult.ts) · [내 집 정보 입력](../../frontend/src/features/life/components/MyInfo.tsx)
 

@@ -215,6 +215,27 @@ class AdminCommunityIntegrationTests {
             .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(incidental)));
     }
 
+    @Test void multiwordSearchFindsSpacedCompoundsWithoutDroppingOtherTermsOrFilters() throws Exception {
+        String query = "무인택배함 비밀번호";
+        String exact = writePost(member, "TIP", query + " 문자 안내", "기사님이 문자를 보냅니다.");
+        String spaced = writePost(member, "TIP", "무인 택배함 비밀번호 재발급", "관리실에 문의하세요.");
+        String neighbor = writePost(reporter, "TIP", "비밀번호 확인", "이웃 단지 무인 택배함을 이용하는 방법입니다.");
+        String hidden = writePost(member, "TIP", "무인 택배함 비밀번호 안내", "숨김 상태의 게시글입니다.");
+        jdbc.update("UPDATE posts SET status = 'HIDDEN' WHERE id = ?", Long.parseLong(hidden));
+        writePost(member, "FREE", "무인 택배함 비밀번호 공지", "다른 카테고리입니다.");
+        writePost(member, "TIP", "무인 택배함 위치", "공용 현관 옆에 있습니다.");
+        writePost(member, "TIP", "무인 - 택배함 비밀번호", "문장부호 대조 사례입니다.");
+        writePost(member, "TIP", "무인", "택배함 비밀번호 안내입니다.");
+
+        call(member, get("/api/posts").param("scope", "here").param("category", "TIP").param("q", query), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(exact, spaced)))
+            .andExpect(jsonPath("$.suggestedQuery").doesNotExist());
+        call(member, get("/api/posts").param("scope", "near").param("category", "TIP").param("q", query).param("sort", "latest"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(neighbor, spaced, exact)));
+        call(admin, get("/api/admin/posts").param("q", query), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(exact)));
+    }
+
     @Test void emptySearchSuggestsOnlyCorrectionsThatMatchVisiblePostsInTheSameScope() throws Exception {
         writePost(member, "FREE", "방충망 교체 후기", "우리 동네 자유 글입니다.");
         String guide = writePost(reporter, "TIP", "방충망 교체 안내", "이웃 동네 꿀팁입니다.");

@@ -81,6 +81,19 @@ flowchart LR
 
 로그인·가입·일정·일반 메모와 가계부 분류 요청은 기존 `record`를 활용할 수 있습니다. 약관 응답도 이미 타입이 있습니다. 회원 게시글 수처럼 작은 고정 응답과 월별 수입 합계처럼 월이 키인 `Map<String, Long>`은 현재 표현으로 충분합니다. 내부 JDBC 행과 서비스 값은 공개 응답에서 의미나 필드가 달라질 때 분리합니다. 프로필 PATCH는 필드 생략과 명시적 `null`을 구별하는 현재 파서를 유지하는 것이 적합합니다. [일반 메모 입력](../../backend/src/main/java/com/zip/backend/memo/MemoService.java) · [가계부 분류](../../backend/src/main/java/com/zip/backend/ledger/LedgerCategoryService.java) · [약관 응답](../../backend/src/main/java/com/zip/backend/legal/TermsController.java) · [프로필 PATCH](../../backend/src/main/java/com/zip/backend/auth/ProfilePatch.java)
 
+#### 후속 DTO 후보
+
+2026-11-27에 `backend`의 `e543b6b`를 기준으로 확인했습니다. 아래 후보는 서버가 고정된 JSON 필드를 `Map<String, Object>`로 조립하고 프론트가 그 구조를 별도 타입으로 읽는 경계입니다.
+
+| 우선순위 | 경계 | 함께 검증할 계약 |
+| --- | --- | --- |
+| 높음 | 일정 목록·검색·저장 응답, 알림 목록 응답 | 일정의 문자열 ID, 비어 있는 시간, 반복 필드와 알림의 `items`·`unreadCount`·선택 연결 값. [일정 응답 조립](../../backend/src/main/java/com/zip/backend/calendar/CalendarService.java#L302) · [알림 응답 조립](../../backend/src/main/java/com/zip/backend/notification/NotificationService.java#L45) |
+| 높음 | 메모 목록·저장 응답 | 체크리스트 `items`, 가계부 연결·초안, 폴더 ID의 `null` 계약. [메모 응답 조립](../../backend/src/main/java/com/zip/backend/memo/MemoService.java#L210) · [프론트 메모 동기화](../../frontend/src/features/memo/sync.ts) |
+| 후속 | 관리자 회원·제재 이력과 고객센터 문의 응답 | 페이지의 `items`·`hasNext`, 제재 종료·해제 시각, 미답변 문의의 `answer: null`. [회원·제재 응답](../../backend/src/main/java/com/zip/backend/moderation/ModerationService.java#L47) · [문의 응답](../../backend/src/main/java/com/zip/backend/support/SupportService.java#L99) |
+| 후속 | AI 대화 목록·메시지 응답 | 메시지 ID·역할·본문·시각과 선택 `card`는 공통 응답 타입으로 표현할 수 있습니다. `card.data`는 카드 유형별 구조를 보존합니다. [AI 응답 조립](../../backend/src/main/java/com/zip/backend/ai/AiService.java#L210) |
+
+월별 고정 지출은 서비스가 검증한 입력을 `BillInput`의 `record`로 이미 다룹니다. HTTP 컨트롤러에서 받는 원본 `Map`을 바꿀 때는 금액의 JSON 자료형과 허용 필드 규칙을 테스트로 보존합니다. [월별 입력](../../backend/src/main/java/com/zip/backend/bills/BillInput.java) · [월별 저장 API](../../backend/src/main/java/com/zip/backend/bills/BillController.java#L33)
+
 적용할 때는 JSON 필드명·자료형·금액 단위·필드 생략과 `null`·검증 오류 상태를 기존 HTTP 테스트로 비교합니다. 요청 `record`가 이미 있는 경계도 API 계약과 대조합니다.
 
 #### 공통 회원 응답 DTO
@@ -95,10 +108,10 @@ flowchart LR
 
 ### DTO와 별도로 검토할 최적화
 
-- 가계부 등록의 `SELECT MAX(id)`를 INSERT에서 반환한 키로 대체하고, 수정의 존재 확인과 기존 메모 조회를 한 번으로 줄이는 방안을 검토합니다. 같은 회원의 동시 저장·메모 연결·롤백 검증이 필요합니다. 목록의 메모·월급 여부 일괄 조회는 이미 반영돼 있습니다. [가계부와 메모](ledger-memos.md#가계부-기록과-회원별-분류) · [가계부 저장](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java) · [생성 키 사용 예](../../backend/src/main/java/com/zip/backend/bills/BillRepository.java)
+- 가계부 등록과 월급 자동 등록의 `SELECT MAX(id)`를 INSERT에서 반환한 키로 대체하고, 가계부 수정의 존재 확인과 기존 메모 조회를 한 번으로 줄이는 방안을 검토합니다. 월급 동기화는 자동 기록과 직접 입력 월급의 존재를 월별로 확인하므로 대상 기간에서 이미 등록된 월을 한 번에 조회하는 방식과 비교할 수 있습니다. 같은 회원의 동시 저장·메모 연결·월급 중복 방지·롤백을 확인합니다. 목록의 메모·월급 여부 일괄 조회는 이미 반영돼 있습니다. [가계부와 메모](ledger-memos.md#가계부-기록과-회원별-분류) · [가계부 저장](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java#L136) · [월급 동기화](../../backend/src/main/java/com/zip/backend/ledger/SalaryService.java#L150) · [생성 키 사용 예](../../backend/src/main/java/com/zip/backend/bills/BillRepository.java#L76)
 - 고정 지출 등록·수정에서 금액과 납부 날짜는 요청 DTO 변환 때 한 번 파싱합니다. 선택 월과 납부 기한이 속한 월의 검증에서 같은 계약과 저장 시간대를 재사용하는 방안은 후속 후보입니다. [월별 입력 검증](../../backend/src/main/java/com/zip/backend/bills/BillInput.java) · [계약 월 검증](../../backend/src/main/java/com/zip/backend/bills/BillService.java)
 - 회원 응답 조립에서 계정 조회와 별도로 생년월일, 설문 상태, 동의 시각, 제재 집계, 미확인 경고, 동네 인증, 프로필을 조회합니다. 실행 시간과 SQL 수를 기록한 뒤 계정과 함께 조회할 단일 행 정보를 검토합니다. 미확인 경고는 여러 건일 수 있어 회원 행이 중복되지 않도록 확인합니다. [회원 응답 조립](../../backend/src/main/java/com/zip/backend/auth/AuthService.java#L187) · [인증 조회](../../backend/src/main/java/com/zip/backend/auth/AuthRepository.java)
-- OpenAPI 스키마와 실제 HTTP 응답을 CI에서 비교하면 Java 타입 추가와 별개로 계약 누락을 발견할 수 있습니다. 가계부의 메모 필드 생략과 내 집 정보의 대출 초안처럼 기존 테스트에서 다루는 응답부터 적용할 수 있습니다. [가계부 통합 테스트](../../backend/src/test/java/com/zip/backend/LedgerIntegrationTests.java) · [설문 통합 테스트](../../backend/src/test/java/com/zip/backend/HousingOnboardingTests.java)
+- OpenAPI 스키마와 실제 HTTP 응답을 CI에서 비교하면 계약 누락을 발견할 수 있습니다. `User`의 `birth`·`banCount`, `Post`의 `reported`·`homeTip`, `Comment`의 `reported`·`parentId`는 DTO에 있고 해당 응답 스키마에는 없습니다. 문서에서 필드와 생략·`null` 규칙을 맞춘 뒤 실제 응답을 대조할 수 있습니다. [OpenAPI](../../backend/openapi.yaml) · [회원 응답](../../backend/src/main/java/com/zip/backend/auth/UserResponse.java) · [게시글과 댓글 응답](../../backend/src/main/java/com/zip/backend/community/PostResponse.java)
 
 ## 인증과 토큰 재발급
 

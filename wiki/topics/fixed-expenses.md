@@ -17,7 +17,7 @@
 
 월별 등록은 `MonthlyCreate`, 수정은 `MonthlyDetails`로 본문을 검증한 뒤 서비스에 전달합니다. 사진 고지서 확정도 같은 등록 검증을 사용합니다. 등록·수정은 `BillResponse`로 저장된 청구를, 조회는 `BillResponse.Monthly`로 일반 항목·주거 항목·계약 기간을 반환합니다. 미납 항목의 `paidAt`은 `null`이며 연결 메모가 없으면 `memoId`와 `memoTitle`을 생략합니다. [입력 DTO](../../backend/src/main/java/com/zip/backend/bills/BillInput.java) · [응답 DTO](../../backend/src/main/java/com/zip/backend/bills/BillResponse.java) · [사진 고지서](../../backend/src/main/java/com/zip/backend/bills/BillPhotoController.java) · [월별 등록 통합 테스트](../../backend/src/test/java/com/zip/backend/BillMonthlyWriteTests.java)
 
-월별 목록(`GET /api/bills/monthly`)의 일반 항목에는 `homeManaged`가 붙습니다. 내 집 계약에서 생긴 항목이거나 내 집 정보가 관리하는 관리비면 `true`입니다. 다른 응답에서는 이 칸을 생략합니다. 2026-11-27에 [OpenAPI](../../backend/openapi.yaml)의 `Bill` 스키마에 이 칸을 추가해 `BillResponse`와 칸 이름을 맞췄습니다. [월별 목록 응답](../../backend/src/main/java/com/zip/backend/bills/BillService.java)
+월별 목록(`GET /api/bills/monthly`)의 일반 항목에는 `homeManaged`가 붙습니다. 내 집 계약에서 생긴 항목이거나 내 집 정보가 관리하는 관리비면 `true`입니다. 다른 응답에서는 이 칸을 생략합니다. 2026-11-27에 [OpenAPI](../../backend/openapi.yaml)의 `Bill` 스키마에 이 칸을 추가해 `BillResponse`와 칸 이름을 맞췄습니다. [월별 목록 응답](../../backend/src/main/java/com/zip/backend/bills/BillService.java#L31) · [계약 고정 지출 자동 등록 응답 계약](../../frontend/API.md#계약-고정-지출-자동-등록)
 
 ## 월급 자동 등록
 
