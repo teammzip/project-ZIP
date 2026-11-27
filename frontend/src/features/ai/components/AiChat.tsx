@@ -22,7 +22,7 @@ type Props = {
   name: string
 }
 
-type AiRequest = { id: string; text: string; topic: string }
+type AiRequest = { id: string | null; text: string; topic: string }
 
 type Msg = {
   role: 'user' | 'bot'
@@ -184,7 +184,8 @@ export function AiChat({ region, name }: Props) {
         setPending(false)
         return
       }
-      if (id && text && !sentPhoto && usesAiReply(t) && await requestAi({ id, text, topic: t?.id ?? 'qna' })) return
+      // 서버 모드는 대화방을 못 만들었어도(id 없음) askAi 가 연결 실패 안내를 돌려줌. 데모 답변은 모의 모드에서만
+      if (text && !sentPhoto && usesAiReply(t) && await requestAi({ id, text, topic: t?.id ?? 'qna' })) return
       await new Promise((resolve) => setTimeout(resolve, 500))
       if (!alive.current) return
       let out = !text ? '사진을 받았어요. 어떤 도움이 필요한지 아래에서 주제를 골라 물어봐 주세요.' : t?.reply?.(text, ctx) ?? keywordReply(text)

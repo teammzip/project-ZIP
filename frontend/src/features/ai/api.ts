@@ -54,12 +54,17 @@ export async function loadLatestConversation(entryPoint: EntryPoint): Promise<{ 
   }
 }
 
-/** 서버의 AI 에게 묻기. 질문과 답이 대화방에 저장됨. null 이면 서버에 닿지 못한 상태(로그인 만료 · 서버 꺼짐)라서 데모 답변을 씀 */
+const AI_UNREACHABLE: AiAnswer = { text: 'AI 서버에 연결하지 못했어요. 잠시 뒤 다시 시도해 주세요.', kind: 'unavailable' }
+
+/** 서버의 AI 에게 묻기. 질문과 답이 대화방에 저장됨.
+ * null 은 모의 API 모드에서만 돌려줘서 데모 답변을 씀. 서버 모드에서 서버에 닿지 못하면(서버 꺼짐 · 대화방을 못 만듦 · 빈 답)
+ * 데모 답변으로 바꾸지 않고 연결 실패 안내를 돌려줌 (실제 AI 답처럼 보이는 가짜 답을 막기 위해) */
 export async function askAi(conversationId: string | null, text: string, topic?: string): Promise<AiAnswer | null> {
-  if (isMockApi || !conversationId) return null
+  if (isMockApi) return null
+  if (!conversationId) return AI_UNREACHABLE
   try {
     const { data } = await apiClient.post<{ reply: { text: string } }>(`/ai/conversations/${conversationId}/messages`, { text, topic })
-    return data.reply.text ? { text: data.reply.text, kind: 'reply' } : null
+    return data.reply?.text ? { text: data.reply.text, kind: 'reply' } : AI_UNREACHABLE
   } catch (error) {
     if (axios.isAxiosError<{ message?: string; code?: string }>(error)) {
       const status = error.response?.status
@@ -70,7 +75,7 @@ export async function askAi(conversationId: string | null, text: string, topic?:
       if (status === 429) return { text: message ?? '오늘 질문 한도를 모두 썼어요. 내일 다시 물어봐 주세요.', kind: 'unavailable' }
       if (status === 502 || status === 503) return { text: message ?? 'AI가 지금 답하지 못했어요. 잠시 뒤에 다시 시도해 주세요.', kind: 'unavailable' }
     }
-    return null
+    return AI_UNREACHABLE
   }
 }
 

@@ -8,6 +8,7 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 | --- | --- |
 | 화면 개발·데모 | `frontend/`에서 `npm install` 후 `npm run dev`. 프론트 개발 서버는 기본 3000 포트에서 실행되며 모의 API가 기본값입니다. |
 | 서버 연동 개발 | [DB를 준비](database.md)하고 백엔드 로컬 설정을 채운 뒤, `backend/`에서 `./gradlew.bat bootRun`을 실행합니다. 프론트의 `.env.local`에 `VITE_USE_MOCK=false`를 지정합니다. |
+| 운영 빌드 | `frontend/`에서 `npm run build`. [Vite 설정](../../frontend/vite.config.ts)이 `VITE_USE_MOCK=false`를 고정해 `.env.local` 값과 관계없이 실제 서버 모드로 빌드됩니다. 모의 빌드는 `VITE_USE_MOCK=true npm run build`처럼 명령에서 덮어쓸 때만 만들어집니다. |
 
 서버의 로컬 설정에는 DB·JWT와 사용하는 외부 서비스의 환경 변수가 들어갑니다. 실제 설정은 Git에서 제외되는 `application-local.properties` 또는 실행 환경에서 관리합니다. OpenAPI 문서는 [백엔드 OpenAPI](../../backend/openapi.yaml), 화면별 데이터 계약은 [프론트 API 문서](../../frontend/API.md)에서 확인합니다. [백엔드 설정](../../backend/README.md#처음-설정)
 

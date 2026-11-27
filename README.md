@@ -41,7 +41,7 @@ npm run dev      # → 브라우저에서 http://localhost:3000
    | 네이버 | `secrets/naver.properties` | `NAVER_CLIENT_ID` · `NAVER_CLIENT_SECRET` | `http://localhost:8080/login/oauth2/code/naver` |
    | 카카오 | `secrets/kakao.properties` | `KAKAO_LOGIN_CLIENT_ID` · `KAKAO_LOGIN_CLIENT_SECRET` | `http://localhost:8080/login/oauth2/code/kakao` |
 
-   AI 답변(Gemini)은 `secrets/gemini.properties`에 `GEMINI_API_KEY=키`를 넣어요. 키가 없으면 AI 화면은 기존 데모 답변을 써요.
+   AI 답변(Gemini)은 `secrets/gemini.properties`에 `GEMINI_API_KEY=키`를 넣어요. 키가 없으면 서버가 503(`AI_DISABLED`)으로 답해서 자유 질문에는 "AI를 쓸 수 없어요" 안내가 떠요. 데모 답변은 모의 API 모드에서만 나와요.
 3. `cd backend && ./gradlew bootRun` (또는 IntelliJ에서 `BackendApplication` 실행).
 4. 프론트에서 `frontend/.env.local`에 `VITE_USE_MOCK=false`를 넣으면 실제 서버를 써요.
 5. 테스트: `./gradlew test` (Windows에서 한글 깨짐으로 실패하면 `JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8`을 붙여요).

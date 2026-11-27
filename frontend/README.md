@@ -84,7 +84,8 @@ src/
 ### 모의 API 사용 범위
 
 - **서버 없는 개발·데모**에서는 `VITE_USE_MOCK=true`를 사용해요. 설정을 생략해도 모의 모드로 실행되고, 데모 계정과 이 브라우저에서 만든 테스트 기록을 쓸 수 있어요.
-- **백엔드 연동 검증·운영 배포**에서는 실행하거나 빌드하기 전에 `VITE_USE_MOCK=false`를 명시해요. 개발 서버는 `/api` 요청을 `VITE_PROXY_TARGET`으로 넘겨요(기본 `http://localhost:8080`).
+- **백엔드 연동 검증**에서는 개발 서버를 실행하기 전에 `.env.local`에 `VITE_USE_MOCK=false`를 명시해요. 개발 서버는 `/api` 요청을 `VITE_PROXY_TARGET`으로 넘겨요(기본 `http://localhost:8080`).
+- **운영 빌드**(`npm run build`)는 [Vite 설정](vite.config.ts)이 `VITE_USE_MOCK=false`로 고정해서 항상 실제 서버 API를 써요. `.env.local` 값과 관계없고, 데모용 모의 빌드가 필요할 때만 `VITE_USE_MOCK=true npm run build`처럼 명령에서 직접 지정해요.
 
 **실서버 모드에서는 모의 API용 브라우저 저장소를 데이터 원본으로 사용하지 마세요.** 서버가 관리하는 기록은 서버 API를 기준으로 삼고, 브라우저에는 서버와 동기화되는 캐시나 기기별 화면 상태·임시 입력을 둘 수 있어요.
 
