@@ -3,7 +3,7 @@
 혼자 사는 사람을 위한 생활 관리 웹 서비스예요.
 일정 · 할 일 · 월세 · 공과금 · 쓰레기 배출 · 가계부를 한곳에서 관리하고, 동네 지도 · 커뮤니티 · AI 도우미를 제공해요.
 
-> **지금 단계:** 화면과 백엔드 API가 거의 다 만들어져 서로 연결돼 있어요. 프론트는 기본이 가짜 API(브라우저 저장)이고 `VITE_USE_MOCK=false`일 때 실제 서버를 써요. 무엇이 되고 무엇이 남았는지는 아래 [지금 상태](#지금-상태)를 보세요.
+> **지금 단계:** 화면과 백엔드 API가 다 만들어져 서로 연결돼 있고, 배포 전 마무리(문서 · 운영 설정 · 통합 테스트) 중이에요. 개발 서버(`npm run dev`)는 기본이 가짜 API(브라우저 저장)이고 `VITE_USE_MOCK=false`일 때 실제 서버를 써요. 배포용 빌드(`npm run build`)는 항상 실제 서버를 써요. 무엇이 되고 무엇이 남았는지는 아래 [지금 상태](#지금-상태)를 보세요.
 
 ---
 
@@ -68,17 +68,22 @@ secrets/       (선택) 로컬 비밀값(구글 키 등). 깃에 올리지 않�
 서버 모드에서는 로그인 후 일정 화면의 ‘우리 동네 쓰레기 배출표’를 펼치면 주소에 해당하는 정보를 조회해요. [배출표 조회와 알림](wiki/topics/trash-schedules.md)
 
 **남은 것**
-- 약관: 클라우드 업체 · 보관 국가 확정 후 처리방침 5번 고치기, 출시 전 법률 검토
+- 로컬 통합 테스트: 실제 서버로 화면부터 DB까지 기능별 확인 (팀 공동)
+- 배포 방식(서버 · 클라우드) 결정 후: 서버 · HTTPS · 같은 도메인 구성 · 소셜 로그인 운영 주소 등록 — 필요한 설정은 [운영 배포 설정](backend/README.md#운영-배포-설정)
+- 약관: 클라우드 업체 · 보관 국가와 운영 메일 업체 확정 후 처리방침 5번 마무리, 처리방침 1번 수집 항목에 동네 인증 위치(GPS) 넣을지 결정, 출시 전 법률 검토. 외부 전송(카카오 · OpenStreetMap · Open-Meteo · Gmail)은 2026-11-27에 반영
+- 화면에서 쓰지 않는 백엔드 API 정리 여부 결정
 
 **문서 안내**
 | 보고 싶은 것 | 문서 |
 |---|---|
 | 프론트 · 백엔드 · DB 에서 누가 언제 무엇을 했는지 (PR 마다 한 줄씩 추가) | [CHANGELOG.md](CHANGELOG.md) |
 | 기능별 동작, 결정 이유, 검증 결과 | [Second Brain](wiki/index.md) |
-| 프론트 ↔ 서버 API 전체와 기능별 상태 | [frontend/API.md](frontend/API.md) |
-| 프론트 폴더 · 실행 | [frontend/README.md](frontend/README.md) |
-| 백엔드 실행 · 기능별 구현 설명 | [backend/README.md](backend/README.md) · [backend/IMPLEMENTATION.md](backend/IMPLEMENTATION.md) |
-| DB 표 설명 · 기존 DB 바꾸기 · DB 검증 | [db/README.md](db/README.md) · [db/migrations/README.md](db/migrations/README.md) · [db/tests/README.md](db/tests/README.md) |
+| 프론트 ↔ 서버 API 전체와 기능별 상태 | [frontend/API.md](frontend/API.md) · OpenAPI 명세 [backend/openapi.yaml](backend/openapi.yaml) |
+| 시스템 구성도 (화면 · 백엔드 · DB · 외부 연동) | [앱 구조와 실행 모드](wiki/topics/application.md#시스템-구성) |
+| 프론트 폴더 · 실행 · 운영 빌드 | [frontend/README.md](frontend/README.md) · [운영 빌드](frontend/README.md#운영-빌드) |
+| 백엔드 실행 · 기능별 구현 설명 · 운영 환경변수 | [backend/README.md](backend/README.md) · [운영 배포 설정](backend/README.md#운영-배포-설정) · [backend/IMPLEMENTATION.md](backend/IMPLEMENTATION.md) |
+| DB 표 설명 · 관계도(ERD) · 기존 DB 바꾸기 · DB 검증 | [db/README.md](db/README.md) · [관계도](db/README.md#관계도-erd) · [db/migrations/README.md](db/migrations/README.md) · [db/tests/README.md](db/tests/README.md) |
+| 운영 · QA 용 새 DB 만들기 · 첫 관리자 계정 | [운영 DB 새로 만들기](db/README.md#운영-db-새로-만들기-첫-배포--qa용-새-db) |
 
 ---
 

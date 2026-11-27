@@ -18,6 +18,26 @@ npm run lint     # 코드 검사
 - **찾기 체험:** 닉네임 `지기` · 아이디 `zipdemo` · 이메일 `demo@zip.com`
 - **실제 서버에 붙일 때:** `.env.example`을 `.env.local`로 복사하고 `VITE_USE_MOCK=false`로 바꿔요.
 
+## 운영 빌드
+
+```bash
+npm ci           # package-lock.json 그대로 설치
+npm run build    # 타입 검사 + dist/ 생성
+```
+
+- `dist/`의 파일을 정적 파일로 내보내요. 배포 방식(서버 · 클라우드)과 상관없어요.
+- **항상 실제 서버 API를 써요.** [Vite 설정](vite.config.ts)이 빌드 때 `VITE_USE_MOCK=false`로 고정해요. `.env.local`이 `true`여도 같고, 데모용 모의 빌드는 `VITE_USE_MOCK=true npm run build`처럼 명령에서 직접 줄 때만 만들어져요. 확인: `dist/assets`에서 데모 계정 이름(`zipdemo`)이 검색되지 않아야 해요.
+- **화면과 API를 같은 도메인에서** 내보내요. `VITE_API_BASE_URL`은 기본값 `/api` 그대로 두고, 같은 도메인의 `/api/**`와 `/login/oauth2/code/**`를 백엔드로 넘겨요. 다른 도메인 주소를 넣으면 로그인 유지(refresh 쿠키)가 동작하지 않아요. 백엔드 쪽 설정은 [운영 배포 설정](../backend/README.md#운영-배포-설정)에 있어요.
+- **없는 주소도 `index.html`로** 돌려줘요. 화면 주소를 브라우저가 직접 바꾸는 방식(`createBrowserRouter`)이라, 서버가 `/my/calendar` 같은 주소를 모르면 새로고침할 때 404가 나요. 파일이 없는 주소는 `index.html`을 주도록 정적 서버를 설정해요(`/api/**` · `/login/oauth2/code/**` 제외).
+- `VITE_`로 시작하는 값은 **빌드할 때 코드에 박혀요.** 바꾸면 다시 빌드해야 하고, 누구나 볼 수 있으니 비밀값을 넣지 마세요.
+
+| 빌드 환경변수 (기본값) | 뜻 |
+|---|---|
+| `VITE_USE_MOCK` (빌드는 `false`) | 모의 API 모드. 운영 빌드에는 넣지 않아요 |
+| `VITE_API_BASE_URL` (`/api`) | API 주소. 같은 도메인 구성이면 그대로 |
+| `VITE_WEATHER_FORECAST_URL` (Open-Meteo) · `VITE_WEATHER_GEOCODING_URL` (Nominatim) | 홈 날씨 카드가 쓰는 주소. Open-Meteo 공개 API는 비상업용이라 상업 운영 때는 서버 프록시 주소로 바꿀 수 있어요. 주소 검색 · 동네 인증 · 납부 시간대 확인은 이 값과 상관없이 공개 Nominatim · Open-Meteo를 직접 써요 |
+| `VITE_PROXY_TARGET` (`http://localhost:8080`) | 개발 서버(`npm run dev`) 전용. 빌드에는 쓰이지 않아요 |
+
 ## 변경 검증
 
 `frontend/`에서 실행해요. 린트는 [Oxlint 설정](.oxlintrc.json)을 사용하고, `--deny-warnings`를 붙이면 경고가 있을 때 실패해요.
@@ -85,7 +105,7 @@ src/
 
 - **서버 없는 개발·데모**에서는 `VITE_USE_MOCK=true`를 사용해요. 설정을 생략해도 모의 모드로 실행되고, 데모 계정과 이 브라우저에서 만든 테스트 기록을 쓸 수 있어요.
 - **백엔드 연동 검증**에서는 개발 서버를 실행하기 전에 `.env.local`에 `VITE_USE_MOCK=false`를 명시해요. 개발 서버는 `/api` 요청을 `VITE_PROXY_TARGET`으로 넘겨요(기본 `http://localhost:8080`).
-- **운영 빌드**(`npm run build`)는 [Vite 설정](vite.config.ts)이 `VITE_USE_MOCK=false`로 고정해서 항상 실제 서버 API를 써요. `.env.local` 값과 관계없고, 데모용 모의 빌드가 필요할 때만 `VITE_USE_MOCK=true npm run build`처럼 명령에서 직접 지정해요.
+- **운영 빌드**(`npm run build`)는 항상 실제 서버 API를 써요. 자세한 내용은 위 [운영 빌드](#운영-빌드)를 봐요.
 
 **실서버 모드에서는 모의 API용 브라우저 저장소를 데이터 원본으로 사용하지 마세요.** 서버가 관리하는 기록은 서버 API를 기준으로 삼고, 브라우저에는 서버와 동기화되는 캐시나 기기별 화면 상태·임시 입력을 둘 수 있어요.
 

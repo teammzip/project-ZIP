@@ -8,9 +8,49 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 | --- | --- |
 | 화면 개발·데모 | `frontend/`에서 `npm install` 후 `npm run dev`. 프론트 개발 서버는 기본 3000 포트에서 실행되며 모의 API가 기본값입니다. |
 | 서버 연동 개발 | [DB를 준비](database.md)하고 백엔드 로컬 설정을 채운 뒤, `backend/`에서 `./gradlew.bat bootRun`을 실행합니다. 프론트의 `.env.local`에 `VITE_USE_MOCK=false`를 지정합니다. |
-| 운영 빌드 | `frontend/`에서 `npm run build`. [Vite 설정](../../frontend/vite.config.ts)이 `VITE_USE_MOCK=false`를 고정해 `.env.local` 값과 관계없이 실제 서버 모드로 빌드됩니다. 모의 빌드는 `VITE_USE_MOCK=true npm run build`처럼 명령에서 덮어쓸 때만 만들어집니다. |
+| 운영 빌드 | `frontend/`에서 `npm run build`. [Vite 설정](../../frontend/vite.config.ts)이 `VITE_USE_MOCK=false`를 고정해 `.env.local` 값과 관계없이 실제 서버 모드로 빌드됩니다. 모의 빌드는 `VITE_USE_MOCK=true npm run build`처럼 명령에서 덮어쓸 때만 만들어집니다. 빌드 환경변수(`VITE_API_BASE_URL`, `VITE_WEATHER_*`)의 타입은 [환경변수 타입](../../frontend/src/vite-env.d.ts)에 있습니다. 같은 도메인 구성, 새로고침 대비 `index.html` 응답, 빌드 환경변수 표는 [프론트 운영 빌드](../../frontend/README.md#운영-빌드)에 있습니다. 백엔드 jar와 운영 환경변수는 [운영 배포 설정](../../backend/README.md#운영-배포-설정)에 있습니다. |
 
 서버의 로컬 설정에는 DB·JWT와 사용하는 외부 서비스의 환경 변수가 들어갑니다. 실제 설정은 Git에서 제외되는 `application-local.properties` 또는 실행 환경에서 관리합니다. OpenAPI 문서는 [백엔드 OpenAPI](../../backend/openapi.yaml), 화면별 데이터 계약은 [프론트 API 문서](../../frontend/API.md)에서 확인합니다. [백엔드 설정](../../backend/README.md#처음-설정)
+
+## 시스템 구성
+
+운영에서는 화면과 API를 한 도메인에서 내보냅니다. 서버에 CORS 설정이 없고 refresh 쿠키가 같은 출처에서만 동작하기 때문입니다. 백엔드는 한 대만 띄웁니다. 예약 작업 4개와 남용 방지 횟수가 서버 메모리에 있기 때문입니다. 지도 타일·주소 검색·날씨는 서버를 거치지 않고 브라우저가 직접 호출합니다(2026-11-27 코드 기준). [운영 배포 설정](../../backend/README.md#운영-배포-설정) · [프론트 운영 빌드](../../frontend/README.md#운영-빌드) · [DB 관계도](../../db/README.md#관계도-erd)
+
+```mermaid
+flowchart LR
+    subgraph Browser["브라우저 (React · Vite 빌드)"]
+        UI["화면 dist/"]
+    end
+    subgraph Domain["한 도메인 (https)"]
+        Static["정적 파일 · 없는 주소는 index.html"]
+        Api["/api/** · /login/oauth2/code/**"]
+    end
+    subgraph Backend["Spring Boot 백엔드 (1대)"]
+        App["API · Spring Security · JWT"]
+        Jobs["예약 작업 4개<br/>계약 자동 등록 · 월세 알림 · 배출 알림 · 데이터 정리"]
+    end
+    DB[("MySQL zip")]
+    Files[("업로드 폴더 ZIP_UPLOAD_DIR")]
+    Kakao["카카오 로컬 API<br/>장소 검색 · 동네 인증"]
+    Gemini["Google Gemini<br/>AI 대화 · 고지서 인식"]
+    Mail["메일 서버 SMTP<br/>인증 메일"]
+    OAuth["Google · Naver · Kakao 로그인"]
+    OSM["OpenStreetMap<br/>지도 타일 · Nominatim 주소 검색"]
+    Meteo["Open-Meteo<br/>날씨 · 시간대"]
+
+    UI --> Static
+    UI --> Api
+    Api --> App
+    App --> DB
+    App --> Files
+    Jobs --> DB
+    App --> Kakao
+    App --> Gemini
+    App --> Mail
+    App <--> OAuth
+    UI --> OSM
+    UI --> Meteo
+```
 
 ## API 데이터 계약과 DTO
 
@@ -21,6 +61,8 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 같은 날 [OpenAPI](../../backend/openapi.yaml)를 서버 컨트롤러 전체와 대조해, 빠져 있던 경로 17개와 AI 대화 전체 삭제(공지 · 관리자 공지, 관리자 꿀팁 지정, 관리자 전체 문의, 고지서 사진 인식 · 등록 결정, AI 대화 기록 저장, 프로필 사진 버리기, 지도 저장 리스트, 내 정보 이름 · 생년월일, 내 경고 · 정지 내역, 주변 동네 안내)를 추가하고 서버에 없는 `GET /api/ai/topics`를 지웠습니다. 내 문의 목록은 본인 것만, 문의 쓰기는 201로 서버와 맞췄습니다. 가계부 `/api/ledger/{kind}`는 `income` · `spend` 경로로 나눠 적습니다. [공지](../../backend/src/main/java/com/zip/backend/notice/NoticeController.java) · [고지서 사진](../../backend/src/main/java/com/zip/backend/bills/BillPhotoController.java) · [지도](../../backend/src/main/java/com/zip/backend/map/MapController.java) · [고객센터](../../backend/src/main/java/com/zip/backend/support/SupportController.java)
 
 2026-11-25에 [OpenAPI](../../backend/openapi.yaml)에 남아 있던 서버와 다른 설명 세 개를 서버 코드 기준으로 고쳤습니다. 글 목록 `GET /api/posts`는 `scope`를 생략하면 `all`이고, 읽기에는 동네 인증이 필요 없습니다(인증은 글쓰기 · 댓글 · 공감만). 이메일 가입의 `address`는 선택입니다. `PATCH /api/auth/me`는 프로필 편집, 소셜 첫 동의(주소 선택), 동의 뒤 주소만 변경의 세 가지 모양을 받습니다. [글 목록 기본값](../../backend/src/main/java/com/zip/backend/community/CommunityService.java) · [가입 주소](../../backend/src/main/java/com/zip/backend/auth/signup/SignupService.java) · [내 정보 수정](../../backend/src/main/java/com/zip/backend/auth/AuthController.java)
+
+2026-11-27에 [OpenAPI](../../backend/openapi.yaml)를 다시 서버와 대조했습니다. 경로는 빠지거나 남은 것이 없었습니다. 서버의 가계부 `/api/ledger/{kind}`를 OpenAPI는 수입·지출 경로로 나눠 적고, 소셜 로그인 시작 `/api/oauth2/authorization/{provider}`는 컨트롤러가 아니라 Spring Security가 처리합니다. 응답 DTO 7개는 칸 이름까지 대조해 세 군데를 고쳤습니다. 회원 응답에는 서버가 보내는 `birth`·`banCount`를 넣고, 보내지 않는 `lastLoginAt`을 뺐습니다. 게시글에는 `reported`·`homeTip`을 넣고, 서버 어디서도 보내지 않는 `reportCount`를 뺐습니다. 고정 지출에는 월별 목록의 `homeManaged`를 넣었습니다. [프론트 API 문서](../../frontend/API.md)의 회원 응답 예시도 서버 응답 칸과 같게 맞췄습니다. Map을 반환하는 응답은 칸 이름을 자동으로 대조할 수 없어 이번 범위에서 제외했습니다. [회원 응답](../../backend/src/main/java/com/zip/backend/auth/UserResponse.java) · [게시글 응답](../../backend/src/main/java/com/zip/backend/community/PostResponse.java) · [고정 지출 응답](../../backend/src/main/java/com/zip/backend/bills/BillResponse.java)
 
 오류 응답은 모두 `{ "message" }` 모양입니다. 서비스가 정한 오류는 `code`도 함께 보냅니다. 2026-11-27부터는 서비스가 미리 막지 못한 중복·제약 위반을 409로 보냅니다. 예상하지 못한 오류는 500과 한국어 안내로 보내고, SQL·스택 같은 내부 내용은 서버 로그에만 남깁니다. 로그인·권한 오류는 Spring Security의 401·403 처리에 그대로 넘깁니다. Spring이 상태를 정한 오류(없는 주소 404, 지원하지 않는 메서드 405, 빠진 값·형식 오류 400)는 상태를 유지하고 본문만 같은 모양으로 맞춥니다. [오류 응답 처리](../../backend/src/main/java/com/zip/backend/common/ApiExceptionHandler.java) · [검증](../../backend/src/test/java/com/zip/backend/common/ApiExceptionHandlerTests.java)
 

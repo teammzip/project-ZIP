@@ -157,6 +157,145 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 
 ## 4. 테이블 한눈에 보기
 
+### 관계도 (ERD)
+
+[schema.sql](schema.sql)의 외래키 84개를 기능별로 나눠 그렸어요. 회원(`users`)처럼 여러 기능에 걸친 표는 그림마다 다시 나와요. 선 위 글자는 외래키 칸, 기호는 `||` 반드시 하나 · `|o` 없거나 하나 · `o{` 여러 개 · `o|` 많아야 하나(1:1)예요. 칸 · 키의 자세한 내용은 [5장](#5-전체-컬럼과-제약조건)을 봐요.
+
+#### 회원 · 인증 · 약관
+
+```mermaid
+erDiagram
+    regions |o--o{ users : "region_id"
+    regions |o--o{ regions : "parent_id"
+    users ||--o{ social_accounts : "user_id"
+    users ||--o{ auth_sessions : "user_id"
+    users |o--o{ email_verifications : "user_id"
+    users ||--o{ password_resets : "user_id"
+    users ||--o{ user_term_agreements : "user_id"
+    terms_documents ||--o{ user_term_agreements : "terms_id"
+    users ||--o| user_settings : "user_id"
+    users ||--o| user_profiles : "user_id"
+    uploaded_files |o--o{ user_profiles : "avatar_file_id"
+    users ||--o| user_personal_info : "user_id"
+    users ||--o{ uploaded_files : "user_id"
+    withdrawal_logs {
+        bigint id PK
+    }
+```
+
+#### 주거 · 가계부 · 고정 지출
+
+```mermaid
+erDiagram
+    users ||--o| housing_surveys : "user_id"
+    users ||--o| housing_loans : "user_id"
+    housing_loans ||--o{ loan_interest_charges : "loan_id"
+    users ||--o| home_contracts : "user_id"
+    bill_items |o--o{ home_contracts : "management_bill_id"
+    users ||--o{ rent_payments : "user_id"
+    users ||--o{ bill_items : "user_id"
+    bill_items ||--o{ bill_payments : "bill_item_id"
+    users ||--o{ bill_document_keys : "user_id"
+    bill_items ||--o{ bill_document_keys : "bill_item_id"
+    users ||--o{ bill_photo_imports : "user_id"
+    bill_items ||--o{ bill_photo_imports : "bill_item_id"
+    users ||--o{ bill_photo_drafts : "user_id"
+    ai_conversations ||--o{ bill_photo_drafts : "conversation_id"
+    users ||--o{ ai_conversations : "user_id"
+    users ||--o{ incomes : "user_id"
+    ledger_categories ||--o{ incomes : "category_id"
+    users ||--o{ expenses : "user_id"
+    ledger_categories ||--o{ expenses : "category_id"
+    users ||--o| salary_settings : "user_id"
+    users ||--o{ salary_records : "user_id"
+    incomes |o--o| salary_records : "income_id"
+```
+
+#### 일정 · 메모 · 알림 · 배출표
+
+```mermaid
+erDiagram
+    regions |o--o{ users : "region_id"
+    regions |o--o{ regions : "parent_id"
+    users ||--o{ event_categories : "user_id"
+    users ||--o{ event_presets : "user_id"
+    event_categories ||--o{ event_presets : "category_id"
+    event_categories |o--o{ events : "category_id"
+    users ||--o{ events : "user_id"
+    users ||--o{ memo_folders : "user_id"
+    users ||--o{ memos : "user_id"
+    memo_folders |o--o{ memos : "folder_id"
+    users ||--o{ notifications : "user_id"
+    regions ||--o{ trash_schedules : "region_id"
+```
+
+#### 동네 · 커뮤니티 · 운영
+
+```mermaid
+erDiagram
+    regions |o--o{ users : "region_id"
+    regions |o--o{ regions : "parent_id"
+    regions ||--o{ region_neighbors : "region_id"
+    regions ||--o{ region_neighbors : "neighbor_region_id"
+    users ||--o{ posts : "user_id"
+    regions ||--o{ posts : "region_id"
+    users |o--o{ posts : "deleted_by"
+    posts ||--o{ post_likes : "post_id"
+    users ||--o{ post_likes : "user_id"
+    posts ||--o{ comments : "post_id"
+    users ||--o{ comments : "user_id"
+    comments |o--o{ comments : "parent_id"
+    users |o--o{ comments : "deleted_by"
+    posts ||--o{ post_attachments : "post_id"
+    uploaded_files ||--o| post_attachments : "file_id"
+    users ||--o{ uploaded_files : "user_id"
+    users ||--o{ reports : "reporter_id"
+    users |o--o{ reports : "handled_by"
+    users |o--o{ user_sanctions : "revoked_by"
+    users ||--o{ user_sanctions : "user_id"
+    reports |o--o{ user_sanctions : "report_id"
+    users |o--o{ user_sanctions : "created_by"
+    users ||--o{ support_inquiries : "user_id"
+    users |o--o{ support_inquiries : "answered_by"
+    users |o--o{ notices : "created_by"
+```
+
+#### 지도 · 장소 · 리뷰
+
+```mermaid
+erDiagram
+    regions |o--o{ users : "region_id"
+    regions |o--o{ regions : "parent_id"
+    regions ||--o{ places : "region_id"
+    place_categories ||--o{ places : "category_id"
+    users ||--o{ place_favorites : "user_id"
+    places ||--o{ place_favorites : "place_id"
+    places ||--o{ place_reviews : "place_id"
+    users ||--o{ place_reviews : "user_id"
+    users ||--o{ place_lists : "user_id"
+    place_lists ||--o{ place_list_items : "list_id"
+    users ||--o{ kakao_place_favorites : "user_id"
+    users ||--o{ kakao_place_reviews : "user_id"
+    uploaded_files ||--o| place_review_photos : "file_id"
+    users ||--o{ place_review_reports : "reporter_id"
+    users |o--o{ place_review_reports : "handled_by"
+    users ||--o{ uploaded_files : "user_id"
+```
+
+#### AI 대화
+
+```mermaid
+erDiagram
+    users ||--o{ ai_conversations : "user_id"
+    ai_topics |o--o{ ai_conversations : "topic_id"
+    ai_conversations ||--o{ ai_messages : "conversation_id"
+    uploaded_files |o--o{ ai_messages : "attachment_id"
+    users ||--o{ ai_usage_daily : "user_id"
+    users ||--o{ uploaded_files : "user_id"
+```
+
+### 표 목록
+
 | 테이블 | 역할 |
 |---|---|
 | `regions` | 동네 |
@@ -177,6 +316,7 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 | `event_presets` | 빠른 일정 항목 |
 | `events` | 일정 및 할 일 |
 | `memos` | 메모와 체크리스트 |
+| `memo_folders` | 메모 폴더 (계정별, 지우면 메모는 미분류) |
 | `bill_items` | 고정 지출 항목 |
 | `bill_payments` | 월별 고정 지출 |
 | `rent_payments` | 월별 월세 |
@@ -203,6 +343,9 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 | `place_favorites` | 장소 즐겨찾기 |
 | `place_reviews` | 장소 리뷰 |
 | `kakao_place_favorites` | 카카오 검색 장소 즐겨찾기 (id · 이름만) |
+| `kakao_place_reviews` | 카카오 검색 장소 리뷰 (id · 이름 + 별점 · 한 줄 리뷰) |
+| `place_review_photos` | 장소 리뷰 사진 (리뷰당 5장) |
+| `place_review_reports` | 장소 리뷰 신고 |
 | `place_lists` · `place_list_items` | 지도 저장 리스트와 그 안의 장소 |
 | `home_contracts` | 내 집 계약 (월세/전세 · 보증금 · 관리비 · 자동 등록 시간대) |
 | `user_personal_info` | 회원 개인 정보 (생년월일, 주거 계약과 분리) |
@@ -264,6 +407,11 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 | `role` | ENUM('USER','ADMIN') | 필수 | 'USER' | 사용자 권한 — 운영자만 ADMIN |
 | `status` | ENUM('ACTIVE','SUSPENDED') | 필수 | 'ACTIVE' | 이용 상태 — 이용 제한 중이면 SUSPENDED |
 | `password_changed_at` | DATETIME | 허용 | — | 비밀번호 변경 일시 — 내 정보·비밀번호 찾기로 바꾼 시각 |
+| `housing_survey_status` | VARCHAR(12) | 필수 | 'PENDING' | 첫 주거 설문 진행 상태 — PENDING(아직) / COMPLETED(완료) / SKIPPED(건너뜀) |
+| `housing_loan_draft` | TEXT | 허용 | — | 주거 설문 중 대출 임시 입력 — 설문을 마치면 비움 |
+| `housing_salary_draft` | TEXT | 허용 | — | 주거 설문 중 월급 임시 입력 — 설문을 마치면 비움 |
+| `login_failures` | TINYINT UNSIGNED | 필수 | 0 | 연속 로그인 실패 횟수 — 로그인 잠금 판단 |
+| `login_failure_since` | DATETIME(3) | 허용 | — | 실패 횟수를 세기 시작한 시각 — 잠금 시작 시각 |
 | `last_login_at` | DATETIME | 허용 | — | 마지막 로그인 일시 |
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 가입 일시 |
 | `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 정보 수정 일시 / 수정 시 자동 갱신 |
@@ -276,6 +424,18 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 - UNIQUE `uk_users_email`: `email`
 - 외래키 `fk_users_region_id`: `region_id` → `regions` (`id`), ON DELETE SET NULL
 - CHECK: CONSTRAINT `ck_users_home_point` CHECK ((`home_lat` IS NULL AND `home_lon` IS NULL) OR (`home_lat` IS NOT NULL AND `home_lon` IS NOT NULL AND `home_lat` BETWEEN -90 AND 90 AND `home_lon` BETWEEN -180 AND 180))
+
+### `user_personal_info` — 회원 개인 정보
+
+회원 개인 정보: 주거 계약과 분리.
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `user_id` | BIGINT UNSIGNED | 필수 | — | — |
+| `birth_date` | DATE | 허용 | — | — |
+
+- 기본키: `user_id`
+- 외래키 `fk_user_personal_info_user`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `social_accounts` — 소셜 계정
 
@@ -490,6 +650,7 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 
 | 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
 |---|---|---|---|---|
+| `paid_at` | DATETIME | 허용 | — | 실제 납부 완료 시각 |
 | `loan_id` | CHAR(36) | 필수 | — | — |
 | `charge_date` | DATE | 필수 | — | 한국 날짜 기준 납부일 — 실제 출금 증빙 아님 |
 | `period_ym` | INT | 허용 | — | YYYYMM — 날짜에서 생성하여 월 불일치 방지 / 생성 컬럼 — 직접 입력 불가 |
@@ -502,6 +663,27 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 - UNIQUE `uk_loan_interest_month`: `loan_id`, `period_ym`
 - 외래키 `fk_loan_interest_loan`: `loan_id` → `housing_loans` (`id`), ON DELETE CASCADE
 - CHECK: CONSTRAINT `ck_loan_interest_snapshot` CHECK (`principal` BETWEEN 1 AND 9999990000 AND `annual_rate` BETWEEN 0 AND 100 AND `amount` = ROUND(`principal` * `annual_rate` / 1200, 0))
+
+### `home_contracts` — 내 집 계약
+
+내 집 계약: 월세/전세 · 보증금 · 관리비 · 자동 등록 시간대.
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `user_id` | BIGINT UNSIGNED | 필수 | — | — |
+| `contract_kind` | VARCHAR(10) | 필수 | — | — |
+| `billing_time_zone` | VARCHAR(64) | 허용 | — | 주소/위치/기기 우선순위로 확정한 자동 등록 시간대 |
+| `payment_effective_from` | DATE | 허용 | — | 계약 납부 조건의 신규 가계부 반영 시작일 |
+| `deposit` | BIGINT UNSIGNED | 필수 | 0 | — |
+| `management_included` | TINYINT(1) | 필수 | 0 | — |
+| `management_fee` | BIGINT UNSIGNED | 필수 | 0 | — |
+| `contract_fee` | BIGINT UNSIGNED | 필수 | 0 | — |
+| `management_bill_id` | BIGINT UNSIGNED | 허용 | — | — |
+
+- 기본키: `user_id`
+- 외래키 `fk_home_contract_user`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_home_contract_bill`: `management_bill_id` → `bill_items` (`id`), ON DELETE SET NULL
+- CHECK: CONSTRAINT `ck_home_contract_kind` CHECK (contract_kind IN ('monthly','jeonse'))
 
 ### `event_categories` — 일정 카테고리
 
@@ -578,6 +760,10 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 | `user_id` | BIGINT UNSIGNED | 필수 | — | 소유 사용자 번호 |
 | `title` | VARCHAR(60) | 필수 | '' | 메모 제목 — 빈 제목 허용 |
 | `body` | TEXT | 필수 | — | 글 메모 내용 — API에서 생략 시 빈 문자열, 최대 5000자 |
+| `ledger_source` | VARCHAR(10) | 허용 | — | 가계부 원본 종류 income/spend/bill |
+| `ledger_key` | VARCHAR(40) | 허용 | — | 가계부 원본 ID 또는 고정 지출 ID:월 |
+| `ledger_label` | VARCHAR(120) | 허용 | — | 가계부 수입/지출 종류 및 날짜·분류 |
+| `folder_id` | BIGINT UNSIGNED | 허용 | — | 분류 폴더, NULL은 미분류 |
 | `color` | ENUM('노랑','분홍','하늘','초록','보라','흰색') | 필수 | '노랑' | 메모 색 |
 | `is_pinned` | TINYINT(1) | 필수 | 0 | 목록 상단 고정 여부 |
 | `is_checklist` | TINYINT(1) | 필수 | 0 | 체크리스트 여부 |
@@ -586,8 +772,24 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 | `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 수정 일시 / 수정 시 자동 갱신 |
 
 - 기본키: `id`
+- UNIQUE `uk_memos_ledger_source`: `user_id`, `ledger_source`, `ledger_key`
 - 외래키 `fk_memos_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_memos_folder`: `folder_id` → `memo_folders` (`id`), ON DELETE SET NULL
 - CHECK: CONSTRAINT `ck_memos_items_array` CHECK (JSON_TYPE(`items`) = 'ARRAY')
+
+### `memo_folders` — 메모 폴더
+
+사용자별 메모 분류 폴더. 폴더를 지우면 메모는 미분류로 남아요.
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `id` | BIGINT UNSIGNED | 필수 | — | 자동 번호 |
+| `user_id` | BIGINT UNSIGNED | 필수 | — | — |
+| `name` | VARCHAR(40) | 필수 | — | — |
+
+- 기본키: `id`
+- UNIQUE `uk_memo_folders_user_name`: `user_id`, `name`
+- 외래키 `fk_memo_folders_user`: `user_id` → `users` (`id`), ON DELETE CASCADE
 
 ### `bill_items` — 고정 지출 항목
 
@@ -602,6 +804,8 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 | `is_active` | TINYINT(1) | 필수 | 1 | 사용 여부 — 해지한 항목은 0 |
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 등록 일시 |
 | `tag` | VARCHAR(24) | 필수 | '공과금' | 회원별 고정 지출 카테고리 이름 |
+| `home_contract_kind` | VARCHAR(10) | 허용 | — | 내 집 관리비 계약 유형, 일반 지출은 NULL |
+| `termination_date` | DATE | 허용 | — | 사용자 지정 해지 적용일 |
 
 - 기본키: `id`
 - 외래키 `fk_bill_items_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
@@ -616,11 +820,63 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 | `bill_item_id` | BIGINT UNSIGNED | 필수 | — | 공과금 항목 아이디 |
 | `period_ym` | CHAR(7) | 필수 | — | 대상 연월 — 예: 2026-10 |
 | `amount` | BIGINT UNSIGNED | 필수 | — | 그 달 금액 — 원 단위 |
+| `due_date` | DATE | 허용 | — | 월별 납부 기한 |
+| `memo` | VARCHAR(200) | 허용 | — | 월별 고정 지출 메모 |
+| `deleted_at` | DATETIME | 허용 | — | 선택 월 기록 삭제 시각 |
 | `paid_at` | DATETIME | 허용 | — | 납부 일시 — 비어 있으면 미납 |
 
 - 기본키: `id`
 - UNIQUE `uk_bill_payments_bill_item_id_period_ym`: `bill_item_id`, `period_ym`
 - 외래키 `fk_bill_payments_bill_item_id`: `bill_item_id` → `bill_items` (`id`), ON DELETE CASCADE
+
+### `bill_document_keys` — 고지서 문서 중복 방지
+
+고지서 내용 중복 등록 방지 해시 (원문은 저장하지 않음).
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `user_id` | BIGINT UNSIGNED | 필수 | — | — |
+| `document_hash` | CHAR(64) | 필수 | — | — |
+| `bill_item_id` | BIGINT UNSIGNED | 필수 | — | — |
+
+- 기본키: `user_id`, `document_hash`
+- 외래키 `fk_bill_document_user`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_bill_document_item`: `bill_item_id` → `bill_items` (`id`), ON DELETE CASCADE
+
+### `bill_photo_imports` — 고지서 사진 중복 방지
+
+고지서 사진 중복 등록 방지 해시 (사진 원본은 저장하지 않음).
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `user_id` | BIGINT UNSIGNED | 필수 | — | — |
+| `image_hash` | CHAR(64) | 필수 | — | — |
+| `bill_item_id` | BIGINT UNSIGNED | 필수 | — | — |
+
+- 기본키: `user_id`, `image_hash`
+- 외래키 `fk_bill_photo_user`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_bill_photo_item`: `bill_item_id` → `bill_items` (`id`), ON DELETE CASCADE
+
+### `bill_photo_drafts` — 고지서 사진 인식 임시 결과
+
+고지서 사진 인식 결과: 사용자가 확인하기 전 임시 저장, 30분 뒤 만료 (사진 원본 · QR 원문은 저장하지 않음).
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `id` | CHAR(36) | 필수 | — | — |
+| `user_id` | BIGINT UNSIGNED | 필수 | — | — |
+| `conversation_id` | BIGINT UNSIGNED | 필수 | — | — |
+| `period_ym` | CHAR(7) | 필수 | — | — |
+| `time_zone` | VARCHAR(64) | 필수 | — | — |
+| `photo_hash` | CHAR(64) | 필수 | — | — |
+| `document_hash` | CHAR(64) | 허용 | — | — |
+| `input_json` | TEXT | 필수 | — | — |
+| `expires_at` | DATETIME | 필수 | — | — |
+| `state` | VARCHAR(12) | 필수 | 'PENDING' | — |
+
+- 기본키: `id`
+- 외래키 `bill_photo_drafts_ibfk_1`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `bill_photo_drafts_ibfk_2`: `conversation_id` → `ai_conversations` (`id`), ON DELETE CASCADE
 
 ### `rent_payments` — 월별 월세
 
@@ -628,6 +884,7 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 
 | 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
 |---|---|---|---|---|
+| `due_date` | DATE | 허용 | — | 월별 계약 납부 기한 스냅샷 |
 | `id` | BIGINT UNSIGNED | 필수 | — | 월세납부 아이디 — 자동 증가 / 자동 번호 |
 | `user_id` | BIGINT UNSIGNED | 필수 | — | 월세 내는 사용자 아이디 |
 | `period_ym` | CHAR(7) | 필수 | — | 대상 연월 — 예: 2026-10 |
@@ -713,6 +970,38 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 - 외래키 `fk_expenses_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 - 외래키 `fk_expenses_category_id`: `category_id` → `ledger_categories` (`id`), ON DELETE RESTRICT
 
+### `salary_settings` — 월급 자동 등록 설정
+
+월급 자동 등록 설정: 월 금액과 수령일.
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `user_id` | BIGINT UNSIGNED | 필수 | — | — |
+| `amount` | BIGINT UNSIGNED | 필수 | 0 | — |
+| `income_period` | ENUM('monthly','annual') | 필수 | 'monthly' | — |
+| `payment_day` | TINYINT UNSIGNED | 필수 | 25 | — |
+| `start_month` | CHAR(7) | 필수 | — | — |
+
+- 기본키: `user_id`
+- 외래키 `fk_salary_settings_user`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- CHECK: CONSTRAINT `chk_salary_settings_amount` CHECK ((`income_period` = 'monthly' AND `amount` <= 999999999) OR (`income_period` = 'annual' AND `amount` <= 11999999988))
+- CHECK: CONSTRAINT `chk_salary_settings_day` CHECK (`payment_day` BETWEEN 1 AND 31)
+
+### `salary_records` — 월급 월별 기록
+
+사용자별 월급 월 1건 중복 방지 및 수입 원본 연결.
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `user_id` | BIGINT UNSIGNED | 필수 | — | — |
+| `period_ym` | CHAR(7) | 필수 | — | — |
+| `income_id` | BIGINT UNSIGNED | 허용 | — | — |
+
+- 기본키: `user_id`, `period_ym`
+- UNIQUE `uk_salary_records_income`: `income_id`
+- 외래키 `fk_salary_records_user`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_salary_records_income`: `income_id` → `incomes` (`id`), ON DELETE CASCADE
+
 ### `posts` — 게시글
 
 커뮤니티 글: 커뮤니티의 글 한 개.
@@ -726,16 +1015,20 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 | `title` | VARCHAR(100) | 필수 | — | 글 제목 |
 | `body` | TEXT | 필수 | — | 글 내용 |
 | `like_count` | INT UNSIGNED | 필수 | 0 | 좋아요 수 |
+| `view_count` | BIGINT UNSIGNED | 필수 | 0 | 조회 수 |
 | `comment_count` | INT UNSIGNED | 필수 | 0 | 댓글 수 |
 | `is_home_tip` | TINYINT(1) | 필수 | 0 | 홈 꿀팁 노출 — 켜면 홈에 보임 |
 | `status` | ENUM('VISIBLE','HIDDEN','DELETED') | 필수 | 'VISIBLE' | 글 상태 — 신고로 숨김 / 삭제 |
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 작성 일시 |
 | `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 수정 일시 / 수정 시 자동 갱신 |
 | `deleted_at` | DATETIME | 허용 | — | 삭제 일시 — 소프트 삭제 |
+| `deleted_by` | BIGINT UNSIGNED | 허용 | — | 지운 사람 — 작성자 본인 또는 운영자 (20261115_04) |
+| `delete_reason` | VARCHAR(200) | 허용 | — | 운영자가 지운 사유 — 작성자 본인 삭제는 비움 |
 
 - 기본키: `id`
 - 외래키 `fk_posts_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 - 외래키 `fk_posts_region_id`: `region_id` → `regions` (`id`), ON DELETE RESTRICT
+- 외래키 `fk_posts_deleted_by`: `deleted_by` → `users` (`id`), ON DELETE SET NULL
 
 ### `post_likes` — 좋아요
 
@@ -766,11 +1059,14 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 | `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 작성 일시 |
 | `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 댓글 수정 일시 / 수정 시 자동 갱신 |
 | `deleted_at` | DATETIME | 허용 | — | 삭제 일시 — 소프트 삭제 |
+| `deleted_by` | BIGINT UNSIGNED | 허용 | — | 지운 사람 — 작성자 본인 또는 운영자 (20261115_04) |
+| `delete_reason` | VARCHAR(200) | 허용 | — | 운영자가 지운 사유 — 작성자 본인 삭제는 비움 |
 
 - 기본키: `id`
 - 외래키 `fk_comments_post_id`: `post_id` → `posts` (`id`), ON DELETE CASCADE
 - 외래키 `fk_comments_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 - 외래키 `fk_comments_parent_id`: `parent_id` → `comments` (`id`), ON DELETE CASCADE
+- 외래키 `fk_comments_deleted_by`: `deleted_by` → `users` (`id`), ON DELETE SET NULL
 
 ### `reports` — 신고
 
@@ -841,6 +1137,25 @@ OpenStreetMap 행정구역 경계(© OpenStreetMap contributors, ODbL)에서 `py
 - 기본키: `id`
 - 외래키 `fk_support_inquiries_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 - 외래키 `fk_support_answered_by`: `answered_by` → `users` (`id`), ON DELETE SET NULL
+
+### `notices` — 공지사항
+
+관리자 공지사항: 고정 · 팝업 · 쓴 관리자.
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `id` | BIGINT UNSIGNED | 필수 | — | 고유 번호 / 자동 번호 |
+| `title` | VARCHAR(100) | 필수 | — | 공지 제목 — 1~100자 |
+| `body` | TEXT | 필수 | — | 공지 내용 — 1~5000자 |
+| `is_pinned` | TINYINT(1) | 필수 | 0 | 목록 맨 위 고정 |
+| `is_popup` | TINYINT(1) | 필수 | 0 | 앱을 열면 팝업으로 보여 줌 |
+| `created_by` | BIGINT UNSIGNED | 허용 | — | 쓴 관리자 번호 |
+| `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 등록 일시 |
+| `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 수정 일시 |
+
+- 기본키: `id`
+- 외래키 `fk_notices_created_by`: `created_by` → `users` (`id`), ON DELETE SET NULL
+- CHECK: CONSTRAINT `ck_notices_title` CHECK (CHAR_LENGTH(TRIM(`title`)) > 0)
 
 ### `ai_topics` — AI 주제
 
@@ -1015,11 +1330,12 @@ AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 
 | `open_hours` | VARCHAR(100) | 허용 | — | 영업시간 |
 | `rating_avg` | DECIMAL(2,1) | 허용 | — | 평균 별점 — 리뷰로 계산 |
 | `review_count` | INT UNSIGNED | 필수 | 0 | 리뷰 수 |
-| `source` | ENUM('MANUAL','PUBLIC_DATA') | 필수 | 'MANUAL' | 정보 출처 — 직접 입력 / 공공데이터 |
+| `source` | ENUM('MANUAL','PUBLIC_DATA','KAKAO') | 필수 | 'MANUAL' | 정보 출처 — 직접 입력 / 공공데이터 / 카카오 로컬 API |
 | `source_id` | VARCHAR(50) | 허용 | — | 원본 데이터 번호 — 공공데이터 원본 ID |
 | `updated_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 정보 갱신 일시 / 수정 시 자동 갱신 |
 
 - 기본키: `id`
+- UNIQUE `uk_places_source_source_id`: `source`, `source_id`
 - 외래키 `fk_places_region_id`: `region_id` → `regions` (`id`), ON DELETE RESTRICT
 - 외래키 `fk_places_category_id`: `category_id` → `place_categories` (`id`), ON DELETE RESTRICT
 - CHECK: CONSTRAINT `ck_places_point` CHECK (`lat` BETWEEN -90 AND 90 AND `lon` BETWEEN -180 AND 180)
@@ -1056,6 +1372,121 @@ AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 
 - 외래키 `fk_place_reviews_place_id`: `place_id` → `places` (`id`), ON DELETE CASCADE
 - 외래키 `fk_place_reviews_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
 - CHECK: CONSTRAINT `ck_place_review_rating` CHECK (`rating` BETWEEN 1 AND 5)
+
+### `kakao_place_favorites` — 카카오 장소 즐겨찾기
+
+카카오 검색 장소 즐겨찾기 (id · 이름만, 주소 · 좌표 없음).
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `user_id` | BIGINT UNSIGNED | 필수 | — | 소유 사용자 번호 |
+| `kakao_place_id` | VARCHAR(50) | 필수 | — | 카카오 장소 id (숫자 문자열) |
+| `name` | VARCHAR(60) | 필수 | — | 저장 목록에 보일 장소 이름 |
+| `category` | VARCHAR(20) | 필수 | — | 우리 장소 종류 이름 (place_categories.name, 아이콘 표시용) |
+| `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 등록 일시 |
+
+- 기본키: `user_id`, `kakao_place_id`
+- 외래키 `fk_kakao_place_favorites_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- CHECK: CONSTRAINT `chk_kakao_place_favorites_id` CHECK (`kakao_place_id` REGEXP '^[0-9]{1,50}$')
+- CHECK: CONSTRAINT `chk_kakao_place_favorites_name` CHECK (CHAR_LENGTH(TRIM(`name`)) > 0)
+
+### `kakao_place_reviews` — 카카오 장소 리뷰
+
+카카오 검색 장소 리뷰 (우리 회원이 쓴 별점 · 한 줄 리뷰. 장소는 id · 이름만, 주소 · 좌표 없음).
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `id` | BIGINT UNSIGNED | 필수 | — | 리뷰 아이디 — 자동 증가 / 자동 번호 |
+| `kakao_place_id` | VARCHAR(50) | 필수 | — | 카카오 장소 id (숫자 문자열) |
+| `user_id` | BIGINT UNSIGNED | 필수 | — | 리뷰 쓴 사용자 아이디 |
+| `name` | VARCHAR(60) | 필수 | — | 리뷰 쓸 때의 장소 이름 (표시 · 운영 확인용) |
+| `rating` | TINYINT UNSIGNED | 필수 | — | 별점 — 1~5 |
+| `body` | VARCHAR(300) | 허용 | — | 리뷰 내용 |
+| `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 작성 일시 |
+
+- 기본키: `id`
+- UNIQUE `uk_kakao_place_reviews_place_user`: `kakao_place_id`, `user_id`
+- 외래키 `fk_kakao_place_reviews_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- CHECK: CONSTRAINT `chk_kakao_place_reviews_id` CHECK (`kakao_place_id` REGEXP '^[0-9]{1,50}$')
+- CHECK: CONSTRAINT `chk_kakao_place_reviews_name` CHECK (CHAR_LENGTH(TRIM(`name`)) > 0)
+- CHECK: CONSTRAINT `chk_kakao_place_reviews_rating` CHECK (`rating` BETWEEN 1 AND 5)
+
+### `place_review_photos` — 장소 리뷰 사진
+
+장소 리뷰 사진: 리뷰 하나에 사진 5장까지. 리뷰를 지우면 서버가 사진 연결과 파일도 지웁니다.
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `review_kind` | ENUM('PLACE','KAKAO') | 필수 | — | 리뷰 표 — PLACE: place_reviews / KAKAO: kakao_place_reviews |
+| `review_id` | BIGINT UNSIGNED | 필수 | — | 리뷰 아이디 (review_kind 표의 id) |
+| `file_id` | BIGINT UNSIGNED | 필수 | — | 사진 파일 (uploaded_files) — 리뷰 쓴 사람이 올린 사진만 |
+| `sort_order` | TINYINT UNSIGNED | 필수 | 0 | 보여 줄 순서 |
+| `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 붙인 일시 |
+
+- 기본키: `review_kind`, `review_id`, `file_id`
+- UNIQUE `uk_place_review_photos_file_id`: `file_id`
+- 외래키 `fk_place_review_photos_file_id`: `file_id` → `uploaded_files` (`id`), ON DELETE CASCADE
+
+### `place_review_reports` — 장소 리뷰 신고
+
+장소 리뷰 신고: 운영 정책에 어긋나는 장소 리뷰를 신고한 기록. 운영자가 확인해 리뷰를 지우거나 기각합니다.
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `id` | BIGINT UNSIGNED | 필수 | — | 신고 아이디 — 자동 증가 / 자동 번호 |
+| `reporter_id` | BIGINT UNSIGNED | 필수 | — | 신고한 사용자 아이디 |
+| `review_kind` | ENUM('PLACE','KAKAO') | 필수 | — | 리뷰 표 — PLACE: place_reviews / KAKAO: kakao_place_reviews |
+| `review_id` | BIGINT UNSIGNED | 필수 | — | 신고한 리뷰 아이디 (review_kind 표의 id) |
+| `place_key` | VARCHAR(60) | 필수 | — | 장소 — DB 장소 번호 또는 "kakao:카카오장소id" |
+| `place_name_snapshot` | VARCHAR(60) | 필수 | — | 신고 당시 장소 이름 |
+| `reason` | ENUM('ABUSE','FALSE_INFO','PRIVACY','AD_ILLEGAL','COPYRIGHT','OTHER') | 필수 | — | 신고 사유 — 커뮤니티 신고(reports.reason)와 같음 |
+| `detail` | VARCHAR(200) | 허용 | — | 자세한 내용 |
+| `status` | ENUM('RECEIVED','HIDDEN','DISMISSED') | 필수 | 'RECEIVED' | 처리 상태 — 접수 / 리뷰 삭제 / 기각 |
+| `target_author_snapshot` | VARCHAR(12) | 허용 | — | 신고 당시 리뷰 작성자 닉네임 — 삭제 후 표시용 |
+| `target_text_snapshot` | VARCHAR(300) | 허용 | — | 신고 당시 리뷰 내용 — 서버가 실제 리뷰에서 복사 |
+| `target_rating_snapshot` | TINYINT UNSIGNED | 허용 | — | 신고 당시 별점 |
+| `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 신고 일시 |
+| `handled_by` | BIGINT UNSIGNED | 허용 | — | 처리한 운영자 아이디 |
+| `handled_at` | DATETIME | 허용 | — | 처리 일시 |
+
+- 기본키: `id`
+- UNIQUE `uk_place_review_reports_reporter_target`: `reporter_id`, `review_kind`, `review_id`
+- 외래키 `fk_place_review_reports_reporter_id`: `reporter_id` → `users` (`id`), ON DELETE CASCADE
+- 외래키 `fk_place_review_reports_handled_by`: `handled_by` → `users` (`id`), ON DELETE SET NULL
+- CHECK: CONSTRAINT `chk_place_review_reports_place_key` CHECK (`place_key` REGEXP '^([1-9][0-9]{0,18}|kakao:[0-9]{1,50})$')
+
+### `place_lists` — 지도 저장 리스트
+
+저장 리스트: 회원이 만든 장소 묶음.
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `id` | BIGINT UNSIGNED | 필수 | — | 리스트 아이디 — 자동 증가 / 자동 번호 |
+| `user_id` | BIGINT UNSIGNED | 필수 | — | 리스트 주인 |
+| `name` | VARCHAR(20) | 필수 | — | 리스트 이름 — 회원 안에서 중복 불가 |
+| `color` | CHAR(7) | 필수 | — | 리스트 색 (#RRGGBB) |
+| `sort_order` | INT UNSIGNED | 필수 | 0 | 표시 순서 |
+| `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 만든 일시 |
+
+- 기본키: `id`
+- UNIQUE `uk_place_lists_user_name`: `user_id`, `name`
+- 외래키 `fk_place_lists_user_id`: `user_id` → `users` (`id`), ON DELETE CASCADE
+- CHECK: CONSTRAINT `chk_place_lists_name` CHECK (CHAR_LENGTH(TRIM(`name`)) > 0)
+- CHECK: CONSTRAINT `chk_place_lists_color` CHECK (`color` REGEXP '^#[0-9a-fA-F]{6}$')
+
+### `place_list_items` — 저장 리스트의 장소
+
+저장 리스트에 넣은 장소.
+
+| 컬럼 | SQL 타입 | NULL | 기본값 | 설명 |
+|---|---|---|---|---|
+| `list_id` | BIGINT UNSIGNED | 필수 | — | 리스트 아이디 |
+| `place_key` | VARCHAR(60) | 필수 | — | 장소 — DB 장소 번호 또는 "kakao:카카오장소id" |
+| `created_at` | DATETIME | 필수 | CURRENT_TIMESTAMP | 넣은 일시 |
+
+- 기본키: `list_id`, `place_key`
+- 외래키 `fk_place_list_items_list_id`: `list_id` → `place_lists` (`id`), ON DELETE CASCADE
+- CHECK: CONSTRAINT `chk_place_list_items_key` CHECK (`place_key` REGEXP '^([1-9][0-9]{0,18}|kakao:[0-9]{1,50})$')
 
 ## 6. VIEW와 기본 데이터
 

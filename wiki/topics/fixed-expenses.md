@@ -17,6 +17,8 @@
 
 월별 등록은 `MonthlyCreate`, 수정은 `MonthlyDetails`로 본문을 검증한 뒤 서비스에 전달합니다. 사진 고지서 확정도 같은 등록 검증을 사용합니다. 등록·수정은 `BillResponse`로 저장된 청구를, 조회는 `BillResponse.Monthly`로 일반 항목·주거 항목·계약 기간을 반환합니다. 미납 항목의 `paidAt`은 `null`이며 연결 메모가 없으면 `memoId`와 `memoTitle`을 생략합니다. [입력 DTO](../../backend/src/main/java/com/zip/backend/bills/BillInput.java) · [응답 DTO](../../backend/src/main/java/com/zip/backend/bills/BillResponse.java) · [사진 고지서](../../backend/src/main/java/com/zip/backend/bills/BillPhotoController.java) · [월별 등록 통합 테스트](../../backend/src/test/java/com/zip/backend/BillMonthlyWriteTests.java)
 
+월별 목록(`GET /api/bills/monthly`)의 일반 항목에는 `homeManaged`가 붙습니다. 내 집 계약에서 생긴 항목이거나 내 집 정보가 관리하는 관리비면 `true`입니다. 다른 응답에서는 이 칸을 생략합니다. 2026-11-27에 [OpenAPI](../../backend/openapi.yaml)의 `Bill` 스키마에 이 칸을 추가해 `BillResponse`와 칸 이름을 맞췄습니다. [월별 목록 응답](../../backend/src/main/java/com/zip/backend/bills/BillService.java)
+
 ## 월급 자동 등록
 
 서버 연결 모드에서 월급 설정을 저장한 달부터, 선택한 시간대에서 수령일이 된 월급을 가계부 고정 수입에 등록하고 월별 수입 합계에 포함합니다. 설정 저장과 가계부 수입 조회 때 누락 기록을 채웁니다. 회원·월별 등록 기록으로 중복 생성과 삭제 후 재등록을 막습니다. 수입 정보 화면은 저장 후 가계부 조회를 갱신합니다. [월급 서비스](../../backend/src/main/java/com/zip/backend/ledger/SalaryService.java) · [가계부 수입 조회와 합계](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java) · [수입 정보 화면](../../frontend/src/features/life/components/SalaryInfo.tsx) · [월급 회귀 테스트](../../backend/src/test/java/com/zip/backend/SalaryIntegrationTests.java)

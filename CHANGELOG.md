@@ -30,6 +30,9 @@
 `backend/` — Spring Boot 서버 API
 
 ### 2026-11-27
+- 곽성미 — 문서 정리: `backend/IMPLEMENTATION.md` 의 낡은 내용(refresh 쿠키 없음 · 토큰 1시간 → 현재 15분 · 12시간 · 7일과 refresh 흐름, 없는 테스트 경로 → `frontend/tests/legal-terms.test.mjs`, 해당 없어진 문자 업체 · banned_identities, 잘린 마이그레이션 경로, 11-27 처리방침 외부 전송) 고침. 루트 `README.md` 의 지금 단계 · 남은 것 · 문서 안내표(운영 배포 · 운영 빌드 · ERD · 시스템 구성 · 운영 DB) 갱신. 문서 안 경로 · 링크 모두 실제 파일 확인
+- 곽성미 — `openapi.yaml` 을 서버와 대조: 경로 누락 · 잔존 0건(가계부 `{kind}` 분리 표기 · Security 가 처리하는 OAuth 시작 경로는 같은 API). 응답 DTO 7개 칸 대조로 `User`(+`birth` · `banCount`, −`lastLoginAt`, 이미 연동된 칸의 "확장 제안" 문구 정리) · `Post`(+`reported` · `homeTip`, −`reportCount`) · `Bill`(+`homeManaged`) 수정, `frontend/API.md` 회원 응답 예시도 서버와 같게. SnakeYAML 로 해석 확인(경로 115 · 스키마 78 유지, 중복 키 없음) [API 계약](wiki/topics/application.md#api-데이터-계약과-dto)
+- 곽성미 — `backend/README.md` 에 "운영 배포 설정": `bootJar` 빌드 · 실행, 같은 도메인 · 백엔드 한 대 전제, 운영 필수 환경변수와 위험한 기본값(`ZIP_AUTH_COOKIE_SECURE` · `FRONTEND_URL` · `ZIP_UPLOAD_DIR` · `MAIL_LOG_ONLY` 등), 기본값 그대로 써도 되는 값. `application.properties` 의 Gemini 키 없을 때 주석을 현재 동작(안내 문구)으로 고침
 - 곽성미 — `Map` 으로 요청을 받는 API 14곳의 잘못된 입력 점검 테스트 추가(`MalformedInputTests`): 정상 요청에서 칸 하나씩만 다른 타입 · 빈 값 · 아주 큰 수 · 5000자 글 · 없는 날짜 · 객체 · 배열로 바꿔 보내도 서버 오류(5xx) 0건, 긴 글은 DB 전에 400. 코드 변경 없음, 백엔드 전체 368개 통과 [검증 결과](wiki/topics/project-status.md#검증된-부분)
 - 곽성미 — 전체 오류 처리 보완(`ApiExceptionHandler`): 서비스가 막지 못한 중복 · 제약 위반은 409, 예상하지 못한 오류는 500 + 한국어 안내(SQL · 스택은 응답에 넣지 않고 서버 로그에만), 값 형식 오류는 400. 없는 주소 404 · 메서드 405 등 Spring 이 정한 상태와 로그인 · 권한 오류(401 · 403)는 그대로, 응답 모양만 `{ message }` 로 통일. 검증: `ApiExceptionHandlerTests` 5개, 월급 연결 중복 시 롤백 테스트(`LedgerIntegrationTests`)는 처리 안 된 예외 대신 409 를 기대하도록 바꾸고 롤백 확인은 그대로, 백엔드 전체 363개 통과 [오류 응답](wiki/topics/application.md#api-데이터-계약과-dto)
 - 곽성미 — 프록시(nginx · Render · 로드밸런서) 뒤 배포 대비: `server.forward-headers-strategy=native` 기본값(환경변수 `SERVER_FORWARD_HEADERS_STRATEGY`). 인증 메일 IP 제한이 실제 IP 마다 나뉘고, https 로 들어온 요청은 refresh 쿠키에 Secure, 소셜 로그인 돌아올 주소도 https. 내부 주소에서 온 헤더만 믿어 직접 접속으로는 IP 를 속일 수 없음. 검증: 실제 Tomcat 으로 띄우는 `ForwardedHeadersTests` 2개 추가(설정을 `none` 으로 끄면 두 테스트 모두 실패하는 것도 확인) [프록시 헤더](wiki/topics/application.md#인증과-토큰-재발급)
@@ -115,6 +118,8 @@
 `db/` — 표 설계(schema.sql) · 마이그레이션 · 검사. 마이그레이션 파일 설명은 [db/migrations/README.md](db/migrations/README.md)
 
 ### 2026-11-27
+- 곽성미 — ERD · 시스템 구성도 추가(GitHub 에서 그림으로 보이는 Mermaid): `db/README.md` 4장에 기능별 관계도 6장(schema.sql 외래키 84개 전부, 필수 · 1:1 여부도 schema 기준), 위키 `application.md` 에 "시스템 구성"(한 도메인 · 백엔드 1대 · 외부 연동 · 브라우저 직접 호출). 검증: mermaid 11.4.1 파서로 7장 모두 문법 통과 [DB 관계도](db/README.md#관계도-erd)
+- 곽성미 — `db/README.md` 표 설명을 schema.sql 과 맞춤: 칸 설명이 없던 표 15개(메모 폴더 · 카카오 장소 리뷰 · 리뷰 사진 · 리뷰 신고 · 공지 · 저장 리스트 · 월급 설정/기록 · 고지서 3종 · 내 집 계약 · 개인 정보 · 카카오 즐겨찾기) 추가, 4장 목록에 빠진 4개 추가, 칸이 빠진 표 9개(users · memos · posts · comments · bill_items · bill_payments · rent_payments · loan_interest_charges · places) 갱신. 스키마 변경 없음 (검증: 58개 표 전부 4장 · 5장에 있고 schema.sql 의 모든 칸 · 키가 문서에 있음)
 - 곽성미 — 운영 · QA용 새 DB 만드는 순서와 첫 관리자 계정 만드는 방법을 문서화: schema.sql → 전국 자료 3개(완료 확인값, 예시 데이터는 지울 필요 없음) → 앱 전용 DB 계정(SELECT · INSERT · UPDATE · DELETE) → `hashPassword` 해시로 `role='ADMIN'` 계정 넣기. 스키마 · 마이그레이션 변경 없음 (검증: 관리자 INSERT 문을 로컬 MySQL 트랜잭션에서 실행 후 롤백) [운영 DB 새로 만들기](db/README.md#운영-db-새로-만들기-첫-배포--qa용-새-db)
 - 곽성미 — 개인정보 처리방침 5번(처리 위탁 및 국외 이전)에 실제 외부 전송 4곳 추가: 카카오 로컬(대한민국, 장소 검색어 · 위치 좌표), OpenStreetMap Foundation(영국, 지도 타일 · Nominatim 주소 검색), OpenMeteo GmbH(스위스, 날씨 · 시간대 좌표), Google LLC(미국, Gmail 메일 발송). 거부 방법 문구 보완, 클라우드는 여전히 출시 전 확정. 버전 · 동의 기록은 그대로 (DB: `20261127_01_terms_privacy_transfers` · 검증: 격리 MySQL 8.0 에서 새 DB 생성과 이전 schema 업그레이드 결과의 약관 3종 일치, DB 정적 7개 · 약관 일치 테스트 통과) [약관 · 소개 화면](wiki/topics/service-integrations.md)
 
@@ -189,6 +194,7 @@
 `frontend/` — React 앱
 
 ### 2026-11-27
+- 곽성미 — `frontend/README.md` 에 "운영 빌드": `npm ci` · `npm run build` → `dist/`, 항상 서버 모드(확인 방법), 같은 도메인 구성, 없는 주소도 `index.html` 로(새로고침 404 방지), 빌드 환경변수 표. `vite-env.d.ts` 에 `VITE_WEATHER_*` 타입 추가 (린트 · 빌드 · 프론트 212개 통과)
 - 곽성미 — 배포용 빌드(`npm run build`)는 명령에서 `VITE_USE_MOCK`을 주지 않으면 실제 서버 모드로 고정: `.env.local` 값과 관계없이 모의 API가 운영 빌드에 들어가지 않음. 데모용 모의 빌드는 `VITE_USE_MOCK=true npm run build` (`vite.config.ts`). 빌드 결과물에 데모 계정 코드가 없는 것을 확인. [앱 실행 모드](wiki/topics/application.md)
 - 곽성미 — 서버 모드에서 AI 서버에 닿지 못하면(응답 없음 · 처리하지 않은 오류 · 빈 답 · 대화방 생성 실패) 데모 답변 대신 "AI 서버에 연결하지 못했어요" 안내. 데모 답변은 모의 모드에서만 (`ai/api.ts` `askAi`, 테스트 `ai-quota.test.mjs`). 프론트 테스트 212개 · 린트 · 빌드 통과
 
