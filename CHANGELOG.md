@@ -109,6 +109,9 @@
 
 `db/` — 표 설계(schema.sql) · 마이그레이션 · 검사. 마이그레이션 파일 설명은 [db/migrations/README.md](db/migrations/README.md)
 
+### 2026-11-27
+- 곽성미 — 개인정보 처리방침 5번(처리 위탁 및 국외 이전)에 실제 외부 전송 4곳 추가: 카카오 로컬(대한민국, 장소 검색어 · 위치 좌표), OpenStreetMap Foundation(영국, 지도 타일 · Nominatim 주소 검색), OpenMeteo GmbH(스위스, 날씨 · 시간대 좌표), Google LLC(미국, Gmail 메일 발송). 거부 방법 문구 보완, 클라우드는 여전히 출시 전 확정. 버전 · 동의 기록은 그대로 (DB: `20261127_01_terms_privacy_transfers` · 검증: 격리 MySQL 8.0 에서 새 DB 생성과 이전 schema 업그레이드 결과의 약관 3종 일치, DB 정적 7개 · 약관 일치 테스트 통과) [약관 · 소개 화면](wiki/topics/service-integrations.md)
+
 ### 2026-11-25
 - jgkim7848-lab — 로컬 개발 DB 에서 일반 회원 2명 삭제(실제 메일 발송 시험을 위해 같은 이메일로 다시 가입, 관리자 계정은 유지, 삭제 전 전체 백업). 스키마 · 마이그레이션 변경 없음
 
