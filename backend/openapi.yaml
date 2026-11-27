@@ -2192,6 +2192,7 @@ components:
         username: { type: string, example: zipdemo, description: '소셜 가입자처럼 아이디가 없으면 키를 생략 (null 을 보내지 않음)' }
         email: { type: string, example: demo@zip.com, description: '소셜 회원처럼 없으면 빈 문자열 "" (현재 프론트 타입이 필수 문자열)' }
         nickname: { type: string, example: 지기 }
+        birth: { type: string, format: date, nullable: true, example: '2000-02-29', description: '생년월일(user_personal_info). 개인 정보 행이 없으면 키를 생략하고, 행은 있는데 생일이 없으면 null' }
         address: { type: string, example: 서울시 마포구 합정동, description: '회원 주소(users.address). 등록된 주소가 없으면 빈 문자열 ""' }
         region:
           type: object
@@ -2207,7 +2208,6 @@ components:
         status: { type: string, enum: [ACTIVE, SUSPENDED] }
         firstLogin: { type: boolean, description: 첫 주거 설문이 대기 중이면 true }
         agreedAt: { type: string, format: date-time, nullable: true, description: '소셜 첫 가입이면 null → 동의 화면(/welcome)' }
-        lastLoginAt: { type: string, format: date-time, nullable: true, description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음)' }
         bio: { type: string, maxLength: 30, description: 'user_profiles의 한 줄 소개, 없으면 빈 문자열' }
         avatarFileId: { type: string, nullable: true }
         avatarUrl: { type: string, nullable: true, description: 프로필 사진 조회 URL }
@@ -2216,16 +2216,17 @@ components:
         suspension:
           type: object
           nullable: true
-          description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음) user_sanctions 의 진행 중 정지'
+          description: 'user_sanctions 의 진행 중 정지. 정지 중인 계정은 이 응답 전에 403 으로 막혀서 현재는 항상 null'
           properties:
             until: { type: string, format: date-time, nullable: true }
             permanent: { type: boolean }
             reason: { type: string }
             count: { type: integer }
-        warnCount: { type: integer, description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음)' }
+        warnCount: { type: integer, description: '받은 경고(WARNING) 횟수' }
+        banCount: { type: integer, description: '받은 정지(SUSPEND · BAN) 횟수' }
         unseenWarnings:
           type: array
-          description: '(연동 시 확장 제안 — 현재 프론트 auth/types.ts 의 User 에는 없음) 확인 안 한 경고 → 경고 창'
+          description: '확인 안 한 경고 → 앱에 들어올 때 경고 창'
           items:
             type: object
             properties:
@@ -2538,6 +2539,7 @@ components:
         memo: { type: string, maxLength: 200 }
         memoId: { $ref: '#/components/schemas/RecordId' }
         memoTitle: { type: string }
+        homeManaged: { type: boolean, description: '월별 고정 지출 목록(GET /api/bills/monthly)에서만. 내 집 정보(계약 · 관리비)가 관리하는 항목이면 true' }
     MonthlyBillCreate:
       type: object
       additionalProperties: false
@@ -2722,7 +2724,8 @@ components:
         liked: { type: boolean }
         commentCount: { type: integer }
         views: { type: integer, format: int64, minimum: 0 }
-        reportCount: { type: integer, description: 관리자 화면에서만 }
+        reported: { type: boolean, description: 내가 이 글을 신고했는지 }
+        homeTip: { type: boolean, description: 관리자가 홈 꿀팁으로 지정한 글인지 }
         attachments: { type: array, items: { $ref: '#/components/schemas/Attachment' } }
         comments: { type: array, items: { $ref: '#/components/schemas/Comment' } }
     PostInput:

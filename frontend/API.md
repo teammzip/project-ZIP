@@ -79,9 +79,9 @@ PATCH `/api/auth/me`는 프로필 수정, [소셜 첫 약관 동의](#소셜-로
   "id": "1", "username": "zipdemo", "email": "demo@zip.com", "nickname": "지기",
   "address": "서울시 마포구 합정동", "region": { "id": "2", "name": "마포구", "fullName": "서울특별시 마포구" },
   "provider": "email", "role": "USER", "status": "ACTIVE",
-  "firstLogin": false, "agreedAt": "2026-10-18T00:00:00+09:00", "lastLoginAt": "2026-10-24T11:33:00+09:00",
-  "bio": "요리 연습 중", "avatarUrl": null, "avatarEmoji": "🐻", "avatarColor": "#ffd6a5",
-  "suspension": null, "warnCount": 0, "unseenWarnings": []
+  "firstLogin": false, "agreedAt": "2026-10-18T00:00:00+09:00", "regionVerifiedAt": null, "birth": "2000-01-01",
+  "bio": "요리 연습 중", "avatarFileId": null, "avatarUrl": null, "avatarEmoji": "🐻", "avatarColor": "#ffd6a5",
+  "suspension": null, "warnCount": 0, "banCount": 0, "unseenWarnings": []
 }
 ```
 | 키 | DB | 설명 |
@@ -93,11 +93,11 @@ PATCH `/api/auth/me`는 프로필 수정, [소셜 첫 약관 동의](#소셜-로
 | `role` | `users.role` | `ADMIN`은 로그인하면 관리자 화면(`/admin`)만 보여요 |
 | `status` | `users.status` | 현재 인증 타입의 상태. 정지 계정 로그인은 403으로 거부하는 계약이며, 브라우저의 정지 화면 데모와 서버 인증 정책을 구분해요 |
 | `agreedAt` | `user_term_agreements.agreed_at` | 소셜로 처음 들어온 사람은 `null` → 프론트가 동의 화면(`/welcome`)을 띄워요 |
-| `lastLoginAt` | `users.last_login_at` | 내 정보에 "구글로 로그인했어요 · 10월 24일 11:33 로그인"처럼 보여요 (지금은 브라우저가 로그인한 시각을 기억) |
+| `birth` | `user_personal_info.birth_date` | 생년월일. 개인 정보 행이 없으면 키를 생략하고, 행은 있는데 생일이 없으면 `null` |
 | `bio` · `avatar*` | `user_profiles` + `uploaded_files` | [프로필 꾸미기](#프로필-꾸미기-사진--한-줄-소개) |
-| `suspension` · `warnCount` · `unseenWarnings` | `user_sanctions` | [11번 화면](#11-관리자--이용-정지-) — 정지 화면 · 경고 창 |
+| `suspension` · `warnCount` · `banCount` · `unseenWarnings` | `user_sanctions` | [11번 화면](#11-관리자--이용-정지-) — 받은 경고 · 정지 횟수, 확인 안 한 경고 창. `suspension`은 정지 중인 계정이 이 응답 전에 403으로 막혀서 항상 `null` |
 
-위 예시의 lastLoginAt, suspension, warnCount, unseenWarnings와 regionVerifiedAt/home는 **연동 시 확장 제안**이에요. bio·avatarFileId·avatarUrl·avatarEmoji·avatarColor는 현재 User 타입과 실제 인증 응답에 포함돼요. 이메일이 없는 소셜 회원의 응답은 빈 문자열을 써요. 정지 화면은 현재 별도 브라우저 저장소를 사용해요.
+예시의 키는 모두 현재 서버 응답(`UserResponse`)과 같아요(2026-11-27 서버 코드와 대조). 마지막 로그인 시각(`users.last_login_at`)은 서버 안에서만 쓰고 응답에는 없어요. 이메일이 없는 소셜 회원의 응답은 빈 문자열을 써요. 정지 화면은 모의 API 모드에서만 브라우저 저장소를 쓰고, 서버 모드에서는 서버가 정지 계정의 로그인 · 요청을 403으로 막아요.
 
 ### 로그인
 - `loginId`는 **아이디 또는 이메일** (`users.login_id` 또는 `users.email`로 찾기).
