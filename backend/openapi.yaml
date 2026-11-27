@@ -1796,7 +1796,33 @@ paths:
       parameters:
         - { name: status, in: query, required: false, schema: { type: string, enum: [RECEIVED, HIDDEN, DISMISSED] } }
       responses:
-        '200': { description: 리뷰 신고 (review.deleted = 리뷰가 지금 없음) }
+        '200':
+          description: 리뷰 신고 (review.deleted = 리뷰가 지금 없음)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    reviewKind: { type: string, enum: [PLACE, KAKAO], description: 'PLACE = DB 장소 리뷰(place_reviews), KAKAO = 카카오 장소 리뷰(kakao_place_reviews)' }
+                    reviewId: { type: string }
+                    placeId: { type: string, description: 'DB 장소는 번호, 카카오 장소는 "kakao:카카오장소id"' }
+                    placeName: { type: string }
+                    review:
+                      type: object
+                      description: 신고 당시 리뷰. 리뷰를 지운 뒤에도 남고 deleted 가 true
+                      properties:
+                        author: { type: string }
+                        text: { type: string }
+                        rating: { type: integer, nullable: true }
+                        deleted: { type: boolean }
+                    reason: { type: string, enum: [ABUSE, FALSE_INFO, PRIVACY, AD_ILLEGAL, COPYRIGHT, OTHER] }
+                    detail: { type: string }
+                    reporter: { type: object, properties: { id: { type: string }, nickname: { type: string } } }
+                    status: { type: string, enum: [RECEIVED, HIDDEN, DISMISSED] }
+                    createdAt: { type: string, format: date-time }
   /api/admin/place-review-reports/{id}:
     parameters:
       - $ref: '#/components/parameters/Id'

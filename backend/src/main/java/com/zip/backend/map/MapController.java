@@ -2,7 +2,6 @@ package com.zip.backend.map;
 
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -18,10 +17,10 @@ public class MapController {
     private static long userId(Jwt jwt) { return Long.parseLong(jwt.getSubject()); }
 
     @GetMapping("/api/places/categories")
-    public List<Map<String, Object>> categories() { return map.categories(); }
+    public List<PlaceResponse.Category> categories() { return map.categories(); }
 
     @GetMapping("/api/places")
-    public List<Map<String, Object>> places(@AuthenticationPrincipal Jwt jwt, @RequestParam String regionId,
+    public List<PlaceResponse> places(@AuthenticationPrincipal Jwt jwt, @RequestParam String regionId,
         @RequestParam(required = false) String category, @RequestParam(required = false) String q,
         @RequestParam(required = false) String filter, @RequestParam(required = false) Double lat,
         @RequestParam(required = false) Double lon, @RequestParam(defaultValue = "false") boolean wide,
@@ -40,7 +39,7 @@ public class MapController {
     }
 
     @PostMapping("/api/places/ai-search")
-    public List<Map<String, Object>> aiSearch(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody MapRequests.AiSearch request) {
+    public List<PlaceResponse.AiMatch> aiSearch(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody MapRequests.AiSearch request) {
         return map.aiSearch(userId(jwt), request);
     }
 
@@ -65,11 +64,11 @@ public class MapController {
 
     /** 저장 리스트: [{ id, name, color, placeIds }] (처음이면 "내 장소"를 만들어 줌) */
     @GetMapping("/api/me/place-lists")
-    public List<Map<String, Object>> placeLists(@AuthenticationPrincipal Jwt jwt) { return map.placeLists(userId(jwt)); }
+    public List<PlaceResponse.PlaceList> placeLists(@AuthenticationPrincipal Jwt jwt) { return map.placeLists(userId(jwt)); }
 
     @PostMapping("/api/me/place-lists")
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Object> createPlaceList(@AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) MapRequests.PlaceListInput input) {
+    public PlaceResponse.PlaceList createPlaceList(@AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) MapRequests.PlaceListInput input) {
         return map.createPlaceList(userId(jwt), input);
     }
 
@@ -86,17 +85,17 @@ public class MapController {
 
     /** 저장한 카카오 장소의 이름 · 종류 (저장 목록용) */
     @GetMapping("/api/me/place-favorites/kakao")
-    public List<Map<String, String>> kakaoFavorites(@AuthenticationPrincipal Jwt jwt) { return map.kakaoFavorites(userId(jwt)); }
+    public List<PlaceResponse.KakaoFavorite> kakaoFavorites(@AuthenticationPrincipal Jwt jwt) { return map.kakaoFavorites(userId(jwt)); }
 
     @DeleteMapping("/api/me/place-favorites/{placeId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removeFavorite(@AuthenticationPrincipal Jwt jwt, @PathVariable String placeId) { map.removeFavorite(userId(jwt), placeId); }
 
     @GetMapping("/api/me/map-settings")
-    public Map<String, List<String>> mapSettings(@AuthenticationPrincipal Jwt jwt) { return map.mapSettings(userId(jwt)); }
+    public PlaceResponse.MapSettings mapSettings(@AuthenticationPrincipal Jwt jwt) { return map.mapSettings(userId(jwt)); }
 
     @PutMapping("/api/me/map-settings")
-    public Map<String, List<String>> saveMapSettings(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody MapRequests.MapSettings request) {
+    public PlaceResponse.MapSettings saveMapSettings(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody MapRequests.MapSettings request) {
         return map.saveMapSettings(userId(jwt), request);
     }
 }

@@ -17,3 +17,20 @@ ZIP은 앱에서 카카오 장소를 `kakao:<장소ID>`로 식별합니다. 접�
 2026-11-25 확인. 지도 화면에서 실행한 검색은 검색을 시작한 동네 위치에 연결됩니다. 위치가 바뀌면 이전 결과와 대기 표시를 지우고 진행 중인 요청을 취소합니다. [지도 화면](../../frontend/src/features/map/components/MapView.tsx)
 
 장소를 여러 저장 리스트에 넣을 수 있습니다. 해당 장소를 유일하게 담은 리스트를 삭제하거나 소속 리스트를 모두 해제하면 즐겨찾기에서 빠집니다. 카카오 리뷰는 ZIP에 저장되며, 회원당 같은 장소에 하나만 작성할 수 있습니다. [지도 저장 처리](../../backend/src/main/java/com/zip/backend/map/MapService.java) · [리뷰 처리](../../backend/src/main/java/com/zip/backend/map/PlaceReviewService.java)
+
+## 지도 응답 DTO
+
+2026-11-27에 지도·장소 리뷰의 `Map` 응답 11곳을 `record`로 바꿨습니다. 응답 JSON은 그대로입니다. [DTO 적용 검토](application.md#dto-적용-검토)
+
+| 응답 | 타입 |
+| --- | --- |
+| 장소 목록 `GET /api/places`, AI 검색의 `place` | `PlaceResponse`. 주소·전화·영업시간·별점이 없으면 `null`이고, 별점은 소수입니다 |
+| 장소 분류, AI 검색 결과, 카카오 즐겨찾기, 저장 리스트, 지도 설정 | `PlaceResponse.Category` · `AiMatch` · `KakaoFavorite` · `PlaceList` · `MapSettings` |
+| 리뷰 목록, 별점 요약, 관리자 리뷰 신고 | `PlaceReviewResponse`, `Summary`, `AdminReport`. 리뷰를 지운 뒤에도 신고 목록에는 신고 당시 내용과 별점이 남고 `review.deleted`가 `true`가 됩니다 |
+
+확인 방법은 세 가지입니다.
+- 바꾸기 전 `Map` 응답에서 칸 이름과 값 종류(글자·정수·소수·참거짓·`null`)를 뽑아 고정한 테스트가 바꾼 뒤에도 그대로 통과했습니다.
+- 임시 MySQL 8.0에서 바꾸기 전(`dev` `731e329`) 서버와 바꾼 뒤 서버의 응답 24개를 칸 순서를 무시하고 비교해 모두 같았습니다. 지도 설정 조회·저장은 MySQL 전용 문법(`JSON_TABLE`, `INSERT … AS n`)을 써서 H2 테스트가 없고, 이 비교로 확인했습니다.
+- 칸 순서는 이제 `record`에 적은 순서로 고정됩니다. 예전의 `Map.of`는 순서가 정해져 있지 않았습니다.
+
+[장소 응답](../../backend/src/main/java/com/zip/backend/map/PlaceResponse.java) · [리뷰 응답](../../backend/src/main/java/com/zip/backend/map/PlaceReviewResponse.java) · [응답 모양 테스트](../../backend/src/test/java/com/zip/backend/map/MapResponseContractTests.java)

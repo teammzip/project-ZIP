@@ -5,10 +5,8 @@ import com.zip.backend.files.ProfileFileService;
 import com.zip.backend.notification.NotificationService;
 import java.time.Clock;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.springframework.dao.DuplicateKeyException;
@@ -55,7 +53,7 @@ public class PlaceReviewService {
     }
 
     /** 이 장소의 리뷰 (최신순). 작성자 프로필 · 후기 수 · 별점 평균, 사진, reportedByMe = 내가 이미 신고한 리뷰 */
-    public List<Map<String, Object>> reviews(long userId, String placeId) {
+    public List<PlaceReviewResponse> reviews(long userId, String placeId) {
         var target = existingTarget(placeId);
         var reported = Set.copyOf(repository.reportedByMe(userId, target));
         var rows = repository.reviews(target);
@@ -66,24 +64,13 @@ public class PlaceReviewService {
         return rows.stream().map(r -> {
             var stat = stats.getOrDefault(r.authorId(), new PlaceReviewRepository.AuthorStat(0, 0));
             var look = looks.get(r.authorId());
-            var author = new LinkedHashMap<String, Object>();
-            author.put("id", Long.toString(r.authorId()));
-            author.put("nickname", r.authorNickname());
-            author.put("avatarUrl", look == null ? null : look.avatarUrl());
-            author.put("avatarEmoji", look == null ? null : look.avatarEmoji());
-            author.put("avatarColor", look == null ? null : look.avatarColor());
-            author.put("reviewCount", stat.count());
-            author.put("ratingAvg", stat.rating());
-            var item = new LinkedHashMap<String, Object>();
-            item.put("id", Long.toString(r.id()));
-            item.put("rating", r.rating());
-            item.put("body", r.body() == null ? "" : r.body());
-            item.put("photos", photos.getOrDefault(r.id(), List.of()).stream()
-                .map(p -> Map.of("id", Long.toString(p.fileId()), "url", p.url())).toList());
-            item.put("author", author);
-            item.put("createdAt", r.createdAt().toString());
-            item.put("reportedByMe", reported.contains(r.id()));
-            return (Map<String, Object>) item;
+            var author = new PlaceReviewResponse.Author(Long.toString(r.authorId()), r.authorNickname(),
+                look == null ? null : look.avatarUrl(), look == null ? null : look.avatarEmoji(), look == null ? null : look.avatarColor(),
+                stat.count(), stat.rating());
+            var reviewPhotos = photos.getOrDefault(r.id(), List.of()).stream()
+                .map(p -> new PlaceReviewResponse.Photo(Long.toString(p.fileId()), p.url())).toList();
+            return new PlaceReviewResponse(Long.toString(r.id()), r.rating(), r.body() == null ? "" : r.body(),
+                reviewPhotos, author, r.createdAt().toString(), reported.contains(r.id()));
         }).toList();
     }
 
@@ -148,7 +135,7 @@ public class PlaceReviewService {
     }
 
     /** 지도 목록용 별점 요약. ids = "12,kakao:123,…" (100개까지). 리뷰 없는 곳은 빠져요 */
-    public List<Map<String, Object>> summaries(String ids) {
+    public List<PlaceReviewResponse.Summary> summaries(String ids) {
         var placeIds = new LinkedHashSet<Long>();
         var kakaoIds = new LinkedHashSet<String>();
         var parts = ids == null || ids.isBlank() ? new String[0] : ids.split(",");
@@ -168,8 +155,8 @@ public class PlaceReviewService {
             }
         }
         var found = repository.summaries(placeIds, kakaoIds);
-        var result = new ArrayList<Map<String, Object>>();
-        found.forEach((key, s) -> result.add(Map.of("id", key, "rating", s.rating(), "count", s.count())));
+        var result = new ArrayList<PlaceReviewResponse.Summary>();
+        found.forEach((key, s) -> result.add(new PlaceReviewResponse.Summary(key, s.rating(), s.count())));
         return result;
     }
 
@@ -196,29 +183,15 @@ public class PlaceReviewService {
     // ---------- 관리자 (/api/admin/**) ----------
 
     /** 관리자 리뷰 신고 목록. status 가 없으면 전부 */
-    public List<Map<String, Object>> adminReports(String status) {
+    public List<PlaceReviewResponse.AdminReport> adminReports(String status) {
         var filter = status == null || status.isBlank() ? null : status;
         if (filter != null && !STATUSES.contains(filter)) throw new ApiException(400, "status 는 RECEIVED, HIDDEN, DISMISSED 중 하나예요.");
-        return repository.adminReports(filter).stream().map(r -> {
-            var item = new LinkedHashMap<String, Object>();
-            item.put("id", Long.toString(r.id()));
-            item.put("reviewKind", r.kind());
-            item.put("reviewId", Long.toString(r.reviewId()));
-            item.put("placeId", r.placeKey());
-            item.put("placeName", r.placeName());
-            var review = new LinkedHashMap<String, Object>();
-            review.put("author", r.author() == null ? "" : r.author());
-            review.put("text", r.text() == null ? "" : r.text());
-            review.put("rating", r.rating());
-            review.put("deleted", r.gone());
-            item.put("review", review);
-            item.put("reason", r.reason());
-            item.put("detail", r.detail() == null ? "" : r.detail());
-            item.put("reporter", Map.of("id", Long.toString(r.reporterId()), "nickname", r.reporterNickname()));
-            item.put("status", r.status());
-            item.put("createdAt", r.createdAt().toString());
-            return (Map<String, Object>) item;
-        }).toList();
+        return repository.adminReports(filter).stream().map(r -> new PlaceReviewResponse.AdminReport(
+            Long.toString(r.id()), r.kind(), Long.toString(r.reviewId()), r.placeKey(), r.placeName(),
+            new PlaceReviewResponse.ReviewSnapshot(r.author() == null ? "" : r.author(), r.text() == null ? "" : r.text(), r.rating(), r.gone()),
+            r.reason(), r.detail() == null ? "" : r.detail(),
+            new PlaceReviewResponse.Reporter(Long.toString(r.reporterId()), r.reporterNickname()),
+            r.status(), r.createdAt().toString())).toList();
     }
 
     /** 신고 처리 = 그 리뷰에 들어온 접수 중 신고 전부. HIDDEN 이면 리뷰를 지우고 쓴 사람에게 알림, DISMISSED 는 문제없음 */

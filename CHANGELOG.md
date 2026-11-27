@@ -30,6 +30,7 @@
 `backend/` — Spring Boot 서버 API
 
 ### 2026-11-27
+- 곽성미 — 지도 · 장소 리뷰 응답 11곳을 Map 에서 DTO 로: `PlaceResponse`(장소 · 분류 · AI 검색 · 카카오 즐겨찾기 · 저장 리스트 · 지도 설정), `PlaceReviewResponse`(리뷰 · 별점 요약 · 관리자 신고). 응답 JSON 은 그대로(null 칸 유지, 칸 순서만 record 순서로 고정). 바꾸기 전 응답 모양을 고정한 `MapResponseContractTests` 4개 추가 · 통과, 임시 MySQL 8.0 에서 바꾸기 전(`dev` 731e329) · 후 서버 응답 24개 비교 동일(지도 설정은 MySQL 전용이라 이 비교로 확인). OpenAPI 에 관리자 리뷰 신고 응답 스키마 추가. 백엔드 372개 통과 [지도 응답 DTO](wiki/topics/map-place-ids.md#지도-응답-dto)
 - 곽성미 — 문서 정리: `backend/IMPLEMENTATION.md` 의 낡은 내용(refresh 쿠키 없음 · 토큰 1시간 → 현재 15분 · 12시간 · 7일과 refresh 흐름, 없는 테스트 경로 → `frontend/tests/legal-terms.test.mjs`, 해당 없어진 문자 업체 · banned_identities, 잘린 마이그레이션 경로, 11-27 처리방침 외부 전송) 고침. 루트 `README.md` 의 지금 단계 · 남은 것 · 문서 안내표(운영 배포 · 운영 빌드 · ERD · 시스템 구성 · 운영 DB) 갱신. 문서 안 경로 · 링크 모두 실제 파일 확인
 - 곽성미 — `openapi.yaml` 을 서버와 대조: 경로 누락 · 잔존 0건(가계부 `{kind}` 분리 표기 · Security 가 처리하는 OAuth 시작 경로는 같은 API). 응답 DTO 7개 칸 대조로 `User`(+`birth` · `banCount`, −`lastLoginAt`, 이미 연동된 칸의 "확장 제안" 문구 정리) · `Post`(+`reported` · `homeTip`, −`reportCount`) · `Bill`(+`homeManaged`) 수정, `frontend/API.md` 회원 응답 예시도 서버와 같게. SnakeYAML 로 해석 확인(경로 115 · 스키마 78 유지, 중복 키 없음) [API 계약](wiki/topics/application.md#api-데이터-계약과-dto)
 - 곽성미 — `backend/README.md` 에 "운영 배포 설정": `bootJar` 빌드 · 실행, 같은 도메인 · 백엔드 한 대 전제, 운영 필수 환경변수와 위험한 기본값(`ZIP_AUTH_COOKIE_SECURE` · `FRONTEND_URL` · `ZIP_UPLOAD_DIR` · `MAIL_LOG_ONLY` 등), 기본값 그대로 써도 되는 값. `application.properties` 의 Gemini 키 없을 때 주석을 현재 동작(안내 문구)으로 고침
