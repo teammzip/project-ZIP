@@ -25,7 +25,7 @@ type Props = {
   ctx: Omit<AiContext, 'hasPhoto'>
 }
 
-/** 홈 "AI와 대화" 모달. 대화는 서버 DB(ai_conversations · ai_messages)에 저장돼서 다시 열면 이어짐 (서버를 안 쓰면 이 브라우저에만). 자유 질문은 서버의 AI(Gemini)가 답하고, AI 를 쓸 수 없으면 데모 답변 */
+/** 홈 "AI와 대화" 모달. 대화는 서버 DB(ai_conversations · ai_messages)에 저장돼서 다시 열면 이어짐 (서버를 안 쓰면 이 브라우저에만). 자유 질문은 서버의 AI(Gemini)가 답하고, 서버 모드에서 AI 를 쓸 수 없으면 안내 문구 (데모 답변은 모의 모드에서만) */
 export function ChatModal({ open, onClose, opening, ctx }: Props) {
   const { push, reset, load, setConversationId, msgs } = useChatStore()
   const [busy, setBusy] = useState(false)

@@ -179,6 +179,10 @@
 
 `frontend/` — React 앱
 
+### 2026-11-27
+- 곽성미 — 배포용 빌드(`npm run build`)는 명령에서 `VITE_USE_MOCK`을 주지 않으면 실제 서버 모드로 고정: `.env.local` 값과 관계없이 모의 API가 운영 빌드에 들어가지 않음. 데모용 모의 빌드는 `VITE_USE_MOCK=true npm run build` (`vite.config.ts`). 빌드 결과물에 데모 계정 코드가 없는 것을 확인. [앱 실행 모드](wiki/topics/application.md)
+- 곽성미 — 서버 모드에서 AI 서버에 닿지 못하면(응답 없음 · 처리하지 않은 오류 · 빈 답 · 대화방 생성 실패) 데모 답변 대신 "AI 서버에 연결하지 못했어요" 안내. 데모 답변은 모의 모드에서만 (`ai/api.ts` `askAi`, 테스트 `ai-quota.test.mjs`). 프론트 테스트 212개 · 린트 · 빌드 통과
+
 ### 2026-11-26
 - jgkim7848-lab — 날씨 · 홈 · 동네 지도도 다른 기기에서 한 동네 인증을 사용: 이 브라우저에 고른 동네가 없으면 서버의 동네 인증(`region.fullName`)을 설문 주소보다 먼저 씀 (`life/neighborhood.ts` · `life/regionVerification.ts` `serverRegionName`, 테스트 `neighborhood-location.test.mjs`). 임시 DB 서버 · 화면에서 확인. [홈 날씨 위치](wiki/topics/service-integrations.md#홈-날씨-위치)
 - jgkim7848-lab — 다른 기기에서 동네 인증을 했거나 브라우저 데이터를 지운 회원이 커뮤니티에 들어갈 때 다시 인증하라고 막히던 문제 수정: 서버 모드는 브라우저의 동네 이름이 비면 서버의 회원 동네로 인증을 판정 (`life/regionVerification.ts` `serverRegionVerification` · `life/derive.ts`, 테스트 `region-verify-server.test.mjs`). 임시 DB 서버 · 화면에서 확인. [커뮤니티 동네 인증](wiki/topics/community-operations.md#동네-글과-조회-집계)

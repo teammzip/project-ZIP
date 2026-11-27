@@ -12,6 +12,8 @@
 
 도움말·가계부 요약·근처 탐색은 앱의 전용 경로를 사용합니다. 수입 대비 지출 요약은 가계부 집계로 만들고, 근처 탐색은 지도 API를 사용합니다. 앱이 만든 응답은 대화에 기록할 수 있으며 Gemini 질문 횟수를 차감하지 않습니다. 일반 상담의 서버 요청은 Gemini를 사용하며 제공자 한도와 회원의 일일 질문 한도를 따로 처리합니다. [PR #124](https://github.com/teammzip/project-ZIP/pull/124) · [AI 화면 분기](../../frontend/src/features/ai/components/AiChat.tsx) · [대화 저장과 한도](../../backend/src/main/java/com/zip/backend/ai/AiService.java)
 
+서버 모드에서 일반 상담이 서버에 닿지 못하면 화면은 데모 답변으로 바꾸지 않고 연결 실패 안내를 보여 줍니다. 응답이 없거나, 처리하지 않은 오류이거나, 답이 비었거나, 대화방을 만들지 못한 경우가 여기에 해당합니다. 데모 답변은 모의 API 모드에서만 사용합니다. 홈 모달과 AI 화면이 같은 규칙을 따릅니다(2026-11-27). [AI 요청 처리](../../frontend/src/features/ai/api.ts) · [홈 AI 모달](../../frontend/src/features/ai/components/ChatModal.tsx) · [연결 실패 테스트](../../frontend/tests/ai-quota.test.mjs)
+
 서버 모드의 약관 화면은 공개 `GET /api/terms`에서 현재 문서를 읽습니다. 아직 응답을 받지 못했거나 서버 이용이 어려우면 화면에 포함된 문구를 표시합니다. [약관 조회](../../frontend/src/features/legal/api.ts) · [약관 API](../../backend/src/main/java/com/zip/backend/legal/TermsController.java)
 
 ## 홈 날씨 위치
