@@ -26,7 +26,8 @@ Java 17 · Spring Boot 4 · JdbcTemplate · MySQL · Spring Security + JWT(DB �
 
    | 환경변수 (기본값) | 뜻 |
    |---|---|
-   | `ZIP_MAIL_IP_WINDOW_MINUTES`(10) · `ZIP_MAIL_IP_PER_WINDOW`(5) · `ZIP_MAIL_IP_PER_DAY`(20) | 인증 메일: 같은 IP 에서 10분에 5통 · 하루 20통. 프록시 뒤에서는 `server.forward-headers-strategy` 를 켜야 사람마다 나뉨 |
+   | `ZIP_MAIL_IP_WINDOW_MINUTES`(10) · `ZIP_MAIL_IP_PER_WINDOW`(5) · `ZIP_MAIL_IP_PER_DAY`(20) | 인증 메일: 같은 IP 에서 10분에 5통 · 하루 20통. 프록시 뒤에서도 아래 `SERVER_FORWARD_HEADERS_STRATEGY` 기본값으로 실제 IP 마다 나뉨 |
+   | `SERVER_FORWARD_HEADERS_STRATEGY`(`native`) | 프록시(nginx · Render · 로드밸런서) 뒤에서 `X-Forwarded-For` · `X-Forwarded-Proto` 로 실제 IP 와 https 를 읽음. 메일 IP 제한 · refresh 쿠키 Secure · 소셜 로그인 돌아올 주소에 쓰임. 바로 연결한 곳이 내부 주소(127.x · 10.x · 172.16~31.x · 192.168.x 등)일 때만 믿어서 프록시 없이 띄워도 IP 를 속일 수 없음. 프록시가 공인 IP 면 `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES` 로 지정, 끄려면 `none` |
    | `ZIP_MAIL_GLOBAL_PER_HOUR`(100) · `ZIP_MAIL_GLOBAL_PER_DAY`(400) | 인증 메일: 서버 전체 시간당 · 하루 상한. 메일 계정 발송 한도(Gmail 하루 약 500통)보다 낮게 |
    | `ZIP_FILES_DAILY_LIMIT`(50) · `ZIP_FILES_PENDING_LIMIT`(20) | 사진: 회원 한 명이 24시간에 올릴 수 있는 장수 · 아직 글 · 프로필 · 리뷰에 안 붙인 사진 장수 |
 3. IntelliJ 에서 JDK 17 을 고르고 Gradle 을 새로고침해요.

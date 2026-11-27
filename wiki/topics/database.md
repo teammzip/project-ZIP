@@ -4,7 +4,7 @@
 
 | 상황 | 확인할 자료 |
 | --- | --- |
-| 신규 DB 생성 | [schema.sql](../../db/schema.sql)을 적용한 뒤 자료용 마이그레이션 세 개(`20261122_01_regions_nationwide`·`20261122_02_trash_schedules_nationwide`·`20261122_04_region_neighbors_nationwide`)를 실행합니다. [신규 DB 절차](../../db/migrations/README.md) |
+| 신규 DB 생성 | [schema.sql](../../db/schema.sql)을 적용한 뒤 자료용 마이그레이션 세 개(`20261122_01_regions_nationwide`·`20261122_02_trash_schedules_nationwide`·`20261122_04_region_neighbors_nationwide`)를 실행합니다. [신규 DB 절차](../../db/migrations/README.md) · 운영·QA용 새 DB는 앱 전용 DB 계정과 첫 관리자 계정까지 [운영 DB 새로 만들기](../../db/README.md#운영-db-새로-만들기-첫-배포--qa용-새-db) 순서를 따릅니다. 관리자 계정은 가입 화면으로 만들 수 없어 `hashPassword`로 만든 해시를 `role='ADMIN'`으로 직접 넣습니다. |
 | 기존 DB 갱신 | [마이그레이션 안내](../../db/migrations/README.md)의 순서와 사전 조건에 따라 대상 DB의 이미 적용된 컬럼·키를 확인하고, 백업 후 미적용 파일을 실행합니다. MySQL DDL이 중간에 실패하면 적용된 범위를 먼저 확인합니다. |
 | 백엔드 자동 테스트 | [백엔드 안내](../../backend/README.md)의 기본 Gradle 테스트는 MySQL 호환 모드의 H2를 사용합니다. |
 | MySQL 검증 | 실제 MySQL의 스키마·데이터 검증 방법은 [DB 검증 안내](../../db/tests/README.md)를 참고합니다. 고정 지출 검증 작업은 [백엔드 안내](../../backend/README.md)에 있습니다. |
@@ -69,7 +69,7 @@
 
 ## 마이그레이션 정합성 점검
 
-로그인 잠금 마이그레이션 `20261121_04_login_lockout.sql`을 검사 목록에 추가하고, 신규 스키마와 업그레이드 결과를 비교하는 자료를 재생성했습니다. SQL 파일명 전체로 적용 순서를 확인합니다. 같은 날짜·번호가 붙은 게시글 인덱스 파일도 검사 목록에 있습니다. 메모 폴더의 적용 파일은 `20261122_07_memo_folders.sql`입니다. [정합성 수정 커밋](https://github.com/teammzip/project-ZIP/commit/4f0db63) · [적용 순서](../../db/tests/migration-path.cjs) · [스키마 비교 자료](../../db/tests/schema_expected.json) · [검사 및 재생성 절차](../../db/tests/README.md)
+로그인 잠금 마이그레이션 `20261121_04_login_lockout.sql`을 검사 목록에 추가하고, 신규 스키마와 업그레이드 결과를 비교하는 자료를 재생성했습니다. SQL 파일명 전체로 적용 순서를 확인합니다. 같은 날짜·번호가 붙은 게시글 인덱스 파일도 검사 목록에 있습니다. 메모 폴더의 적용 파일은 `20261122_07_memo_folders.sql`입니다. 약관 본문만 바꾸는 `20261127_01_terms_privacy_transfers.sql`도 같은 순서 목록과 업그레이드 묶음 끝에 있습니다. 표 구조는 바꾸지 않습니다. 2026-11-27에 격리 MySQL 8.0에서 새 `schema.sql` DB와, 이전 `schema.sql`에 이 파일을 적용한 DB의 약관 3종 본문이 같은 것을 확인했습니다. [약관 동기화 도구](../../db/tools/terms-sync.cjs) [정합성 수정 커밋](https://github.com/teammzip/project-ZIP/commit/4f0db63) · [적용 순서](../../db/tests/migration-path.cjs) · [스키마 비교 자료](../../db/tests/schema_expected.json) · [검사 및 재생성 절차](../../db/tests/README.md)
 
 ## 기념일 마이그레이션
 

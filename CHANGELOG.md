@@ -29,6 +29,11 @@
 
 `backend/` — Spring Boot 서버 API
 
+### 2026-11-27
+- 곽성미 — `Map` 으로 요청을 받는 API 14곳의 잘못된 입력 점검 테스트 추가(`MalformedInputTests`): 정상 요청에서 칸 하나씩만 다른 타입 · 빈 값 · 아주 큰 수 · 5000자 글 · 없는 날짜 · 객체 · 배열로 바꿔 보내도 서버 오류(5xx) 0건, 긴 글은 DB 전에 400. 코드 변경 없음, 백엔드 전체 368개 통과 [검증 결과](wiki/topics/project-status.md#검증된-부분)
+- 곽성미 — 전체 오류 처리 보완(`ApiExceptionHandler`): 서비스가 막지 못한 중복 · 제약 위반은 409, 예상하지 못한 오류는 500 + 한국어 안내(SQL · 스택은 응답에 넣지 않고 서버 로그에만), 값 형식 오류는 400. 없는 주소 404 · 메서드 405 등 Spring 이 정한 상태와 로그인 · 권한 오류(401 · 403)는 그대로, 응답 모양만 `{ message }` 로 통일. 검증: `ApiExceptionHandlerTests` 5개, 월급 연결 중복 시 롤백 테스트(`LedgerIntegrationTests`)는 처리 안 된 예외 대신 409 를 기대하도록 바꾸고 롤백 확인은 그대로, 백엔드 전체 363개 통과 [오류 응답](wiki/topics/application.md#api-데이터-계약과-dto)
+- 곽성미 — 프록시(nginx · Render · 로드밸런서) 뒤 배포 대비: `server.forward-headers-strategy=native` 기본값(환경변수 `SERVER_FORWARD_HEADERS_STRATEGY`). 인증 메일 IP 제한이 실제 IP 마다 나뉘고, https 로 들어온 요청은 refresh 쿠키에 Secure, 소셜 로그인 돌아올 주소도 https. 내부 주소에서 온 헤더만 믿어 직접 접속으로는 IP 를 속일 수 없음. 검증: 실제 Tomcat 으로 띄우는 `ForwardedHeadersTests` 2개 추가(설정을 `none` 으로 끄면 두 테스트 모두 실패하는 것도 확인) [프록시 헤더](wiki/topics/application.md#인증과-토큰-재발급)
+
 ### 2026-11-26
 - jgkim7848-lab — 회원 응답(`/api/auth/me` · 로그인 · 가입)의 `region` 에 시 · 도를 붙인 `fullName`(예: `서울특별시 중구`) 추가. 다른 기기에서 동네를 인증한 회원의 날씨 · 지도 위치를 같은 이름의 다른 구와 구분하려고. 로그인 잠금을 넓히지 않게 별도 조회 (`auth/AuthRepository` `regionFullName` · `AuthService` · `UserResponse`, `openapi.yaml` User.region, 테스트 `AuthIntegrationTests`). [공통 회원 응답 DTO](wiki/topics/application.md#공통-회원-응답-dto)
 - moon — 공통 회원·커뮤니티 게시글·월급 설정 응답에 DTO를 적용하고, 동네 검색 정렬·한글 띄어쓰기를 개선하고 결과가 없을 때 오타 교정 검색어를 제안. 월급 설정의 가계부 고정 수입·월별 합계 반영 확인(관련 H2 통합 테스트 70개 통과). [응답 DTO](wiki/topics/application.md#dto-적용-검토) · [동네 검색과 오타 제안](wiki/topics/community-operations.md#검색-정렬과-관련도) · [월급 자동 등록](wiki/topics/fixed-expenses.md#월급-자동-등록)
@@ -108,6 +113,10 @@
 ## DB
 
 `db/` — 표 설계(schema.sql) · 마이그레이션 · 검사. 마이그레이션 파일 설명은 [db/migrations/README.md](db/migrations/README.md)
+
+### 2026-11-27
+- 곽성미 — 운영 · QA용 새 DB 만드는 순서와 첫 관리자 계정 만드는 방법을 문서화: schema.sql → 전국 자료 3개(완료 확인값, 예시 데이터는 지울 필요 없음) → 앱 전용 DB 계정(SELECT · INSERT · UPDATE · DELETE) → `hashPassword` 해시로 `role='ADMIN'` 계정 넣기. 스키마 · 마이그레이션 변경 없음 (검증: 관리자 INSERT 문을 로컬 MySQL 트랜잭션에서 실행 후 롤백) [운영 DB 새로 만들기](db/README.md#운영-db-새로-만들기-첫-배포--qa용-새-db)
+- 곽성미 — 개인정보 처리방침 5번(처리 위탁 및 국외 이전)에 실제 외부 전송 4곳 추가: 카카오 로컬(대한민국, 장소 검색어 · 위치 좌표), OpenStreetMap Foundation(영국, 지도 타일 · Nominatim 주소 검색), OpenMeteo GmbH(스위스, 날씨 · 시간대 좌표), Google LLC(미국, Gmail 메일 발송). 거부 방법 문구 보완, 클라우드는 여전히 출시 전 확정. 버전 · 동의 기록은 그대로 (DB: `20261127_01_terms_privacy_transfers` · 검증: 격리 MySQL 8.0 에서 새 DB 생성과 이전 schema 업그레이드 결과의 약관 3종 일치, DB 정적 7개 · 약관 일치 테스트 통과) [약관 · 소개 화면](wiki/topics/service-integrations.md)
 
 ### 2026-11-25
 - jgkim7848-lab — 로컬 개발 DB 에서 일반 회원 2명 삭제(실제 메일 발송 시험을 위해 같은 이메일로 다시 가입, 관리자 계정은 유지, 삭제 전 전체 백업). 스키마 · 마이그레이션 변경 없음

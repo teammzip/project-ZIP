@@ -41,6 +41,37 @@ API 문서와 코드의 저장 모델을 함께 대조했습니다. 프론트 �
 mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql"
 ```
 
+### 운영 DB 새로 만들기 (첫 배포 · QA용 새 DB)
+
+배포 서버나 QA용으로 **빈 MySQL에 처음부터** 만들 때의 순서예요. 이미 쓰던 DB를 최신으로 맞출 때는 아래 [기존 DB](#기존-db)와 [마이그레이션 안내](migrations/README.md)를 따라요. 명령은 저장소 최상위 폴더에서 MySQL 관리자 계정으로 실행해요.
+
+1. **표와 기본 데이터 만들기**: `schema.sql`이 `zip` 데이터베이스(utf8mb4)를 만들고 표 58개와 약관 3종 · 가계부 분류 · AI 주제 · 장소 분류 · 예시 동네 12개 · 예시 배출표 6개를 넣어요.
+   ```powershell
+   mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql"
+   ```
+2. **전국 자료 넣기**: 아래 [전국 지역 · 쓰레기 배출표 · 주변 동네](#전국-지역--쓰레기-배출표--주변-동네)의 세 파일을 `01` → `02` → `04` 순서로 실행해요. 끝나면 지역 249개(시도 16 + 시군구 233) · 배출표 6,218줄 · 주변 동네 1,286줄이어야 해요. 예시 동네는 전국 지역에 포함되고 예시 배출표는 `02`가 지우고 다시 넣으므로, **예시 데이터를 따로 지울 필요는 없어요.**
+   ```sql
+   SELECT (SELECT COUNT(*) FROM regions) regions, (SELECT COUNT(*) FROM trash_schedules) trash, (SELECT COUNT(*) FROM region_neighbors) neighbors;
+   ```
+3. **앱 전용 DB 계정 만들기**: 백엔드는 root 대신 데이터 읽기 · 쓰기 권한만 있는 계정으로 접속해요. 앱은 실행 중에 표를 만들거나 바꾸지 않아요(`spring.jpa.hibernate.ddl-auto=none`, `spring.sql.init.mode=never`). 표를 바꾸는 마이그레이션은 관리자 계정으로 실행해요. `'host'`는 백엔드가 접속하는 곳(같은 서버면 `localhost`)으로, 비밀번호는 새로 만들어 백엔드의 `DB_PASSWORD`에만 넣어요.
+   ```sql
+   CREATE USER 'zip_app'@'host' IDENTIFIED BY '새 비밀번호';
+   GRANT SELECT, INSERT, UPDATE, DELETE ON zip.* TO 'zip_app'@'host';
+   ```
+4. **첫 관리자 계정 만들기**: 관리자 계정은 가입 화면으로 만들 수 없어서 DB에 직접 넣어요.
+   - 먼저 비밀번호 해시를 만들어요. 비밀번호는 8~16자이고 영문 · 숫자 · 특수문자를 모두 넣어야 해요. 원문은 문서 · 채팅 · 저장소에 남기지 마세요. 이 도구는 해시만 출력하고 DB는 바꾸지 않아요.
+     ```powershell
+     cd backend
+     .\gradlew.bat -q --console=plain hashPassword
+     ```
+   - 출력된 해시(`$2a$12$...`)를 넣어 실행해요. 아이디는 6~16자 영문 소문자 · 숫자, 닉네임은 2~12자예요. 이메일을 넣어 두면 비밀번호 찾기를 쓸 수 있어요.
+     ```sql
+     INSERT INTO users (login_id, password_hash, nickname, email, email_verified_at, age_confirmed_at, signup_provider, role)
+     VALUES ('관리자아이디', '출력된 해시', '운영자', '운영 이메일', NOW(), NOW(), 'EMAIL', 'ADMIN');
+     ```
+   - 관리자는 로그인하면 관리자 화면(`/admin`)만 보여요. 이메일 가입(`EMAIL`) 계정이라 약관 동의 화면을 거치지 않고, 첫 로그인 설문도 건너뛰어요([화면 접근 규칙](../frontend/src/app/guards.tsx)). 설정 · 프로필 같은 다른 표의 행은 없어도 돼요. 관리자 기능 테스트도 같은 방식으로 계정을 만들어 실제 로그인 API로 확인해요([공지 테스트](../backend/src/test/java/com/zip/backend/notice/NoticeIntegrationTests.java)). 관리자 계정은 회원 탈퇴할 수 없어요.
+5. **확인**: 백엔드를 이 DB로 실행해서 관리자 아이디로 로그인한 뒤 `/admin`이 열리는지, `GET /api/terms`의 약관 3종이 화면 약관([약관 문구](../frontend/src/features/legal/content.ts))과 같은지 확인해요.
+
 ### 기존 DB
 
 20261102까지 적용된 DB는 [20261107_life_categories.sql](migrations/20261107_life_categories.sql)을 한 번 적용합니다. 이미 최신 컬럼·타입이 있으면 재실행하지 않습니다. 20261102 이전 44개 표 DB는 먼저 [20261102_requirements_hardening.sql](migrations/20261102_requirements_hardening.sql)의 사전 검사를 마친 뒤 순서대로 적용합니다. 테이블 수만으로 적용 버전을 판단하지 않습니다.
