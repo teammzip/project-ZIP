@@ -110,6 +110,7 @@
 `db/` — 표 설계(schema.sql) · 마이그레이션 · 검사. 마이그레이션 파일 설명은 [db/migrations/README.md](db/migrations/README.md)
 
 ### 2026-11-27
+- 곽성미 — 운영 · QA용 새 DB 만드는 순서와 첫 관리자 계정 만드는 방법을 문서화: schema.sql → 전국 자료 3개(완료 확인값, 예시 데이터는 지울 필요 없음) → 앱 전용 DB 계정(SELECT · INSERT · UPDATE · DELETE) → `hashPassword` 해시로 `role='ADMIN'` 계정 넣기. 스키마 · 마이그레이션 변경 없음 (검증: 관리자 INSERT 문을 로컬 MySQL 트랜잭션에서 실행 후 롤백) [운영 DB 새로 만들기](db/README.md#운영-db-새로-만들기-첫-배포--qa용-새-db)
 - 곽성미 — 개인정보 처리방침 5번(처리 위탁 및 국외 이전)에 실제 외부 전송 4곳 추가: 카카오 로컬(대한민국, 장소 검색어 · 위치 좌표), OpenStreetMap Foundation(영국, 지도 타일 · Nominatim 주소 검색), OpenMeteo GmbH(스위스, 날씨 · 시간대 좌표), Google LLC(미국, Gmail 메일 발송). 거부 방법 문구 보완, 클라우드는 여전히 출시 전 확정. 버전 · 동의 기록은 그대로 (DB: `20261127_01_terms_privacy_transfers` · 검증: 격리 MySQL 8.0 에서 새 DB 생성과 이전 schema 업그레이드 결과의 약관 3종 일치, DB 정적 7개 · 약관 일치 테스트 통과) [약관 · 소개 화면](wiki/topics/service-integrations.md)
 
 ### 2026-11-25

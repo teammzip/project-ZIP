@@ -4,7 +4,7 @@
 
 | 상황 | 확인할 자료 |
 | --- | --- |
-| 신규 DB 생성 | [schema.sql](../../db/schema.sql)을 적용한 뒤 자료용 마이그레이션 세 개(`20261122_01_regions_nationwide`·`20261122_02_trash_schedules_nationwide`·`20261122_04_region_neighbors_nationwide`)를 실행합니다. [신규 DB 절차](../../db/migrations/README.md) |
+| 신규 DB 생성 | [schema.sql](../../db/schema.sql)을 적용한 뒤 자료용 마이그레이션 세 개(`20261122_01_regions_nationwide`·`20261122_02_trash_schedules_nationwide`·`20261122_04_region_neighbors_nationwide`)를 실행합니다. [신규 DB 절차](../../db/migrations/README.md) · 운영·QA용 새 DB는 앱 전용 DB 계정과 첫 관리자 계정까지 [운영 DB 새로 만들기](../../db/README.md#운영-db-새로-만들기-첫-배포--qa용-새-db) 순서를 따릅니다. 관리자 계정은 가입 화면으로 만들 수 없어 `hashPassword`로 만든 해시를 `role='ADMIN'`으로 직접 넣습니다. |
 | 기존 DB 갱신 | [마이그레이션 안내](../../db/migrations/README.md)의 순서와 사전 조건에 따라 대상 DB의 이미 적용된 컬럼·키를 확인하고, 백업 후 미적용 파일을 실행합니다. MySQL DDL이 중간에 실패하면 적용된 범위를 먼저 확인합니다. |
 | 백엔드 자동 테스트 | [백엔드 안내](../../backend/README.md)의 기본 Gradle 테스트는 MySQL 호환 모드의 H2를 사용합니다. |
 | MySQL 검증 | 실제 MySQL의 스키마·데이터 검증 방법은 [DB 검증 안내](../../db/tests/README.md)를 참고합니다. 고정 지출 검증 작업은 [백엔드 안내](../../backend/README.md)에 있습니다. |
