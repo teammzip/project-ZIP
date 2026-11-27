@@ -137,8 +137,8 @@ point는 null 또는 lat/lon 한 쌍이며 위도 ±90, 경도 ±180, 소수점 
 
 - JWT는 HS256, 발급자 `zip-backend`, 사용자 `sub`, DB 세션 `sid`, 만료 `exp`를 검증합니다. 서명 키가 없거나 너무 짧으면 시작에 실패합니다.
 - 매 인증 요청에서 세션 소유자·DB 만료·해제·현재 회원 권한·정지 상태도 조회합니다. 로그아웃한 JWT는 서명이 남아 있어도 거절됩니다.
-- 기본 토큰/세션 만료는 1시간, 로그인 유지는 7일입니다. 현재는 refresh 쿠키가 없으며 기간 만료 시 재로그인합니다. auth_sessions.refresh_token_hash는 난수의 SHA-256 값으로 채우지만 재발급 용도로 사용하지 않습니다.
-- 이 단계는 Authorization 헤더 인증만 사용합니다. 쿠키 인증을 추가할 때 CSRF 정책도 함께 바꿔야 합니다. 개발은 Vite 프록시를 사용하고 서버의 무제한 CORS는 열지 않습니다.
+- 만료 시간은 access 토큰 15분(`zip.auth.access-seconds=900`), 로그인 세션 12시간(`session-seconds=43200`), 로그인 유지를 켜면 7일(`remember-session-seconds=604800`)입니다. access 토큰이 만료되면 `POST /api/auth/refresh`로 다시 발급해요. refresh 원문은 HttpOnly · SameSite=Lax · `path=/api/auth` 쿠키(`zip_refresh`, [RefreshCookie](src/main/java/com/zip/backend/auth/RefreshCookie.java))에만 있고, `auth_sessions.refresh_token_hash`에는 해시만 저장합니다.
+- 보호된 API는 Authorization 헤더(Bearer)만 씁니다. 쿠키를 쓰는 refresh는 같은 출처에서 보내는 사용자 정의 헤더 `X-Zip-Session`과 SameSite 쿠키를 함께 요구해서 다른 사이트의 요청(CSRF)을 막습니다. 그래서 화면과 API를 같은 도메인에서 내보내야 하고, 서버에는 CORS를 열지 않습니다([운영 배포 설정](README.md#운영-배포-설정)). 개발은 Vite 프록시를 씁니다. (2026-11-27 코드 기준으로 고침. 이전 문서의 "refresh 쿠키 없음 · 1시간"은 refresh 도입 전 내용)
 - Instant를 JDBC Timestamp로 전달하며 DB 시간 해석은 기존 JDBC 연결 설정을 따릅니다. 기존 DATETIME 데이터를 임의로 UTC로 재해석하지 않습니다. 운영 시 DB/드라이버 시간대를 통일해야 합니다.
 - DB status가 SUSPENDED이거나 현재 유효한 SUSPEND/BAN이 있으면 로그인과 기존 토큰을 403/code=SUSPENDED로 차단합니다. 만료된 제재의 users.status 복구는 관리자/제재 구현 단계에서 추가해야 합니다. 현재 프론트에는 공통 403 정지 화면 이동 처리가 없습니다.
 
@@ -147,8 +147,8 @@ point는 null 또는 lat/lon 한 쌍이며 위도 ±90, 경도 ±180, 소수점 
 ```powershell
 # backend: 실제 사용자 DB와 분리된 H2 MySQL 호환 모드
 ./gradlew.bat test
-# 프로젝트 루트: 프론트·DB 약관 원문 동기화 (Node 22.18+)
-node --experimental-strip-types --test db/tests/legal-content.test.mjs
+# frontend 폴더: 화면 약관 문구 = DB 기본 약관(schema.sql) 동기화 확인
+node --test tests/legal-terms.test.mjs
 ```
 
 H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 않습니다. 운영 전에는 MySQL에서 HTTP 연결, 동시 로그인/비밀번호 변경, 로그인 시도 제한, HTTPS와 비밀키 운영을 검증해야 합니다.
@@ -159,7 +159,9 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 
 프론트 `frontend/src/features/legal/content.ts`와 `db/schema.sql`의 SERVICE/PRIVACY/POLICY 제목·본문·버전 `2026-10-18`·동의 방식(AGREE/CONFIRM)은 자동 대조합니다. 개인정보 처리방침은 CONFIRM, 나머지 두 문서는 AGREE입니다. 만 14세 이상 확인은 별도 회원 필드입니다.
 
-**2026-11-22**: `[ ]` 빈칸을 모두 채웠습니다. 책임자 · 연락처는 김정기 · zhakupyong18@gmail.com, AI 국외 이전은 Google LLC(미국) Gemini API(이전 항목 · 시점 · 방법 · 보유 기간 · 거부 방법), 클라우드 업체 · 보관 국가는 아직 정하지 않아 "출시 전 확정해 알림, 현재는 팀 개발 서버(대한민국)"로 적었습니다(`20261122_06_terms_privacy_ai.sql`). 클라우드가 정해지면 처리방침 5번을 고치고 `node db/tools/terms-sync.cjs` 로 마이그레이션을 만드세요. 문자 업체도 결정 후 실제 처리 내용을 반영해야 합니다. 외부 날씨·주소 검색은 이미 브라우저에서 호출하므로 제공 항목과 처리방침 설명을 점검해야 합니다. 재가입 차단용 banned_identities 및 신고 스냅샷의 탈퇴 후 보관 정책도 실제 구현과 맞춰야 합니다. 보관 기간·파기·휴면 계정·HTTPS에 대한 본문 약속은 구현 및 운영 절차로 확인해야 하며 이번에는 법적 적절성을 판정하거나 본문을 임의로 개정하지 않았습니다.
+**2026-11-22**: `[ ]` 빈칸을 모두 채웠습니다. 책임자 · 연락처는 김정기 · zhakupyong18@gmail.com, AI 국외 이전은 Google LLC(미국) Gemini API(이전 항목 · 시점 · 방법 · 보유 기간 · 거부 방법), 클라우드 업체 · 보관 국가는 아직 정하지 않아 "출시 전 확정해 알림, 현재는 팀 개발 서버(대한민국)"로 적었습니다(`20261122_06_terms_privacy_ai.sql`). 클라우드가 정해지면 처리방침 5번을 고치고 `node db/tools/terms-sync.cjs` 로 마이그레이션을 만드세요. (당시 남은 항목이던 문자 업체 · 재가입 차단용 banned_identities 는 휴대전화 인증과 재가입 차단 표를 지운 `20261115_02_email_verification.sql` 로 해당 없음. 신고 스냅샷의 탈퇴 후 보관 정책은 실제 구현과 맞춰야 합니다.)
+
+**2026-11-27**: 처리방침 5번에 외부 날씨 · 주소 검색을 포함한 외부 전송 4곳을 추가했습니다 — 카카오 로컬(대한민국), OpenStreetMap Foundation(영국, 지도 타일 · Nominatim), OpenMeteo GmbH(스위스), Google LLC(미국, Gmail 메일 발송) (`20261127_01_terms_privacy_transfers.sql`). 클라우드 업체 · 보관 국가와 운영 메일 업체는 아직 정하지 않았고, 처리방침 1번 수집 항목에 동네 인증 위치(GPS)를 넣을지는 팀이 정해야 합니다. 보관 기간·파기·휴면 계정·HTTPS에 대한 본문 약속은 구현 및 운영 절차로 확인해야 하며 이번에는 법적 적절성을 판정하거나 본문을 임의로 개정하지 않았습니다.
 
 본문 변경 시 프론트 버전과 DB 새 버전을 함께 추가하고 기존 약관/동의 이력은 보존합니다. API는 각 종류의 시행일이 지난 최신 문서를 조회하며 미래 문서를 노출하지 않습니다.
 
@@ -169,7 +171,7 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 
 | API | 현재 동작 |
 |---|---|
-| GET `/api/posts?scope=here\|near\|all&category=&q=&sort=&page=0` | 공개 글 20개 + `hasNext`. here = 내 동네(`users.region_id`), near = 내 동네 + `region_neighbors`(전국 1,286줄 — 육지 경계가 맞닿은 시 · 군 · 구, `db/migrations/20261122_04`), all = 전체. 동네가 없으면 here · near 는 빈 목록. 검색·정렬은 [커뮤니티 API 계약](../frontend/API.md#7-커뮤니티--첨부--신고-) 참고 |
+| GET `/api/posts?scope=here\|near\|all&category=&q=&sort=&page=0` | 공개 글 20개 + `hasNext`. here = 내 동네(`users.region_id`), near = 내 동네 + `region_neighbors`(전국 1,286줄 — 육지 경계가 맞닿은 시 · 군 · 구, `db/migrations/20261122_04_region_neighbors_nationwide.sql`), all = 전체. 동네가 없으면 here · near 는 빈 목록. 검색·정렬은 [커뮤니티 API 계약](../frontend/API.md#7-커뮤니티--첨부--신고-) 참고 |
 | GET `/api/posts/home-tips` | `is_home_tip` 글 최대 3개 (지정은 관리자 기능 단계에서) |
 | GET `/api/posts/neighbors` | "주변 동네" 탭 안내: 내 동네(`users.region_id`)와 이웃 동네 이름 `{ region, neighbors: [{ id, name, sido }] }`. 이웃은 같은 시 · 도 먼저 · 이름 순, 동네가 없으면 `region: null` |
 | GET `/api/posts/{id}` | 댓글(VISIBLE) · 첨부 포함, `mine` · `liked` · `reported` 는 토큰 기준 |

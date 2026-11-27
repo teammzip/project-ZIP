@@ -30,6 +30,7 @@
 `backend/` — Spring Boot 서버 API
 
 ### 2026-11-27
+- 곽성미 — 문서 정리: `backend/IMPLEMENTATION.md` 의 낡은 내용(refresh 쿠키 없음 · 토큰 1시간 → 현재 15분 · 12시간 · 7일과 refresh 흐름, 없는 테스트 경로 → `frontend/tests/legal-terms.test.mjs`, 해당 없어진 문자 업체 · banned_identities, 잘린 마이그레이션 경로, 11-27 처리방침 외부 전송) 고침. 루트 `README.md` 의 지금 단계 · 남은 것 · 문서 안내표(운영 배포 · 운영 빌드 · ERD · 시스템 구성 · 운영 DB) 갱신. 문서 안 경로 · 링크 모두 실제 파일 확인
 - 곽성미 — `openapi.yaml` 을 서버와 대조: 경로 누락 · 잔존 0건(가계부 `{kind}` 분리 표기 · Security 가 처리하는 OAuth 시작 경로는 같은 API). 응답 DTO 7개 칸 대조로 `User`(+`birth` · `banCount`, −`lastLoginAt`, 이미 연동된 칸의 "확장 제안" 문구 정리) · `Post`(+`reported` · `homeTip`, −`reportCount`) · `Bill`(+`homeManaged`) 수정, `frontend/API.md` 회원 응답 예시도 서버와 같게. SnakeYAML 로 해석 확인(경로 115 · 스키마 78 유지, 중복 키 없음) [API 계약](wiki/topics/application.md#api-데이터-계약과-dto)
 - 곽성미 — `backend/README.md` 에 "운영 배포 설정": `bootJar` 빌드 · 실행, 같은 도메인 · 백엔드 한 대 전제, 운영 필수 환경변수와 위험한 기본값(`ZIP_AUTH_COOKIE_SECURE` · `FRONTEND_URL` · `ZIP_UPLOAD_DIR` · `MAIL_LOG_ONLY` 등), 기본값 그대로 써도 되는 값. `application.properties` 의 Gemini 키 없을 때 주석을 현재 동작(안내 문구)으로 고침
 - 곽성미 — `Map` 으로 요청을 받는 API 14곳의 잘못된 입력 점검 테스트 추가(`MalformedInputTests`): 정상 요청에서 칸 하나씩만 다른 타입 · 빈 값 · 아주 큰 수 · 5000자 글 · 없는 날짜 · 객체 · 배열로 바꿔 보내도 서버 오류(5xx) 0건, 긴 글은 DB 전에 400. 코드 변경 없음, 백엔드 전체 368개 통과 [검증 결과](wiki/topics/project-status.md#검증된-부분)
