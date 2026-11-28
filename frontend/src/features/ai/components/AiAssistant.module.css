@@ -1,0 +1,115 @@
+/* AI 화면 틀: 왼쪽 대화 목록 + 오른쪽 채팅 (GPT · Claude 처럼). 높이는 예전 채팅 화면과 같게 화면을 꽉 채움 */
+.workspace {
+  position: relative;
+  display: flex;
+  gap: 20px;
+  height: calc(100dvh - var(--bottom-nav-height) - 76px - 16px);
+  min-height: 360px;
+  margin-bottom: calc(-1 * (var(--bottom-nav-height) + 84px));
+}
+
+.sideCol {
+  display: none;
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 채팅은 틀이 정한 높이를 채움 (AiChat 자체 높이 · 여백을 덮어씀) */
+.chat {
+  flex: 1;
+  width: 100%;
+  max-width: 880px;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 auto !important;
+}
+
+.toolbar {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  padding-bottom: 6px;
+}
+
+.toolBtn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+}
+
+.toolBtn:hover {
+  background: #eceef4;
+  color: var(--color-text);
+}
+
+.toolBtn svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.loading {
+  margin: auto;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+/* 모바일: 왼쪽에서 밀려 나오는 서랍 */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(17, 20, 28, 0.35);
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 61;
+  width: min(300px, 84vw);
+  padding: 10px;
+  background: #fff;
+  box-shadow: 4px 0 24px rgba(17, 20, 28, 0.16);
+  animation: slideIn 0.18s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@media (min-width: 901px) {
+  .workspace {
+    height: calc(100dvh - 92px - 24px);
+    margin-bottom: -40px;
+  }
+
+  .sideCol {
+    display: block;
+    flex: 0 0 260px;
+    min-height: 0;
+  }
+
+  /* 목록을 펼친 PC 에서는 위 도구 줄이 필요 없음 (목록 안에 접기 · 새 채팅이 있음) */
+  .workspace:not(.collapsed) .toolbar {
+    display: none;
+  }
+
+  .drawer,
+  .backdrop {
+    display: none;
+  }
+}

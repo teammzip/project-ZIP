@@ -513,7 +513,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 
 ## 8. AI ✅
 
-> **현재 서버**: 대화 목록 · 만들기 · 메시지 · 삭제와 `POST /api/ai/conversations/{id}/exchanges`(답변 기록), 고지서 사진(`/bill-photo`, 4-1 참고)이 있어요. `GET /api/ai/topics` 는 만들지 않았고 분야 목록은 프론트 `features/ai/topics.ts` 에 있어요.
+> **현재 서버**: 대화 목록 · 만들기 · 메시지 · 삭제와 `POST /api/ai/conversations/{id}/exchanges`(답변 기록), 고지서 사진(`/bill-photo`, 4-1 참고)이 있어요. `GET /api/ai/topics` 는 만들지 않았고 분야 목록은 프론트 `features/ai/topics.ts` 에 있어요. AI 화면 왼쪽 대화 목록(2026-11-28)은 `GET /api/ai/conversations`(홈 · AI 화면 모두), 고른 대화 불러오기 `GET /api/ai/conversations/{id}/messages`, 한 건 삭제 `DELETE /api/ai/conversations/{id}` 를 써요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|

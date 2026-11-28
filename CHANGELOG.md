@@ -200,6 +200,7 @@
 `frontend/` — React 앱
 
 ### 2026-11-28
+- 곽성미 — AI 화면 왼쪽에 GPT · Claude 같은 대화 목록: 새 대화 · 날짜별(오늘 · 어제 · 지난 7일 · 지난 30일 · 이전) 대화 · 누르면 그 대화를 불러와 이어서 묻기 · 대화마다 지우기(그 자리에서 확인). PC는 목록 접기, 모바일은 서랍. 같은 날 내 정보에 넣었던 "AI 대화 기록" 줄과 창은 빼서 AI 화면 한 곳으로 모음. 테스트 3개 추가, 프론트 233개 · 린트 · 빌드 통과 [AI 대화](wiki/topics/service-integrations.md)
 - 곽성미 — 커뮤니티 "주변 동네" 탭의 다른 동네 보기 디자인 정리: 따로 떠 있던 테두리 상자 대신 안내 줄 끝 작은 알약 버튼("다른 동네 둘러보기 ›")으로 열고, 검색창과 같은 연회색 칸 · 테두리 없는 흰 선택 상자 · 맞닿은 지역 칩으로 표시. 기능은 그대로, 프론트 230개 · 린트 · 타입 검사 통과 [커뮤니티 운영](wiki/topics/community-operations.md)
 - 곽성미 — 공지 팝업을 홈(`/`)에서만 띄움: 지도 · 커뮤니티 등 다른 화면에서 새로고침하면 뜨지 않고 홈으로 오면 뜸. 홈에서 닫은 뒤 다른 화면에 갔다 와도 다시 뜨지 않고, 공지 화면의 "팝업 공지 다시 보기"는 그 화면에서 바로 띄움 (`notice/NoticePopup.tsx`). 새 테스트 `notice-popup-home.test.mjs` 3개, 프론트 230개 · 린트 · 빌드 통과 [공지사항](wiki/topics/community-operations.md)
 - 곽성미 — 화면에 연결하지 않았던 API 4가지 연결 (변경안 적용): ① 내 정보 › AI 대화 기록에서 대화 한 건 삭제(`DELETE /api/ai/conversations/{id}`) ② 지도 저장 창에서 리스트 이름 · 색 바꾸기(`PATCH /api/me/place-lists/{listId}`) ③ 커뮤니티 주변 동네 탭의 "다른 동네 주변 보기"(`GET /api/regions`, `GET /api/regions/{id}/neighbors`) ④ 알림 받기를 서버에 저장 · 복원(`PUT /api/me/settings`, 앱을 열 때 내 집 정보의 `settings.notiOn`) — 그전에는 알림을 꺼도 서버의 월세 알림 · 공지 팝업이 생성됐음. 저장 실패 시 화면을 되돌림. 테스트 11개 추가, 프론트 227개 · 린트 · 빌드 통과 [알림 설정](wiki/topics/calendar-notifications.md#알림-생성과-읽음-상태)
