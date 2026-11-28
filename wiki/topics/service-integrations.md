@@ -24,6 +24,10 @@
 
 설문 주소가 없으면 날씨와 홈·동네 지도는 같은 우리 동네를 씁니다. 순서는 이 브라우저에서 직접 인증·변경한 동네 → 서버(DB)에 남은 동네 인증(다른 기기에서 인증한 경우, 서버 회원 응답의 `region.fullName`을 `서울 중구`처럼 줄여 사용) → 설문 주소 → 가입 주소 → 서버의 회원 동네입니다. 서버 인증은 이 브라우저의 설문 선택보다 앞섭니다. 서버에는 인증 좌표가 없어서 다른 기기에서 인증한 동네는 이름으로 위치를 찾습니다(2026-11-26). [동네 선택](../../frontend/src/features/life/neighborhood.ts) · [기준 위치](../../frontend/src/features/life/useNeighborhoodLocation.ts) · [선택 순서 테스트](../../frontend/tests/neighborhood-location.test.mjs)
 
+## 외부 API의 운영 조건
+
+2026-11-28 정적 확인. 공개 Nominatim은 ZIP 전체 사용자의 요청을 합쳐 초당 최대 1회로 제한합니다. 설문 검색과 홈 날씨 위치 조회의 캐시와 호출 간격은 각각 브라우저에서 관리하므로 전체 요청량을 제어할 수 없습니다. 운영에서 공개 API를 사용하려면 전체 호출 제한과 캐시를 적용할 수 있는 경로 및 제공자 교체 방법을 마련해야 합니다. Open-Meteo 무료 API는 비상업적 이용 조건이 적용됩니다. 실제 배포 설정과 요청량은 확인하지 않았습니다. [설문 동네 검색](../../frontend/src/features/onboarding/AddressSearch.tsx) · [홈 날씨 요청](../../frontend/src/features/weather/api.ts) · [Nominatim 정책](https://operations.osmfoundation.org/policies/nominatim/) · [Open-Meteo 이용 조건](https://open-meteo.com/en/terms)
+
 ## 검증 범위
 
 2026-11-20 로컬 점검은 합성 계정과 모의 응답으로 이메일·OAuth 오류, 고지서 동의·중복·시간 초과, 위치 권한 실패와 Kakao 쿼터 처리를 확인했습니다. [팀원 검증의 출처와 확인 범위](../raw/index.md#2026-11-24--작업과-검증-이력-보완) · [최신 배포에서 확인할 경로](project-status.md#검증해야-될-부분)

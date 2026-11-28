@@ -532,6 +532,26 @@
 - 최신 `dev`(PR #154 알림 목록 DTO)를 `front`에 병합했습니다. 충돌은 이 로그 한 곳이었고, 양쪽 기록을 모두 남겼습니다(원격 기록 먼저).
 - Second Brain 검사가 이번 PR의 공용 파일(OpenAPI·`frontend/API.md`·커뮤니티 서비스·저장소)을 링크하는 문서 8곳을 후보로 냈습니다. [DB 조회 설계](topics/database.md)와 [진행 현황](topics/project-status.md)에는 `regionId` 추가 내용을 보충했고, [일정·알림](topics/calendar-notifications.md)·[고정 지출](topics/fixed-expenses.md)·[내 집 정보](topics/home-info.md)·[가계부·메모](topics/ledger-memos.md)·[지도](topics/map-place-ids.md)·[배출표](topics/trash-schedules.md)에는 영향이 없음을 확인해 남겼습니다. [애플리케이션](topics/application.md)의 PR #153 반영 설명에 이후 바뀐 이름·위치를 덧붙였습니다.
 
+## [2026-11-28] record | 띄어쓰기 개선 이후 검색 품질 평가 검토
+
+- 변경 후 평가 결과와 채점 코드를 대조했습니다. 표현 차이에 따른 누락과 상위 순위를 각각 판단할 고정 사례, 게시 시각 대조, 결과 0건 교정 대조의 분모, 운영과 유사한 부하의 p95 목표 비교를 [검색 품질 평가 보완점](topics/community-operations.md#검색-품질-평가-보완점)에 기록했습니다. 새 API 측정은 수행하지 않았습니다.
+
+## [2026-11-28] record | 일정 목록·검색·등록·수정 응답 DTO 적용
+
+- `5574d0a`를 기준으로 일정 API 네 곳에 `CalendarEventResponse`를 적용했습니다. [일정 응답 DTO 계약](topics/calendar-notifications.md#일정-응답-dto)에 공통 응답 필드와 반환 형태를 기록하고, [OpenAPI의 등록 응답](../backend/openapi.yaml#L436)을 실제 `201`에 맞췄습니다.
+- [응답 계약 통합 테스트](../backend/src/test/java/com/zip/backend/calendar/CalendarIntegrationTests.java#L108)는 기존 Map과 DTO 양쪽에서 동일한 HTTP 상태와 응답 JSON을 확인했습니다. 변경 후 H2 백엔드 전체 355개(일정 11개), 프론트 일정 동기화 8개, OpenAPI 구문과 일정 응답 스키마, 작업 트리의 관련 위키 검사가 통과했습니다.
+- 조회 요청 계약에는 기존 문서 차이가 있습니다. [프론트 API 계약](../frontend/API.md#3-일정--쓰레기-배출-)과 서버는 `from`과 `to`를 동시에 생략할 수 있지만, [OpenAPI 조회 매개변수](../backend/openapi.yaml#L433)에는 둘 다 필수로 적혀 있습니다.
+
+## [2026-11-28] record | dev PR 154·155와 로컬 일정 DTO 병합
+
+- 기존 로컬 `backend`를 `5574d0a`에서 `4cdc328`로 fast-forward했습니다. 알림 목록 DTO는 [PR #154](https://github.com/teammzip/project-ZIP/pull/154)를 통해 이미 기준 브랜치에 들어 있었고, [PR #155](https://github.com/teammzip/project-ZIP/pull/155)의 동네 글 둘러보기, AI 대화 목록, 홈 공지 팝업 변경을 함께 받았습니다. [변경 기록](../CHANGELOG.md)
+- 충돌한 위키 로그와 일정·알림 문서에서 양쪽 편집을 합쳤습니다. 로컬 [일정 응답 DTO](topics/calendar-notifications.md#일정-응답-dto)와 검색 품질 평가 기록을 보존했고, 일정 DTO의 [변경 기록](../CHANGELOG.md)과 최신 [브라우저 확인 범위](topics/project-status.md#검증해야-될-부분)를 정리했습니다.
+
+## [2026-11-28] record | 출시 전 프로젝트 개선 우선순위 검토
+
+- 로컬 `4cdc328`과 작업 트리의 CI·배포 설정, AI 요청, 일정 API의 구현과 문서를 대조했습니다. [개선 우선순위](topics/project-status.md#개선-우선순위-검토)와 공개 Nominatim 호출 상한·Open-Meteo 이용 조건을 [외부 API의 운영 조건](topics/service-integrations.md#외부-api의-운영-조건)에 기록했습니다. DB 정적 검사 7개가 통과했습니다. 운영 접속과 새 통합 테스트는 수행하지 않았습니다.
+- 합친 작업 트리에서 H2 백엔드 356개와 프론트 234개가 실패나 건너뜀 없이 통과했습니다. 린트·타입 검사·운영 빌드, DB 정적 검사 7개, OpenAPI 111경로 구문 검사, Git 민감정보 검사와 위키 누락 검사도 통과했습니다. DB 스키마·마이그레이션 변경은 없으며, 브라우저와 실제 MySQL은 이번에 실행하지 않았습니다. [구현·검증 현황](topics/project-status.md#검증된-부분)
+
 ## [2026-11-28] record | 남은 미호출 API 7개 삭제
 
 - 결정(2026-11-28 작업 대화, 곽성미): "사용하지 않는 API는 모두 삭제하고, 사용하거나 바뀐 것은 유지한다."
@@ -539,3 +559,8 @@
 - 홈 꿀팁의 DB 컬럼·인덱스·응답 칸은 마이그레이션이 필요해 남겼습니다. 팀이 정리하기로 하면 별도 마이그레이션으로 지웁니다.
 - 관련 문서: [일정·알림](topics/calendar-notifications.md)(서버 일정 검색 삭제), [배출표](topics/trash-schedules.md)(지역 번호 조회 삭제), [DB 조회 설계](topics/database.md)(홈 꿀팁 인덱스를 쓰는 조회 없음)를 보충했고, 고정 지출·내 집 정보·가계부·지도·진행 현황 문서에는 영향 없음을 확인해 남겼습니다.
 - 갱신: [애플리케이션](topics/application.md#화면에서-호출하지-않는-api) · [커뮤니티 운영](topics/community-operations.md) · [OpenAPI](../backend/openapi.yaml) · [프론트 API 문서](../frontend/API.md) · [백엔드 구현 설명](../backend/IMPLEMENTATION.md) · 검증: 백엔드 352개 통과(지운 API만 보던 테스트 3개 삭제), OpenAPI 105 paths 파싱
+
+## [2026-11-28] record | dev PR 156(일정 DTO)과 미호출 API 삭제 병합
+
+- PR #156이 `GET /api/events/search`에도 `CalendarEventResponse`를 적용해, 같은 API를 지운 이 브랜치와 충돌했습니다. 일정 DTO(목록·등록·수정, 등록 응답 201)는 그대로 받고 검색 경로·서비스 메서드·OpenAPI 블록만 지웠습니다.
+- 응답 계약 테스트는 검색 확인 두 줄만 빼고 유지했습니다(`createUpdateAndListShareTheEventResponseContract`). [일정·알림](topics/calendar-notifications.md)의 DTO 설명도 검색 삭제에 맞췄습니다. 검증: 백엔드 353개 통과, OpenAPI 105 paths

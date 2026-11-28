@@ -8,6 +8,7 @@
 
 4. 표 아래에 공공데이터 출처(행정안전부 「전국생활쓰레기배출정보표준데이터」, 공공데이터포털)를 표시합니다. 이용약관 제2조 · 소개 페이지 푸터에도 같은 출처가 있습니다. [배출표 컴포넌트](../../frontend/src/features/life/components/TrashScheduleDisclosure.tsx)
 5. 배출표는 주소(내 집 주소 → 회원 주소)로만 지역을 찾고 회원 동네 인증(`users.region_id`)은 쓰지 않습니다. 2026-11-26 회원 응답 `region.fullName` 추가와 날씨·지도의 동네 선택 변경, [회원 응답 계약](../../frontend/API.md#user-모양)의 동네 설명 수정은 이 경로에 영향이 없습니다(임시 DB 서버에서 `GET /api/trash-schedules/me` 200 확인). [배출표 조회](../../backend/src/main/java/com/zip/backend/calendar/CalendarService.java)
+6. `GET /api/trash-schedules/me`는 `MyTrashSchedule` 응답을 사용합니다. 통합 테스트에서 내 집과 회원 주소의 조회 순서, 지역과 배출표의 조회 결과를 검증합니다. [배출표 통합 테스트](../../backend/src/test/java/com/zip/backend/calendar/CalendarIntegrationTests.java#L204)
 
 ## 배출일 알림
 

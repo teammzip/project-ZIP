@@ -443,7 +443,7 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/EventInput' }
       responses:
-        '200': { description: 추가된 일정, content: { application/json: { schema: { $ref: '#/components/schemas/Event' } } } }
+        '201': { description: 추가된 일정, content: { application/json: { schema: { $ref: '#/components/schemas/Event' } } } }
   /api/events/{id}:
     patch:
       tags: [일정 · 쓰레기 배출]
@@ -2358,6 +2358,7 @@ components:
         startTime: { type: string, example: '18:00', description: 배출 시작 시각 (종료 시각은 없음) }
     Event:
       type: object
+      required: [id, date, time, title, category, done, source, anniv, yearly]
       properties:
         id: { type: string, example: '31' }
         date: { type: string, format: date, example: '2026-10-24' }

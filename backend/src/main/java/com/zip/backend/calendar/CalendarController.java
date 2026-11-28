@@ -18,18 +18,18 @@ public class CalendarController {
 
     /** from · to 가 없으면 전부 */
     @GetMapping("/api/events")
-    public List<Map<String, Object>> events(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String from, @RequestParam(required = false) String to) {
+    public List<CalendarEventResponse> events(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String from, @RequestParam(required = false) String to) {
         return calendar.events(userId(jwt), from, to);
     }
 
     @PostMapping("/api/events")
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Object> create(@AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) CalendarService.EventInput input) {
+    public CalendarEventResponse create(@AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) CalendarService.EventInput input) {
         return calendar.createEvent(userId(jwt), input);
     }
 
     @PatchMapping("/api/events/{id}")
-    public Map<String, Object> update(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestBody(required = false) CalendarService.EventInput input) {
+    public CalendarEventResponse update(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestBody(required = false) CalendarService.EventInput input) {
         return calendar.updateEvent(userId(jwt), id, input);
     }
 

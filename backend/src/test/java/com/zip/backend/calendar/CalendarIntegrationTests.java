@@ -16,6 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -101,6 +102,29 @@ class CalendarIntegrationTests {
             .andExpect(jsonPath("$[0].done").value(false)).andExpect(jsonPath("$[0].yearly").value(true));
         call(me, patch("/api/events/{id}", id), "{\"anniv\":false}").andExpect(status().isBadRequest()); // 반복은 기념일만
         call(me, post("/api/events"), "{\"date\":\"2026-11-24\",\"title\":\"반복\",\"yearly\":true}").andExpect(status().isBadRequest());
+    }
+
+    @Test void createUpdateAndListShareTheEventResponseContract() throws Exception {
+        var created = call(me, post("/api/events"), """
+            {"date":"2026-11-24","time":"08:05","title":"월세 납부일","category":"집 관리","done":true,"source":"RENT"}
+            """).andExpect(status().isCreated());
+        String id = JsonPath.read(created.andReturn().getResponse().getContentAsString(), "$.id");
+        created.andExpect(content().json("""
+            {"id":"%s","date":"2026-11-24","time":"08:05","title":"월세 납부일","category":"집 관리",
+             "done":true,"source":"RENT","anniv":false,"yearly":false}
+            """.formatted(id), JsonCompareMode.STRICT));
+
+        String recurringEvent = """
+            {"id":"%s","date":"2026-11-24","time":"","title":"월세 납부일","category":null,
+             "done":false,"source":"RENT","anniv":true,"yearly":true}
+            """.formatted(id);
+        call(me, patch("/api/events/{id}", id), """
+            {"anniv":true,"yearly":true}
+            """).andExpect(status().isOk()).andExpect(content().json(recurringEvent, JsonCompareMode.STRICT));
+
+        String expectedList = "[" + recurringEvent + "]";
+        call(me, get("/api/events"), null).andExpect(status().isOk())
+            .andExpect(content().json(expectedList, JsonCompareMode.STRICT));
     }
 
     @Test void inputIsChecked() throws Exception {
