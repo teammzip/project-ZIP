@@ -232,8 +232,10 @@
   background: #d9dce6;
 }
 
+/* 폭은 입력줄을 채우고(글자 · 안내 문구 길이로 바뀌지 않게 flex-basis 0 · width 0), 높이만 쓴 글에 맞춰 늘어남 */
 .bar textarea {
-  flex: 1;
+  flex: 1 1 0;
+  width: 0;
   min-width: 0;
   max-height: 112px;
   padding: 10px 2px;
@@ -245,6 +247,13 @@
   color: var(--color-text);
   resize: none;
   field-sizing: content;
+}
+
+/* 안내 문구는 한 줄로 (좁은 화면에서 두 줄로 넘어가 입력줄이 커지지 않게) */
+.bar textarea::placeholder {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .backdrop {

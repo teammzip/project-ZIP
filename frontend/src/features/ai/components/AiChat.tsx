@@ -4,7 +4,7 @@ import { loadMonthlyBudget } from '@/features/life'
 import { cx } from '@/lib/cx'
 import { SelectedTopicChip, SuggestedTopicChip, TopicPicker } from './TopicPicker'
 import { askAi, createConversation, recordExchange } from '../api'
-import { usePhotoStore, type SpendCard } from '../store'
+import { usePhotoStore, type ChatMsg, type SpendCard } from '../store'
 import { BUDGET_LOAD_ERROR, PHOTO_NOTE, SUMMARY_ASK, chatMessageText, getTopicSuggestion, keywordReply, topicById, usesAiReply, type Topic, type TopicAction, type TopicSuggestion } from '../topics'
 import { budgetSummaryText } from '../budgetSummary'
 import { BudgetSummaryCard } from './BudgetSummaryCard'
@@ -20,7 +20,22 @@ import { useAuthStore } from '@/features/auth'
 type Props = {
   region: string
   name: string
+  className?: string
+  /** AI 화면 왼쪽 목록에서 고른 대화: 그 말풍선을 보여 주고 같은 대화방에 이어서 물음 */
+  initial?: { id: string; msgs: ChatMsg[] }
+  /** 대화방이 생기거나 답을 받은 뒤 (왼쪽 목록의 제목 · 순서를 새로 받음) */
+  onActivity?: (id: string) => void
 }
+
+/** 서버에 저장된 말풍선 → 이 화면 말풍선 (지출 요약은 카드로, 고정 지출 등록은 바로 가기 버튼으로) */
+const fromSaved = (m: ChatMsg): Msg => ({
+  role: m.role,
+  text: m.card ? '' : m.text,
+  budget: m.card,
+  suggestion: m.suggestion,
+  nearbyKeyword: m.role === 'bot' ? m.nearbyKeyword : undefined,
+  action: m.billRegistered ? { kind: 'link', to: '/my/budget/expense', label: '고정 지출에서 확인' } : null,
+})
 
 type AiRequest = { id: string | null; text: string; topic: string }
 
@@ -35,7 +50,7 @@ type Msg = {
   quotaRequest?: AiRequest
 }
 
-export function AiChat({ region, name }: Props) {
+export function AiChat({ region, name, className, initial, onActivity }: Props) {
   const accountId = useAuthStore((s) => s.user?.id)
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -44,7 +59,7 @@ export function AiChat({ region, name }: Props) {
   const clearPhoto = usePhotoStore((s) => s.clearPhoto)
   const ctx = { region, name, hasPhoto: !!photoUrl }
 
-  const [msgs, setMsgs] = useState<Msg[]>([])
+  const [msgs, setMsgs] = useState<Msg[]>(() => initial?.msgs.map(fromSaved) ?? [])
   const quotaRequest = msgs.at(-1)?.quotaRequest
   // 다른 화면에서 ?topic=trash&fill=치킨뼈 로 들어오면 그 분야를 바로 펼침
   const [guideSource, setGuideSource] = useState<'topic' | 'quota' | null>(() => params.get('topic') === 'guide' ? 'topic' : null)
@@ -62,7 +77,7 @@ export function AiChat({ region, name }: Props) {
   const cameraRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const alive = useRef(true)
-  const conversation = useRef<string | null>(null)
+  const conversation = useRef<string | null>(initial?.id ?? null)
 
   useEffect(() => {
     alive.current = true
@@ -70,6 +85,17 @@ export function AiChat({ region, name }: Props) {
       alive.current = false
     }
   }, [])
+
+  // 답을 다 받으면(쓰는 중 → 끝) 왼쪽 목록에 알림: 새 대화방이 목록에 생기고 제목 · 순서가 맞춰짐
+  const wasPending = useRef(false)
+  const activity = useRef(onActivity)
+  useEffect(() => {
+    activity.current = onActivity
+  })
+  useEffect(() => {
+    if (wasPending.current && !pending && conversation.current) activity.current?.(conversation.current)
+    wasPending.current = pending
+  }, [pending])
 
   // 주소의 ?topic= 은 한 번 읽고 지움 (새로고침해도 같은 분야가 계속 열리지 않게)
   useEffect(() => {
@@ -215,7 +241,7 @@ export function AiChat({ region, name }: Props) {
   }
 
   return (
-    <div className={styles.chat}>
+    <div className={cx(styles.chat, className)}>
       {guideSource && <UsageGuide onBack={closeGuide} onNavigate={closeGuide} />}
       <div className={guideStyles.conversation} hidden={!!guideSource}>
         <div className={styles.scroll} role="log" aria-label="AI 대화">

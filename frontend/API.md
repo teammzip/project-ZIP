@@ -169,7 +169,7 @@ PATCH `/api/auth/me`는 프로필 수정, [소셜 첫 약관 동의](#소셜-로
 
 ## 2. 설정 · 동네 ✅
 
-> 화면은 `/api/me/region-verify`, `/api/me/home-info`와 `/loan`, `/api/me/housing-onboarding`, `/api/me/profile-info`를 호출해요. `/api/me/settings` 는 2026-11-28부터 내 정보의 **알림 받기**에 써요: 스위치를 바꾸면 GET 으로 받은 최신 월세 · 납부일 · 입주월 · 계약 종료월에 `notiOn` 만 바꿔 PUT 하고(동네 · 주소 칸은 보내지 않아 그대로), 실패하면 화면을 원래 값으로 되돌려요. 앱을 열 때는 `/api/me/home-info` 응답의 `settings.notiOn` 으로 복원해요. 서버 알림(월세 알림 · 공지 팝업 · 알림 목록)이 DB 의 `noti_on` 을 보기 때문이에요. 우리 동네는 여전히 브라우저 생활 설정 + 로그인 응답의 `region` · `regionVerifiedAt` 이에요. 동네 목록 `GET /api/regions` 와 이웃 조회 `GET /api/regions/{id}/neighbors` 는 커뮤니티 "주변 동네" 탭의 **다른 동네 주변 보기**에 써요(2026-11-28, 로그인 없이). "주변 동네" 안내 자체는 `/api/posts/neighbors` 를 써요.
+> 화면은 `/api/me/region-verify`, `/api/me/home-info`와 `/loan`, `/api/me/housing-onboarding`, `/api/me/profile-info`를 호출해요. `/api/me/settings` 는 2026-11-28부터 내 정보의 **알림 받기**에 써요: 스위치를 바꾸면 GET 으로 받은 최신 월세 · 납부일 · 입주월 · 계약 종료월에 `notiOn` 만 바꿔 PUT 하고(동네 · 주소 칸은 보내지 않아 그대로), 실패하면 화면을 원래 값으로 되돌려요. 앱을 열 때는 `/api/me/home-info` 응답의 `settings.notiOn` 으로 복원해요. 서버 알림(월세 알림 · 공지 팝업 · 알림 목록)이 DB 의 `noti_on` 을 보기 때문이에요. 우리 동네는 여전히 브라우저 생활 설정 + 로그인 응답의 `region` · `regionVerifiedAt` 이에요. 동네 목록 `GET /api/regions` 와 이웃 조회 `GET /api/regions/{id}/neighbors` 는 커뮤니티 "주변 동네" 탭의 **다른 동네 둘러보기**에 써요(고른 동네 글은 `GET /api/posts?regionId=`)(2026-11-28, 로그인 없이). "주변 동네" 안내 자체는 `/api/posts/neighbors` 를 써요.
 
 ### 내 집 정보 서버 연결 (2026-11-15)
 
@@ -453,6 +453,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
 | GET | `/api/posts?scope=here\|near\|all&category=TIP&q=&sort=&page=0` | — | `{ items: [post], hasNext, suggestedQuery? }` |
+| GET | `/api/posts?regionId=21&scope=here\|near&…` | — | 같은 모양. 다른 동네 둘러보기(2026-11-28): 내 동네 대신 `regionId` 동네 기준(scope 생략 시 here). `scope=all` 과 함께면 400, 없는 동네면 404. 내 동네 · 글 쓰는 동네는 그대로 |
 | GET | `/api/posts/my-count` | — | `{ count }` (로그인한 회원의 전체 공개 게시글 수) |
 | GET | `/api/posts/popular` | — | `[post]` (내 동네 공개 글, 조회 수순 최대 3개) |
 | GET | `/api/posts/neighbors` | — | `{ region: { id, name, sido } \| null, neighbors: [{ id, name, sido }] }` — "주변 동네" 탭 안내. 내 동네(`users.region_id`, 주거 설문 · 내 정보 주소로 정해짐)와 이웃 동네(`region_neighbors`, 같은 시 · 도 먼저 · 이름 순). `scope=near` 글 목록과 같은 기준. 동네가 없으면 `region: null` |
@@ -513,7 +514,7 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 
 ## 8. AI ✅
 
-> **현재 서버**: 대화 목록 · 만들기 · 메시지 · 삭제와 `POST /api/ai/conversations/{id}/exchanges`(답변 기록), 고지서 사진(`/bill-photo`, 4-1 참고)이 있어요. `GET /api/ai/topics` 는 만들지 않았고 분야 목록은 프론트 `features/ai/topics.ts` 에 있어요.
+> **현재 서버**: 대화 목록 · 만들기 · 메시지 · 삭제와 `POST /api/ai/conversations/{id}/exchanges`(답변 기록), 고지서 사진(`/bill-photo`, 4-1 참고)이 있어요. `GET /api/ai/topics` 는 만들지 않았고 분야 목록은 프론트 `features/ai/topics.ts` 에 있어요. AI 화면 왼쪽 대화 목록(2026-11-28)은 `GET /api/ai/conversations`(홈 · AI 화면 모두), 고른 대화 불러오기 `GET /api/ai/conversations/{id}/messages`, 한 건 삭제 `DELETE /api/ai/conversations/{id}` 를 써요.
 
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|

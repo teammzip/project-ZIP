@@ -502,3 +502,32 @@
 
 - `6c6079e` 기준 작업 트리에서 `GET /api/notifications`의 목록과 항목을 Java 레코드로 반환하도록 바꿨습니다. [알림 목록 DTO](topics/calendar-notifications.md#알림-목록-응답-dto-검토)와 [월세 알림 링크](topics/fixed-expenses.md#월세-알림)를 대조하고, OpenAPI에 목록 상한과 `null` 필드를 명시했습니다.
 - 응답 필드·문자열 ID·명시적 `null`과 목록 상한을 넘는 미읽음 수를 검사하는 [통합 테스트](../backend/src/test/java/com/zip/backend/notification/NotificationIntegrationTests.java#L71)는 변경 전과 변경 후 모두 통과했습니다. 적용 후 H2 백엔드 전체 354개, 홈 알림·설정 프론트 6개, OpenAPI 구문과 알림 응답 스키마 검사, 관련 위키 검사가 통과했습니다.
+
+## [2026-11-28] record | 공지 팝업을 홈에서만 표시
+
+- 결정(2026-11-28 작업 대화, 곽성미): 공지 팝업은 홈(`/`)에서만 띄웁니다. 그전에는 틀(`AppLayout`)에 붙어 있어 지도·커뮤니티 등 어느 화면에서 새로고침해도 떴습니다.
+- 팝업은 틀에 그대로 두고 주소가 홈일 때만 그립니다. 그래서 홈에서 닫은 뒤 다른 화면에 갔다 와도 다시 뜨지 않습니다. 공지 화면의 "팝업 공지 다시 보기"는 그 화면에서 바로 띄웁니다.
+- 갱신: [공지사항 운영](topics/community-operations.md) · 검증: [팝업 표시 테스트](../frontend/tests/notice-popup-home.test.mjs) 3개, 프론트 230개·린트·빌드 통과
+
+## [2026-11-28] record | 다른 동네 둘러보기 디자인 정리
+
+- 결정(2026-11-28 작업 대화, 곽성미): 커뮤니티 "주변 동네" 탭의 다른 동네 보기가 머리말과 따로 노는 테두리 상자라 디자인을 바꿨습니다. 여는 버튼은 "동네 인증하기"와 같은 알약 모양으로 안내 줄 끝에 두고, 연 칸은 검색창과 같은 연회색 배경, 선택 상자는 테두리 없는 흰 상자, 결과는 칩으로 보여 줍니다. 이름은 "다른 동네 둘러보기"로 바꿨습니다.
+- 기능(API · 고른 지역 · 이웃 이름 붙이기)은 바꾸지 않았습니다. 갱신: [커뮤니티 운영](topics/community-operations.md) · [프론트 API 문서](../frontend/API.md)
+
+## [2026-11-28] record | AI 대화 목록을 AI 화면 왼쪽으로 옮김
+
+- 결정(2026-11-28 작업 대화, 곽성미): 대화 목록은 GPT·Claude처럼 AI 채팅 화면에 있어야 한다는 의견에 따라, 내 정보 › AI 대화 기록 창을 없애고 AI 화면 왼쪽 목록으로 옮겼습니다. 목록에서 대화를 고르면 이어서 물을 수 있고, 새 대화와 한 건 삭제도 같은 자리에서 합니다.
+- 이미 있던 서버 API(목록·메시지 조회·삭제)만 씁니다. 백엔드는 바꾸지 않았습니다.
+- 갱신: [서비스 연동](topics/service-integrations.md) · [프론트 API 문서](../frontend/API.md) · 검증: [대화 목록 테스트](../frontend/tests/ai-conversation-history.test.mjs) 6개, 프론트 233개·린트·빌드 통과
+
+## [2026-11-28] record | 다른 동네 둘러보기에서 그 동네 글 보기
+
+- 결정(2026-11-28 작업 대화, 곽성미): 변경안의 "단점·적용 조건"(그 지역 게시글 탐색은 별도 조회 흐름 필요)을 이어서, 고른 동네의 커뮤니티 글까지 보이게 했습니다.
+- 서버: `GET /api/posts`에 `regionId`를 추가했습니다. `scope`만 주는 내 동네 기준 동작은 그대로입니다.
+- 화면: 고른 동네·이웃 칩으로 글 목록을 바꾸고, 닫거나 탭을 바꾸면 내 동네로 돌아갑니다. 글 쓰는 동네는 바뀌지 않습니다.
+- 갱신: [커뮤니티 운영](topics/community-operations.md) · [OpenAPI](../backend/openapi.yaml) · [프론트 API 문서](../frontend/API.md) · 검증: 백엔드 전체 테스트, 프론트 234개·린트·타입 검사
+
+## [2026-11-28] record | dev PR 154 병합과 문서 동기화 확인
+
+- 최신 `dev`(PR #154 알림 목록 DTO)를 `front`에 병합했습니다. 충돌은 이 로그 한 곳이었고, 양쪽 기록을 모두 남겼습니다(원격 기록 먼저).
+- Second Brain 검사가 이번 PR의 공용 파일(OpenAPI·`frontend/API.md`·커뮤니티 서비스·저장소)을 링크하는 문서 8곳을 후보로 냈습니다. [DB 조회 설계](topics/database.md)와 [진행 현황](topics/project-status.md)에는 `regionId` 추가 내용을 보충했고, [일정·알림](topics/calendar-notifications.md)·[고정 지출](topics/fixed-expenses.md)·[내 집 정보](topics/home-info.md)·[가계부·메모](topics/ledger-memos.md)·[지도](topics/map-place-ids.md)·[배출표](topics/trash-schedules.md)에는 영향이 없음을 확인해 남겼습니다. [애플리케이션](topics/application.md)의 PR #153 반영 설명에 이후 바뀐 이름·위치를 덧붙였습니다.

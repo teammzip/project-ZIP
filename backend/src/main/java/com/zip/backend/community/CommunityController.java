@@ -19,8 +19,9 @@ public class CommunityController {
     @GetMapping("/api/posts")
     public PostResponse.Page posts(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String scope,
         @RequestParam(required = false) String category, @RequestParam(required = false) String q,
-        @RequestParam(required = false) String sort, @RequestParam(defaultValue = "0") int page) {
-        return community.posts(userId(jwt), scope, category, q, sort, page);
+        @RequestParam(required = false) String sort, @RequestParam(defaultValue = "0") int page,
+        @RequestParam(required = false) String regionId) {
+        return community.posts(userId(jwt), scope, category, q, sort, page, regionId);
     }
 
     @GetMapping("/api/posts/my-count")

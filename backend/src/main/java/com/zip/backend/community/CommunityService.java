@@ -57,14 +57,24 @@ public class CommunityService {
         return repository.countVisiblePostsByUser(userId);
     }
 
-    public PostResponse.Page posts(long viewerId, String scope, String category, String q, String sort, int page) {
-        var range = scope == null || scope.isBlank() ? "all" : scope;
+    /**
+     * 글 목록. regionId 를 주면 내 동네 대신 그 동네를 기준으로 걸러요 ("주변 동네" 탭의 다른 동네 둘러보기).
+     * regionId 와 함께 쓰는 scope 는 here(그 동네만, 기본) · near(그 동네 + 주변). 내 동네 · 글 쓰기 동네는 바뀌지 않아요.
+     */
+    public PostResponse.Page posts(long viewerId, String scope, String category, String q, String sort, int page, String regionId) {
+        boolean browsing = regionId != null && !regionId.isBlank();
+        var range = scope == null || scope.isBlank() ? (browsing ? "here" : "all") : scope;
         if (!SCOPES.contains(range)) throw new ApiException(400, "scope 는 here, near, all 중 하나예요.");
+        if (browsing && range.equals("all")) throw new ApiException(400, "regionId 는 scope here 또는 near 와 함께 써요.");
         var filter = filter(category, q, page);
         var order = postSort(sort, filter.keyword());
 
         List<Long> regions = null;
-        if (!range.equals("all")) {
+        if (browsing) {
+            long base = id(regionId, "동네");
+            if (!repository.regionExists(base)) throw notFound("동네");
+            regions = range.equals("here") ? List.of(base) : repository.regionWithNeighbors(base);
+        } else if (!range.equals("all")) {
             var home = repository.userRegion(viewerId);
             if (home.isEmpty()) return new PostResponse.Page(List.of(), false); // 동네가 없으면 우리 동네 · 주변 동네 글도 없음
             regions = range.equals("here") ? List.of(home.get()) : repository.regionWithNeighbors(home.get());

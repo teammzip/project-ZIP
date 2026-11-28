@@ -19,12 +19,16 @@ export function groupRegions(rows: RegionRow[]) {
   return { sidos, districts }
 }
 
-/** 이웃 이름에 시 · 도를 붙임 (같은 "중구"가 여러 시에 있어서). 고른 동네와 같은 시 · 도면 붙이지 않음 */
+/** 둘러보는 동네: 글 목록 기준(GET /api/posts?regionId=) · 제목 이름 · 시 · 도까지 붙인 이름 */
+export type BrowseRegion = { id: string; name: string; label: string }
+
+/** 이웃 칩: 이름에 시 · 도를 붙임 (같은 "중구"가 여러 시에 있어서). 고른 동네와 같은 시 · 도면 붙이지 않음.
+ * sidoId 는 칩을 눌러 그 동네로 넘어갈 때 시 · 도 선택 상자를 맞추는 데 씀 (목록에 없는 이웃은 null) */
 export function neighborLabels(neighbors: NeighborRow[], rows: RegionRow[], selectedSidoId: string | null) {
   const byId = new Map(rows.map((r) => [r.id, r]))
   return neighbors.map((n) => {
-    const parent = byId.get(n.id)?.parentId
+    const parent = byId.get(n.id)?.parentId ?? null
     const sido = parent ? byId.get(parent)?.name : undefined
-    return sido && parent !== selectedSidoId ? `${sido} ${n.name}` : n.name
+    return { id: n.id, name: n.name, sidoId: parent, label: sido && parent !== selectedSidoId ? `${sido} ${n.name}` : n.name, full: sido ? `${sido} ${n.name}` : n.name }
   })
 }

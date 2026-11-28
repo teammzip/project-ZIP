@@ -98,6 +98,13 @@ export async function listConversations(): Promise<ConversationSummary[]> {
   return (await apiClient.get<ConversationSummary[]>('/ai/conversations')).data
 }
 
+/** 목록에서 고른 대화의 말풍선 (GET /api/ai/conversations/{id}/messages). 실패하면 오류를 던져 화면이 안내해요 */
+export async function loadConversation(id: string): Promise<ChatMsg[]> {
+  if (isMockApi) return []
+  const { data } = await apiClient.get<ServerMessage[]>(`/ai/conversations/${encodeURIComponent(id)}/messages`)
+  return data.map(toMsg)
+}
+
 /** 대화 한 건 삭제 (DELETE /api/ai/conversations/{id}). 실패하면 오류를 그대로 던져서 화면이 안내해요 */
 export async function deleteConversation(id: string): Promise<void> {
   if (isMockApi) return

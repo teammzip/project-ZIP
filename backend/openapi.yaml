@@ -853,9 +853,11 @@ paths:
           schema: { type: string, enum: [latest, views, popular, relevance] }
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
+        - { name: regionId, in: query, description: '다른 동네 둘러보기(2026-11-28). 주면 내 동네 대신 이 동네를 기준으로 거릅니다. scope 를 생략하면 here(이 동네만), near 면 이 동네 + 이웃 동네. scope=all 과 함께 쓰면 400, 없는 동네 번호면 404. 내 동네 · 글 쓰는 동네는 바뀌지 않습니다.', schema: { type: string } }
       responses:
         '200': { description: 글 목록, content: { application/json: { schema: { $ref: '#/components/schemas/PostPage' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { description: regionId 의 동네가 없음 }
     post:
       tags: [커뮤니티 · 첨부 · 신고]
       summary: 글쓰기 (동네 인증 · 정지 아님 필요)

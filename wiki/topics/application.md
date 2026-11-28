@@ -123,7 +123,7 @@ flowchart LR
 
 2026-11-28 로컬 `backend`의 `0a25818` 기준입니다. Spring 컨트롤러의 HTTP 메서드와 경로 매핑 156개를 OpenAPI, `frontend/src`의 실제 서버 요청, 브라우저에서 불러오는 파일 URL, 백엔드 테스트·HTTP 예제·Postman과 대조했습니다. 화면 호출을 확인하지 못한 경로는 19개입니다. 배포 환경의 접근 로그와 저장소 외부 클라이언트의 사용 여부는 확인하지 않았습니다.
 
-[PR #153](https://github.com/teammzip/project-ZIP/pull/153) 반영 후에는 구형 일반 고정 지출 5개와 일정 완료 전용 경로가 삭제됐습니다. AI 대화 한 건 삭제, 지도 저장 리스트 편집, 다른 동네 주변 보기, 알림 받기 저장은 서버 모드 화면에서 호출합니다. 아래 표와 작업 단위는 반영 전 검토 기록입니다. [고정 지출](fixed-expenses.md#일반-고정-지출의-납부와-해지) · [일정·알림](calendar-notifications.md) · [지도](map-place-ids.md#장소-검색과-저장-리스트) · [동네](community-operations.md#동네-글과-조회-집계) · [AI](service-integrations.md)
+[PR #153](https://github.com/teammzip/project-ZIP/pull/153) 반영 후에는 구형 일반 고정 지출 5개와 일정 완료 전용 경로가 삭제됐습니다. AI 대화 한 건 삭제, 지도 저장 리스트 편집, 다른 동네 주변 보기, 알림 받기 저장은 서버 모드 화면에서 호출합니다. 같은 날 이후 AI 대화 목록·삭제는 내 정보에서 AI 화면 왼쪽 목록으로 옮겼고, 다른 동네 보기는 "다른 동네 둘러보기"로 이름을 바꿔 고른 동네의 글까지 보여 줍니다(`GET /api/posts?regionId=`). 아래 표와 작업 단위는 반영 전 검토 기록입니다. [고정 지출](fixed-expenses.md#일반-고정-지출의-납부와-해지) · [일정·알림](calendar-notifications.md) · [지도](map-place-ids.md#장소-검색과-저장-리스트) · [동네](community-operations.md#동네-글과-조회-집계) · [AI](service-integrations.md)
 
 ### 기능이 필요할 때 활용할 API
 

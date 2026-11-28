@@ -104,6 +104,11 @@ public class CommunityRepository {
             (rs, row) -> new RegionName(rs.getLong(1), rs.getString(2), rs.getString(3)), regionId);
     }
 
+    /** regions 에 있는 동네 번호인지 (다른 동네 둘러보기의 regionId 확인) */
+    public boolean regionExists(long regionId) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM regions WHERE id = ?", Integer.class, regionId) > 0;
+    }
+
     /** 우리 동네 + 주변 동네 (region_neighbors) */
     public List<Long> regionWithNeighbors(long regionId) {
         var ids = new ArrayList<Long>(List.of(regionId));

@@ -29,10 +29,18 @@ test('시 · 도와 시 · 군 · 구를 나눠 가나다순으로 묶는다', (
 })
 
 test('다른 시 · 도의 이웃에만 시 · 도 이름을 붙여 같은 이름(중구)을 구분한다', () => {
+  const labels = (list, sido) => JSON.stringify(neighborLabels(list, rows, sido).map((c) => c.label))
   // 서울 강남구를 골랐을 때 이웃: 서울 마포구(같은 시 · 도), 경기 과천시(다른 시 · 도)
-  assert.deepEqual(neighborLabels([{ id: '12', name: '마포구' }, { id: '31', name: '과천시' }], rows, '1'), ['마포구', '경기도 과천시'])
+  assert.equal(labels([{ id: '12', name: '마포구' }, { id: '31', name: '과천시' }], '1'), JSON.stringify(['마포구', '경기도 과천시']))
   // 부산 중구 기준으로 서울 중구가 이웃이면 서울특별시를 붙임
-  assert.deepEqual(neighborLabels([{ id: '11', name: '중구' }], rows, '2'), ['서울특별시 중구'])
+  assert.equal(labels([{ id: '11', name: '중구' }], '2'), JSON.stringify(['서울특별시 중구']))
   // 지역 목록에 없는 이웃은 이름만
-  assert.deepEqual(neighborLabels([{ id: '999', name: '어딘가' }], rows, '1'), ['어딘가'])
+  assert.equal(labels([{ id: '999', name: '어딘가' }], '1'), JSON.stringify(['어딘가']))
+})
+
+test('이웃 칩은 눌러서 넘어갈 동네 id 와 시 · 도 id, 시 · 도까지 붙인 이름을 함께 준다', () => {
+  const [mapo, gwacheon, unknown] = neighborLabels([{ id: '12', name: '마포구' }, { id: '31', name: '과천시' }, { id: '999', name: '어딘가' }], rows, '1')
+  assert.equal(JSON.stringify([mapo.id, mapo.sidoId, mapo.full]), JSON.stringify(['12', '1', '서울특별시 마포구']))
+  assert.equal(gwacheon.sidoId, '30')
+  assert.equal(unknown.sidoId, null)
 })
