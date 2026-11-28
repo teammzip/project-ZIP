@@ -211,7 +211,7 @@ Windows에서 JDK 17의 `JAVA_HOME`을 설정하고 `backend`에서 `./gradlew.b
 | 기능 | 운영 규칙 |
 | --- | --- |
 | 고객센터 | 회원은 본인 문의와 답변을 봅니다. 관리자는 문의당 한 번 답변할 수 있고, 먼저 등록된 답변을 동시 요청이 덮어쓰지 않습니다. 답변 시 회원에게 알림을 보냅니다. [문의 서비스](../../backend/src/main/java/com/zip/backend/support/SupportService.java) · [문의 저장](../../backend/src/main/java/com/zip/backend/support/SupportRepository.java) |
-| 공지사항 | 회원은 고정·일반 공지와 팝업을 조회하고, 관리자만 등록·수정·삭제합니다. 등록 시 알림을 요청하면 알림을 켠 일반 회원에게 보냅니다. 팝업의 일주일 숨김은 회원별로 현재 브라우저에 저장합니다. [공지 서비스](../../backend/src/main/java/com/zip/backend/notice/NoticeService.java) · [팝업 저장](../../frontend/src/features/notice/popupStorage.ts) |
+| 공지사항 | 회원은 고정·일반 공지와 팝업을 조회하고, 관리자만 등록·수정·삭제합니다. 등록 시 알림을 요청하면 알림을 켠 일반 회원에게 보냅니다. 팝업의 일주일 숨김은 회원별로 현재 브라우저에 저장합니다. 팝업은 홈(`/`)에서만 띄우고 다른 화면에서는 새로고침해도 띄우지 않습니다. 공지 화면의 "팝업 공지 다시 보기"만 누른 화면에서 바로 띄웁니다(2026-11-28). [팝업 표시](../../frontend/src/features/notice/NoticePopup.tsx) · [검증](../../frontend/tests/notice-popup-home.test.mjs) [공지 서비스](../../backend/src/main/java/com/zip/backend/notice/NoticeService.java) · [팝업 저장](../../frontend/src/features/notice/popupStorage.ts) |
 | 회원 제재 | 관리자는 경고·기간 정지·영구 정지와 해제를 관리합니다. 정지 중에는 기존 토큰을 쓰는 서버 요청도 차단합니다. 회원은 조치 이력을 볼 수 있고, 확인한 경고는 확인 시각을 남깁니다. [회원 제재 서비스](../../backend/src/main/java/com/zip/backend/moderation/ModerationService.java) · [서버 권한](../../backend/src/main/java/com/zip/backend/auth/SecurityConfiguration.java) |
 | 장소 리뷰 신고 | 관리자 화면에서 장소 리뷰 신고를 기각하거나 리뷰를 삭제할 수 있습니다. 리뷰 삭제에 따른 사진 정리 규칙도 적용됩니다. 리뷰를 삭제해도 신고 목록에는 신고 당시의 작성자·내용·별점이 남고 `review.deleted`가 `true`가 됩니다. 목록 응답은 2026-11-27부터 `PlaceReviewResponse.AdminReport`이며, 칸은 이전과 같습니다. [리뷰 서비스](../../backend/src/main/java/com/zip/backend/map/PlaceReviewService.java) · [지도 장소 식별자](map-place-ids.md#지도-응답-dto) |
 
