@@ -13,6 +13,7 @@ import { useCommunityStore } from '../store'
 import { commentCountOf, type Post } from '../types'
 import { useCommunityActions, useServerNeighbors, useServerPost, useServerPosts } from '../useCommunity'
 import styles from './Community.module.css'
+import { NeighborExplorer } from './NeighborExplorer'
 import { PostDetail } from './PostDetail'
 import { PostComposer } from './PostEditor'
 
@@ -192,6 +193,8 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
                     </button>
                   ))}
               </p>
+              {/* 서버 모드 "주변 동네" 탭: 내 동네가 아닌 곳의 주변도 둘러보기 (주소 · 글 범위는 그대로) */}
+              {!isMockApi && scope === 'near' && <NeighborExplorer />}
               <label className={styles.search}>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="11" cy="11" r="7" />

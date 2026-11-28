@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/apiClient'
 import { PHOTO_TYPES } from './attachments'
+import type { NeighborRow, RegionRow } from './neighborExplorer'
 import type { PostSort } from './postSearch'
 import type { Attachment, Comment, Post, PostDraft } from './types'
 
@@ -96,6 +97,10 @@ export const communityApi = {
   recordView: (id: number) => apiClient.post(`/posts/${id}/views`),
   popularPosts: async () => (await apiClient.get<ServerPost[]>('/posts/popular')).data.map(toPost),
   neighbors: async () => (await apiClient.get<Neighbors>('/posts/neighbors')).data,
+  /** 전체 지역 (시 · 도 → 시 · 군 · 구). "다른 동네 주변 보기"의 선택 메뉴용 */
+  regions: async () => (await apiClient.get<RegionRow[]>('/regions')).data,
+  /** 고른 시 · 군 · 구와 맞닿은 지역 (주소 · 글 범위와 상관없이 둘러보기) */
+  regionNeighbors: async (regionId: string) => (await apiClient.get<NeighborRow[]>(`/regions/${encodeURIComponent(regionId)}/neighbors`)).data,
   create: async (draft: PostDraft) => toPost((await apiClient.post<ServerPost>('/posts', await postBody(draft))).data),
   update: async (id: number, draft: PostDraft) => toPost((await apiClient.patch<ServerPost>(`/posts/${id}`, await postBody(draft))).data),
   remove: (id: number) => apiClient.delete(`/posts/${id}`),
