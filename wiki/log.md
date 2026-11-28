@@ -537,4 +537,5 @@
 - 결정(2026-11-28 작업 대화, 곽성미): "사용하지 않는 API는 모두 삭제하고, 사용하거나 바뀐 것은 유지한다."
 - 컨트롤러 매핑 142개를 프론트 요청(문자열을 이어 붙인 주소 포함)과 다시 대조했습니다. 지운 것: `GET /api/events/search`, `GET /api/trash-schedules?regionId=`, `POST /api/admin/sanctions/bulk`, `PATCH /api/admin/reports/{id}`, `GET /api/posts/home-tips`, `PUT`·`DELETE /api/admin/posts/{id}/home-tip`. 유지한 것: 오늘 연결한 생활 설정·지역 목록·인접 지역·AI 대화 삭제·저장 리스트 편집·`regionId`, 주소를 이어 붙여 부르는 고지서 사진 등록 결정·장소 리뷰 수정·삭제·신고.
 - 홈 꿀팁의 DB 컬럼·인덱스·응답 칸은 마이그레이션이 필요해 남겼습니다. 팀이 정리하기로 하면 별도 마이그레이션으로 지웁니다.
+- 관련 문서: [일정·알림](topics/calendar-notifications.md)(서버 일정 검색 삭제), [배출표](topics/trash-schedules.md)(지역 번호 조회 삭제), [DB 조회 설계](topics/database.md)(홈 꿀팁 인덱스를 쓰는 조회 없음)를 보충했고, 고정 지출·내 집 정보·가계부·지도·진행 현황 문서에는 영향 없음을 확인해 남겼습니다.
 - 갱신: [애플리케이션](topics/application.md#화면에서-호출하지-않는-api) · [커뮤니티 운영](topics/community-operations.md) · [OpenAPI](../backend/openapi.yaml) · [프론트 API 문서](../frontend/API.md) · [백엔드 구현 설명](../backend/IMPLEMENTATION.md) · 검증: 백엔드 352개 통과(지운 API만 보던 테스트 3개 삭제), OpenAPI 105 paths 파싱

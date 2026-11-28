@@ -12,7 +12,7 @@
 
 금액 입력은 원 단위이며, 응답의 `settings.rent`는 만원 단위입니다. 내 집 정보나 대출 조건을 사용하는 새 화면도 같은 조회 경로를 사용합니다. [API 계약](../../frontend/API.md#내-집-정보-서버-연결-2026-11-15) · [설문 저장 흐름](../../frontend/src/features/onboarding/SurveyPage.tsx) · [앱 실행 모드](application.md)
 
-2026-11-28 확인: [공용 API 문서](../../frontend/API.md)의 이번 변경(글 목록 `GET /api/posts`의 `regionId`, AI 대화 목록을 AI 화면으로 옮김, "다른 동네 둘러보기" 이름 변경)은 내 집 정보·생활 설정 API에 영향이 없습니다.
+2026-11-28 확인: [공용 API 문서](../../frontend/API.md)의 이번 변경(글 목록 `GET /api/posts`의 `regionId`, AI 대화 목록을 AI 화면으로 옮김, "다른 동네 둘러보기" 이름 변경)은 내 집 정보·생활 설정 API에 영향이 없습니다. 같은 날 미호출 API 7개 삭제(홈 꿀팁 3·관리자 일괄 정지·신고 ID 처리·일정 검색·지역 번호 배출표)도 내 집 정보·생활 설정 API에 영향이 없습니다.
 
 로그인과 세션 복원 시 공통 조회를 준비하고, 로그아웃이나 계정 변경 시 이전 세션의 조회 캐시를 제거합니다. 저장 시 진행 중인 기존 조회를 취소해 오래된 응답이 저장 결과를 덮어쓰지 않도록 합니다. [공통 조회와 저장](../../frontend/src/features/life/homeApi.ts) · [세션 전환](../../frontend/src/app/setupApi.ts) · [홈 정보 회귀 테스트](../../frontend/tests/home-api.test.mjs)
 
