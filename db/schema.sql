@@ -730,7 +730,7 @@ CREATE TABLE IF NOT EXISTS `ai_usage_daily` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 하루 사용량: 사용자별로 하루에 AI에게 몇 번 질문했는지 세는 표.';
 
 -- 쓰레기 배출 일정: 원본 CSV(전국생활쓰레기배출정보표준데이터)와 같은 모양. 한 줄 = 동네(시군구) · 배출장소, 종류마다 배출 요일 · 시작 시각.
--- 쓰레기 배출일 아침 알림(notification/TrashReminderService)이 집 주소의 동네 줄에서 오늘 요일이 든 종류를 찾아 알려줘요.
+-- 일정 화면의 우리 동네 배출표(GET /api/trash-schedules/me)가 집 주소의 동네 줄을 보여 줘요. 배출일 알림(TrashReminderService)은 2026-11-28 에 없앴어요.
 -- 같은 동네에 장소마다 요일이 다르면 줄이 여러 개예요 (마을 · 거점마다 장소가 다른 군 지역). 배출이 없는 종류는 요일 빈 값 · 시각 NULL.
 -- 데이터: db/data/생활쓰레기배출정보.csv → db/tools/trash_import.py → db/migrations/20261122_02_trash_schedules_nationwide.sql
 CREATE TABLE IF NOT EXISTS `trash_schedules` (

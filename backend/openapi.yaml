@@ -2673,7 +2673,7 @@ components:
       type: object
       properties:
         id: { type: string }
-        type: { type: string, enum: [EVENT, TRASH, RENT, BILL, COMMUNITY, SYSTEM] }
+        type: { type: string, enum: [EVENT, TRASH, RENT, BILL, COMMUNITY, SYSTEM], description: 'TRASH(쓰레기 배출일 알림)는 2026-11-28 에 없앰. 그 전에 만들어진 알림만 남아 있을 수 있음' }
         title: { type: string, example: 월세 납부일이 3일 남았어요 }
         body: { type: string, example: 매월 15일 · 55만원 }
         link: { type: string, example: budget }

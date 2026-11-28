@@ -149,7 +149,7 @@ export function SettingsPage() {
               <label className={styles.row}>
                 <span className={styles.ico}>🔔</span>
                 <span className={styles.grow}>
-                  알림 받기<small>{isMonthly ? '일정 · 쓰레기 배출 · 월세 알림' : '일정 · 쓰레기 배출 알림'}</small>
+                  알림 받기<small>{isMonthly ? '일정 · 월세 알림' : '일정 알림'}</small>
                 </span>
                 <NotiSwitch onChange={(on) => notify(on ? '알림을 켰어요.' : '알림을 껐어요.')} />
               </label>

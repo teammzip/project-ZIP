@@ -13,6 +13,7 @@ import { useLifeStore } from './store'
 
 type ServerNoti = {
   id: string
+  /** TRASH: 2026-11-28 에 없앤 쓰레기 배출 알림. 그 전에 만들어진 알림이 알림함에 남아 있어 표시용으로 남김 */
   type: 'EVENT' | 'TRASH' | 'RENT' | 'BILL' | 'COMMUNITY' | 'SYSTEM'
   title: string
   body: string | null
