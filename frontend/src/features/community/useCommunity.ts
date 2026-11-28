@@ -54,10 +54,11 @@ export function useServerNeighbors(enabled: boolean) {
 }
 
 /** 서버 모드 글 목록 (동네 범위 · 주제 · 검색은 서버가 걸러 줌, 20개씩 더 보기) */
-export function useServerPosts(scope: Scope, cat: string, q: string, sort: PostSort) {
+/** regionId: 다른 동네 둘러보기 (그 동네 글만 · scope 는 here 로) */
+export function useServerPosts(scope: Scope, cat: string, q: string, sort: PostSort, regionId?: string) {
   return useInfiniteQuery({
-    queryKey: [...KEY, 'posts', sort, scope, cat, q],
-    queryFn: ({ pageParam, signal }) => communityApi.posts(scope, cat, q, sort, pageParam, signal),
+    queryKey: [...KEY, 'posts', sort, scope, cat, q, regionId ?? null],
+    queryFn: ({ pageParam, signal }) => communityApi.posts(regionId ? 'here' : scope, cat, q, sort, pageParam, signal, regionId),
     initialPageParam: 0,
     getNextPageParam: (last, pages) => (last.hasNext ? pages.length : undefined),
     enabled: !isMockApi,

@@ -30,6 +30,7 @@
 `backend/` — Spring Boot 서버 API
 
 ### 2026-11-28
+- 곽성미 — `GET /api/posts` 에 `regionId`(기준 동네) 추가: 주면 내 동네 대신 그 동네 글(scope 생략 시 here, near 는 이웃 포함). `scope=all` 과 함께면 400, 없는 동네면 404. 테스트 `browsingAnotherRegionListsThatRegionsPostsWithoutChangingMine` 추가 · OpenAPI 반영 [커뮤니티 운영](wiki/topics/community-operations.md)
 - 곽성미 — 화면에서 쓰지 않는 API 6개 삭제: 예전 일반 고정 지출 `GET · POST /api/bills`, `PATCH · DELETE /api/bills/{id}`, `PUT /api/bills/{id}/payments/{month}`(화면은 `/api/bills/monthly/**`), 일정 완료 전용 `PATCH /api/events/{id}/done`(화면은 `PATCH /api/events/{id}` 의 `done`). 그 API 만 쓰던 서비스 · 저장소 · 입력 검사 코드와 Postman 컬렉션 · 테스트도 지움. 월별 API 의 동시 납부 검사는 `BillIntegrationTests` 로 옮기고, 일정 완료 검사는 일반 수정 경로로 바꿈(완료 시각 기록 · 해제 확인). OpenAPI 경로 115 → 111, 서버 경로 156 → 150. 관리자 일괄 제재 · 일정 검색 · 홈 꿀팁 · 생활 설정은 팀 협의, 지역 목록은 유지. 백엔드 360개 통과 [계약 고정 지출](wiki/topics/fixed-expenses.md#일반-고정-지출의-납부와-해지) · [일정](wiki/topics/calendar-notifications.md#일정-저장과-반복-기념일)
 - moon — 여러 단어로 동네 글을 검색할 때 한글 3음절 이상의 단어를 제목·본문의 띄어쓰기 차이에도 찾도록 개선했습니다. 최신 `dev` 병합 후 백엔드 369개와 격리 MySQL의 합성 검색 사례 40개를 검증했습니다. [검색 규칙과 검증 결과](wiki/topics/community-operations.md#여러-단어-검색의-띄어쓰기-개선-검증)
 - jgkim7848-lab — 쓰레기 배출일 알림 없앰(일정 화면의 우리 동네 배출표 보기로 대신, 사용자 결정): `notification/TrashReminderService` · `TrashReminderScheduler` · `TrashReminderTests` 삭제, 설정 `zip.trash.reminder.*`(`TRASH_REMINDER_*`) 삭제. 오래된 알림 정리(`maintenance/DataCleanupService`)의 "배출 정보가 없어요" 안내 예외도 없앰(90일 지난 알림은 종류 상관없이 삭제). 예전 `TRASH` 알림 · `noti_type` 값은 남김. [배출일 알림](wiki/topics/trash-schedules.md#배출일-알림) · 검증: 백엔드 테스트(`DataCleanupTests` 기대값 수정)
@@ -200,6 +201,7 @@
 `frontend/` — React 앱
 
 ### 2026-11-28
+- 곽성미 — 다른 동네 둘러보기에서 고른 동네의 **커뮤니티 글**을 보여 줌: 시 · 군 · 구를 고르면 아래 목록 · 제목 · 검색창이 그 동네로 바뀌고, 맞닿은 동네 칩을 누르면 그 동네로 넘어감. "내 동네로 ›" · ✕ · 탭 변경으로 돌아감. 글 쓰는 동네는 그대로. 프론트 234개 · 린트 · 타입 검사 통과 [커뮤니티 운영](wiki/topics/community-operations.md)
 - 곽성미 — AI 화면 왼쪽에 GPT · Claude 같은 대화 목록: 새 대화 · 날짜별(오늘 · 어제 · 지난 7일 · 지난 30일 · 이전) 대화 · 누르면 그 대화를 불러와 이어서 묻기 · 대화마다 지우기(그 자리에서 확인). PC는 목록 접기, 모바일은 서랍. 같은 날 내 정보에 넣었던 "AI 대화 기록" 줄과 창은 빼서 AI 화면 한 곳으로 모음. 테스트 3개 추가, 프론트 233개 · 린트 · 빌드 통과 [AI 대화](wiki/topics/service-integrations.md)
 - 곽성미 — 커뮤니티 "주변 동네" 탭의 다른 동네 보기 디자인 정리: 따로 떠 있던 테두리 상자 대신 안내 줄 끝 작은 알약 버튼("다른 동네 둘러보기 ›")으로 열고, 검색창과 같은 연회색 칸 · 테두리 없는 흰 선택 상자 · 맞닿은 지역 칩으로 표시. 기능은 그대로, 프론트 230개 · 린트 · 타입 검사 통과 [커뮤니티 운영](wiki/topics/community-operations.md)
 - 곽성미 — 공지 팝업을 홈(`/`)에서만 띄움: 지도 · 커뮤니티 등 다른 화면에서 새로고침하면 뜨지 않고 홈으로 오면 뜸. 홈에서 닫은 뒤 다른 화면에 갔다 와도 다시 뜨지 않고, 공지 화면의 "팝업 공지 다시 보기"는 그 화면에서 바로 띄움 (`notice/NoticePopup.tsx`). 새 테스트 `notice-popup-home.test.mjs` 3개, 프론트 230개 · 린트 · 빌드 통과 [공지사항](wiki/topics/community-operations.md)

@@ -164,6 +164,32 @@ class AdminCommunityIntegrationTests {
         }
     }
 
+    /** 다른 동네 둘러보기: regionId 를 주면 내 동네 대신 그 동네(here) · 그 동네 + 주변(near) 글. 내 동네 기준 목록은 그대로 */
+    @Test void browsingAnotherRegionListsThatRegionsPostsWithoutChangingMine() throws Exception {
+        jdbc.update("INSERT INTO regions (id, parent_id, name, level) VALUES (20, 1, '강남구', 2), (21, 1, '서초구', 2)");
+        jdbc.update("INSERT INTO region_neighbors VALUES (20, 21), (21, 20)");
+        jdbc.update("""
+            INSERT INTO users (id, login_id, password_hash, nickname, region_id, region_verified_at)
+            VALUES (20, 'gangnam20', ?, '강남주민', 20, CURRENT_TIMESTAMP), (21, 'seocho21', ?, '서초주민', 21, CURRENT_TIMESTAMP)
+            """, passwords.encode("abcd123!"), passwords.encode("abcd123!"));
+        String mine = writePost("마포구 글");
+        String gangnam = writePost(login("gangnam20"), "FREE", "강남구 글", "내용");
+        String seocho = writePost(login("seocho21"), "FREE", "서초구 글", "내용");
+
+        call(member, get("/api/posts").param("regionId", "20"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(gangnam)));
+        call(member, get("/api/posts").param("scope", "near").param("regionId", "20"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", containsInAnyOrder(gangnam, seocho)));
+        call(member, get("/api/posts").param("scope", "here"), null)
+            .andExpect(status().isOk()).andExpect(jsonPath("$.items[*].id", contains(mine)));
+
+        call(member, get("/api/posts").param("scope", "all").param("regionId", "20"), null).andExpect(status().isBadRequest());
+        call(member, get("/api/posts").param("regionId", "999"), null).andExpect(status().isNotFound());
+        call(member, get("/api/posts").param("regionId", "abc"), null).andExpect(status().isNotFound());
+        // 글 쓰기 동네는 둘러보기와 상관없이 내 동네
+        call(member, get("/api/posts/{id}", mine), null).andExpect(jsonPath("$.region.id").value("2"));
+    }
+
     @Test void searchOrdersTheSameMatchesByLatestViewsPopularityOrRelevance() throws Exception {
         String guide = writePost(member, "FREE", "곰팡이 제거 방법", "곰팡이를 제거할 때는 먼저 환기하세요.");
         String viewed = writePost(member, "FREE", "이사 기록", "곰팡이 제거 업체에 갔어요.");

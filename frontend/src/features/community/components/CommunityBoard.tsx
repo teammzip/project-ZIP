@@ -7,6 +7,7 @@ import { cx } from '@/lib/cx'
 import { relTime } from '@/lib/date'
 import { CAT_ICON, shortRegion } from '../data/display'
 import { CATEGORIES, NEARBY } from '../data/seed'
+import type { BrowseRegion } from '../neighborExplorer'
 import { serverNearNote } from '../neighborNote'
 import { popularityOf, searchLocalPosts, suggestLocalPostQuery, type PostSort } from '../postSearch'
 import { useCommunityStore } from '../store'
@@ -73,6 +74,17 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
   // "주변 동네" 탭의 다른 동네 둘러보기 칸 (서버 모드에서만)
   const [explorerOpen, setExplorerOpen] = useState(false)
   const explorable = !isMockApi && scope === 'near'
+  // 둘러보는 동네: 고르면 아래 글 목록이 그 동네 글(GET /api/posts?regionId=)로 바뀜. 내 동네 · 글 쓰는 동네는 그대로
+  const [browseRegion, setBrowseRegion] = useState<BrowseRegion | null>(null)
+  const browsing = explorable && explorerOpen ? browseRegion : null
+  const closeExplorer = () => {
+    setExplorerOpen(false)
+    setBrowseRegion(null)
+  }
+  const changeScope = (next: Scope) => {
+    setScope(next)
+    closeExplorer()
+  }
   const { verified } = useRegionVerify()
   const selectedId = Number(params.get('post')) || null
   const locked = !!ban
@@ -101,7 +113,7 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
     return () => clearTimeout(timer)
   }, [query])
   const serverQuery = serverQ.trim()
-  const server = useServerPosts(scope, cat, serverQuery, serverQuery ? searchSort : browseSort)
+  const server = useServerPosts(scope, cat, serverQuery, serverQuery ? searchSort : browseSort, browsing?.id)
   // 서버 모드 "주변 동네" 탭: 내 동네와 이웃 동네 이름을 서버에서 받아 안내 (탭을 열 때만)
   const serverNeighbors = useServerNeighbors(scope === 'near')
   const serverPost = useServerPost(selectedId)
@@ -174,18 +186,27 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
             <header className={styles.head}>
               <div className={styles.headTop}>
                 <h1>
-                  {scope === 'all' ? '전체' : place} <span>동네생활</span>
+                  {browsing ? browsing.name : scope === 'all' ? '전체' : place} <span>동네생활</span>
                 </h1>
                 <div className={styles.scopes} role="radiogroup" aria-label="동네 범위">
                   {SCOPES.map((s) => (
-                    <button key={s.value} type="button" role="radio" aria-checked={scope === s.value} className={cx(styles.scope, scope === s.value && styles.on)} onClick={() => setScope(s.value)}>
+                    <button key={s.value} type="button" role="radio" aria-checked={scope === s.value} className={cx(styles.scope, scope === s.value && styles.on)} onClick={() => changeScope(s.value)}>
                       {s.label}
                     </button>
                   ))}
                 </div>
               </div>
               <p className={styles.scopeNote}>
-                {scopeNote}
+                {browsing ? (
+                  <>
+                    👀 {browsing.label} 이웃들의 이야기를 둘러보는 중
+                    <button type="button" className={styles.browseBack} onClick={closeExplorer}>
+                      내 동네로 ›
+                    </button>
+                  </>
+                ) : (
+                  scopeNote
+                )}
                 {scope === 'here' &&
                   region &&
                   (verified ? (
@@ -198,7 +219,7 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
                 {explorable && !explorerOpen && <NeighborExplorerToggle onOpen={() => setExplorerOpen(true)} />}
               </p>
               {/* 서버 모드 "주변 동네" 탭: 내 동네가 아닌 곳의 주변도 둘러보기 (주소 · 글 범위는 그대로) */}
-              {explorable && explorerOpen && <NeighborExplorer onClose={() => setExplorerOpen(false)} />}
+              {explorable && explorerOpen && <NeighborExplorer onClose={closeExplorer} onBrowse={setBrowseRegion} />}
               <label className={styles.search}>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="11" cy="11" r="7" />
@@ -209,7 +230,7 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
                   value={query}
                   maxLength={40}
                   onChange={(e) => changeQuery(e.target.value)}
-                  placeholder={`${scope === 'all' ? '전체' : scope === 'near' ? '주변 동네' : place} 이야기 검색`}
+                  placeholder={`${browsing ? browsing.name : scope === 'all' ? '전체' : scope === 'near' ? '주변 동네' : place} 이야기 검색`}
                   aria-label="동네 이야기 검색"
                 />
               </label>
@@ -341,7 +362,7 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
           const problem = await actions.addPost(draft, region || '서울 마포구', author)
           if (!problem) {
             setCat('전체')
-            setScope('here')
+            changeScope('here')
             setQuery('')
             setBrowseSort('latest')
             open(null)

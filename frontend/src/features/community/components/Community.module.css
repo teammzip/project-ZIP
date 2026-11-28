@@ -172,7 +172,7 @@
   gap: 6px;
 }
 
-.explorerChips li {
+.explorerChip {
   padding: 5px 11px;
   border-radius: 999px;
   background: #fff;
@@ -180,6 +180,22 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--color-text);
+}
+
+.explorerChip:hover:not(:disabled) {
+  color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+/* 둘러보는 중 안내 줄의 "내 동네로" */
+.browseBack {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff1e6;
+  font-size: 11px;
+  font-weight: 700;
+  color: #d9620f;
 }
 
 .explorerHint {

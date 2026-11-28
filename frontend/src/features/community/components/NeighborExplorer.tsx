@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { groupRegions, neighborLabels } from '../neighborExplorer'
+import { groupRegions, neighborLabels, type BrowseRegion } from '../neighborExplorer'
 import { useRegionList, useRegionNeighbors } from '../useCommunity'
 import styles from './Community.module.css'
 
@@ -12,12 +12,18 @@ export function NeighborExplorerToggle({ onOpen }: { onOpen: () => void }) {
   )
 }
 
+type Props = {
+  onClose: () => void
+  /** 고른 동네로 아래 글 목록을 바꿈 (null 이면 내 동네로) */
+  onBrowse: (region: BrowseRegion | null) => void
+}
+
 /**
  * 커뮤니티 "주변 동네" 탭 › 다른 동네 둘러보기 (서버 모드).
- * 시 · 도 → 시 · 군 · 구를 고르면 맞닿은 지역을 칩으로 보여 줘요. 이사 후보지를 둘러보는 용도라 내 주소 · 글 범위는 바꾸지 않아요.
- * 검색창과 같은 연회색 칸 · 테두리 없는 선택 상자로 머리말에 녹아들게 그려요.
+ * 시 · 도 → 시 · 군 · 구를 고르면 아래 글 목록이 그 동네 글로 바뀌고(GET /api/posts?regionId=), 맞닿은 동네는 칩으로 보여 줘요.
+ * 칩을 누르면 그 동네로 넘어가요. 내 동네 · 글 쓰는 동네는 바뀌지 않아요. 닫으면 내 동네 주변 글로 돌아가요.
  */
-export function NeighborExplorer({ onClose }: { onClose: () => void }) {
+export function NeighborExplorer({ onClose, onBrowse }: Props) {
   const [sidoId, setSidoId] = useState<string | null>(null)
   const [districtId, setDistrictId] = useState<string | null>(null)
   const regions = useRegionList(true)
@@ -27,13 +33,22 @@ export function NeighborExplorer({ onClose }: { onClose: () => void }) {
   const options = sidoId ? districts.get(sidoId) ?? [] : []
   const district = options.find((d) => d.id === districtId)
   const sido = sidos.find((s) => s.id === sidoId)
-  const labels = neighbors.data ? neighborLabels(neighbors.data, rows, sidoId) : []
+  const chips = neighbors.data ? neighborLabels(neighbors.data, rows, sidoId) : []
+
+  /** 동네를 고름 (선택 상자 · 이웃 칩 공통) → 글 목록을 그 동네로 */
+  const pick = (nextSido: string | null, nextDistrict: string | null) => {
+    setSidoId(nextSido)
+    setDistrictId(nextDistrict)
+    const row = nextDistrict ? rows.find((r) => r.id === nextDistrict) : undefined
+    const sidoName = nextSido ? rows.find((r) => r.id === nextSido)?.name : undefined
+    onBrowse(row ? { id: row.id, name: row.name, label: sidoName ? `${sidoName} ${row.name}` : row.name } : null)
+  }
 
   return (
     <section className={styles.explorer} aria-label="다른 동네 둘러보기">
       <div className={styles.explorerHead}>
         <b>다른 동네 둘러보기</b>
-        <button type="button" className={styles.explorerClose} onClick={onClose} aria-label="다른 동네 둘러보기 닫기">
+        <button type="button" className={styles.explorerClose} onClick={onClose} aria-label="다른 동네 둘러보기 닫고 내 동네로" title="닫고 내 동네로">
           ✕
         </button>
       </div>
@@ -46,13 +61,13 @@ export function NeighborExplorer({ onClose }: { onClose: () => void }) {
         </p>
       ) : (
         <div className={styles.explorerPick}>
-          <select aria-label="시 · 도" value={sidoId ?? ''} onChange={(e) => { setSidoId(e.target.value || null); setDistrictId(null) }} disabled={regions.isLoading}>
+          <select aria-label="시 · 도" value={sidoId ?? ''} onChange={(e) => pick(e.target.value || null, null)} disabled={regions.isLoading}>
             <option value="">{regions.isLoading ? '불러오는 중…' : '시 · 도 선택'}</option>
             {sidos.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
-          <select aria-label="시 · 군 · 구" value={districtId ?? ''} onChange={(e) => setDistrictId(e.target.value || null)} disabled={!sidoId}>
+          <select aria-label="시 · 군 · 구" value={districtId ?? ''} onChange={(e) => pick(sidoId, e.target.value || null)} disabled={!sidoId}>
             <option value="">시 · 군 · 구 선택</option>
             {options.map((d) => (
               <option key={d.id} value={d.id}>{d.name}</option>
@@ -62,27 +77,25 @@ export function NeighborExplorer({ onClose }: { onClose: () => void }) {
       )}
       {district ? (
         <div className={styles.explorerResult} role="status">
-          {neighbors.isLoading ? (
-            <p className={styles.explorerNote}>맞닿은 지역을 찾고 있어요…</p>
-          ) : neighbors.isError ? (
-            <p className={styles.explorerNote}>주변 지역을 불러오지 못했어요. 잠시 후 다시 골라 주세요.</p>
-          ) : labels.length ? (
-            <>
-              <p className={styles.explorerNote}>
-                📍 <b>{sido?.name} {district.name}</b>와 맞닿은 <b>{labels.length}곳</b>
-              </p>
-              <ul className={styles.explorerChips}>
-                {labels.map((label) => (
-                  <li key={label}>{label}</li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            <p className={styles.explorerNote}>📍 {sido?.name} {district.name} · 아직 이 지역의 주변 정보가 없어요.</p>
+          <p className={styles.explorerNote}>
+            📍 아래 목록은 <b>{sido?.name} {district.name}</b> 글이에요.
+            {neighbors.isLoading ? ' 맞닿은 동네를 찾고 있어요…' : chips.length ? ` 맞닿은 ${chips.length}곳을 눌러 넘어가 보세요.` : ''}
+          </p>
+          {neighbors.isError && <p className={styles.explorerNote}>맞닿은 동네를 불러오지 못했어요.</p>}
+          {chips.length > 0 && (
+            <ul className={styles.explorerChips}>
+              {chips.map((c) => (
+                <li key={c.id}>
+                  <button type="button" className={styles.explorerChip} onClick={() => pick(c.sidoId, c.id)} disabled={!c.sidoId} title={`${c.full} 글 보기`}>
+                    {c.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       ) : (
-        <p className={styles.explorerHint}>둘러보기만 해요. 내 동네와 글 목록 범위는 바뀌지 않아요.</p>
+        <p className={styles.explorerHint}>시 · 군 · 구를 고르면 아래 목록이 그 동네 글로 바뀌어요. 내 동네와 글 쓰는 동네는 그대로예요.</p>
       )}
     </section>
   )

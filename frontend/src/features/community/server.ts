@@ -85,8 +85,10 @@ const postBody = async (draft: PostDraft) => ({
 })
 
 export const communityApi = {
-  posts: async (scope: Scope, cat: string, q: string, sort: PostSort, page: number, signal: AbortSignal): Promise<PostPage> => {
+  /** regionId: 다른 동네 둘러보기 — 내 동네 대신 그 동네를 기준으로 거름 */
+  posts: async (scope: Scope, cat: string, q: string, sort: PostSort, page: number, signal: AbortSignal, regionId?: string): Promise<PostPage> => {
     const params: Record<string, string | number> = { scope, sort, page }
+    if (regionId) params.regionId = regionId
     if (cat !== '전체') params.category = CATEGORY_CODE[cat] ?? cat
     if (q.trim()) params.q = q.trim()
     const { items, ...pageInfo } = (await apiClient.get<PostList<ServerPost>>('/posts', { params, signal })).data
