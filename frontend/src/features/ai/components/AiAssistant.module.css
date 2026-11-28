@@ -16,17 +16,25 @@
   display: flex;
   flex: 1;
   flex-direction: column;
+  align-items: center;
   min-width: 0;
+  min-height: 0;
 }
 
-/* 채팅은 틀이 정한 높이를 채움 (AiChat 자체 높이 · 여백을 덮어씀) */
+/* 채팅은 틀이 정한 높이 · 폭을 채움 (AiChat 자체 높이 · 여백을 덮어씀).
+ * 가운데 정렬은 부모(align-items)가 맡음: margin auto 로 가운데 두면 내용 폭만큼 줄어들 수 있음 */
 .chat {
-  flex: 1;
-  width: 100%;
-  max-width: 880px;
+  flex: 1 1 0;
+  align-self: center;
+  width: 100% !important;
+  max-width: 920px !important;
   height: auto !important;
   min-height: 0 !important;
-  margin: 0 auto !important;
+  margin: 0 !important;
+}
+
+.toolbar {
+  align-self: stretch;
 }
 
 .toolbar {
