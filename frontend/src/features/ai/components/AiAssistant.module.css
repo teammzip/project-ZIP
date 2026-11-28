@@ -97,9 +97,12 @@
     margin-bottom: -40px;
   }
 
+  /* 폭 고정: min-width 0 이 없으면 한 줄로 자른 긴 제목 길이만큼 칸이 늘어남 */
   .sideCol {
     display: block;
-    flex: 0 0 260px;
+    flex: 0 0 248px;
+    width: 248px;
+    min-width: 0;
     min-height: 0;
   }
 
