@@ -74,12 +74,6 @@ public final class BillInput {
         if (body.containsKey("amount")) amount(body.get("amount"));
     }
 
-    public static void payment(Map<String, Object> body) {
-        if (body.isEmpty() || !Set.of("paid", "amount").containsAll(body.keySet())) throw bad("paid 또는 amount를 보내 주세요.");
-        if (body.containsKey("paid") && !(body.get("paid") instanceof Boolean)) throw bad("paid는 true 또는 false여야 해요.");
-        if (body.containsKey("amount")) amount(body.get("amount"));
-    }
-
     public static String text(Object raw, String label, int max) {
         if (!(raw instanceof String value) || value.strip().isEmpty() || value.strip().length() > max) {
             throw bad(label + "은 공백이 아닌 1~" + max + "자로 입력해 주세요.");

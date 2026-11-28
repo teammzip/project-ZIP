@@ -1,6 +1,7 @@
 package com.zip.backend.calendar;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -73,8 +74,10 @@ class CalendarIntegrationTests {
         // 보낸 칸만: 종일로 · 분류 없음으로
         call(me, patch("/api/events/{id}", id), "{\"time\":\"\",\"category\":\"\"}").andExpect(status().isOk())
             .andExpect(jsonPath("$.time").value("")).andExpect(jsonPath("$.category").isEmpty()).andExpect(jsonPath("$.title").value("택배 반품"));
-        call(me, patch("/api/events/{id}/done", id), "{\"done\":true}").andExpect(jsonPath("$.done").value(true));
-        call(me, patch("/api/events/{id}/done", id), "{\"done\":false}").andExpect(jsonPath("$.done").value(false));
+        // 완료 표시는 화면이 쓰는 일반 수정으로 (예전 PATCH /api/events/{id}/done 은 2026-11-28 에 지움)
+        call(me, patch("/api/events/{id}", id), "{\"done\":true}").andExpect(jsonPath("$.done").value(true)).andExpect(jsonPath("$.title").value("택배 반품"));
+        assertNotNull(jdbc.queryForObject("SELECT done_at FROM events WHERE id = ?", java.sql.Timestamp.class, Long.parseLong(id)));
+        call(me, patch("/api/events/{id}", id), "{\"done\":false}").andExpect(jsonPath("$.done").value(false));
         assertEquals(null, jdbc.queryForObject("SELECT done_at FROM events WHERE id = ?", java.sql.Timestamp.class, Long.parseLong(id)));
 
         // 기간 · 검색

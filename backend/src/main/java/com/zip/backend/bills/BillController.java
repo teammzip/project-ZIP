@@ -1,6 +1,5 @@
 package com.zip.backend.bills;
 
-import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,10 +15,8 @@ public class BillController {
     private long user(Jwt jwt) { return Long.parseLong(jwt.getSubject()); }
     private long session(Jwt jwt) { return Long.parseLong(jwt.getClaimAsString("sid")); }
 
-    @GetMapping
-    public List<BillResponse> list(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String month) {
-        return service.list(user(jwt), BillInput.month(month));
-    }
+    // 예전 일반 고정 지출 API(GET · POST /api/bills, PATCH · DELETE /api/bills/{id}, PUT /api/bills/{id}/payments/{month})는
+    // 화면이 월별 API 로 바뀐 뒤 쓰이지 않아 2026-11-28 에 지웠다. 화면은 아래 /monthly 만 쓴다.
 
     @PostMapping("/monthly/auto-register")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -55,19 +52,4 @@ public class BillController {
     public void deleteMonthly(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestParam String month, @RequestParam String timeZone) {
         service.deleteMonthly(user(jwt), session(jwt), BillInput.id(id), month, timeZone);
     }
-    @PostMapping
-    public BillResponse create(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, Object> body) {
-        return service.create(user(jwt), session(jwt), body);
-    }
-    @PatchMapping("/{id}")
-    public BillResponse update(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestBody Map<String, Object> body) {
-        return service.update(user(jwt), session(jwt), BillInput.id(id), body);
-    }
-    @PutMapping("/{id}/payments/{month}")
-    public BillResponse pay(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @PathVariable String month, @RequestBody Map<String, Object> body) {
-        return service.pay(user(jwt), session(jwt), BillInput.id(id), BillInput.month(month), body);
-    }
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void remove(@AuthenticationPrincipal Jwt jwt, @PathVariable String id) { service.remove(user(jwt), session(jwt), BillInput.id(id)); }
 }

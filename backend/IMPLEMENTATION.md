@@ -17,9 +17,7 @@
 | 커뮤니티 (`/api/posts/**`, `/api/comments/**`, `/api/reports`) | 아래 [커뮤니티](#커뮤니티) 참고 |
 | GET `/api/me/settings` | 로그인 회원의 생활 설정 조회, 행이 없으면 기본값 |
 | PUT `/api/me/settings` | 월세·납부일·연월·알림·집 주소·동네 저장 |
-| GET/POST `/api/bills` | 월별 고정 지출 조회·항목 추가 |
-| PATCH/DELETE `/api/bills/{id}` | 기본 항목 수정·해지 |
-| PUT `/api/bills/{id}/payments/{month}` | 월별 납부 체크·금액 정정 |
+| `/api/bills/monthly/**` | 월별 고정 지출 조회·등록·수정·납부·해지·삭제 ([frontend/API.md 4-1](../frontend/API.md#4-1-월별-고정-지출-현재-화면이-쓰는-api)) |
 
 회원가입, 이메일 인증, 아이디 찾기와 비밀번호 재설정은 이메일 경로로 지원합니다. 구글·네이버·카카오 로그인은 공급자별 설정을 사용합니다.
 
@@ -62,23 +60,7 @@ $testPassword = Read-Host "Test password" -AsSecureString
 
 ## 고정 지출 API 확인
 
-기존 `bill_items`와 `bill_payments`를 사용하며 새 DDL은 없습니다. 백엔드 재시작 후 [Postman 컬렉션](postman/fixed-bills.postman_collection.json)을 Import하고 Variables의 baseUrl/loginId/password를 설정하세요. 1~11번 요청을 순서대로 실행하면 현재 한국 연월과 토큰을 자동 설정하고 테스트 항목 추가 → 납부 → 기본 금액 수정 → 당월 금액 정정 → 다음 달 예정액 → 오류 거절 → 해지·기록 보존을 검증합니다. 실행마다 별도 테스트 항목을 만들며 해지 후에도 DB 기록은 남습니다. 실제 출금 기능은 아닙니다.
-
-직접 추가하려면 Bearer Token으로 POST `/api/bills`에 다음 JSON을 보냅니다.
-
-```json
-{ "name": "관리비", "amount": 50000, "tag": "관리비" }
-```
-
-200 응답의 문자열 id를 사용하세요. GET `/api/bills?month=YYYY-MM`은 목록, PUT `/api/bills/{id}/payments/YYYY-MM`의 `{ "paid": true }`는 납부 체크, `{ "paid": false }`는 해제입니다. `{ "amount": 45000 }`만 보내면 해당 월 금액만 정정하고 납부 상태를 유지합니다. 반복 체크는 월별 행을 추가하지 않고 기존 paidAt을 유지합니다.
-
-PATCH `/api/bills/{id}`는 name/amount/tag 중 하나 이상을 수정합니다. 이름 1~30자, 분류 1~24자이며 앞뒤 공백을 제거합니다. 금액은 원 단위 정수 0~9007199254740991입니다. 같은 이름·분류의 활성 항목은 409입니다. 사용자 ID 등 다른 필드는 400, 남의 ID는 404입니다. 사용자 소유 행을 잠그고 세션을 재검증한 트랜잭션에서 저장합니다.
-
-**월별 금액 정책**: 항목 추가 때 당월 미납 스냅샷을 만듭니다. PATCH/해지 전에 당월 스냅샷이 없으면 기존 기본 금액으로 확정합니다. 기본 금액 수정은 기존 당월·과거 기록을 바꾸지 않으며 미생성 월의 예정액에 적용됩니다. 예: 기본 5만원 → PATCH 7만원이면 응답 amount=50000, defaultAmount=70000입니다. 당월도 바꾸려면 payments API의 amount를 명시하세요. 이름과 분류는 현재 항목의 값이며 과거 이름 스냅샷은 저장하지 않습니다.
-
-GET은 DB를 변경하지 않습니다. 일반 고정 지출은 과거 월에 저장된 스냅샷을 반환하고, 현재/미래 활성 항목은 스냅샷이 없으면 기본 금액의 예정액(snapshot=false)을 표시합니다. 사용자가 일반 항목의 과거 기록을 만들 때는 당시 amount를 명시해야 합니다. 미래 월 납부 저장은 400입니다. 월세와 별도 관리비에는 [계약 고정 지출 자동 등록](../frontend/API.md#계약-고정-지출-자동-등록) 정책이 적용됩니다.
-
-DELETE는 is_active=0으로 해지하며 실제 항목/납부 행은 삭제하지 않습니다. 기존 월 기록은 GET에 active=false로 남고 이미 있는 기록의 정정도 가능합니다. 해지 후 새 월 청구 생성·항목 수정은 404이고, 미래 월 예정액에서 제외됩니다. 같은 항목 DELETE 반복은 204입니다. **프론트 고정 지출 화면의 API 연결과 설문 관리비 자동 반영은 아직 별도 작업입니다.**
+**2026-11-28**: 화면이 쓰지 않던 예전 일반 고정 지출 API(`GET · POST /api/bills`, `PATCH · DELETE /api/bills/{id}`, `PUT /api/bills/{id}/payments/{month}`)와 그 Postman 컬렉션 · 테스트를 지웠습니다. 화면은 월별 API(`/api/bills/monthly/**`)만 쓰고, 동작 규칙은 [frontend/API.md 4장](../frontend/API.md#4-월세--고정-지출-)과 [계약 고정 지출 위키](../wiki/topics/fixed-expenses.md)에 있습니다. 월별 API 는 `BillMonthlyTests` · `BillMonthlyWriteTests` · `BillMonthlyDeleteTests` · `BillIntegrationTests`(납부 · 해지 · 동시 납부)로 확인합니다.
 
 ## 생활 설정 API 확인
 
@@ -223,7 +205,7 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 | GET `/api/events?from=&to=` | 내 일정 (기간 400일 이내, 없으면 전부 최대 10,000개). 매년 반복 기념일은 늘 포함 |
 | GET `/api/events/search?q=` | 제목 검색 (최근 것부터 100개) |
 | POST · PATCH · DELETE `/api/events/{id}` | `{ date, time, title, category, anniv, yearly, done, source }` — PATCH 는 보낸 칸만. 제목 60자, 시간 HH:MM 또는 ""(종일), `source` USER · RENT(만들 때만) |
-| PATCH `/api/events/{id}/done` | `{ done }` 완료 시각(`done_at`)은 완료로 바뀔 때만 적고 해제하면 지움 |
+| (완료 표시) | PATCH `/api/events/{id}` 에 `{ done }` — 완료 시각(`done_at`)은 완료로 바뀔 때만 적고 해제하면 지움. 예전 전용 경로 `/done` 은 2026-11-28 에 지움 |
 | GET · POST `/api/event-categories`, PATCH · DELETE `/{id}` | 처음 쓸 때 기본 5개 + 미분류 생성. 이름 20자, 같은 이름 409, 미분류는 바꾸기 · 지우기 400 |
 | GET · POST `/api/event-presets`, PATCH · DELETE `/{id}` | 직접 만든 항목. 같은 카테고리에 같은 이름이 있으면 POST 는 그것을 돌려주고 PATCH 는 409 |
 | GET `/api/trash-schedules?regionId=` | 동네(시 · 군 · 구) 쓰레기 배출표 (읽기만). 장소별 `[{ place, general, food, recycle }]`, 종류마다 `{ days: [1,3,5], startTime: "18:00" }`(0=일 ~ 6=토) 또는 `null`(그 종류는 배출 요일 없음). 배출표가 없는 동네 · 없는 번호는 `[]`, 숫자가 아닌 번호는 404 |

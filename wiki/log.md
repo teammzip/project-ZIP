@@ -422,3 +422,9 @@
 - Codex는 [AGENTS.md](../AGENTS.md)·[위키 AGENTS.md](AGENTS.md)를 읽고, Claude Code는 기본적으로 `CLAUDE.md`를 읽습니다. 2026-11-28 작업 대화에서 Claude Code 세션에 최상위 `AGENTS.md`가 처음부터 들어오지 않는 것을 확인했습니다.
 - 도구별로 자기 파일만 읽도록 [CLAUDE.md](../CLAUDE.md)와 [위키 CLAUDE.md](CLAUDE.md)를 추가했습니다. 내용은 AGENTS 파일과 같고, 안의 링크만 Claude 파일끼리 가리킵니다. 네 파일 맨 위에 짝 파일과 함께 고치라는 안내를 넣었고, [색인](index.md)에 두 파일의 관계를 적었습니다.
 - 할 일: 규칙을 고칠 때 AGENTS·CLAUDE 두 쌍을 같은 내용으로 유지해야 합니다. 어긋남을 자동으로 잡는 검사는 아직 없습니다.
+
+## [2026-11-28] record | 화면에서 쓰지 않는 API 6개 삭제
+
+- 결정(2026-11-28 작업 대화, 곽성미): 화면에서 부르지 않는 API 14개 중 "삭제 검토"로 분류한 6개를 지웠습니다. 예전 일반 고정 지출 5개(`/api/bills`, `/api/bills/{id}`, `/api/bills/{id}/payments/{month}`)와 일정 완료 전용 `PATCH /api/events/{id}/done`입니다. 화면은 각각 `/api/bills/monthly/**`와 `PATCH /api/events/{id}`의 `done`을 씁니다.
+- 지우기 전에 확인한 것: 프론트(모의 모드 포함)에서 부르는 곳이 없었습니다. 서비스 메서드는 이 API들만 썼습니다. 예전 API 테스트 중 월별 API에 없던 동시 납부 검사는 [월별 테스트](../backend/src/test/java/com/zip/backend/BillIntegrationTests.java)로 옮겼습니다.
+- 남은 일: 관리자 일괄 제재, 일정 검색, 홈 꿀팁 3개(DB `posts.is_home_tip`과 인덱스 포함), 생활 설정 2개는 팀 협의 후 결정합니다. 지역 목록은 유지합니다. [프론트 API 문서](../frontend/API.md) · [백엔드 구현 설명](../backend/IMPLEMENTATION.md#고정-지출-api-확인)
