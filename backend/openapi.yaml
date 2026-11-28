@@ -444,14 +444,6 @@ paths:
             schema: { $ref: '#/components/schemas/EventInput' }
       responses:
         '201': { description: 추가된 일정, content: { application/json: { schema: { $ref: '#/components/schemas/Event' } } } }
-  /api/events/search:
-    get:
-      tags: [일정 · 쓰레기 배출]
-      summary: 일정 검색
-      parameters:
-        - { name: q, in: query, required: true, schema: { type: string }, example: 월세 }
-      responses:
-        '200': { description: 찾은 일정, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Event' } } } } }
   /api/events/{id}:
     patch:
       tags: [일정 · 쓰레기 배출]
@@ -472,20 +464,6 @@ paths:
       responses:
         '204': { description: 삭제 완료 }
 
-  /api/trash-schedules:
-    get:
-      tags: [일정 · 쓰레기 배출]
-      summary: 동네(시군구)의 쓰레기 배출표 — 배출장소마다 생활쓰레기 · 음식물 · 재활용 배출 요일과 시작 시각 (전국생활쓰레기배출정보표준데이터)
-      parameters:
-        - { name: regionId, in: query, required: true, schema: { type: string } }
-      responses:
-        '200':
-          description: 배출표 (배출 없는 종류는 null, 없는 동네는 빈 배열)
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { $ref: '#/components/schemas/TrashSchedule' }
   /api/trash-schedules/me:
     get:
       tags: [일정 · 쓰레기 배출]
@@ -904,12 +882,6 @@ paths:
       responses:
         '204': { description: 집계 완료 }
         '404': { $ref: '#/components/responses/NotFound' }
-  /api/posts/home-tips:
-    get:
-      tags: [커뮤니티 · 첨부 · 신고]
-      summary: 기존 관리자 지정 글 목록 (is_home_tip)
-      responses:
-        '200': { description: 꿀팁 글, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Post' } } } } }
   /api/posts/{id}:
     get:
       tags: [커뮤니티 · 첨부 · 신고]
@@ -1639,23 +1611,6 @@ paths:
       parameters: [{ $ref: '#/components/parameters/Id' }]
       responses:
         '200': { description: 바뀐 회원, content: { application/json: { schema: { $ref: '#/components/schemas/Member' } } } }
-  /api/admin/sanctions/bulk:
-    post:
-      tags: [관리자 · 이용 정지]
-      summary: 여러 명 한꺼번에 조치
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              allOf:
-                - $ref: '#/components/schemas/SanctionInput'
-                - type: object
-                  required: [memberIds]
-                  properties:
-                    memberIds: { type: array, items: { type: string } }
-      responses:
-        '204': { description: 조치 완료 }
   /api/admin/posts:
     get:
       tags: [관리자 · 이용 정지]
@@ -1677,18 +1632,6 @@ paths:
         - { name: reason, in: query, schema: { type: string, maxLength: 60 }, description: 삭제 사유 }
       responses:
         '204': { description: 삭제 완료 }
-  /api/admin/posts/{id}/home-tip:
-    parameters: [{ $ref: '#/components/parameters/Id' }]
-    put:
-      tags: [관리자 · 이용 정지]
-      summary: 홈 꿀팁으로 지정 (is_home_tip)
-      responses:
-        '204': { description: 지정 완료 }
-    delete:
-      tags: [관리자 · 이용 정지]
-      summary: 홈 꿀팁 지정 풀기
-      responses:
-        '204': { description: 해제 완료 }
   /api/admin/posts/{id}/comments:
     post:
       tags: [관리자 · 이용 정지]
@@ -1775,16 +1718,6 @@ paths:
       parameters:
         - { name: targetType, in: query, required: true, schema: { type: string, enum: [POST, COMMENT] } }
         - { name: targetId, in: query, required: true, schema: { type: string } }
-      requestBody:
-        required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/ReportStatusInput' } } }
-      responses:
-        '204': { description: 처리 완료 }
-  /api/admin/reports/{id}:
-    patch:
-      tags: [관리자 · 이용 정지]
-      summary: 신고 하나 처리
-      parameters: [{ $ref: '#/components/parameters/Id' }]
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/ReportStatusInput' } } }

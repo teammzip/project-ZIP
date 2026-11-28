@@ -205,11 +205,6 @@ public class CommunityRepository {
         sql.append(") DESC, ");
     }
 
-    public List<PostRow> homeTips(long viewerId, int limit) {
-        return jdbc.query(POST_SQL + " WHERE p.status = 'VISIBLE' AND p.is_home_tip = 1 ORDER BY p.created_at DESC, p.id DESC LIMIT ?",
-            CommunityRepository::post, viewerId, viewerId, limit);
-    }
-
     public List<PostRow> popularPosts(long viewerId, long regionId, int limit) {
         return jdbc.query(POST_SQL + """
             WHERE p.region_id = ? AND p.status = 'VISIBLE'
@@ -409,9 +404,6 @@ public class CommunityRepository {
 
     // ---------- 관리자 (/api/admin/**) ----------
 
-    public void setHomeTip(long postId, boolean on) {
-        jdbc.update("UPDATE posts SET is_home_tip = ? WHERE id = ?", on, postId);
-    }
 
     /** 신고 처리 상태 바꾸기 (대상 하나에 들어온 접수 중 신고 전부). 바뀐 줄 수 */
     public int resolveReports(String type, long targetId, String status, long adminId, Instant now) {
@@ -432,11 +424,6 @@ public class CommunityRepository {
 
     /** 신고 대상 (종류 POST · COMMENT, 번호) */
     public record TargetRef(String type, long id) {}
-
-    public Optional<TargetRef> reportTargetOf(long reportId) {
-        return jdbc.query("SELECT target_type, target_id FROM reports WHERE id = ?", (rs, row) -> new TargetRef(rs.getString(1), rs.getLong(2)), reportId)
-            .stream().findFirst();
-    }
 
     /** 숨김: 글이면 HIDDEN, 댓글이면 HIDDEN + 댓글 수 줄이기 (이미 안 보이면 그대로) */
     public void hideTarget(String type, long targetId, long adminId, String reason) {

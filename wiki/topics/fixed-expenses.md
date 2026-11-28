@@ -43,4 +43,4 @@ PR #132의 격리 MySQL·WebKit 검증에서 계약월 월세·별도 관리비 
 
 2026-11-26 `dev` `6bdff48` 기준으로 [OpenAPI](../../backend/openapi.yaml)의 `SalarySettings` 스키마와 [월급 응답 DTO](../../backend/src/main/java/com/zip/backend/ledger/SalarySettingsResponse.java)를 대조했습니다. 칸 6개(`amount`·`incomePeriod`·`monthlyAmount`·`paymentDay`·`startMonth`·`draft`)가 같고, 초안이 없으면 `draft`를 생략하는 점도 일치합니다. 같은 날의 OpenAPI 변경(인증 메일·사진 업로드의 429 응답, 글 목록 설명)은 월급 경로에 영향이 없습니다.
 
-2026-11-28 확인: [OpenAPI](../../backend/openapi.yaml)와 [공용 API 문서](../../frontend/API.md)의 이번 변경(글 목록 `GET /api/posts`의 `regionId`, AI 대화 목록을 AI 화면으로 옮김, "다른 동네 둘러보기" 이름 변경)은 고정 지출·월세·월급 API에 영향이 없습니다.
+2026-11-28 확인: [OpenAPI](../../backend/openapi.yaml)와 [공용 API 문서](../../frontend/API.md)의 이번 변경(글 목록 `GET /api/posts`의 `regionId`, AI 대화 목록을 AI 화면으로 옮김, "다른 동네 둘러보기" 이름 변경)은 고정 지출·월세·월급 API에 영향이 없습니다. 같은 날 미호출 API 7개 삭제(홈 꿀팁 3·관리자 일괄 정지·신고 ID 처리·일정 검색·지역 번호 배출표)도 고정 지출·월세·월급 API에 영향이 없습니다.

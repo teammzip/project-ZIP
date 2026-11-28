@@ -48,14 +48,6 @@ public class AdminCommunityController {
         return community.adminComment(adminId(jwt), id, input);
     }
 
-    @PutMapping("/posts/{id}/home-tip")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void addHomeTip(@PathVariable String id) { community.adminHomeTip(id, true); }
-
-    @DeleteMapping("/posts/{id}/home-tip")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void removeHomeTip(@PathVariable String id) { community.adminHomeTip(id, false); }
-
     @GetMapping("/reports")
     public List<Map<String, Object>> reports(@RequestParam(required = false) String status) { return community.adminReports(status); }
 
@@ -65,11 +57,5 @@ public class AdminCommunityController {
     public void resolveTarget(@AuthenticationPrincipal Jwt jwt, @RequestParam String targetType, @RequestParam String targetId,
         @RequestBody(required = false) Resolution body) {
         community.adminResolve(adminId(jwt), targetType, targetId, body == null ? null : body.status());
-    }
-
-    @PatchMapping("/reports/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void resolveReport(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestBody(required = false) Resolution body) {
-        community.adminResolveReport(adminId(jwt), id, body == null ? null : body.status());
     }
 }

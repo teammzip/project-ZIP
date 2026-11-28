@@ -38,12 +38,6 @@ public class ModerationController {
         return moderation.sanction(userId(jwt), id, input);
     }
 
-    @PostMapping("/api/admin/sanctions/bulk")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void bulk(@AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) ModerationService.BulkInput input) {
-        moderation.bulk(userId(jwt), input);
-    }
-
     @DeleteMapping("/api/admin/members/{id}/sanctions/active")
     public Map<String, Object> unban(@AuthenticationPrincipal Jwt jwt, @PathVariable String id,
         @RequestBody(required = false) UnbanInput input) {

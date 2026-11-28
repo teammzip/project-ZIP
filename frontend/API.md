@@ -257,11 +257,9 @@ PATCH `/api/auth/me`는 프로필 수정, [소셜 첫 약관 동의](#소셜-로
 | 메서드 | 주소 | 보내는 값 | 받는 값 |
 |---|---|---|---|
 | GET | `/api/events?from=2026-10-01&to=2026-10-31` | — | `[event]` |
-| GET | `/api/events/search?q=월세` | — | `[event]` (상단 검색) |
 | POST | `/api/events` | `{ date, time, title, category, anniv, yearly }` | `event` |
 | PATCH | `/api/events/{id}` | `{ date, time, title, category, anniv, yearly, done }` 중 바꿀 것 (완료 표시도 여기로. 예전 `/done` 경로는 2026-11-28에 지움) | `event` |
 | DELETE | `/api/events/{id}` | — | — |
-| GET | `/api/trash-schedules?regionId=2` | — | `[{ place, general: { days: [1,3,5], startTime: "18:00" } \| null, food, recycle }]` (장소 한 줄에 종류별 요일 · 시각, 배출 없는 종류는 `null`) |
 | GET | `/api/trash-schedules/me` | — | `{ regionName, items }`. 내 집 주소가 비어 있으면 회원 주소를 사용해 시·군·구를 찾아요. 지역을 찾지 못하면 `regionName: null`, 배출표가 없으면 `items: []`예요. `items`는 위 배출표와 같은 형식이에요. |
 | GET | `/api/event-categories` | — | `[{ id, name, ico, items: ["에어컨 필터 청소", …] }]` (기본 5개 + 내가 만든 것 + 미분류) |
 | POST | `/api/event-categories` | `{ name }` | `category` |
@@ -458,7 +456,6 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | GET | `/api/posts/popular` | — | `[post]` (내 동네 공개 글, 조회 수순 최대 3개) |
 | GET | `/api/posts/neighbors` | — | `{ region: { id, name, sido } \| null, neighbors: [{ id, name, sido }] }` — "주변 동네" 탭 안내. 내 동네(`users.region_id`, 주거 설문 · 내 정보 주소로 정해짐)와 이웃 동네(`region_neighbors`, 같은 시 · 도 먼저 · 이름 순). `scope=near` 글 목록과 같은 기준. 동네가 없으면 `region: null` |
 | POST | `/api/posts/{id}/views` | — | 204 (공개 글 상세를 열 때 조회 수 1 증가) |
-| GET | `/api/posts/home-tips` | — | `[post]` (기존 관리자 지정 글 API) |
 | GET | `/api/posts/{id}` | — | `post` (댓글 포함) |
 | POST | `/api/posts` | `{ category, title, body, attachmentIds }` | `post` |
 | PATCH | `/api/posts/{id}` | `{ category, title, body, attachmentIds }` | `post` (내 글만) |
@@ -637,12 +634,10 @@ PUT `/api/bills/monthly/{id}/payment?month=YYYY-MM&timeZone=Asia/Seoul`에 `{pai
 | GET | `/api/admin/members?q=&status=&minBans=&minWarns=&sort=&page=0` | — | `{ items: [member], hasNext }` |
 | GET | `/api/admin/members/{id}/sanctions` | — | `[sanction]` (조치 이력) |
 | POST | `/api/admin/members/{id}/sanctions` | `{ type, days, reason }` | `member` |
-| POST | `/api/admin/sanctions/bulk` | `{ memberIds, type, days, reason }` | — (여러 명 한꺼번에) |
 | DELETE | `/api/admin/members/{id}/sanctions/active` | — (정지 해제) | `member` |
 | GET | `/api/admin/posts?category=&regionId=&q=&page=0` | — | `{ items: [post], hasNext }` (댓글 포함) |
 | DELETE | `/api/admin/posts/{id}?reason=` · `/api/admin/comments/{id}?reason=` | — (사유는 쿼리로, 200자. `delete_reason` 에 저장) | — |
 | GET | `/api/admin/reports?status=RECEIVED` | — | `[report]` |
-| PATCH | `/api/admin/reports/{id}` | `{ status: "HIDDEN" \| "DISMISSED" }` | — |
 
 ```json
 { "id": "3", "nickname": "청소고수", "username": "cleanking", "joinedAt": "2026-05-15",
