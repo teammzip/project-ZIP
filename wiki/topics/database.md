@@ -38,7 +38,7 @@
 같은 SQL과 파라미터가 동일한 실행 계획으로 처리되면 MySQL 내부 작업량은 비슷할 것으로 예상합니다. 요청 전체에서는 SQL 실행 횟수, 읽어 오는 행과 컬럼, 애플리케이션의 결과 매핑과 JPA 엔티티 관리 비용을 비교합니다. JPA 전환에서는 연관 행별 추가 조회와 페이지 전체 건수를 세는 쿼리를 확인합니다. MyBatis에서 중첩 조회를 사용해도 행별 SQL이 생길 수 있습니다. [Hibernate 연관관계 조회](https://docs.hibernate.org/stable/orm/introduction/html_single/#association-fetching) · [Spring Data 페이지 조회](https://docs.spring.io/spring-data/jpa/reference/repositories/query-methods-details.html) · [MyBatis 결과 매핑](https://mybatis.org/mybatis-3/sqlmap-xml.html)
 
 - 가계부 수입은 월별 목록 SQL과 월급 동기화의 비용을 함께 측정합니다. 동기화는 회원 행을 잠그고, 월급이 설정돼 있으면 설정 시작월부터 납부일이 지난 달마다 등록 여부를 조회합니다. 신규 행을 연결할 때의 조회 비용은 [가계부·월급 등록의 생성 키](ledger-memos.md#가계부월급-등록의-생성-키)를 참고하세요. [가계부 기록과 회원별 분류](ledger-memos.md#가계부-기록과-회원별-분류) · [월급 동기화](../../backend/src/main/java/com/zip/backend/ledger/SalaryService.java)
-- 공지 목록은 JSON에서 본문을 생략하며, 현재 공통 SQL은 `n.body`를 읽습니다. 목록에서 본문 컬럼을 제외하는 비교는 JDBC에서도 가능합니다. 다수 회원에게 공지 알림을 보내는 경로는 현재 한 번의 `INSERT … SELECT`를 실행합니다. 커뮤니티는 페이지 크기보다 한 행을 더 조회해 다음 페이지 유무를 확인하므로 전체 건수 조회가 추가되는지 비교합니다. [공지 저장소](../../backend/src/main/java/com/zip/backend/notice/NoticeRepository.java) · [공지 응답](../../backend/src/main/java/com/zip/backend/notice/NoticeService.java) · [커뮤니티 목록](../../backend/src/main/java/com/zip/backend/community/CommunityService.java)
+- [공지 응답 DTO](community-operations.md#공지-응답-dto)를 적용한 뒤에도 공통 SQL은 목록 조회에서 `n.body`를 읽습니다. 목록에서 본문 컬럼을 제외하는 비교는 JDBC에서도 가능합니다. 다수 회원에게 공지 알림을 보내는 경로는 현재 한 번의 `INSERT … SELECT`를 실행합니다. 커뮤니티는 페이지 크기보다 한 행을 더 조회해 다음 페이지 유무를 확인하므로 전체 건수 조회가 추가되는지 비교합니다. [공지 저장소](../../backend/src/main/java/com/zip/backend/notice/NoticeRepository.java) · [커뮤니티 목록](../../backend/src/main/java/com/zip/backend/community/CommunityService.java)
 - 같은 MySQL 버전·데이터·동시 요청 조건에서 API 응답 중앙값과 p95, 요청당 SQL 횟수, 주요 조회의 `EXPLAIN ANALYZE` 결과를 비교합니다. `c3ed411`의 경로를 정적으로 확인했으며 전환 전후 응답 시간과 실행 계획은 측정하지 않았습니다. [MySQL 실행 계획 안내](https://dev.mysql.com/doc/refman/8.4/en/explain.html)
 
 ### 도입을 판단하는 기준
@@ -88,6 +88,8 @@
 통합 SQL은 구형 컬럼(`is_anniv`, `is_yearly`)만 있으면 값을 보존하며 `is_anniversary`, `repeat_yearly`로 이름을 바꿉니다. 두 쌍이 모두 있으면 모든 행의 값이 일치할 때만 구형 컬럼을 제거합니다. 값이 다르거나 컬럼 쌍이 불완전하면 사전 검사에서 중단됩니다. 신규 설치·구형 DB 전환·재실행 검증 결과는 변경 기록에 남아 있습니다. [통합 SQL](../../db/migrations/20261031_02_event_anniversaries.sql) · [격리 검증 코드](../../db/tests/run-isolated-mysql.cjs)
 
 ## DB 검증 결과
+
+`b20bc2c` 기준 작업 트리에 [Testcontainers MySQL 검사](../../db/tests/README.md#testcontainers-통합-검사)를 추가했습니다. PR의 `mysql` 작업은 배포용과 동일한 Flyway 실행 코드로 신규 설치·재실행, `V4` 기준 등록과 데이터 보존, 불완전한 DB의 거절을 검사합니다. 동일한 컨테이너의 신규 DB에 Spring API를 연결해 메모 폴더 JPA와 JDBC 연결 해제까지 확인합니다. [Gradle 작업](../../backend/build.gradle) · [PR 검사](../../.github/workflows/test.yml) · [MySQL 통합 테스트](../../backend/src/test/java/com/zip/backend/tools/MySqlIntegrationTests.java)
 
 2026-11-24에 개발용 실제 DB를 새 `schema.sql` DB와 `information_schema`로 비교해 남은 차이 두 개를 맞췄습니다. `bill_photo_drafts`의 대화 외래 키 인덱스 이름을 `bill_photo_drafts_ibfk_2`로 바꾸고, `loan_interest_charges.paid_at` 설명을 `schema.sql` 문구로 통일했습니다. 앞으로 업그레이드하는 DB도 같은 설명이 되도록 [이자 납부 시각 마이그레이션](../../db/migrations/20261118_07_contract_payment_changes.sql)의 문구도 맞췄습니다. 마이그레이션으로 추가된 칸은 표 끝에 붙어 칸 순서만 다를 수 있습니다. [마이그레이션 안내](../../db/migrations/README.md)의 끝에 붙어 있던 옛 안내문 중복도 정리했습니다.
 

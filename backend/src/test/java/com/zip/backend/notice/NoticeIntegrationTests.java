@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.jayway.jsonpath.JsonPath;
+import java.sql.Timestamp;
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
@@ -54,7 +57,8 @@ class NoticeIntegrationTests {
 
     private String create(String title, boolean pinned, boolean notify) throws Exception {
         var body = "{\"title\":\"" + title + "\",\"body\":\"첫 줄\\n둘째 줄\",\"pinned\":" + pinned + ",\"notify\":" + notify + "}";
-        return JsonPath.read(call(admin, post("/api/admin/notices"), body).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+        return JsonPath.read(call(admin, post("/api/admin/notices"), body).andExpect(status().isCreated())
+            .andExpect(jsonPath("$.body").value("첫 줄\n둘째 줄")).andReturn().getResponse().getContentAsString(), "$.id");
     }
 
     @Test void adminWritesMembersRead() throws Exception {
@@ -64,17 +68,43 @@ class NoticeIntegrationTests {
             .andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[0].id").value(pinned)) // 고정 먼저
             .andExpect(jsonPath("$[0].pinned").value(true))
-            .andExpect(jsonPath("$[1].body").doesNotExist()); // 목록엔 내용 없음
+            .andExpect(jsonPath("$[1].body").doesNotHaveJsonPath()); // 목록엔 내용 없음
         call(member, get("/api/notices/{id}", first), null).andExpect(status().isOk())
             .andExpect(jsonPath("$.body").value("첫 줄\n둘째 줄"))
             .andExpect(jsonPath("$.author").value("운영자"));
 
         call(admin, patch("/api/admin/notices/{id}", first), "{\"title\":\"점검 안내 (변경)\",\"body\":\"새 내용\",\"pinned\":true}")
-            .andExpect(status().isOk()).andExpect(jsonPath("$.title").value("점검 안내 (변경)")).andExpect(jsonPath("$.pinned").value(true));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.title").value("점검 안내 (변경)"))
+            .andExpect(jsonPath("$.body").value("새 내용")).andExpect(jsonPath("$.pinned").value(true));
         call(admin, delete("/api/admin/notices/{id}", pinned), null).andExpect(status().isNoContent());
         call(member, get("/api/notices/{id}", pinned), null).andExpect(status().isNotFound());
         call(admin, delete("/api/admin/notices/{id}", pinned), null).andExpect(status().isNotFound());
         call(member, get("/api/notices/abc"), null).andExpect(status().isNotFound());
+    }
+
+    @Test void noticeResponsesKeepTheirJsonContract() throws Exception {
+        Timestamp createdAt = Timestamp.from(Instant.parse("2026-11-21T02:00:00Z"));
+        Timestamp updatedAt = Timestamp.from(Instant.parse("2026-11-21T03:00:00Z"));
+        jdbc.update("""
+            INSERT INTO notices (id, title, body, is_pinned, is_popup, created_at, updated_at)
+            VALUES (42, '점검 안내', '본문', FALSE, TRUE, ?, ?)
+            """, createdAt, updatedAt);
+
+        String summary = """
+            {"id":"42","title":"점검 안내","pinned":false,"popup":true,"author":"운영자",
+             "createdAt":"2026-11-21T02:00:00Z","updatedAt":"2026-11-21T03:00:00Z"}
+            """;
+        String full = """
+            {"id":"42","title":"점검 안내","body":"본문","pinned":false,"popup":true,"author":"운영자",
+             "createdAt":"2026-11-21T02:00:00Z","updatedAt":"2026-11-21T03:00:00Z"}
+            """;
+        call(member, get("/api/notices"), null).andExpect(status().isOk())
+            .andExpect(content().json("[" + summary + "]", JsonCompareMode.STRICT))
+            .andExpect(jsonPath("$[0].id").isString());
+        call(member, get("/api/notices/{id}", 42), null).andExpect(status().isOk())
+            .andExpect(content().json(full, JsonCompareMode.STRICT));
+        call(member, get("/api/notices/popups"), null).andExpect(status().isOk())
+            .andExpect(content().json("[" + full + "]", JsonCompareMode.STRICT));
     }
 
     @Test void popupNoticesComeWithBodyNewestFirst() throws Exception {
