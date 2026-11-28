@@ -5,6 +5,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.jayway.jsonpath.JsonPath;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -62,6 +66,36 @@ class NotificationIntegrationTests {
 
     private ResultActions notis(String token) throws Exception {
         return call(token, get("/api/notifications"), null).andExpect(status().isOk());
+    }
+
+    @Test void listPreservesStringIdsAndExplicitNullFields() throws Exception {
+        var notifyAt = Timestamp.from(Instant.parse("2026-01-02T03:04:05Z"));
+        jdbc.update("""
+            INSERT INTO notifications (id, user_id, noti_type, title, body, link_view, ref_id, notify_at, read_at)
+            VALUES (11, 1, 'TRASH', '기존 배출일 알림', NULL, NULL, NULL, ?, NULL),
+                   (12, 1, 'SYSTEM', '공지 알림', '공지 내용', 'notice', 9007199254740993, ?, ?)
+            """, notifyAt, notifyAt, notifyAt);
+
+        notis(writer).andExpect(content().json("""
+            {"items":[
+              {"id":"12","type":"SYSTEM","title":"공지 알림","body":"공지 내용","link":"notice",
+               "refId":"9007199254740993","notifyAt":"2026-01-02T03:04:05Z","read":true},
+              {"id":"11","type":"TRASH","title":"기존 배출일 알림","body":null,"link":null,
+               "refId":null,"notifyAt":"2026-01-02T03:04:05Z","read":false}
+            ],"unreadCount":1}
+            """, JsonCompareMode.STRICT));
+    }
+
+    @Test void unreadCountIncludesNotificationsBeyondTheListLimit() throws Exception {
+        jdbc.batchUpdate("""
+            INSERT INTO notifications (user_id, noti_type, title, notify_at)
+            VALUES (1, 'SYSTEM', '알림', TIMESTAMP '2020-01-01 07:00:00')
+            """, Collections.nCopies(101, new Object[0]));
+
+        notis(writer).andExpect(jsonPath("$.items.length()").value(100))
+            .andExpect(jsonPath("$.unreadCount").value(101));
+        call(writer, get("/api/notifications").param("status", "read"), null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.items").isEmpty()).andExpect(jsonPath("$.unreadCount").value(101));
     }
 
     @Test void commentsAndRepliesNotifyTheRightPeople() throws Exception {

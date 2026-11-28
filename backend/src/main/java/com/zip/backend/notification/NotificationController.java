@@ -1,6 +1,5 @@
 package com.zip.backend.notification;
 
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -17,7 +16,7 @@ public class NotificationController {
 
     /** status: all · unread · read → { items, unreadCount } */
     @GetMapping("/api/notifications")
-    public Map<String, Object> list(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String status) {
+    public NotificationListResponse list(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String status) {
         return notifications.list(userId(jwt), status);
     }
 

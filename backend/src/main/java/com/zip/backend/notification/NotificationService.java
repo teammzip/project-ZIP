@@ -4,9 +4,7 @@ import com.zip.backend.common.ApiException;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
@@ -15,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 알림 (frontend/API.md 6장). 서버가 아는 일이 생기면 받는 사람에게 한 줄을 만들어요:
  * 내 글 댓글 · 내 댓글 답글 · 운영자 댓글 · 운영자가 지우거나 숨긴 글 · 댓글 · 경고 · 문의 답변.
- * 일정 알림은 목록을 조회할 때 갱신하고 쓰레기 배출 · 월세 알림은 서버 스케줄러가 저장해요.
+ * 일정 알림은 목록을 조회할 때 갱신하고 월세 알림은 서버 스케줄러가 저장해요.
  */
 @Service
 public class NotificationService {
@@ -42,15 +40,15 @@ public class NotificationService {
     public record ReadInput(List<String> ids) {}
 
     @Transactional
-    public Map<String, Object> list(long userId, String status) {
+    public NotificationListResponse list(long userId, String status) {
         var filter = status == null || status.isBlank() ? "all" : status;
         if (!STATUSES.contains(filter)) throw new ApiException(400, "status 는 all, unread, read 중 하나예요.");
         life.sync(userId);
         var now = clock.instant();
         repository.dismissSettledRent(userId, now);
         var read = filter.equals("all") ? null : filter.equals("read");
-        var items = repository.list(userId, read, now, LIST_MAX).stream().map(NotificationService::noti).toList();
-        return Map.of("items", items, "unreadCount", repository.unreadCount(userId, now));
+        var items = repository.list(userId, read, now, LIST_MAX).stream().map(NotificationService::toItem).toList();
+        return new NotificationListResponse(items, repository.unreadCount(userId, now));
     }
 
     /** 읽음: ids 가 비면 전부 */
@@ -103,16 +101,8 @@ public class NotificationService {
         return value.length() <= max ? value : value.substring(0, max);
     }
 
-    private static Map<String, Object> noti(NotificationRepository.NotiRow n) {
-        var result = new LinkedHashMap<String, Object>();
-        result.put("id", Long.toString(n.id()));
-        result.put("type", n.type());
-        result.put("title", n.title());
-        result.put("body", n.body());
-        result.put("link", n.link());
-        result.put("refId", n.refId() == null ? null : Long.toString(n.refId()));
-        result.put("notifyAt", n.notifyAt().toString());
-        result.put("read", n.read());
-        return result;
+    private static NotificationListResponse.Item toItem(NotificationRepository.NotiRow row) {
+        return new NotificationListResponse.Item(Long.toString(row.id()), row.type(), row.title(), row.body(), row.link(),
+            row.refId() == null ? null : Long.toString(row.refId()), row.notifyAt().toString(), row.read());
     }
 }
