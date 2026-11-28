@@ -814,11 +814,7 @@ paths:
           description: 알림
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  items: { type: array, items: { $ref: '#/components/schemas/Notification' } }
-                  unreadCount: { type: integer }
+              schema: { $ref: '#/components/schemas/NotificationList' }
     delete:
       tags: [알림]
       summary: 읽은 알림 지우기
@@ -2618,14 +2614,25 @@ components:
             incomePeriod: { type: string, enum: [monthly, annual] }
 
     # 알림
+    NotificationList:
+      type: object
+      required: [items, unreadCount]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          description: 상태 필터에 맞는 알림을 최신순으로 반환합니다.
+          items: { $ref: '#/components/schemas/Notification' }
+        unreadCount: { type: integer, minimum: 0, description: '상태 필터와 목록 상한에 관계없는 전체 미읽음 수' }
     Notification:
       type: object
+      required: [id, type, title, body, link, refId, notifyAt, read]
       properties:
         id: { type: string }
         type: { type: string, enum: [EVENT, TRASH, RENT, BILL, COMMUNITY, SYSTEM], description: 'TRASH(쓰레기 배출일 알림)는 2026-11-28 에 없앰. 그 전에 만들어진 알림만 남아 있을 수 있음' }
         title: { type: string, example: 월세 납부일이 3일 남았어요 }
-        body: { type: string, example: 매월 15일 · 55만원 }
-        link: { type: string, example: budget }
+        body: { type: string, nullable: true, example: 매월 15일 · 55만원 }
+        link: { type: string, nullable: true, example: budget }
         refId: { type: string, nullable: true }
         notifyAt: { type: string, format: date-time }
         read: { type: boolean }

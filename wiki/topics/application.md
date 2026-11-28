@@ -68,7 +68,7 @@ flowchart LR
 
 ### DTO 적용 검토
 
-2026-11-26에 `backend`의 `8f2c998`과 커뮤니티 검색 작업 트리를 기준으로 컨트롤러·서비스와 프론트 타입을 대조했습니다. 생활 API에 이어 인증의 공통 회원 응답에도 DTO를 적용했습니다.
+2026-11-28에 로컬 `backend`의 `0a25818`에서 컨트롤러·서비스와 프론트 타입을 대조한 여섯 영역에, [PR #153](https://github.com/teammzip/project-ZIP/pull/153)의 지도·장소 리뷰 응답을 추가했습니다. 알림 목록 DTO는 `6c6079e`를 기준으로 작업 트리에 적용했습니다.
 
 | 상태 | 경계 | 적용 이유 |
 | --- | --- | --- |
@@ -79,19 +79,23 @@ flowchart LR
 | 적용 완료 | 커뮤니티 게시글 목록·상세 응답 | [게시글 응답 DTO](community-operations.md#게시글-응답-dto) |
 | 적용 완료 | 월급 설정·설문 월급 초안 응답 | 마이페이지 수입 정보의 조회·저장에 `SalarySettingsResponse`를 사용합니다. [월급 설정 응답 DTO](fixed-expenses.md#월급-설정-응답-dto) |
 | 적용 완료 | 지도·장소 리뷰 응답 11곳 (2026-11-27) | 장소 목록·분류·AI 검색·저장 리스트·카카오 즐겨찾기·지도 설정은 `PlaceResponse`와 그 안의 `record`로 바꿨습니다. 리뷰 목록·별점 요약·관리자 리뷰 신고는 `PlaceReviewResponse`로 바꿨습니다. 장소의 주소·전화·영업시간·별점과 작성자 프로필은 값이 없으면 키를 생략하지 않고 `null`을 보냅니다. 응답 모양 테스트를 바꾸기 전에 만들어 같은 테스트로 확인했습니다. 임시 MySQL 8.0에서 바꾸기 전·후 서버의 응답 24개를 비교한 결과, 칸 순서 말고는 같았습니다. 지도 설정은 MySQL 전용 문법이라 이 비교로 확인했습니다. [지도 응답 DTO](map-place-ids.md#지도-응답-dto) |
+| 적용 완료 | 알림 목록 응답 (2026-11-28) | [알림 목록 DTO와 기존 응답 계약](calendar-notifications.md#알림-목록-응답-dto-검토) |
 
 로그인·가입·일정·일반 메모와 가계부 분류 요청은 기존 `record`를 활용할 수 있습니다. 약관 응답도 이미 타입이 있습니다. 회원 게시글 수처럼 작은 고정 응답과 월별 수입 합계처럼 월이 키인 `Map<String, Long>`은 현재 표현으로 충분합니다. 내부 JDBC 행과 서비스 값은 공개 응답에서 의미나 필드가 달라질 때 분리합니다. 프로필 PATCH는 필드 생략과 명시적 `null`을 구별하는 현재 파서를 유지하는 것이 적합합니다. [일반 메모 입력](../../backend/src/main/java/com/zip/backend/memo/MemoService.java) · [가계부 분류](../../backend/src/main/java/com/zip/backend/ledger/LedgerCategoryService.java) · [약관 응답](../../backend/src/main/java/com/zip/backend/legal/TermsController.java) · [프로필 PATCH](../../backend/src/main/java/com/zip/backend/auth/ProfilePatch.java)
 
+알림 받기 설정의 서버 저장은 기존 `SettingsInput`과 `SettingsResponse`를 사용합니다. 내 집 정보 응답도 `SettingsResponse`를 공유하므로 스위치 저장·복원만으로 새 응답 DTO가 필요하지 않습니다. [생활 설정 컨트롤러](../../backend/src/main/java/com/zip/backend/settings/SettingsController.java) · [알림 설정 저장·복원](home-info.md#내-집-정보와-첫-주거-설문의-dto)
+
 #### 후속 DTO 후보
 
-2026-11-27에 `backend`의 `e543b6b`를 기준으로 확인했습니다. 아래 후보는 서버가 고정된 JSON 필드를 `Map<String, Object>`로 조립하고 프론트가 그 구조를 별도 타입으로 읽는 경계입니다.
+아래 후보는 서버가 고정된 JSON 필드를 `Map<String, Object>`로 조립하고 프론트가 해당 응답을 별도 타입으로 읽는 경계입니다.
 
 | 우선순위 | 경계 | 함께 검증할 계약 |
 | --- | --- | --- |
-| 높음 | 일정 목록·검색·저장 응답, 알림 목록 응답 | 일정의 문자열 ID, 비어 있는 시간, 반복 필드와 알림의 `items`·`unreadCount`·선택 연결 값. [일정 응답 조립](../../backend/src/main/java/com/zip/backend/calendar/CalendarService.java#L302) · [알림 응답 조립](../../backend/src/main/java/com/zip/backend/notification/NotificationService.java#L45) |
+| 높음 | 일정 목록·검색·등록·수정 응답 | 같은 일정 형식을 공유합니다. 문자열 ID, 종일 일정의 `time: ""`, 미분류 `category: null`, 반복 필드와 서버의 `source`를 보존합니다. 완료 상태는 일반 수정 응답에 포함됩니다. [일정 응답 조립](../../backend/src/main/java/com/zip/backend/calendar/CalendarService.java) · [프론트 일정 동기화](../../frontend/src/features/life/calendarSync.ts) |
 | 높음 | 메모 목록·저장 응답 | 체크리스트 `items`, 가계부 연결·초안, 폴더 ID의 `null` 계약. [메모 응답 조립](../../backend/src/main/java/com/zip/backend/memo/MemoService.java#L210) · [프론트 메모 동기화](../../frontend/src/features/memo/sync.ts) |
 | 후속 | 관리자 회원·제재 이력과 고객센터 문의 응답 | 페이지의 `items`·`hasNext`, 제재 종료·해제 시각, 미답변 문의의 `answer: null`. [회원·제재 응답](../../backend/src/main/java/com/zip/backend/moderation/ModerationService.java#L47) · [문의 응답](../../backend/src/main/java/com/zip/backend/support/SupportService.java#L99) |
 | 후속 | AI 대화 목록·메시지 응답 | 메시지 ID·역할·본문·시각과 선택 `card`는 공통 응답 타입으로 표현할 수 있습니다. `card.data`는 카드 유형별 구조를 보존합니다. [AI 응답 조립](../../backend/src/main/java/com/zip/backend/ai/AiService.java#L210) |
+| 후속 | 공지 목록·상세·팝업 응답 | 목록은 `body`를 생략하고 상세·팝업·저장 응답은 `body`를 포함합니다. 기존 공지 작성 요청은 `NoticeInput`을 사용합니다. [공지 응답 조립](../../backend/src/main/java/com/zip/backend/notice/NoticeService.java#L85) · [프론트 공지 조회](../../frontend/src/features/notice/api.ts) |
 
 월별 고정 지출은 서비스가 검증한 입력을 `BillInput`의 `record`로 이미 다룹니다. HTTP 컨트롤러에서 받는 원본 `Map`을 바꿀 때는 금액의 JSON 자료형과 허용 필드 규칙을 테스트로 보존합니다. [월별 입력](../../backend/src/main/java/com/zip/backend/bills/BillInput.java) · [월별 저장 API](../../backend/src/main/java/com/zip/backend/bills/BillController.java#L33)
 
@@ -103,7 +107,7 @@ flowchart LR
 
 #### 월별 고정 지출과 가계부의 DTO 도입 시 확인할 동작
 
-- 월별 고정 지출의 등록·수정은 `200`과 저장한 청구를 반환합니다. 조회 응답의 미납 `paidAt: null`과 `snapshot`을 보존합니다. 사진 고지서 확정도 `registerMonthly`를 호출하므로 같은 등록 검증을 사용할 수 있게 입력 변환을 확인합니다. [월별 API](../../backend/src/main/java/com/zip/backend/bills/BillController.java) · [사진 고지서 등록](../../backend/src/main/java/com/zip/backend/bills/BillService.java#L268) · [월별 등록 통합 테스트](../../backend/src/test/java/com/zip/backend/BillMonthlyWriteTests.java)
+- 월별 고정 지출의 등록·수정은 `200`과 저장한 청구를 반환합니다. 조회 응답의 미납 `paidAt: null`과 `snapshot`을 보존합니다. 사진 고지서 확정도 `registerMonthly`를 호출하므로 같은 등록 검증을 사용할 수 있게 입력 변환을 확인합니다. [월별 API](../../backend/src/main/java/com/zip/backend/bills/BillController.java) · [사진 고지서 등록](../../backend/src/main/java/com/zip/backend/bills/BillService.java#L250) · [월별 등록 통합 테스트](../../backend/src/test/java/com/zip/backend/BillMonthlyWriteTests.java)
 - 가계부 등록 `201`, 수정 `204`는 빈 본문으로 반환합니다. 거래 목록에서는 문자열 ID와 월급 플래그를 반환하고, 연결 메모가 없으면 `memoId`와 `memoTitle`을 생략합니다. 저장 서비스의 회원 잠금과 트랜잭션 안에서 메모·월급을 연결하는 흐름은 기존 롤백·동시 저장 테스트로 대조합니다. [가계부 API](../../backend/src/main/java/com/zip/backend/ledger/LedgerController.java) · [가계부 통합 테스트](../../backend/src/test/java/com/zip/backend/LedgerIntegrationTests.java)
 - 두 요청은 현재 허용 필드와 실제 정수 값인지 검사합니다. DTO 바인딩에서 알 수 없는 필드를 무시하거나 문자열·소수 금액을 정수로 변환하면 입력 허용 범위가 달라질 수 있으므로 기존 제약을 함께 확인합니다. 계약 기간·납부 완료·회원 소유·월급 연동은 서비스에서 확인하는 업무 조건입니다. [고정 지출 검증](../../backend/src/main/java/com/zip/backend/bills/BillInput.java) · [가계부 저장](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java)
 
@@ -112,11 +116,57 @@ flowchart LR
 - 가계부 등록과 월급 자동 등록의 `SELECT MAX(id)`를 INSERT에서 반환한 키로 대체하고, 가계부 수정의 존재 확인과 기존 메모 조회를 한 번으로 줄이는 방안을 검토합니다. 월급 동기화는 자동 기록과 직접 입력 월급의 존재를 월별로 확인하므로 대상 기간에서 이미 등록된 월을 한 번에 조회하는 방식과 비교할 수 있습니다. 같은 회원의 동시 저장·메모 연결·월급 중복 방지·롤백을 확인합니다. 목록의 메모·월급 여부 일괄 조회는 이미 반영돼 있습니다. [가계부와 메모](ledger-memos.md#가계부-기록과-회원별-분류) · [가계부 저장](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java#L136) · [월급 동기화](../../backend/src/main/java/com/zip/backend/ledger/SalaryService.java#L150) · [생성 키 사용 예](../../backend/src/main/java/com/zip/backend/bills/BillRepository.java#L76)
 - 고정 지출 등록·수정에서 금액과 납부 날짜는 요청 DTO 변환 때 한 번 파싱합니다. 선택 월과 납부 기한이 속한 월의 검증에서 같은 계약과 저장 시간대를 재사용하는 방안은 후속 후보입니다. [월별 입력 검증](../../backend/src/main/java/com/zip/backend/bills/BillInput.java) · [계약 월 검증](../../backend/src/main/java/com/zip/backend/bills/BillService.java)
 - 회원 응답 조립에서 계정 조회와 별도로 생년월일, 설문 상태, 동의 시각, 제재 집계, 미확인 경고, 동네 인증, 프로필을 조회합니다. 실행 시간과 SQL 수를 기록한 뒤 계정과 함께 조회할 단일 행 정보를 검토합니다. 미확인 경고는 여러 건일 수 있어 회원 행이 중복되지 않도록 확인합니다. [회원 응답 조립](../../backend/src/main/java/com/zip/backend/auth/AuthService.java#L187) · [인증 조회](../../backend/src/main/java/com/zip/backend/auth/AuthRepository.java)
-- OpenAPI 스키마와 실제 HTTP 응답을 CI에서 비교하면 계약 누락을 발견할 수 있습니다. `User`의 `birth`·`banCount`, `Post`의 `reported`·`homeTip`, `Comment`의 `reported`·`parentId`는 DTO에 있고 해당 응답 스키마에는 없습니다. 문서에서 필드와 생략·`null` 규칙을 맞춘 뒤 실제 응답을 대조할 수 있습니다. [OpenAPI](../../backend/openapi.yaml) · [회원 응답](../../backend/src/main/java/com/zip/backend/auth/UserResponse.java) · [게시글과 댓글 응답](../../backend/src/main/java/com/zip/backend/community/PostResponse.java)
+- 서버 알림은 프론트에서 60초마다 갱신하도록 설정돼 있습니다. 목록 API는 회원 잠금으로 일정 알림을 동기화하고 납부한 월세 알림을 정리한 뒤 목록과 미읽음 수를 조회합니다. 요청당 SQL 수와 잠금 대기를 측정하면 동기화 비용을 줄일 우선순위를 판단할 수 있습니다. 적용 시 변경·완료·반복 일정으로 생성되거나 숨겨지는 알림을 함께 확인합니다. [프론트 갱신](../../frontend/src/features/life/notifications.ts#L45) · [알림 목록](../../backend/src/main/java/com/zip/backend/notification/NotificationService.java#L45) · [일정 알림 동기화](../../backend/src/main/java/com/zip/backend/notification/LifeNotificationService.java#L54)
+- OpenAPI 스키마와 실제 HTTP 응답을 CI에서 비교하면 필드·자료형·생략·`null` 규칙의 누락을 발견할 수 있습니다. 11월 27일의 [API 계약 점검](#api-데이터-계약과-dto)에서 `User`의 `birth`·`banCount`, `Post`의 `reported`·`homeTip`, `Bill`의 `homeManaged`가 보완됐습니다. 11월 28일 기준 `Comment`의 `reported`·`parentId`는 여전히 응답 스키마에 없습니다. 최상위 댓글의 `parentId`는 실제 응답에 `null`로 포함됩니다. [OpenAPI](../../backend/openapi.yaml) · [게시글과 댓글 응답](../../backend/src/main/java/com/zip/backend/community/PostResponse.java) · [프론트 댓글 타입](../../frontend/src/features/community/server.ts)
+
+## 화면에서 호출하지 않는 API
+
+2026-11-28 로컬 `backend`의 `0a25818` 기준입니다. Spring 컨트롤러의 HTTP 메서드와 경로 매핑 156개를 OpenAPI, `frontend/src`의 실제 서버 요청, 브라우저에서 불러오는 파일 URL, 백엔드 테스트·HTTP 예제·Postman과 대조했습니다. 화면 호출을 확인하지 못한 경로는 19개입니다. 배포 환경의 접근 로그와 저장소 외부 클라이언트의 사용 여부는 확인하지 않았습니다.
+
+[PR #153](https://github.com/teammzip/project-ZIP/pull/153) 반영 후에는 구형 일반 고정 지출 5개와 일정 완료 전용 경로가 삭제됐습니다. AI 대화 한 건 삭제, 지도 저장 리스트 편집, 다른 동네 주변 보기, 알림 받기 저장은 서버 모드 화면에서 호출합니다. 같은 날 이후 AI 대화 목록·삭제는 내 정보에서 AI 화면 왼쪽 목록으로 옮겼고, 다른 동네 보기는 "다른 동네 둘러보기"로 이름을 바꿔 고른 동네의 글까지 보여 줍니다(`GET /api/posts?regionId=`). 아래 표와 작업 단위는 반영 전 검토 기록입니다. [고정 지출](fixed-expenses.md#일반-고정-지출의-납부와-해지) · [일정·알림](calendar-notifications.md) · [지도](map-place-ids.md#장소-검색과-저장-리스트) · [동네](community-operations.md#동네-글과-조회-집계) · [AI](service-integrations.md)
+
+### 기능이 필요할 때 활용할 API
+
+| API | 현재 상태와 활용 조건 |
+| --- | --- |
+| `PATCH /api/me/place-lists/{listId}` | 화면에서 저장 리스트를 생성·삭제하고 장소를 넣을 수 있습니다. 기존 리스트의 이름·색상 편집을 추가할 때 활용할 수 있습니다. [지도 컨트롤러](../../backend/src/main/java/com/zip/backend/map/MapController.java#L76) · [저장 화면](../../frontend/src/features/map/components/SaveSheet.tsx) |
+| `DELETE /api/ai/conversations/{id}` | 설정의 데이터 초기화는 전체 대화를 지웁니다. 사용자가 대화 한 건을 골라 삭제하는 기능에 활용할 수 있습니다. [AI 컨트롤러](../../backend/src/main/java/com/zip/backend/ai/AiController.java#L60) · [설정 화면](../../frontend/src/pages/my/SettingsPage.tsx) |
+| `GET /api/events/search` | 현재 화면은 받은 일정에서 제목을 검색합니다. 일정 전체를 한 번에 받지 않고 기간별로 조회하는 구조로 전환할 때 서버 검색을 검토할 수 있습니다. 현재 서버 검색은 최대 100건을 반환합니다. [일정 검색 서비스](../../backend/src/main/java/com/zip/backend/calendar/CalendarService.java#L67) · [일정 화면](../../frontend/src/features/life/components/CalendarBoard.tsx#L330) |
+| `GET /api/regions` | 로그인 없이 시·도와 시·군·구의 ID, 이름, 상위 지역 ID를 조회합니다. 첫 주거 설문의 검색은 브라우저에서 Nominatim을 사용합니다. 서버 ID를 선택하는 행정구역 목록에 활용할 수 있고 동·읍·면이나 상세주소 검색에는 별도 경로가 필요합니다. [지역 목록](../../backend/src/main/java/com/zip/backend/region/RegionController.java#L24) · [설문 주소 검색](../../frontend/src/features/onboarding/AddressSearch.tsx#L30) |
+| `GET /api/regions/{id}/neighbors` | 로그인 없이 지정한 지역의 인접 지역을 조회합니다. 현재 ‘주변 동네’ 탭은 로그인 회원의 동네와 이웃을 함께 반환하는 `GET /api/posts/neighbors`를 호출합니다. 사용자가 임의의 지역을 골라 주변을 살펴보는 기능에 활용할 수 있습니다. [인접 지역](../../backend/src/main/java/com/zip/backend/region/RegionController.java#L38) · [커뮤니티 요청](../../frontend/src/features/community/server.ts#L98) |
+| `GET /api/trash-schedules?regionId=…` | 임의 지역의 배출표를 조회합니다. 다른 지역을 찾아보는 기능이나 지역별 자료 점검에 활용할 수 있습니다. 현재 일정의 배출표는 회원 주소 기준의 `GET /api/trash-schedules/me`를 호출합니다. [배출표 컨트롤러](../../backend/src/main/java/com/zip/backend/calendar/CalendarController.java#L88) · [일정 배출표](../../frontend/src/features/life/components/TrashScheduleDisclosure.tsx#L36) |
+| `POST /api/admin/sanctions/bulk` | 관리자 화면에 일괄 정지 버튼이 있고 대상마다 개별 API를 호출합니다. 서버 일괄 API에 연결하면 최대 100명의 조치를 한 트랜잭션에서 처리하므로 일부만 적용되는 상황을 피할 수 있습니다. [관리자 일괄 정지](../../frontend/src/features/admin/components/AdminConsole.tsx#L218) · [일괄 제재 서비스](../../backend/src/main/java/com/zip/backend/moderation/ModerationService.java#L88) |
+
+### 현재 흐름에서 통합·정리할 후보
+
+| API | 정리 근거와 확인 조건 |
+| --- | --- |
+| `PATCH /api/events/{id}/done` | 완료 상태는 일반 `PATCH /api/events/{id}`에 `done`을 담아 저장합니다. 서버의 전용 완료 경로도 같은 일정 수정 로직을 호출하므로 정리 우선순위가 높습니다. [일정 서비스](https://github.com/teammzip/project-ZIP/blob/0a25818ccdef3162ecfaa77deaaeb1974567124b/backend/src/main/java/com/zip/backend/calendar/CalendarService.java#L94) · [일정 동기화](../../frontend/src/features/life/calendarSync.ts#L193) |
+| `PATCH /api/admin/reports/{id}` | 신고 ID로 대상을 찾고 대상별 신고 처리와 같은 로직을 실행합니다. 관리자 화면은 `PATCH /api/admin/reports?targetType=…&targetId=…`를 사용하므로 정리 우선순위가 높습니다. [신고 처리 서비스](../../backend/src/main/java/com/zip/backend/community/CommunityService.java#L332) · [관리자 요청](../../frontend/src/features/community/useAdminCommunity.ts#L113) |
+| `GET /api/posts/home-tips` | 지역에 관계없이 관리자가 지정한 공개 글을 최신순으로 조회합니다. 현재 홈은 `GET /api/posts/popular`로 회원 동네의 공개 글을 조회수순으로 가져옵니다. 관리자 편집 글이 제품 범위에서 빠진다면 지정·해제 경로와 함께 정리할 후보입니다. [홈 표시](../../frontend/src/features/community/components/HomeCommunityPosts.tsx) · [두 목록의 SQL](../../backend/src/main/java/com/zip/backend/community/CommunityRepository.java#L203) |
+| `PUT /api/admin/posts/{id}/home-tip` | 공개 글을 홈 꿀팁으로 지정합니다. 인기 글 SQL은 이 지정값을 사용하지 않습니다. [관리자 지정](../../backend/src/main/java/com/zip/backend/community/AdminCommunityController.java#L51) |
+| `DELETE /api/admin/posts/{id}/home-tip` | 홈 꿀팁 지정값을 해제합니다. 게시글 자체의 삭제는 별도 경로입니다. [관리자 해제](../../backend/src/main/java/com/zip/backend/community/AdminCommunityController.java#L55) · [지정값 저장](../../backend/src/main/java/com/zip/backend/community/CommunityRepository.java#L407) |
+| `GET /api/bills` | 일반 고정 지출 목록을 조회하며 미래 월의 예정액도 다룹니다. 화면의 `GET /api/bills/monthly`는 시간대를 받고 현재·과거 월에 계약 정보와 주거비를 포함한 응답을 줍니다. 기존 호출자의 미래 월 조회 요구를 점검해야 합니다. [이전 조회](https://github.com/teammzip/project-ZIP/blob/0a25818ccdef3162ecfaa77deaaeb1974567124b/backend/src/main/java/com/zip/backend/bills/BillService.java#L115) · [월별 조회](../../backend/src/main/java/com/zip/backend/bills/BillService.java#L31) |
+| `POST /api/bills` | 반복 항목을 생성하고 한국 시간 기준 당월에 미납 기록도 생성합니다. 화면의 `POST /api/bills/monthly`는 요청의 월·시간대와 납부 기한을 기준으로 등록합니다. 이전 요청을 옮길 때 월과 기한을 지정해야 합니다. [이전 등록](https://github.com/teammzip/project-ZIP/blob/0a25818ccdef3162ecfaa77deaaeb1974567124b/backend/src/main/java/com/zip/backend/bills/BillService.java#L274) · [월별 등록](../../backend/src/main/java/com/zip/backend/bills/BillService.java#L175) |
+| `PATCH /api/bills/{id}` | 항목 이름·분류·기본 금액을 수정합니다. 금액을 바꾸면 조건에 맞는 미납 기록에도 반영합니다. 화면의 월별 수정은 선택 월의 금액·납부 기한·메모를 다뤄 이름·분류 변경을 직접 대체할 수 있는지 확인해야 합니다. [이전 수정](https://github.com/teammzip/project-ZIP/blob/0a25818ccdef3162ecfaa77deaaeb1974567124b/backend/src/main/java/com/zip/backend/bills/BillService.java#L297) · [월별 수정](../../backend/src/main/java/com/zip/backend/bills/BillService.java#L197) |
+| `PUT /api/bills/{id}/payments/{month}` | 납부 여부와 금액을 처리하며 조건에 맞으면 미등록 월 기록도 만들 수 있습니다. 화면의 월별 납부 API는 등록된 기록의 `paid`만 바꿉니다. 예전 금액 정정·미등록 월 처리 절차를 월별 등록·수정으로 옮길 수 있는지 확인해야 합니다. [이전 납부](https://github.com/teammzip/project-ZIP/blob/0a25818ccdef3162ecfaa77deaaeb1974567124b/backend/src/main/java/com/zip/backend/bills/BillService.java#L327) · [월별 납부](../../backend/src/main/java/com/zip/backend/bills/BillSettlementService.java#L34) |
+| `DELETE /api/bills/{id}` | 당월 기록을 확정한 뒤 반복 항목을 비활성화합니다. 화면에는 선택 월 기록 삭제와 날짜를 지정하는 항목 해지가 각각 있습니다. 이전 경로의 의도는 해지에 가까우므로 호출을 이전할 때 적용일과 미납 예정분의 처리 차이를 확인해야 합니다. [이전 해지](https://github.com/teammzip/project-ZIP/blob/0a25818ccdef3162ecfaa77deaaeb1974567124b/backend/src/main/java/com/zip/backend/bills/BillService.java#L354) · [적용일 해지](../../backend/src/main/java/com/zip/backend/bills/BillSettlementService.java#L79) · [이전 경로의 Postman 예제](https://github.com/teammzip/project-ZIP/blob/0a25818ccdef3162ecfaa77deaaeb1974567124b/backend/postman/fixed-bills.postman_collection.json) |
+| `GET /api/me/settings` | 월세·계약 기간·알림 설정·집 주소·동네를 반환합니다. 내 집 화면은 `GET /api/me/home-info`의 `settings`를 통해 같은 서버 읽기 로직을 사용합니다. HTTP 경로를 통합해도 이 내부 읽기 기능은 내 집 정보에 필요합니다. [생활 설정 읽기](../../backend/src/main/java/com/zip/backend/settings/SettingsService.java#L24) · [내 집 정보의 공통 조회](../../backend/src/main/java/com/zip/backend/settings/HomeInfoService.java#L189) |
+| `PUT /api/me/settings` | 월세·납부일·계약월·`notiOn`을 함께 받고 선택한 주소·동네를 저장할 수 있습니다. 주거 화면은 전용 API를 사용하며 내 집 정보 저장은 기존 DB의 `noti_on`을 유지합니다. 화면의 알림 스위치는 브라우저 설정을 바꾸고 서버 월세 알림은 DB 값을 읽으므로, 이 경로를 통합할 때 서버 알림 설정과 주소·동네 편집의 저장 경로를 확인해야 합니다. [생활 설정 API](../../frontend/API.md#설정) · [내 집 정보 저장](../../backend/src/main/java/com/zip/backend/settings/HomeInfoService.java#L87) · [알림 스위치](../../frontend/src/features/life/components/MyInfo.tsx#L249) · [월세 알림](../../backend/src/main/java/com/zip/backend/notification/RentReminderService.java#L45) · [Postman](../../backend/postman/life-settings.postman_collection.json) |
+
+`GET /api/files/content/{key}`는 응답에 담긴 URL로 브라우저가 사진을 불러올 때 사용합니다. OAuth 로그인 시작과 `/login/oauth2/code/{provider}` 콜백은 Spring Security에서 처리합니다. [파일 URL 생성](../../backend/src/main/java/com/zip/backend/files/ProfileFileService.java#L135) · [리뷰 사진 표시](../../frontend/src/features/map/components/PlaceReviews.tsx#L233) · [OAuth 설정](../../backend/src/main/java/com/zip/backend/auth/SecurityConfiguration.java#L99) · [소셜 콜백 배포 안내](../../backend/README.md#운영-배포-설정)
+
+### 적용 시 확인할 작업 단위
+
+- **일괄 제재**를 한 요청으로 연결하면 일부만 저장되는 일을 막습니다. 한 대상에서 오류가 나면 나머지 대상도 처리되지 않으므로, 화면에서 실패 이유를 안내하고 대상을 수정해 다시 요청할 수 있어야 합니다. [일괄 제재 서비스](../../backend/src/main/java/com/zip/backend/moderation/ModerationService.java#L87)
+- **미등록 월 지출을 등록하면서 납부하는 호출**을 월별 등록과 납부로 옮기면 두 요청이 됩니다. 등록 후 납부 요청이 실패할 수 있으므로, 사용자는 저장된 미납 기록에서 납부만 다시 시도할 수 있어야 합니다. [월별 등록](../../backend/src/main/java/com/zip/backend/bills/BillService.java#L175) · [월별 납부](../../backend/src/main/java/com/zip/backend/bills/BillSettlementService.java#L34)
+- **알림 스위치의 서버 저장**을 도입하면 여러 기기와 서버의 알림 생성이 같은 설정을 따를 수 있습니다. 접속할 때 서버 값을 불러오고, 스위치 변경을 저장하지 못했을 때 마지막으로 저장된 상태를 보여 주는 흐름이 필요합니다. [현재 알림 스위치](../../frontend/src/features/life/components/MyInfo.tsx#L243) · [서버 알림 설정 조회](../../backend/src/main/java/com/zip/backend/notification/NotificationRepository.java#L75)
 
 ## 인증과 토큰 재발급
 
 성공 시 백엔드는 `/oauth/callback#token=<accessToken>`으로 리디렉션합니다. 프론트는 URL 프래그먼트에서 토큰을 읽고 주소에서 제거한 뒤, 그 토큰으로 `GET /api/auth/me`를 호출합니다. 기존 `?token=...` 주소에 들어오면 주소에서 토큰을 제거하며, 로그인에는 프래그먼트의 토큰만 사용합니다. 실패 메시지는 `?error=...`로 전달됩니다. [API 계약](../../frontend/API.md#소셜-로그인) · [콜백 페이지](../../frontend/src/pages/auth/OAuthCallbackPage.tsx) · [백엔드 리디렉션](../../backend/src/main/java/com/zip/backend/auth/OAuthLoginHandler.java)
+
+소셜 로그인은 `social_accounts`에서 제공자와 제공자 사용자 번호로 ZIP 회원을 찾습니다. 첫 로그인에는 `users.signup_provider`에 가입 제공자를 기록합니다. 회원 탈퇴로 `users` 행을 삭제하면 소셜 연결과 인증 세션도 외래 키로 삭제되며, 같은 소셜 계정으로 다시 로그인하면 새 ZIP 회원이 생성됩니다. 탈퇴 처리는 탈퇴 시각 기록, 영향을 받은 게시글의 공감·댓글 수 갱신, 커밋 이후 업로드 파일 정리도 수행합니다. [소셜 로그인과 탈퇴 처리](../../backend/src/main/java/com/zip/backend/auth/AuthService.java) · [회원과 소셜 연결·세션 스키마](../../db/schema.sql) · [탈퇴 API 계약](../../frontend/API.md#회원-탈퇴)
 
 로그인·가입·소셜 인증 성공 시 서버가 재발급용 HttpOnly 쿠키를 발급합니다. 프론트는 만료에 따른 401 응답에서 `POST /api/auth/refresh`를 호출하고 원래 요청을 재시도합니다. 서버는 재발급 시 DB의 토큰 해시를 교체하며, 로그아웃이나 세션 만료 후에는 같은 세션의 재발급을 거부합니다. 프론트는 같은 세션의 동시 요청을 묶고, 지원 브라우저의 탭 간에는 Web Locks로 갱신을 조정합니다. 로그인 유지 선택 시 브라우저를 다시 열어도 세션 만료 전까지 복원할 수 있습니다. [인증 세션](../../backend/src/main/java/com/zip/backend/auth/AuthSessions.java) · [재발급 쿠키](../../backend/src/main/java/com/zip/backend/auth/RefreshCookie.java) · [인증 초기화](../../frontend/src/app/setupApi.ts) · [프론트 HTTP 처리](../../frontend/src/lib/apiClient.ts)
 

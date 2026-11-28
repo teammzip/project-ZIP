@@ -11,6 +11,8 @@
 
 알림을 켠 월세 계약은 저장된 납부 시간대의 납부 3일 전부터 당일까지 미납 월세에 대해 서버 스케줄러가 월 1회 알립니다. 기존 날짜형 월세 링크도 같은 달의 가계부로 연결되며, 기존 알림이 있으면 신규 알림이 중복 생성되지 않습니다. [월세 알림 서비스](../../backend/src/main/java/com/zip/backend/notification/RentReminderService.java) · [중복 판정](../../backend/src/main/java/com/zip/backend/notification/NotificationRepository.java) · [화면 링크](../../frontend/src/features/life/notifications.ts)
 
+월세 알림 목록의 `link: "budget"`과 문자열 `refId`(납부 대상 `YYYYMM`)는 기존 형식대로 월별 고정 지출 화면에서 사용합니다. [알림 목록 DTO 계약](calendar-notifications.md#알림-목록-응답-dto-검토)
+
 2026-11-28부터 홈 알림 칸은 안 읽은 알림만 보여 주므로, 읽은 월세 알림은 알림 전체 보기에서만 보입니다. 같은 날 알림 종류에서 쓰레기 배출일(`TRASH`) 알림 생성이 없어졌지만, 월세 알림의 생성 규칙과 링크(`budget` · 납부 대상 연월)는 바뀌지 않았습니다. [홈 알림 칸](../../frontend/src/features/life/components/HomePhotoCard.tsx) · [알림 종류](../../frontend/src/features/life/notifications.ts) · [배출일 알림 제거](trash-schedules.md#배출일-알림)
 
 ## 일반 고정 지출의 납부와 해지
