@@ -62,6 +62,9 @@ export const mapApi = {
   /** 저장 리스트 (처음이면 서버가 "내 장소"를 만들어 줌) */
   placeLists: async () => (await apiClient.get<PlaceList[]>('/me/place-lists')).data,
   createPlaceList: async (name: string, color: string) => (await apiClient.post<PlaceList>('/me/place-lists', { name, color })).data,
+  /** 리스트 이름 · 색 바꾸기 (담긴 장소는 그대로). 같은 이름이 있으면 409, 이미 지운 리스트면 404 */
+  updatePlaceList: (listId: string, name: string, color: string) =>
+    apiClient.patch(`/me/place-lists/${encodeURIComponent(listId)}`, { name, color }),
   /** 리스트 삭제: 이 리스트에만 있던 장소는 저장도 풀림 */
   deletePlaceList: (listId: string) => apiClient.delete(`/me/place-lists/${encodeURIComponent(listId)}`),
   /** ★ 저장 창의 [저장]: 이 장소를 넣을 리스트들 (비우면 저장 풂). 카카오 장소는 이름 · 종류도 */
