@@ -38,11 +38,27 @@
 .\gradlew.bat test --tests 'com.zip.backend.LedgerIntegrationTests'
 ```
 
+### 가계부·월급 등록의 생성 키
+
+2026-11-28 적용. 가계부 수입·기타 지출과 자동 월급의 신규 행은 `LedgerInsert`에서 JDBC `GeneratedKeyHolder`로 방금 삽입한 `AUTO_INCREMENT` ID를 받습니다. 가계부는 이 ID로 메모와 첫 수동 월급을 연결하며, 월급 자동 등록은 새 수입 행의 ID를 `salary_records.income_id`에 저장합니다. 새 행당 `SELECT MAX(id)` 조회가 한 번 줄어듭니다. [생성 키 처리](../../backend/src/main/java/com/zip/backend/ledger/LedgerInsert.java) · [가계부 신규 등록](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java#L159) · [월급 자동 등록](../../backend/src/main/java/com/zip/backend/ledger/SalaryService.java#L164)
+
+첫 주거 설문의 월급 값은 회원 ID로 월급 설정 또는 초안에 저장하고, 설문의 계약 값은 내 집 정보와 같은 회원별 저장 경로를 사용합니다. 계약·월급 설정을 읽는 흐름과 월급의 월별 중복 검사에 이 변경을 적용하지 않습니다. [설문 저장](../../backend/src/main/java/com/zip/backend/settings/HousingOnboardingService.java#L63) · [내 집 정보와 계약](home-info.md) · [설문 월급 초안과 확정](fixed-expenses.md#월급-설정-응답-dto) · [수입 행과 월급 연결 제약](../../db/schema.sql#L440)
+
+회원 잠금과 트랜잭션을 유지하고, 생성 키가 누락되거나 잘못됐으면 저장을 실패시켜 롤백합니다. [회원 잠금](../../backend/src/main/java/com/zip/backend/auth/AuthRepository.java#L96) · [가계부 롤백·동시 저장 테스트](../../backend/src/test/java/com/zip/backend/LedgerIntegrationTests.java#L177) · [월급 누락 월 채우기 테스트](../../backend/src/test/java/com/zip/backend/SalaryIntegrationTests.java#L97)
+
 ## 폴더와 메모 동기화
 
 서버 모드에서 폴더 목록은 회원·세션별로 조회합니다. 폴더를 삭제하면 메모는 유지되고 미분류로 이동합니다. 가계부 초안은 수입·기타 지출·고정 지출에 맞는 폴더에 연결합니다. 메모 본문은 포커스 복귀 때 다시 읽으며, 확정 저장은 진행 중인 자동 저장이 끝나기를 기다립니다. [폴더 조회](../../frontend/src/features/memo/folders.ts) · [폴더 마이그레이션](../../db/migrations/20261122_07_memo_folders.sql) · [메모 동기화](../../frontend/src/features/memo/sync.ts)
 
+2026-11-28 폴더 기본 저장·조회를 Spring Data JPA로 전환했습니다. 수정·삭제는 폴더 ID와 회원 ID를 함께 검사합니다. 폴더 삭제 시 연결 메모의 `folder_id`를 해제하는 JDBC 작업과 폴더 삭제는 같은 트랜잭션에서 실행합니다. 이름 중복은 `409`로 반환합니다. [JPA 저장소](../../backend/src/main/java/com/zip/backend/memo/MemoFolderRepository.java) · [폴더 삭제 경로](../../backend/src/main/java/com/zip/backend/memo/MemoRepository.java) · [API 통합 테스트](../../backend/src/test/java/com/zip/backend/memo/MemoIntegrationTests.java)
+
 일반 메모의 본문·체크리스트·고정 여부를 서버에 저장할 수 있습니다. 홈 위젯은 회원이 지정한 본인 메모 최대 3개의 순서를 사용합니다. `ids: null`은 자동 선택, `ids: []`는 선택 항목 없음입니다. [메모 컨트롤러](../../backend/src/main/java/com/zip/backend/memo/MemoController.java) · [메모 처리](../../backend/src/main/java/com/zip/backend/memo/MemoService.java)
+
+### 메모 응답 DTO
+
+2026-11-28에 `656c0b4`를 기준으로 메모 목록·등록·수정에 공통 `MemoResponse`를 적용했습니다. `GET /api/memos`는 메모 배열, `POST /api/memos`는 `201`과 등록한 메모, `PATCH /api/memos/{id}`는 `200`과 수정한 메모를 반환합니다. 세 응답은 기존 OpenAPI `Memo` 스키마를 사용합니다. [응답 DTO](../../backend/src/main/java/com/zip/backend/memo/MemoResponse.java) · [OpenAPI Memo](../../backend/openapi.yaml#L2839)
+
+`id`와 값이 있는 `folderId`는 문자열입니다. `folderId`와 `ledgerContext`는 각각 값이 없으면 `null`을 보냅니다. `createdAt`과 `updatedAt`은 ISO 8601 문자열이고, `draft`는 가계부 초안 확정 후 `false`가 됩니다. `items`는 저장된 체크리스트 JSON을 읽어 돌려주므로 항목 순서와 기존 객체의 속성을 보존합니다. [프론트 메모 동기화](../../frontend/src/features/memo/sync.ts) · [메모 통합 테스트](../../backend/src/test/java/com/zip/backend/memo/MemoIntegrationTests.java)
 
 ## 확인된 폴더 문제
 

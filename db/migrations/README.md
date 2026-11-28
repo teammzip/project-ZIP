@@ -1,7 +1,24 @@
-# DB 마이그레이션 — 쓰던 DB를 새 코드에 맞추기
+# DB 마이그레이션
 
-- **새 DB**: [`../schema.sql`](../schema.sql)을 실행한 뒤, 데이터 마이그레이션 `20261122_01_regions` · `20261122_02` · `20261122_04`(전국 지역 · 쓰레기 배출표 · 주변 동네)만 실행해요. 나머지 파일은 필요 없어요.
-- **이미 쓰던 DB**: 아래 표에서 **아직 적용하지 않은 파일부터 위에서 아래로** 한 번씩 실행해요. 실행 전에 꼭 백업(mysqldump)하고, 대상 DB를 고른 연결에서 실행해요.
+## Flyway로 적용하기
+
+[백엔드 Gradle 작업](../../backend/build.gradle)이 Flyway를 실행하고 적용 결과와 체크섬을 대상 DB의 `flyway_schema_history`에 기록합니다. 앱 시작과 별도 단계로 실행하므로 앱의 DB 계정에는 기존 데이터 읽기·쓰기 권한을 사용합니다. 마이그레이션 계정에는 대상 DB에 대한 DDL·DML 권한과 임시 테이블·뷰 권한을 부여합니다.
+
+`backend/`에서 실행합니다. 배포 환경에서 `ZIP_MIGRATION_DB_URL`(예시 `jdbc:mysql://localhost:3306/zip?connectionTimeZone=Asia/Seoul`), `ZIP_MIGRATION_DB_USER`, `ZIP_MIGRATION_DB_PASSWORD`를 마이그레이션 작업에 주입합니다.
+
+```powershell
+.\gradlew.bat flywayInfo
+.\gradlew.bat flywayMigrate
+.\gradlew.bat flywayInfo
+```
+
+- **새 DB**는 관리자가 빈 DB를 `utf8mb4`와 `utf8mb4_0900_ai_ci`로 먼저 만든 뒤 위 작업을 실행합니다. `V1`이 테이블과 기본 데이터를 만들고 `V2`~`V4`가 전국 지역·배출표·이웃 관계를 넣습니다.
+- **기존 DB를 처음 등록할 때**는 백업과 스테이징 복원본에서 아래 [기존 DB 적용 순서](#파일-순서)의 미적용 SQL을 반영합니다. 마지막 약관 SQL `20261127_01_terms_privacy_transfers.sql`과 전국 데이터 세 종류가 적용됐는지 확인합니다. [구조 확인 SQL](../tests/15_schema_audit.sql)은 첫 `USE`를 확인 대상 DB로 바꿔 실행하고 `M01`~`M07` 통과 여부를 확인합니다. 이어 `./gradlew flywayBaseline`(Windows는 `.\gradlew.bat flywayBaseline`)으로 현재 상태를 `V4`로 한 번 등록하고 `flywayMigrate`를 실행합니다. 자동 기준 등록은 꺼져 있습니다. `flywayBaseline`은 확인된 버전을 기록하며 과거 SQL을 다시 실행하지 않습니다.
+- **Flyway로 관리 중인 DB**에는 새 릴리스마다 `flywayMigrate`를 실행합니다. MySQL DDL이 실행 중 실패하면 이력과 실제 적용 범위를 확인해 복구한 뒤 다시 실행합니다. [Flyway 이력과 복구](https://documentation.red-gate.com/flyway/flyway-concepts/migrations/flyway-schema-history-table)
+
+## Flyway 도입 전 기존 DB 적용 순서
+
+아래 SQL은 Flyway 기준 버전 이전의 이력입니다. 기존 DB를 백업하고 **아직 적용하지 않은 파일부터 위에서 아래로** 한 번씩 실행합니다.
 - 어디까지 적용됐는지 모르겠으면 `SHOW CREATE TABLE 표이름` 으로 그 파일이 만드는 칸 · 표 · 키가 있는지 보고 판단해요.
 - MySQL 의 ALTER · CREATE 는 바로 확정(암묵 커밋)돼서 되돌릴 수 없어요. 중간에 실패하면 **파일 전체를 무조건 다시 돌리지 말고**, 어디까지 들어갔는지 확인한 뒤 남은 부분만 실행해요. "다시 실행"이 ⭕ 인 파일은 이미 있는 것을 건너뛰어서 통째로 다시 돌려도 돼요.
 
@@ -75,14 +92,12 @@ mysql -u root -p --default-character-set=utf8mb4 zip --execute="source db/migrat
 
 ## 마이그레이션을 새로 만들 때
 
-1. `db/schema.sql` 을 같은 모양으로 고치고, 이 폴더에 `날짜_번호_내용.sql` 을 추가해요. 가능하면 `information_schema` 로 이미 있는지 보고 건너뛰게 써요(다시 실행 ⭕).
-2. [`../tests/migration-path.cjs`](../tests/migration-path.cjs) 목록과 [`../tests/19_migration_upgrade.sql`](../tests/19_migration_upgrade.sql) 끝에 같은 파일을 순서대로 넣고, 위 [파일 순서](#파일-순서) 표에도 한 줄 추가해요.
-3. 저장소 최상위에서 비교 자료를 갱신하고 검사해요.
+1. [`db/flyway/`](../flyway)에 다음 정수 버전의 SQL을 추가합니다. 첫 파일명 예시는 `V5__add_example.sql`이며 설명에 소문자 영문·숫자·밑줄을 사용합니다. JDBC URL이 고른 DB에서 실행되도록 `USE`와 DB 자체를 만드는 SQL은 빼세요. `V1`~`V4` 및 이미 적용한 파일의 내용과 이름은 유지합니다.
+2. 구조를 바꾸면 최신 스키마 스냅샷 `db/schema.sql`에 같은 구조를 반영합니다. 약관 본문 동기화는 `node db/tools/terms-sync.cjs V5__terms_sync.sql`처럼 실제 다음 버전으로 실행합니다. 전국 데이터가 바뀌면 변환 도구를 별도 체크아웃에서 실행해 새 SQL을 만들고 결과를 다음 Flyway 버전으로 반영합니다.
+3. 저장소 최상위에서 비교 자료를 갱신하고 검사합니다. 새 버전 파일은 검사 경로에 자동 포함됩니다. 새 DB와 `V4` 등록 DB에서 `flywayMigrate`와 `flywayInfo` 결과를 확인합니다.
 
 ```powershell
 node db/tests/generate-schema-audit.cjs                                   # schema_expected.json · 15/20번 감사 SQL 갱신
 node --test --test-reporter=spec db/tests/schema-assets.test.cjs          # 빠진 파일 · 새 DB 와 업그레이드 DB 구조 비교
 node db/tests/run-isolated-mysql.cjs                                      # 격리 MySQL 9.6 에서 전체 실행 검증
 ```
-
-**데이터 마이그레이션**(`20261122_01` · `02` 처럼 표 구조는 안 바꾸고 행만 넣는 파일)은 2 · 3번 대신 [`../tests/migration-path.cjs`](../tests/migration-path.cjs) 의 `dataMigrations` 에만 넣어요. 구조 비교 · 19번 묶음에서는 빠지고, 정적 검사가 구조 변경(CREATE · ALTER · DROP 등, 임시 표 제외)이 없는지만 확인해요. `20261122_01` · `02` 는 `db/tools/trash_import.py`, `20261122_04` 는 `db/tools/region_neighbors_import.py` 가 만드는 파일이라 직접 고치지 말고 원본이 바뀌면 스크립트로 다시 만들어요.

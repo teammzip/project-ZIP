@@ -31,6 +31,8 @@
 
 서버 연결 모드에서 월급 설정을 저장한 달부터, 선택한 시간대에서 수령일이 된 월급을 가계부 고정 수입에 등록하고 월별 수입 합계에 포함합니다. 설정 저장과 가계부 수입 조회 때 누락 기록을 채웁니다. 회원·월별 등록 기록으로 중복 생성과 삭제 후 재등록을 막습니다. 수입 정보 화면은 저장 후 가계부 조회를 갱신합니다. [월급 서비스](../../backend/src/main/java/com/zip/backend/ledger/SalaryService.java) · [가계부 수입 조회와 합계](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java) · [수입 정보 화면](../../frontend/src/features/life/components/SalaryInfo.tsx) · [월급 회귀 테스트](../../backend/src/test/java/com/zip/backend/SalaryIntegrationTests.java)
 
+자동 등록에서 새 수입을 회원·월별 기록에 연결하는 과정은 [가계부·월급 등록의 생성 키](ledger-memos.md#가계부월급-등록의-생성-키)를 참고하세요.
+
 ### 월급 설정 응답 DTO
 
 첫 주거 설문은 `PENDING` 상태에서만 답변을 반영합니다. 수령일 없는 월급 답변은 금액과 수입 기준을 초안으로 보관합니다. 마이페이지의 수입 정보에서는 `GET /api/me/salary`로 설정 또는 초안을 읽고 `PUT /api/me/salary`로 금액·월/연 기준·수령일을 저장합니다. 저장이 성공하면 초안은 지워지고 이미 등록된 월급 기록은 보존됩니다. [첫 주거 설문](home-info.md#내-집-정보와-첫-주거-설문의-dto) · [월급 API](../../backend/src/main/java/com/zip/backend/ledger/SalaryController.java) · [수입 정보 화면](../../frontend/src/features/life/components/SalaryInfo.tsx)

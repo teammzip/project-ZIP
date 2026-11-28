@@ -12,36 +12,36 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class MemoRepository {
     private final JdbcTemplate jdbc;
+    private final MemoFolderRepository folders;
 
-    public MemoRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    public MemoRepository(JdbcTemplate jdbc, MemoFolderRepository folders) {
+        this.jdbc = jdbc;
+        this.folders = folders;
+    }
 
     public record Folder(String id, String name) {}
 
     public List<Folder> folders(long userId) {
-        return jdbc.query("SELECT id, name FROM memo_folders WHERE user_id = ? ORDER BY id", (rs, row) -> new Folder(Long.toString(rs.getLong(1)), rs.getString(2)), userId);
+        return folders.findByUserIdOrderByIdAsc(userId).stream()
+            .map(folder -> new Folder(Long.toString(folder.id()), folder.name())).toList();
     }
 
     public boolean ownsFolder(long userId, long id) {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM memo_folders WHERE id = ? AND user_id = ?", Integer.class, id, userId) == 1;
+        return folders.existsByIdAndUserId(id, userId);
     }
 
     public long addFolder(long userId, String name) {
-        var keys = new GeneratedKeyHolder();
-        jdbc.update(connection -> {
-            var ps = connection.prepareStatement("INSERT INTO memo_folders (user_id, name) VALUES (?, ?)", new String[] {"id"});
-            ps.setLong(1, userId); ps.setString(2, name); return ps;
-        }, keys);
-        return keys.getKey().longValue();
+        return folders.saveAndFlush(new MemoFolder(userId, name)).id();
     }
 
     public int renameFolder(long userId, long id, String name) {
-        return jdbc.update("UPDATE memo_folders SET name = ? WHERE id = ? AND user_id = ?", name, id, userId);
+        return folders.rename(userId, id, name);
     }
 
     public int deleteFolder(long userId, long id) {
         if (!ownsFolder(userId, id)) return 0;
         jdbc.update("UPDATE memos SET folder_id = NULL WHERE user_id = ? AND folder_id = ?", userId, id);
-        return jdbc.update("DELETE FROM memo_folders WHERE id = ? AND user_id = ?", id, userId);
+        return folders.deleteOwned(userId, id);
     }
 
     /** items: JSON 배열 글자 */

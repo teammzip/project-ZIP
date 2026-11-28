@@ -31,18 +31,18 @@ public class MemoController {
     public void deleteFolder(@AuthenticationPrincipal Jwt jwt, @PathVariable String id) { memos.deleteFolder(userId(jwt), id); }
 
     @GetMapping("/api/memos")
-    public List<Map<String, Object>> list(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String q) {
+    public List<MemoResponse> list(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String q) {
         return memos.list(userId(jwt), q);
     }
 
     @PostMapping("/api/memos")
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Object> create(@AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) MemoService.MemoInput input) {
+    public MemoResponse create(@AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) MemoService.MemoInput input) {
         return memos.create(userId(jwt), input);
     }
 
     @PatchMapping("/api/memos/{id}")
-    public Map<String, Object> update(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestBody(required = false) MemoService.MemoInput input) {
+    public MemoResponse update(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestBody(required = false) MemoService.MemoInput input) {
         return memos.update(userId(jwt), id, input);
     }
 

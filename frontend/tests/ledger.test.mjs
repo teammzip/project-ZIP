@@ -6,6 +6,7 @@ import { test } from 'node:test'
 import ts from 'typescript'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { QueryClient, QueryObserver, queryOptions } from '@tanstack/react-query'
 
 const require = createRequire(import.meta.url)
 const compile = (file) => ts.transpileModule(readFileSync(new URL(file, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText
@@ -18,11 +19,55 @@ test('가계부 API는 조회 시간대·유형을 전달하고 등록·수정·
   assert.equal(calls[0][1], '/ledger/income')
   assert.equal(calls[0][2].params.incomeType, 'other')
   assert.equal(calls[0][2].params.timeZone, 'Asia/Seoul')
+  await exports.getLedger('spend', '2026-11', 'Asia/Seoul')
+  assert.equal(calls[1][1], '/ledger/spend')
+  assert.equal(calls[1][2].params.month, '2026-11')
+  assert.equal('incomeType' in calls[1][2].params, false)
   const body = { amount: 1000, cat: '식비', date: '2026-11-19', memo: '' }
   await exports.saveLedger('spend', 'Asia/Seoul', body)
   await exports.saveLedger('spend', 'Asia/Seoul', body, '12')
   await exports.deleteLedger('spend', '12')
-  assert.deepEqual(calls.slice(1).map((call) => call.slice(0, 2)), [['post', '/ledger/spend'], ['put', '/ledger/spend/12'], ['delete', '/ledger/spend/12']])
+  assert.deepEqual(calls.slice(2).map((call) => call.slice(0, 2)), [['post', '/ledger/spend'], ['put', '/ledger/spend/12'], ['delete', '/ledger/spend/12']])
+})
+
+function ledgerQueries(getLedger) {
+  const exports = {}
+  vm.runInNewContext(compile('../src/features/life/ledgerQueries.ts'), { exports, require: (name) => {
+    if (name === './ledgerApi') return { getLedger }
+    return { queryOptions }
+  } })
+  return exports
+}
+
+test('두 화면의 기타 지출 조회가 요청과 최신 응답을 공유한다', async () => {
+  let requests = 0
+  const { ledgerSpendOptions } = ledgerQueries(async () => { requests++; return [] })
+  const client = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } })
+  const home = ledgerSpendOptions('1', 'session', '2026-11', 'Asia/Seoul', true)
+  const ledger = ledgerSpendOptions('1', 'session', '2026-11', 'Asia/Seoul', true)
+  try {
+    await Promise.all([client.fetchQuery(home), client.fetchQuery(ledger)])
+    const observer = new QueryObserver(client, ledger)
+    const stop = observer.subscribe(() => {})
+    try {
+      assert.deepEqual(observer.getCurrentResult().data, [])
+      assert.equal(requests, 1)
+    } finally { stop() }
+  } finally { client.clear() }
+})
+
+test('기타 지출 날짜를 옮기면 해당 회원·세션에서 이동 전후 월의 모든 시간대 캐시만 갱신한다', async () => {
+  const { ledgerSpendOptions, invalidateLedgerSpendMonths } = ledgerQueries()
+  const client = new QueryClient()
+  const key = (month, zone = 'Asia/Seoul', session = 'session', owner = '1') => ledgerSpendOptions(owner, session, month, zone, true).queryKey
+  const affected = [key('2026-10'), key('2026-11'), key('2026-11', 'UTC')]
+  const unaffected = [key('2026-09'), key('2026-11', 'UTC', 'other-session'), key('2026-11', 'UTC', 'session', '2'), ['ledger', '1', 'session', 'income', 'fixed', 'Asia/Seoul', '2026-11']]
+  try {
+    for (const queryKey of [...affected, ...unaffected]) client.setQueryData(queryKey, [])
+    await invalidateLedgerSpendMonths(client, '1', 'session', '2026-10-23', '2026-11-02')
+    for (const queryKey of affected) assert.equal(client.getQueryState(queryKey).isInvalidated, true)
+    for (const queryKey of unaffected) assert.equal(client.getQueryState(queryKey).isInvalidated, false)
+  } finally { client.clear() }
 })
 
 function view(result = {}, user = '1', kind = 'spend') {
@@ -42,6 +87,7 @@ function view(result = {}, user = '1', kind = 'spend') {
     if (name === '../ledgerCategories') return { useLedgerCategorySettings: () => ({ categories: [{ name: '식비' }], loading: false, failed: false }) }
     if (name === './LedgerCategoryDialog') return { LedgerCategoryDialog: () => null }
     if (name === '../ledgerApi') return { getLedger() {} }
+    if (name === '../ledgerQueries') return ledgerQueries()
     if (name === '../salaryApi') return { getSalary() {} }
     if (name === '../ledgerMemoNavigation') return { returnedMemoDraft: () => undefined, rememberLedgerValues() {} }
     if (name === '@/components/ui') return {
@@ -69,7 +115,7 @@ test('서버 월별 기록의 합계·설정 메뉴와 입력 폼을 표시한�
   assert.match(html, /기록 설정/)
   assert.match(html, /수정/)
   assert.match(html, /기록 삭제/)
-  assert.equal(ui.options[0].queryKey.at(-1), '2026-11')
+  assert.deepEqual(Array.from(ui.options[0].queryKey), ['ledger', '1', 'session', 'spend', '2026-11', 'Asia/Seoul'])
 })
 
 test('조회 실패를 빈 기록으로 숨기지 않고 비로그인 조회를 막는다', () => {

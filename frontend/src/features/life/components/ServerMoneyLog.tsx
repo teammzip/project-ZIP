@@ -6,6 +6,7 @@ import { useAuthStore } from '@/features/auth'
 import { getErrorMessage } from '@/lib/apiClient'
 import { won } from '@/lib/date'
 import { getLedger, saveLedger, deleteLedger, type LedgerKind, type LedgerRow } from '../ledgerApi'
+import { invalidateLedgerSpendMonths, ledgerSpendOptions } from '../ledgerQueries'
 import { getSalary } from '../salaryApi'
 import { useBillingTimeZone } from '../useBillingTimeZone'
 import { useLocalMonth } from '../useLocalMonth'
@@ -34,7 +35,12 @@ function AccountMoneyLog({ kind, incomeType }: { kind: LedgerKind; incomeType: '
   const [selection, setSelection] = useState<string | null>(resume?.month ?? null)
   const month = selectedMonth(selection, currentMonth)
   const title = kind === 'spend' ? '기타 지출' : incomeType === 'fixed' ? '고정 수입' : '기타 수입'
-  const query = useQuery({ queryKey: ['ledger', user, sessionKey, kind, incomeType, timeZone, month], queryFn: ({ signal }) => getLedger(kind, month, timeZone, incomeType, signal), enabled: !!user && !!sessionKey && ready, gcTime: 0, staleTime: 0, refetchInterval: 60000, retry: false })
+  const query = useQuery(kind === 'spend' ? ledgerSpendOptions(user, sessionKey, month, timeZone, ready) : {
+    queryKey: ['ledger', user, sessionKey, kind, incomeType, timeZone, month],
+    queryFn: ({ signal }) => getLedger(kind, month, timeZone, incomeType, signal),
+    enabled: !!user && !!sessionKey && ready,
+    gcTime: 0, staleTime: 0, refetchInterval: 60_000, retry: false,
+  })
   const rows = query.data ?? []
   const total = rows.reduce((sum, row) => sum + row.amount, 0)
   const totals = new Map<string, number>()
@@ -121,7 +127,8 @@ function LedgerForm({ kind, incomeType, timeZone, row, onDone }: { kind: LedgerK
       else await saveLedger(kind, timeZone, body, row?.id)
       clearMemoDraft(resume)
       await Promise.all([
-        client.invalidateQueries({ queryKey: ['ledger'] }),
+        kind === 'spend' ? invalidateLedgerSpendMonths(client, owner, sessionKey, date, row?.date ?? date)
+          : client.invalidateQueries({ queryKey: ['ledger'] }),
         ...(salaryCategory ? [client.invalidateQueries({ queryKey: ['salary-settings', owner, sessionKey] })] : []),
       ])
       onDone(date)
@@ -150,6 +157,7 @@ function LedgerForm({ kind, incomeType, timeZone, row, onDone }: { kind: LedgerK
 }
 
 function DeleteRecord({ kind, row, clearsSalary }: { kind: LedgerKind; row: LedgerRow; clearsSalary: boolean }) {
+  const owner = useAuthStore((state) => state.user?.id), sessionKey = useAuthStore((state) => state.sessionKey)
   const [busy, setBusy] = useState(false), [error, setError] = useState('')
   const pending = useRef(false), client = useQueryClient()
   return <div><Button variant="line" disabled={busy} onClick={async () => {
@@ -158,7 +166,8 @@ function DeleteRecord({ kind, row, clearsSalary }: { kind: LedgerKind; row: Ledg
     try {
       await deleteLedger(kind, row.id)
       await Promise.all([
-        client.invalidateQueries({ queryKey: ['ledger'] }),
+        kind === 'spend' ? invalidateLedgerSpendMonths(client, owner, sessionKey, row.date)
+          : client.invalidateQueries({ queryKey: ['ledger'] }),
         ...(clearsSalary ? [client.invalidateQueries({ queryKey: ['salary-settings'] })] : []),
       ])
     }

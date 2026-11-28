@@ -1,3 +1,6 @@
+const { readdirSync } = require('node:fs')
+const { join } = require('node:path')
+
 const legacyMigrations = [
   '20261031_current_project.sql',
   '20261031_02_event_anniversaries.sql',
@@ -51,4 +54,7 @@ const dataMigrations = [
   '20261122_04_region_neighbors_nationwide.sql', // 주변 동네 (db/tools/region_neighbors_import.py 가 만듦)
 ]
 
-module.exports = { legacyMigrations, incrementalMigrations, dataMigrations }
+const flywayMigrations = readdirSync(join(__dirname, '../flyway')).filter(name => name.endsWith('.sql') && name !== 'V1__schema.sql')
+  .sort((first, second) => first.localeCompare(second, 'en', { numeric: true }))
+
+module.exports = { legacyMigrations, incrementalMigrations, dataMigrations, flywayMigrations }

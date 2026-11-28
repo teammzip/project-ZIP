@@ -28,6 +28,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
+    implementation 'org.flywaydb:flyway-core'
+    runtimeOnly 'org.flywaydb:flyway-mysql'
     runtimeOnly 'com.mysql:mysql-connector-j'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
@@ -47,4 +49,34 @@ tasks.register('hashPassword', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.zip.backend.tools.PasswordHash'
     standardInput = System.in
+}
+
+tasks.named('processResources') {
+    from('../db/flyway') {
+        include 'V*.sql'
+        into 'db/migration'
+    }
+    from('../db/migrations') {
+        def baselineData = [
+            '20261122_01_regions_nationwide.sql': 'V2__nationwide_regions.sql',
+            '20261122_02_trash_schedules_nationwide.sql': 'V3__nationwide_trash_schedules.sql',
+            '20261122_04_region_neighbors_nationwide.sql': 'V4__nationwide_region_neighbors.sql',
+        ]
+        include baselineData.keySet()
+        rename { baselineData[it] }
+        filteringCharset = 'UTF-8'
+        filter { line -> line == 'USE `zip`;' ? null : line }
+        into 'db/migration'
+    }
+}
+
+['Info', 'Baseline', 'Migrate'].each { command ->
+    tasks.register("flyway${command}", JavaExec) {
+        group = 'database'
+        description = "Run Flyway ${command.toLowerCase(Locale.ROOT)} against the configured MySQL database."
+        classpath = sourceSets.main.runtimeClasspath
+        javaLauncher = javaToolchains.launcherFor(java.toolchain)
+        mainClass = 'com.zip.backend.tools.DatabaseMigration'
+        args command.toLowerCase(Locale.ROOT)
+    }
 }

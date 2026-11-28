@@ -1,10 +1,15 @@
 // 약관 문구를 고친 뒤: frontend/src/features/legal/content.ts(화면 약관) → db/schema.sql 기본 약관 3종 + 기존 DB 를 맞추는 마이그레이션.
-// 저장소 최상위에서: node db/tools/terms-sync.cjs 20261201_01_terms_sync.sql  (새 마이그레이션 이름. 그다음 migration-path.cjs · 19번에 추가)
+// 저장소 최상위에서: node db/tools/terms-sync.cjs V5__terms_sync.sql  (실제 다음 Flyway 버전을 사용)
 // 같은 버전(LEGAL_VERSION)의 본문만 맞춰요. 약관 내용(의무 · 수집 항목)이 바뀌면 새 버전을 만들지 팀이 먼저 정하세요.
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm')
 const repo = path.resolve(__dirname, '../..')
 const migrationName = process.argv[2]
-if (!/^\d{8}_\d{2}_[a-z0-9_]+\.sql$/.test(migrationName ?? '')) { console.log('사용법: node db/tools/terms-sync.cjs 20261201_01_terms_sync.sql'); process.exit(1) }
+const version = /^V([1-9]\d*)__[a-z0-9_]+\.sql$/.exec(migrationName ?? '')
+if (!version || Number(version[1]) < 5) { console.log('사용법: node db/tools/terms-sync.cjs V5__terms_sync.sql'); process.exit(1) }
+const migrationDir = path.join(repo, 'db/flyway')
+if (fs.readdirSync(migrationDir).some(name => name.startsWith(`V${version[1]}__`))) {
+  throw new Error('이미 사용 중인 Flyway 버전입니다. 다음 버전을 사용하세요.')
+}
 const ts = require(path.join(repo, 'frontend/node_modules/typescript'))
 const src = fs.readFileSync(path.join(repo, 'frontend/src/features/legal/content.ts'), 'utf8')
 const content = {}
@@ -41,5 +46,5 @@ for (const [type, doc] of Object.entries(docs)) {
   lines.push(`UPDATE terms_documents SET content = '${q(toText(doc))}'`, `WHERE doc_type = '${type}' AND version = '${VERSION}' AND BINARY content <> BINARY '${q(toText(doc))}';`)
 }
 lines.push('SET SESSION SQL_SAFE_UPDATES = @terms_sync_safe_updates;', '')
-fs.writeFileSync(path.join(repo, 'db/migrations', migrationName), lines.join('\n'))
+fs.writeFileSync(path.join(migrationDir, migrationName), lines.join('\n'), { flag: 'wx' })
 console.log('ok', Object.keys(docs).join(','), VERSION)

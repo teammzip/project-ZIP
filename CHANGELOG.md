@@ -31,6 +31,9 @@
 
 ### 2026-11-28
 - 곽성미 — 화면에서 쓰지 않는 API 7개 삭제: `GET /api/events/search`, `GET /api/trash-schedules?regionId=`, `POST /api/admin/sanctions/bulk`, `PATCH /api/admin/reports/{id}`, `GET /api/posts/home-tips`, `PUT`·`DELETE /api/admin/posts/{id}/home-tip`. 이 API만 쓰던 서비스 · 저장소 메서드와 테스트 3개(홈 꿀팁 2 · 일괄 정지 1)도 지움. 신고 숨김 · 배출표 표 모양 검증은 남은 API(대상별 신고 처리 · 내 배출표)로 옮김. DB `posts.is_home_tip` · 응답 `homeTip` 은 유지. OpenAPI 105 paths, 백엔드 352개 통과 [애플리케이션](wiki/topics/application.md#화면에서-호출하지-않는-api)
+- Codex — 메모 폴더의 생성·조회·수정·삭제에 Spring Data JPA를 적용했습니다. 회원별 접근, 이름 중복 `409`, 폴더를 지울 때 메모가 미분류로 이동하는 동작을 보존합니다. [메모 폴더 저장과 검증](wiki/topics/ledger-memos.md#폴더와-메모-동기화)
+- Codex — 메모 목록·등록·수정에 공통 `MemoResponse`를 적용하고 문자열 ID, 체크리스트, 선택 필드의 `null` 응답을 보존했습니다. [메모 응답 DTO](wiki/topics/ledger-memos.md#메모-응답-dto)
+- Codex — 수입·기타 지출 등록과 월급 자동 등록에서 DB가 반환한 생성 키를 사용해 메모·월급 연결에 필요한 ID를 받습니다. [가계부·월급 등록](wiki/topics/ledger-memos.md#가계부월급-등록의-생성-키)
 - moon — 일정 목록·검색·등록·수정 응답을 `CalendarEventResponse`로 통일했습니다. 기존 JSON의 문자열 ID·종일 빈 시간·분류 `null`을 보존하고, OpenAPI의 일정 등록 상태를 실제 응답 `201`로 맞췄습니다. 최신 `dev` 반영 후 백엔드 H2 356개 통과. [일정 응답 계약과 검증](wiki/topics/calendar-notifications.md#일정-응답-dto)
 - 곽성미 — `GET /api/posts` 에 `regionId`(기준 동네) 추가: 주면 내 동네 대신 그 동네 글(scope 생략 시 here, near 는 이웃 포함). `scope=all` 과 함께면 400, 없는 동네면 404. 테스트 `browsingAnotherRegionListsThatRegionsPostsWithoutChangingMine` 추가 · OpenAPI 반영 [커뮤니티 운영](wiki/topics/community-operations.md)
 - 곽성미 — 화면에서 쓰지 않는 API 6개 삭제: 예전 일반 고정 지출 `GET · POST /api/bills`, `PATCH · DELETE /api/bills/{id}`, `PUT /api/bills/{id}/payments/{month}`(화면은 `/api/bills/monthly/**`), 일정 완료 전용 `PATCH /api/events/{id}/done`(화면은 `PATCH /api/events/{id}` 의 `done`). 그 API 만 쓰던 서비스 · 저장소 · 입력 검사 코드와 Postman 컬렉션 · 테스트도 지움. 월별 API 의 동시 납부 검사는 `BillIntegrationTests` 로 옮기고, 일정 완료 검사는 일반 수정 경로로 바꿈(완료 시각 기록 · 해제 확인). OpenAPI 경로 115 → 111, 서버 경로 156 → 150. 관리자 일괄 제재 · 일정 검색 · 홈 꿀팁 · 생활 설정은 팀 협의, 지역 목록은 유지. 백엔드 360개 통과 [계약 고정 지출](wiki/topics/fixed-expenses.md#일반-고정-지출의-납부와-해지) · [일정](wiki/topics/calendar-notifications.md#일정-저장과-반복-기념일)
@@ -126,6 +129,9 @@
 
 `db/` — 표 설계(schema.sql) · 마이그레이션 · 검사. 마이그레이션 파일 설명은 [db/migrations/README.md](db/migrations/README.md)
 
+### 2026-11-28
+- Codex — Flyway로 스키마 이력을 관리합니다. `V1__schema.sql`과 전국 참조 데이터 `V2`~`V4`를 신규 DB에 적용하고 기존 DB는 `V4`를 기준으로 등록합니다. 격리 MySQL 8.0.46에서 신규 설치·재실행·기존 데이터 보존과 불완전한 DB 거절을 검증했습니다. [적용 안내](db/migrations/README.md#flyway로-적용하기)
+
 ### 2026-11-27
 - 곽성미 — ERD · 시스템 구성도 추가(GitHub 에서 그림으로 보이는 Mermaid): `db/README.md` 4장에 기능별 관계도 6장(schema.sql 외래키 84개 전부, 필수 · 1:1 여부도 schema 기준), 위키 `application.md` 에 "시스템 구성"(한 도메인 · 백엔드 1대 · 외부 연동 · 브라우저 직접 호출). 검증: mermaid 11.4.1 파서로 7장 모두 문법 통과 [DB 관계도](db/README.md#관계도-erd)
 - 곽성미 — `db/README.md` 표 설명을 schema.sql 과 맞춤: 칸 설명이 없던 표 15개(메모 폴더 · 카카오 장소 리뷰 · 리뷰 사진 · 리뷰 신고 · 공지 · 저장 리스트 · 월급 설정/기록 · 고지서 3종 · 내 집 계약 · 개인 정보 · 카카오 즐겨찾기) 추가, 4장 목록에 빠진 4개 추가, 칸이 빠진 표 9개(users · memos · posts · comments · bill_items · bill_payments · rent_payments · loan_interest_charges · places) 갱신. 스키마 변경 없음 (검증: 58개 표 전부 4장 · 5장에 있고 schema.sql 의 모든 칸 · 키가 문서에 있음)
@@ -203,6 +209,7 @@
 `frontend/` — React 앱
 
 ### 2026-11-28
+- Codex — 홈 지출 위젯과 가계부 기타 지출 화면에서 회원·세션·월·시간대별 조회를 공유하고, 지출 저장·삭제 시 영향을 받은 월의 캐시를 갱신합니다. [서버 데이터와 브라우저 저장](wiki/topics/application.md#서버-데이터와-브라우저-저장)
 - 곽성미 — 다른 동네 둘러보기에서 고른 동네의 **커뮤니티 글**을 보여 줌: 시 · 군 · 구를 고르면 아래 목록 · 제목 · 검색창이 그 동네로 바뀌고, 맞닿은 동네 칩을 누르면 그 동네로 넘어감. "내 동네로 ›" · ✕ · 탭 변경으로 돌아감. 글 쓰는 동네는 그대로. 프론트 234개 · 린트 · 타입 검사 통과 [커뮤니티 운영](wiki/topics/community-operations.md)
 - 곽성미 — AI 화면 왼쪽에 GPT · Claude 같은 대화 목록: 새 대화 · 날짜별(오늘 · 어제 · 지난 7일 · 지난 30일 · 이전) 대화 · 누르면 그 대화를 불러와 이어서 묻기 · 대화마다 지우기(그 자리에서 확인). PC는 목록 접기, 모바일은 서랍. 같은 날 내 정보에 넣었던 "AI 대화 기록" 줄과 창은 빼서 AI 화면 한 곳으로 모음. 테스트 3개 추가, 프론트 233개 · 린트 · 빌드 통과 [AI 대화](wiki/topics/service-integrations.md)
 - 곽성미 — 커뮤니티 "주변 동네" 탭의 다른 동네 보기 디자인 정리: 따로 떠 있던 테두리 상자 대신 안내 줄 끝 작은 알약 버튼("다른 동네 둘러보기 ›")으로 열고, 검색창과 같은 연회색 칸 · 테두리 없는 흰 선택 상자 · 맞닿은 지역 칩으로 표시. 기능은 그대로, 프론트 230개 · 린트 · 타입 검사 통과 [커뮤니티 운영](wiki/topics/community-operations.md)

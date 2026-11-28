@@ -2,6 +2,7 @@ package com.zip.backend.memo;
 
 import com.zip.backend.common.ApiException;
 import com.zip.backend.common.Sql;
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -10,6 +11,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.type.TypeReference;
@@ -65,7 +68,11 @@ public class MemoService {
             }
             if (repository.renameFolder(userId, idOr400(folderId), name) == 0) throw new ApiException(404, "폴더를 찾을 수 없어요.");
             return new MemoRepository.Folder(folderId, name);
-        } catch (org.springframework.dao.DuplicateKeyException duplicate) {
+        } catch (DataIntegrityViolationException error) {
+            // JDBC and Hibernate can translate the unique-key violation to different Spring exceptions.
+            if (!(error instanceof DuplicateKeyException)
+                && !(error.getMostSpecificCause() instanceof SQLException sql
+                    && ("23505".equals(sql.getSQLState()) || sql.getErrorCode() == 1062))) throw error;
             throw new ApiException(409, "같은 이름의 폴더가 있어요.");
         }
     }
@@ -76,14 +83,14 @@ public class MemoService {
         if (repository.deleteFolder(userId, idOr400(folderId)) == 0) throw new ApiException(404, "폴더를 찾을 수 없어요.");
     }
 
-    public List<Map<String, Object>> list(long userId, String q) {
+    public List<MemoResponse> list(long userId, String q) {
         var keyword = q == null || q.isBlank() ? null : q.strip();
         if (keyword != null && keyword.length() > 40) throw new ApiException(400, "검색어는 40자 이내로 입력해 주세요.");
         return repository.list(userId, keyword == null ? null : Sql.likeContains(keyword)).stream().map(this::memo).toList();
     }
 
     @Transactional
-    public Map<String, Object> create(long userId, MemoInput input) {
+    public MemoResponse create(long userId, MemoInput input) {
         repository.lockUser(userId);
         validateFolder(userId, input);
         if (repository.count(userId) >= MEMOS_MAX) throw new ApiException(400, "메모는 " + MEMOS_MAX + "개까지 만들 수 있어요. 안 쓰는 메모를 지워 주세요.");
@@ -94,7 +101,7 @@ public class MemoService {
     }
 
     @Transactional
-    public Map<String, Object> update(long userId, String memoId, MemoInput input) {
+    public MemoResponse update(long userId, String memoId, MemoInput input) {
         repository.lockUser(userId);
         validateFolder(userId, input);
         var before = repository.find(userId, id(memoId)).orElseThrow(MemoService::notFound);
@@ -207,20 +214,22 @@ public class MemoService {
         return new ApiException(404, "메모를 찾을 수 없어요.");
     }
 
-    private Map<String, Object> memo(MemoRepository.MemoRow m) {
-        var result = new LinkedHashMap<String, Object>();
-        result.put("id", Long.toString(m.id()));
-        result.put("title", m.title());
-        result.put("body", m.body());
-        result.put("color", m.color());
-        result.put("pinned", m.pinned());
-        result.put("checklist", m.checklist());
-        result.put("items", json.readValue(m.items() == null ? "[]" : m.items(), new TypeReference<List<Map<String, Object>>>() {}));
-        result.put("createdAt", m.createdAt().toString());
-        result.put("updatedAt", m.updatedAt().toString());
-        result.put("ledgerContext",m.ledgerContext());
-        result.put("draft",m.draft());
-        result.put("folderId", m.folderId() == null ? null : Long.toString(m.folderId()));
-        return result;
+    private MemoResponse memo(MemoRepository.MemoRow m) {
+        // 기존 체크리스트 JSON에 저장된 항목 속성을 그대로 반환합니다.
+        var items = json.readValue(m.items() == null ? "[]" : m.items(), new TypeReference<List<Map<String, Object>>>() {});
+        return new MemoResponse(
+            Long.toString(m.id()),
+            m.title(),
+            m.body(),
+            m.color(),
+            m.pinned(),
+            m.checklist(),
+            items,
+            m.createdAt().toString(),
+            m.updatedAt().toString(),
+            m.ledgerContext(),
+            m.draft(),
+            m.folderId() == null ? null : Long.toString(m.folderId())
+        );
     }
 }

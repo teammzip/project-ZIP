@@ -35,21 +35,17 @@ API 문서와 코드의 저장 모델을 함께 대조했습니다. 프론트 �
 
 ### 새 DB
 
-프로젝트 최상위 폴더에서 실행합니다. 현재 데이터베이스에 적용한 결과가 아니라 **새 DB 생성용 파일**입니다.
-
-```powershell
-mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql"
-```
+새 DB는 빈 스키마를 만든 뒤 [Flyway 적용 절차](migrations/README.md#flyway로-적용하기)로 준비합니다. `schema.sql`은 현재 구조를 확인하고 비교하는 스냅샷으로 사용합니다.
 
 ### 운영 DB 새로 만들기 (첫 배포 · QA용 새 DB)
 
 배포 서버나 QA용으로 **빈 MySQL에 처음부터** 만들 때의 순서예요. 이미 쓰던 DB를 최신으로 맞출 때는 아래 [기존 DB](#기존-db)와 [마이그레이션 안내](migrations/README.md)를 따라요. 명령은 저장소 최상위 폴더에서 MySQL 관리자 계정으로 실행해요.
 
-1. **표와 기본 데이터 만들기**: `schema.sql`이 `zip` 데이터베이스(utf8mb4)를 만들고 표 58개와 약관 3종 · 가계부 분류 · AI 주제 · 장소 분류 · 예시 동네 12개 · 예시 배출표 6개를 넣어요.
-   ```powershell
-   mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql"
+1. **빈 데이터베이스 만들기**: 앱 계정과 별도의 마이그레이션 계정을 준비해요.
+   ```sql
+   CREATE DATABASE zip CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
    ```
-2. **전국 자료 넣기**: 아래 [전국 지역 · 쓰레기 배출표 · 주변 동네](#전국-지역--쓰레기-배출표--주변-동네)의 세 파일을 `01` → `02` → `04` 순서로 실행해요. 끝나면 지역 249개(시도 16 + 시군구 233) · 배출표 6,218줄 · 주변 동네 1,286줄이어야 해요. 예시 동네는 전국 지역에 포함되고 예시 배출표는 `02`가 지우고 다시 넣으므로, **예시 데이터를 따로 지울 필요는 없어요.**
+2. **표와 기본 데이터 넣기**: [Flyway 작업](migrations/README.md#flyway로-적용하기)을 실행해요. 기본 버전은 지역 249개(시도 16 + 시군구 233) · 배출표 6,218줄 · 주변 동네 1,286줄을 넣어요.
    ```sql
    SELECT (SELECT COUNT(*) FROM regions) regions, (SELECT COUNT(*) FROM trash_schedules) trash, (SELECT COUNT(*) FROM region_neighbors) neighbors;
    ```
@@ -74,6 +70,8 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 ### 기존 DB
 
+기존 DB를 처음 Flyway에 등록할 때는 [기준 버전 등록 절차](migrations/README.md#flyway로-적용하기)를 따릅니다. 아래 이력은 아직 기준 버전 `V4`까지 따라오지 못한 DB를 위한 안내입니다.
+
 20261102까지 적용된 DB는 [20261107_life_categories.sql](migrations/20261107_life_categories.sql)을 한 번 적용합니다. 이미 최신 컬럼·타입이 있으면 재실행하지 않습니다. 20261102 이전 44개 표 DB는 먼저 [20261102_requirements_hardening.sql](migrations/20261102_requirements_hardening.sql)의 사전 검사를 마친 뒤 순서대로 적용합니다. 테이블 수만으로 적용 버전을 판단하지 않습니다.
 
 기념일 정식 컬럼까지 적용한 41개 테이블 DB는 [주거·대출 마이그레이션](migrations/20261101_housing_and_loan.sql)을 추가 적용합니다. 구형 기념일 컬럼이 남아 있으면 [마이그레이션 안내](migrations/README.md#구형-기념일-컬럼-정리)를 확인하세요.
@@ -92,7 +90,7 @@ mysql -u root -p --default-character-set=utf8mb4 --execute="source db/schema.sql
 
 ### 전국 지역 · 쓰레기 배출표 · 주변 동네
 
-전국 시도 · 시군구(`regions` 249행), 쓰레기 배출표(`trash_schedules` 6,218행), 주변 동네(`region_neighbors` 1,286행)는 데이터 마이그레이션 세 개(`20261122_01_regions_nationwide` · `02` · `04`)로 넣습니다. 백엔드가 자동으로 넣지 않으니 각자 DB 에 한 번 실행하세요(여러 번 실행해도 같음, 각자 DB 의 지역 번호는 그대로).
+전국 시도 · 시군구(`regions` 249행), 쓰레기 배출표(`trash_schedules` 6,218행), 주변 동네(`region_neighbors` 1,286행)는 새 DB에서 Flyway `V2`~`V4`로 적용됩니다. 아래는 기존 DB의 기준 버전 등록 전에 확인할 원본 SQL 순서입니다.
 
 1. [`migrations/20261121_06_trash_schedule_columns.sql`](migrations/20261121_06_trash_schedule_columns.sql) — 배출표 구조 (동네 · 장소 한 줄에 생활쓰레기 · 음식물 · 재활용 요일 · 시작 시각)
 2. [`migrations/20261122_01_regions_nationwide.sql`](migrations/20261122_01_regions_nationwide.sql) — 전국 시도 16 · 시군구 233 (없는 것만 추가)

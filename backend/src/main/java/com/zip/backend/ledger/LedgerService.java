@@ -158,9 +158,8 @@ public class LedgerService {
         if (in) args.add(incomeType);
         if (id == null) {
             args.add(user);
-            jdbc.update("INSERT INTO " + table + " (category_id,amount," + dateColumn + ",memo" + (in ? ",income_type" : "")
+            id = LedgerInsert.withGeneratedId(jdbc, "INSERT INTO " + table + " (category_id,amount," + dateColumn + ",memo" + (in ? ",income_type" : "")
                 + ",user_id) VALUES (?,?,?,?" + (in ? ",?" : "") + ",?)", args.toArray());
-            id = jdbc.queryForObject("SELECT MAX(id) FROM " + table + " WHERE user_id=?", Long.class, user);
         } else {
             args.add(id);
             args.add(user);
