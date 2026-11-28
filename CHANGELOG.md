@@ -30,6 +30,7 @@
 `backend/` — Spring Boot 서버 API
 
 ### 2026-11-28
+- 곽성미 — 화면에서 쓰지 않는 API 6개 삭제: 예전 일반 고정 지출 `GET · POST /api/bills`, `PATCH · DELETE /api/bills/{id}`, `PUT /api/bills/{id}/payments/{month}`(화면은 `/api/bills/monthly/**`), 일정 완료 전용 `PATCH /api/events/{id}/done`(화면은 `PATCH /api/events/{id}` 의 `done`). 그 API 만 쓰던 서비스 · 저장소 · 입력 검사 코드와 Postman 컬렉션 · 테스트도 지움. 월별 API 의 동시 납부 검사는 `BillIntegrationTests` 로 옮기고, 일정 완료 검사는 일반 수정 경로로 바꿈(완료 시각 기록 · 해제 확인). OpenAPI 경로 115 → 111, 서버 경로 156 → 150. 관리자 일괄 제재 · 일정 검색 · 홈 꿀팁 · 생활 설정은 팀 협의, 지역 목록은 유지. 백엔드 360개 통과 [계약 고정 지출](wiki/topics/fixed-expenses.md#일반-고정-지출의-납부와-해지) · [일정](wiki/topics/calendar-notifications.md#일정-저장과-반복-기념일)
 - moon — 여러 단어로 동네 글을 검색할 때 한글 3음절 이상의 단어를 제목·본문의 띄어쓰기 차이에도 찾도록 개선했습니다. 최신 `dev` 병합 후 백엔드 369개와 격리 MySQL의 합성 검색 사례 40개를 검증했습니다. [검색 규칙과 검증 결과](wiki/topics/community-operations.md#여러-단어-검색의-띄어쓰기-개선-검증)
 
 ### 2026-11-27

@@ -4,6 +4,8 @@
 
 ## 일정 저장과 반복 기념일
 
+- 완료 표시는 일반 수정 `PATCH /api/events/{id}`의 `done`으로 저장합니다. 완료로 바뀔 때만 `done_at`을 적고, 해제하면 지웁니다. 화면이 쓰지 않던 완료 전용 `PATCH /api/events/{id}/done`은 2026-11-28에 지웠습니다. [일정 API](../../backend/src/main/java/com/zip/backend/calendar/CalendarController.java) · [완료 표시 테스트](../../backend/src/test/java/com/zip/backend/calendar/CalendarIntegrationTests.java)
+
 - 일정 화면에 할 일을 함께 표시합니다. 서버 모드에서는 일정·카테고리·항목 버튼을 각각 `/api/events`, `/api/event-categories`, `/api/event-presets`에서 회원별로 관리합니다. 일반 일정은 완료할 때 완료 시각을 저장하고, 완료를 해제하면 시각을 지웁니다. [일정 컨트롤러](../../backend/src/main/java/com/zip/backend/calendar/CalendarController.java) · [일정 서비스](../../backend/src/main/java/com/zip/backend/calendar/CalendarService.java)
 - 기념일은 원본 한 행에 저장하고 시간·카테고리·완료를 적용하지 않습니다. 매년 반복은 기념일만 지원합니다. 조회한 원본을 화면에서 연도별로 표시하며, 2월 29일은 평년에 2월 28일로 표시합니다. [화면 계산](../../frontend/src/features/life/derive.ts) · [DB 저장 계약](../../db/README.md#일정과-카테고리) · [기념일 마이그레이션](database.md#기념일-마이그레이션)
 - 2026-11-26 같은 [화면 계산](../../frontend/src/features/life/derive.ts) 파일의 동네 인증 판정만 고쳤고 기념일 · 일정 계산은 바뀌지 않았습니다. 프론트 테스트 207개가 통과했습니다. 동네 인증 규칙은 [커뮤니티 문서](community-operations.md#동네-글과-조회-집계)에 있습니다.
