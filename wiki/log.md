@@ -416,3 +416,9 @@
 - 복합어 검색을 [API 계약](../frontend/API.md#동네-게시글-검색), [검색 규칙과 검증](topics/community-operations.md#검색-정렬과-관련도), [변경 기록](../CHANGELOG.md)에서 대조했습니다. 프론트 213개, 린트, 운영 빌드, DB 정적 7개와 격리 MySQL 9.6의 73단계가 통과했습니다. DB 검증은 `20261127_01_terms_privacy_transfers.sql`을 포함합니다. [배포 환경에서 남은 검증](topics/project-status.md#검증해야-될-부분)
 - 병합 후 실행 JAR과 격리 MySQL에서 합성 검색어 40개를 다시 실행했습니다. API 요청 369건의 공개 범위 위반은 0건이었고, 복합어 평가의 기대 글 5개가 모두 상위 5개에 들었습니다. 결과가 없어야 하는 복합어 검색 5개는 모두 0건을 반환했습니다. [복합어 평가 사례](../db/tests/community-search/multiword-spacing-holdout-v1.json) · [독립 평가 사례](../db/tests/community-search/independent-v1.json)
 - 백엔드 전체 369개가 실패·오류·건너뜀 없이 통과했습니다. 실행 JAR 빌드와 OpenAPI 경로 115개의 YAML 구문 및 중복 키 검사도 통과했습니다. [백엔드 검증 명령](../.github/workflows/test.yml)
+
+## [2026-11-28] record | Claude Code용 작업 규칙 파일 분리
+
+- Codex는 [AGENTS.md](../AGENTS.md)·[위키 AGENTS.md](AGENTS.md)를 읽고, Claude Code는 기본적으로 `CLAUDE.md`를 읽습니다. 2026-11-28 작업 대화에서 Claude Code 세션에 최상위 `AGENTS.md`가 처음부터 들어오지 않는 것을 확인했습니다.
+- 도구별로 자기 파일만 읽도록 [CLAUDE.md](../CLAUDE.md)와 [위키 CLAUDE.md](CLAUDE.md)를 추가했습니다. 내용은 AGENTS 파일과 같고, 안의 링크만 Claude 파일끼리 가리킵니다. 네 파일 맨 위에 짝 파일과 함께 고치라는 안내를 넣었고, [색인](index.md)에 두 파일의 관계를 적었습니다.
+- 할 일: 규칙을 고칠 때 AGENTS·CLAUDE 두 쌍을 같은 내용으로 유지해야 합니다. 어긋남을 자동으로 잡는 검사는 아직 없습니다.

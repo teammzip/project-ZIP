@@ -1,5 +1,7 @@
 # project-ZIP
 
+> Codex가 읽는 팀 작업 규칙이에요. Claude Code는 같은 내용의 [CLAUDE.md](CLAUDE.md)를 읽어요. **한쪽을 고치면 다른 쪽도 같은 내용으로 함께 고쳐 주세요.** (위키 규칙은 [wiki/AGENTS.md](wiki/AGENTS.md) ↔ [wiki/CLAUDE.md](wiki/CLAUDE.md))
+
 ## Second Brain (LLM Wiki)
 
 - 프로젝트 작업을 시작할 때 [LLM Wiki 색인](wiki/index.md)에서 관련 주제를 찾고 [근거 확인](wiki/AGENTS.md#근거-확인) 절차를 따른다.
