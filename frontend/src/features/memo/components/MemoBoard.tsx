@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button, Modal } from '@/components/ui'
+import { SaveRecovery } from '@/components/SaveRecovery'
 import { cx } from '@/lib/cx'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { useToday } from '@/lib/useToday'
@@ -8,7 +9,7 @@ import { getErrorMessage } from '@/lib/apiClient'
 import { MEMO_COLORS } from '../constants'
 import { colorOf, previewLines, searchText, sortMemos, titleOf, whenText } from '../lib'
 import { useMemoStore } from '../store'
-import { completeLedgerMemo } from '../sync'
+import { completeLedgerMemo, memoRecovery, retryMemoDraft } from '../sync'
 import type { Memo, MemoFolder } from '../types'
 import { useMemoFolders } from '../folders'
 import styles from './Memo.module.css'
@@ -59,6 +60,9 @@ export function MemoBoard({ editableLedgerMemoId, onLedgerMemoSaved, onLedgerMem
 
   return (
     <div className={cx(styles.app, !!asked && !!current && styles.editing)}>
+      {!editableLedgerMemoId && <SaveRecovery name="메모" className={styles.recoveryRow} store={memoRecovery} titleOf={titleOf} retry={retryMemoDraft}
+        renderEditor={(memo, change, saving) => <MemoEditor memo={memo} folders={folders.folders} foldersReady={!folders.loading && !folders.error} recovery={{ change, saving }} />}
+      />}
       <aside className={styles.side}>
         <div className={styles.sideHead}>
           <h2>
@@ -158,21 +162,24 @@ export function MemoBoard({ editableLedgerMemoId, onLedgerMemoSaved, onLedgerMem
   )
 }
 
-function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, onSaved, onEdit }: {
-  memo: Memo; folders: MemoFolder[]; foldersReady: boolean; onBack: () => void; onDeleted: () => void
+function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, onSaved, onEdit, recovery }: {
+  memo: Memo; folders: MemoFolder[]; foldersReady: boolean; onBack?: () => void; onDeleted?: () => void
   onSaved?: (memo: Memo) => void; onEdit?: (memo: Memo) => void
+  recovery?: { change: (patch: Partial<Memo>) => void; saving: boolean }
 }) {
   const update = useMemoStore((s) => s.update)
   const remove = useMemoStore((s) => s.remove)
   const [confirmDel, setConfirmDel] = useState(false)
   const [moving, setMoving] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [completing, setSaving] = useState(false)
+  const saving = completing || !!recovery?.saving
   const [saveError, setSaveError] = useState('')
   const [saved, setSaved] = useState(false)
   const pendingSave = useRef(false)
   const itemRefs = useRef<Array<HTMLInputElement | null>>([])
   const now = useToday().getTime()
   const set = (patch: Partial<Memo>) => {
+    if (recovery) return recovery.change(patch)
     if (pendingSave.current) return
     setSaved(false)
     update(memo.id, patch)
@@ -212,11 +219,11 @@ function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, onSaved, o
   }
 
   return (
-    <div className={styles.edit}>
+    <div className={cx(styles.edit, recovery && styles.recoveryEdit)}>
       <div className={styles.tools}>
-        <button type="button" className={styles.back} disabled={saving} onClick={onBack} aria-label="목록으로">
+        {onBack && <button type="button" className={styles.back} disabled={saving} onClick={onBack} aria-label="목록으로">
           ‹ 목록
-        </button>
+        </button>}
         <div className={styles.colors} role="group" aria-label="메모 색">
           {MEMO_COLORS.map((c) => (
             <button
@@ -244,10 +251,10 @@ function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, onSaved, o
         <button type="button" className={styles.tool} aria-pressed={memo.checklist} disabled={saving} onClick={toggleChecklist} title="체크리스트로 바꾸기">
           ☑️ <span>{memo.checklist ? '글로 바꾸기' : '체크리스트'}</span>
         </button>
-        <button type="button" className={cx(styles.tool, styles.danger)} disabled={saving} onClick={() => setConfirmDel(true)} title="메모 삭제">
+        {onDeleted && <button type="button" className={cx(styles.tool, styles.danger)} disabled={saving} onClick={() => setConfirmDel(true)} title="메모 삭제">
           🗑️ <span>삭제</span>
-        </button>
-        {(onSaved || memo.ledgerContext) && <Button disabled={saving} onClick={() => void save()}>{saving ? '저장 중' : '저장'}</Button>}
+        </button>}
+        {!recovery && (onSaved || memo.ledgerContext) && <Button disabled={saving} onClick={() => void save()}>{saving ? '저장 중' : '저장'}</Button>}
       </div>
       {saveError && <p role="alert">{saveError}</p>}
       {saved && <p role="status">저장했어요.</p>}
@@ -302,9 +309,9 @@ function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, onSaved, o
         <textarea className={styles.body} value={memo.body} readOnly={saving} onChange={(e) => set({ body: e.target.value })} maxLength={5000} placeholder="내용을 적어 보세요" aria-label="메모 내용" />
       )}
 
-      <p className={styles.saved} aria-live="polite">
+      {!recovery && <p className={styles.saved} aria-live="polite">
         {saving ? '저장 중…' : saveError ? '위의 저장 상태를 확인해 주세요.' : `${memo.draft ? '임시 편집' : '자동 저장됨'} · ${whenText(memo.updatedAt, now)}`}
-      </p>
+      </p>}
 
       <Modal open={moving} onClose={() => setMoving(false)} title="폴더로 이동">
         <h3>폴더로 이동</h3>
@@ -333,7 +340,7 @@ function MemoEditor({ memo, folders, foldersReady, onBack, onDeleted, onSaved, o
             onClick={() => {
               remove(memo.id)
               setConfirmDel(false)
-              onDeleted()
+              onDeleted?.()
             }}
           >
             지우기

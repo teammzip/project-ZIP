@@ -106,8 +106,9 @@ function setup({ events = [], local = {}, synced = true } = {}) {
   const hooks = evaluate('../src/features/life/calendarHooks.ts', {})
   const presets = evaluate('../src/features/life/data/presets.ts', {})
   const listSync = evaluate('../src/lib/listSync.ts', {})
+  const accountStorage = evaluate('../src/lib/accountStorage.ts', { '@/features/auth/store/authStore': { useAuthStore } })
   const storeModule = evaluate('../src/features/life/store.ts', {
-    '@/lib/accountStorage': evaluate('../src/lib/accountStorage.ts', { '@/features/auth/store/authStore': { useAuthStore } }),
+    '@/lib/accountStorage': accountStorage,
     '@/lib/date': evaluate('../src/lib/date.ts', {}),
     './payments': evaluate('../src/features/life/payments.ts', {}),
     '@/features/map/location': evaluate('../src/features/map/location.ts', {}),
@@ -127,6 +128,7 @@ function setup({ events = [], local = {}, synced = true } = {}) {
     '@/lib/apiClient': { apiClient: api },
     '@/lib/apiMode': { isMockApi: false },
     '@/lib/listSync': listSync,
+    '@/lib/saveRecovery': evaluate('../src/lib/saveRecovery.ts', { './accountStorage': accountStorage }),
     './calendarHooks': hooks,
     './data/presets': presets,
     './store': storeModule,

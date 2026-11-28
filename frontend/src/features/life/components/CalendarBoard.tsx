@@ -2,10 +2,12 @@ import { useMemo, useState, type CSSProperties, type FormEvent, type KeyboardEve
 import { useSearchParams } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { Button, Card, Modal, Segmented } from '@/components/ui'
+import { SaveRecovery } from '@/components/SaveRecovery'
 import { cx } from '@/lib/cx'
 import { DOW, fmt, monthDay, pad, todayStr } from '@/lib/date'
 import { useToday } from '@/lib/useToday'
 import common from '@/styles/common.module.css'
+import { eventRecovery, retryEventDraft } from '../calendarSync'
 import { trashIco } from '../data/catalog'
 import { UNCATEGORIZED, evColor } from '../data/presets'
 import { expandAnniversaries, isTrash, sortEvents, trashEventsBetween, weekRange } from '../derive'
@@ -124,6 +126,9 @@ export function CalendarBoard() {
         <TrashScheduleDisclosure />
       </div>
       <div className={common.col}>
+        <SaveRecovery name="일정" store={eventRecovery} titleOf={(event) => event.title} retry={retryEventDraft}
+          renderEditor={(event, change, saving) => <EventFields draft={event} change={change} disabled={saving} />}
+        />
         <RecordCard
           picked={picked}
           onChoose={choose}
@@ -432,19 +437,7 @@ function EditRow({ ev, onDone }: { ev: CalEvent; onDone: (saved: CalEvent | null
 
   return (
     <li className={cx(styles.ev, styles.evEditing)} onKeyDown={onKey}>
-      <div className={styles.evFields}>
-        <input className={common.input} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} maxLength={60} aria-label="일정 제목" autoFocus />
-        <div className={cal.editCategory}>
-          <CategorySelect value={draft.category || UNCATEGORIZED} onChange={(category) => setDraft({ ...draft, category })} label="카테고리 (선택)" />
-          <Button variant="line" onClick={() => setDraft({ ...draft, category: UNCATEGORIZED })}>
-            카테고리 삭제
-          </Button>
-        </div>
-        <div className={common.two}>
-          <input type="date" className={common.input} value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} aria-label="날짜" />
-          <input type="time" className={common.input} value={draft.time} onChange={(e) => setDraft({ ...draft, time: e.target.value })} aria-label="시간 (선택)" />
-        </div>
-      </div>
+      <EventFields draft={draft} change={(patch) => setDraft((value) => ({ ...value, ...patch }))} autoFocus />
       <div className={styles.evBtns}>
         <Button onClick={save}>저장</Button>
         <Button variant="line" onClick={() => onDone(null)}>
@@ -452,6 +445,24 @@ function EditRow({ ev, onDone }: { ev: CalEvent; onDone: (saved: CalEvent | null
         </Button>
       </div>
     </li>
+  )
+}
+
+function EventFields({ draft, change, disabled, autoFocus }: {
+  draft: CalEvent; change: (patch: Partial<CalEvent>) => void; disabled?: boolean; autoFocus?: boolean
+}) {
+  return (
+    <fieldset className={cx(styles.evFields, cal.editFields)} disabled={disabled}>
+      <input className={common.input} value={draft.title} onChange={(e) => change({ title: e.target.value })} maxLength={60} aria-label="일정 제목" autoFocus={autoFocus} />
+      <div className={cal.editCategory}>
+        <CategorySelect value={draft.category || UNCATEGORIZED} onChange={(category) => change({ category })} label="카테고리 (선택)" />
+        <Button variant="line" onClick={() => change({ category: UNCATEGORIZED })}>카테고리 삭제</Button>
+      </div>
+      <div className={common.two}>
+        <input type="date" className={common.input} value={draft.date} onChange={(e) => change({ date: e.target.value })} aria-label="날짜" />
+        <input type="time" className={common.input} value={draft.time} onChange={(e) => change({ time: e.target.value })} aria-label="시간 (선택)" />
+      </div>
+    </fieldset>
   )
 }
 

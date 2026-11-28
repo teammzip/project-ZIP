@@ -87,7 +87,10 @@ IntelliJ 에서 `BackendApplication` 을 실행해요(작업 폴더는 `backend`
 ```powershell
 $env:JAVA_TOOL_OPTIONS='-Dfile.encoding=UTF-8'   # Windows 한글 깨짐 방지
 .\gradlew.bat test                               # H2(MySQL 호환 모드) — 실제 DB 를 건드리지 않음
+.\gradlew.bat mysqlTest                          # Docker의 임시 MySQL로 Flyway와 메모 폴더 CRUD 검증
 .\gradlew.bat -I verify-monthly-mysql.init.gradle verifyMonthlyMysql   # 고정 지출을 실제 MySQL 로 재검증 (임시 데이터는 롤백)
 ```
+
+`mysqlTest`는 Docker가 실행 중이어야 해요. Linux·macOS에서는 `bash ./gradlew mysqlTest`로 실행해요. 테스트가 컨테이너의 접속 정보를 직접 사용하므로 DB 환경변수나 비밀값을 준비할 필요가 없어요. GitHub Actions에서도 별도 작업으로 실행합니다. [MySQL 통합 검사 범위](../db/tests/README.md#testcontainers-통합-검사)
 
 Postman 컬렉션: [생활 설정](postman/life-settings.postman_collection.json)

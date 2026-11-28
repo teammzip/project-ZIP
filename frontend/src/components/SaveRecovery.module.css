@@ -1,0 +1,40 @@
+.recovery {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface, #fff);
+  overflow-wrap: anywhere;
+}
+
+.recovery h3,
+.dialog h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.recovery ul {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recovery li p,
+.dialog p {
+  margin: 0 0 6px;
+  color: var(--color-muted);
+}
+
+.dialog {
+  display: grid;
+  gap: 12px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}

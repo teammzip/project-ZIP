@@ -1,5 +1,5 @@
 # PR 과 dev 에 들어온 코드를 GitHub 가 자동으로 검사한다 (각자 PC 에서 돌렸다고 적는 대신 PR 화면에 결과가 뜸).
-# 백엔드 테스트(H2, 외부 서비스 · 비밀값 없이 돎) · 프론트 테스트 · 빌드 · 린트 · DB 정적 검사.
+# 백엔드 테스트(H2·격리 MySQL) · 프론트 테스트 · 빌드 · 린트 · DB 정적 검사.
 # pull_request 는 PR 쪽 코드를 읽기 권한만으로 돌려서 저장소 비밀값에 닿지 않는다.
 name: Tests
 
@@ -64,6 +64,42 @@ jobs:
         run: npm run lint
       - name: Build (type check included)
         run: npm run build
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser recovery tests
+        run: npm run test:e2e
+      - name: Keep Playwright traces when tests fail
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-test-results
+          path: frontend/test-results
+          retention-days: 7
+
+  mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: MySQL integration tests
+        run: bash ./gradlew mysqlTest --no-daemon
+      - name: Keep MySQL test reports when tests fail
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: mysql-test-reports
+          path: backend/build/reports/tests/mysqlTest
+          retention-days: 7
 
   db:
     runs-on: ubuntu-latest

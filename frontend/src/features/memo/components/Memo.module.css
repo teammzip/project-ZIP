@@ -191,6 +191,15 @@
   padding: 14px 20px 16px;
 }
 
+.recoveryRow {
+  grid-column: 1 / -1;
+}
+
+.edit.recoveryEdit {
+  min-height: 220px;
+  padding: 0;
+}
+
 .tools {
   display: flex;
   flex-wrap: wrap;

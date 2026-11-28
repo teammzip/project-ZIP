@@ -80,7 +80,13 @@ function setup({ server: initial = [], local = [], synced = true, moved = [] } =
   const clearTimer = (n) => timers[n - 1] && (timers[n - 1].fn = null)
   const exports = {}
   const window = new EventTarget()
-  let auth = { user: { id: 'u1' }, sessionKey: 'session-1' }
+  const useAuthStore = create(() => ({ user: { id: 'u1' }, sessionKey: 'session-1' }))
+  const accountStorage = {}
+  vm.runInNewContext(compile('../src/lib/accountStorage.ts'), { exports: accountStorage, localStorage, require: (name) =>
+    name === '@/features/auth/store/authStore' ? { useAuthStore } : require(name) })
+  const recovery = {}
+  vm.runInNewContext(compile('../src/lib/saveRecovery.ts'), { exports: recovery, require: (name) =>
+    name === './accountStorage' ? accountStorage : require(name) })
   const listSync = {}
   vm.runInNewContext(listSyncCode, { exports: listSync, localStorage, setTimeout, clearTimeout, console })
   vm.runInNewContext(code, {
@@ -88,9 +94,10 @@ function setup({ server: initial = [], local = [], synced = true, moved = [] } =
     require: (name) => {
       if (name === 'react') return { useEffect: () => {} }
       if (name === '@/lib/listSync') return listSync
+      if (name === '@/lib/saveRecovery') return recovery
       if (name === '@/lib/apiClient') return { apiClient: api }
       if (name === '@/lib/apiMode') return { isMockApi: false }
-      if (name === '@/features/auth/store/authStore') return { useAuthStore: Object.assign(() => 'u1', { getState: () => auth }) }
+      if (name === '@/features/auth/store/authStore') return { useAuthStore }
       if (name === './store') return { useMemoStore: store }
       return {}
     },
@@ -111,7 +118,7 @@ function setup({ server: initial = [], local = [], synced = true, moved = [] } =
   }
   const edit = (id, patch) => store.setState((s) => ({ memos: s.memos.map((m) => (m.id === id ? { ...m, ...patch } : m)) }))
   const start = () => exports.startMemoSync('u1', setTimer, clearTimer)
-  const switchAccount = () => { auth = { user: { id: 'u2' }, sessionKey: 'session-2' } }
+  const switchAccount = () => useAuthStore.setState({ user: { id: 'u2' }, sessionKey: 'session-2' })
   const refresh = () => window.dispatchEvent(new Event('zip-memos-refresh'))
   return { server, store, saved, start, settle, runTimers, gate, edit, exports, timers, switchAccount, refresh }
 }
@@ -280,6 +287,47 @@ test('서버가 거절한 메모는 계속 다시 보내지 않는다', async ()
   await t.runTimers(8)
   assert.equal(t.server.calls.filter(([m]) => m === 'POST').length, 1)
   assert.equal(t.saved.get('zip-memos-synced:u1'), '1')
+  const [draft] = t.exports.memoRecovery.useStore.getState().drafts
+  assert.equal(draft.item.body, '너무 긴 메모')
+  assert.equal(draft.target, null)
+})
+
+test('이전 계정의 늦은 거절 응답을 새 계정 초안에 넣지 않는다', async () => {
+  const t = setup({ server: [memo(1, '원본')] })
+  t.start()
+  await t.settle()
+  const release = t.gate('PATCH')
+  t.server.failures.push({ method: 'PATCH', error: http(400) })
+  t.edit(1, { body: '첫 번째 회원의 입력' })
+  await t.runTimers(1)
+  t.switchAccount()
+  release()
+  await t.settle()
+  assert.equal(t.exports.memoRecovery.useStore.getState().drafts.length, 0)
+  assert.equal(t.saved.has('zip-memo-save-drafts:user:u2'), false)
+})
+
+test('새 메모가 거절된 뒤 서버 목록을 기다리는 동안의 편집도 같은 초안에 넣는다', async () => {
+  const t = setup()
+  t.start()
+  await t.settle()
+  const release = t.gate('POST')
+  t.server.failures.push({ method: 'POST', error: http(400) })
+  t.store.setState({ memos: [memo(92, '처음 입력')] })
+  await t.settle()
+  t.edit(92, { body: '생성 응답 전 편집' })
+  release()
+  await t.settle()
+  const openPull = t.gate('GET')
+  await t.runTimers(1)
+  t.edit(92, { body: '목록 응답 전 편집' })
+  openPull()
+  await t.settle()
+  await t.runTimers()
+  const [draft] = t.exports.memoRecovery.useStore.getState().drafts
+  assert.equal(draft.item.body, '목록 응답 전 편집')
+  assert.equal(draft.target, null)
+  assert.deepEqual(t.server.calls.filter(([method]) => method !== 'GET').map(([method]) => method), ['POST'])
 })
 
 test('새 메모를 만들자마자 고치고 지워도 서버에 남지 않는다', async () => {

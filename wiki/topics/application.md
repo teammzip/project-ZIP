@@ -83,6 +83,7 @@ flowchart LR
 | 적용 완료 | 일정 목록·검색·등록·수정 응답 (2026-11-28) | [공통 일정 응답 DTO와 기존 응답 계약](calendar-notifications.md#일정-응답-dto) |
 | 적용 완료 | 메모 목록·등록·수정 응답 (2026-11-28) | [공통 메모 응답 DTO와 기존 응답 계약](ledger-memos.md#메모-응답-dto) |
 | 적용 완료 | 공지 목록·상세·팝업·관리자 등록 및 수정 응답 (2026-11-29) | [공지 응답 DTO](community-operations.md#공지-응답-dto) |
+| 적용 완료 | AI 대화 목록·메시지와 질문·답변 저장 응답 (2026-11-29) | [AI 대화 응답 DTO](service-integrations.md#ai-대화-응답-dto) |
 
 로그인·가입·일정·일반 메모와 가계부 분류 요청은 기존 `record`를 활용할 수 있습니다. 약관 응답도 이미 타입이 있습니다. 회원 게시글 수처럼 작은 고정 응답과 월별 수입 합계처럼 월이 키인 `Map<String, Long>`은 현재 표현으로 충분합니다. 내부 JDBC 행과 서비스 값은 공개 응답에서 의미나 필드가 달라질 때 분리합니다. 프로필 PATCH는 필드 생략과 명시적 `null`을 구별하는 현재 파서를 유지하는 것이 적합합니다. [일반 메모 입력](../../backend/src/main/java/com/zip/backend/memo/MemoService.java) · [가계부 분류](../../backend/src/main/java/com/zip/backend/ledger/LedgerCategoryService.java) · [약관 응답](../../backend/src/main/java/com/zip/backend/legal/TermsController.java) · [프로필 PATCH](../../backend/src/main/java/com/zip/backend/auth/ProfilePatch.java)
 
@@ -95,7 +96,6 @@ flowchart LR
 | 우선순위 | 경계 | 함께 검증할 계약 |
 | --- | --- | --- |
 | 후속 | 관리자 회원·제재 이력과 고객센터 문의 응답 | 페이지의 `items`·`hasNext`, 제재 종료·해제 시각, 미답변 문의의 `answer: null`. [회원·제재 응답](../../backend/src/main/java/com/zip/backend/moderation/ModerationService.java#L47) · [문의 응답](../../backend/src/main/java/com/zip/backend/support/SupportService.java#L99) |
-| 후속 | AI 대화 목록·메시지 응답 | 메시지 ID·역할·본문·시각과 선택 `card`는 공통 응답 타입으로 표현할 수 있습니다. `card.data`는 카드 유형별 구조를 보존합니다. [AI 응답 조립](../../backend/src/main/java/com/zip/backend/ai/AiService.java#L210) |
 | 선택 | 개인 정보 응답과 일정 분류·프리셋 응답 | `/api/me/profile-info`의 조회·수정은 동일한 네 필드를 반환하며 생년월일이 없으면 `null`입니다. 일정 본문 응답과 별개로 분류에는 기본 항목 배열이, 프리셋에는 분류 ID가 포함됩니다. [개인 정보 API](../../backend/src/main/java/com/zip/backend/settings/ProfileInfoController.java#L29) · [일정 분류·프리셋 API](../../backend/src/main/java/com/zip/backend/calendar/CalendarController.java#L42) |
 
 월별 고정 지출은 서비스가 검증한 입력을 `BillInput`의 `record`로 이미 다룹니다. HTTP 컨트롤러에서 받는 원본 `Map`을 바꿀 때는 금액의 JSON 자료형과 허용 필드 규칙을 테스트로 보존합니다. [월별 입력](../../backend/src/main/java/com/zip/backend/bills/BillInput.java) · [월별 저장 API](../../backend/src/main/java/com/zip/backend/bills/BillController.java#L33)
@@ -189,6 +189,12 @@ flowchart LR
 기타 지출을 등록·삭제하거나 같은 달에서 수정하면 거래 날짜가 속한 달을, 다른 달로 옮기면 이전 달과 새 달을 무효화합니다. 해당 회원·세션과 영향받은 달의 시간대별 캐시를 모두 갱신 대상으로 삼습니다. 고정 지출 `/api/bills/monthly`는 두 화면이 이미 키를 공유합니다. 금액·납부일 변경이 다른 달의 미납 기록에 전파될 수 있어 기존 갱신 범위를 사용합니다. [기타 지출 저장](../../frontend/src/features/life/components/ServerMoneyLog.tsx#L121) · [공유 요청과 월별 무효화 테스트](../../frontend/tests/ledger.test.mjs) · [월별 고정 지출 조회](../../frontend/src/features/life/components/MonthlyFixedExpense.tsx#L29) · [고정 지출 변경 전파](../../backend/src/main/java/com/zip/backend/bills/BillService.java#L213)
 
 서버 모드의 일정·메모 목록은 공통 `listSync`를 통해 회원별 브라우저 캐시와 서버를 동기화합니다. 가계부의 임시 입력은 [가계부와 메모](ledger-memos.md)를 참고하세요. [일정 동기화](../../frontend/src/features/life/calendarSync.ts) · [메모 동기화](../../frontend/src/features/memo/sync.ts)
+
+### 저장하지 못한 메모·일정 복구
+
+2026-11-29 적용. 서버 모드에서 일반 메모·일정의 생성 또는 수정이 4xx로 거절되면(401·408·429 제외), 목록은 서버 값을 다시 읽고 입력과 실패 사유는 회원별 브라우저 초안으로 보관합니다. 화면에서 **초안 열기**를 눌러 편집하고 **다시 저장**으로 전송합니다. 서버에서 원래 항목을 찾을 수 없으면 새 항목으로 저장할 수 있습니다. 저장 성공 또는 초안 삭제 시 목록에서 사라집니다. [공통 동기화](../../frontend/src/lib/listSync.ts) · [복구 화면](../../frontend/src/components/SaveRecovery.tsx)
+
+초안은 이 브라우저의 `zip-memo-save-drafts:user:<회원 ID>` 또는 `zip-event-save-drafts:user:<회원 ID>`에 남으며, 같은 계정으로 다시 로그인하면 열 수 있습니다. 계정이 바뀌면 복구 화면을 초기화하고 이전 로그인 세션의 늦은 응답도 현재 회원에게 적용하지 않습니다. **데이터 초기화**는 현재 회원의 복구 초안도 지웁니다. 가계부 연결 메모의 확정은 [기존 가계부 초안 절차](ledger-memos.md)를 따릅니다. [초안 저장소](../../frontend/src/lib/saveRecovery.ts) · [Playwright 검증](../../frontend/e2e/save-recovery.spec.ts)
 
 생활 관리의 브라우저 저장소는 로그인한 회원별 키를 사용합니다. 계정을 전환하면 화면의 이전 상태를 비우고 해당 회원의 저장본을 불러옵니다. 소유자를 알 수 없는 과거 공용 키는 그대로 둡니다. [계정별 브라우저 저장](../../frontend/src/lib/accountStorage.ts) · [생활 관리 저장소](../../frontend/src/features/life/store.ts)
 

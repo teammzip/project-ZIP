@@ -1,6 +1,7 @@
 import { MemoBoard, useMemoStore, type Memo } from '@/features/memo'
 import { useEffect, useEffectEvent, useState } from 'react'
 import { useAuthStore } from '@/features/auth'
+import { ReportDocumentImport } from '@/features/documents/ReportDocumentImport'
 import { getErrorMessage } from '@/lib/apiClient'
 import { ledgerMemoReturnUrl, prepareLedgerMemo, readMemoDraft, rememberLedgerMemoInput, writeMemoDraft } from '@/features/life/ledgerMemoNavigation'
 import common from '@/styles/common.module.css'
@@ -16,6 +17,7 @@ export function MemoPage() {
 
 function AccountMemoPage({ owner, draftKey }: { owner?: string; draftKey: string | null }) {
   const [params, setParams] = useSearchParams()
+  const sessionKey = useAuthStore((state) => state.sessionKey)
   const [draft] = useState(() => readMemoDraft(draftKey, owner))
   const [error, setError] = useState('')
   const [memoId, setMemoId] = useState<string>()
@@ -93,6 +95,7 @@ function AccountMemoPage({ owner, draftKey }: { owner?: string; draftKey: string
   } : undefined
   return <div className={common.stack}>
     {error && <p role="alert">{error}</p>}
+    {!draft && !isMockApi && !!owner && !!sessionKey && <ReportDocumentImport key={sessionKey} />}
     {(!draft || memoExists)
       ? <MemoBoard editableLedgerMemoId={memoId} onLedgerMemoSaved={returnToLedger} onLedgerMemoEdit={draft ? (memo) => rememberLedgerMemoInput(draft, memo) : undefined} />
       : <p role="status">메모를 여는 중이에요.</p>}
