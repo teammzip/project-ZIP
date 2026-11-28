@@ -80,10 +80,9 @@ class CalendarIntegrationTests {
         call(me, patch("/api/events/{id}", id), "{\"done\":false}").andExpect(jsonPath("$.done").value(false));
         assertEquals(null, jdbc.queryForObject("SELECT done_at FROM events WHERE id = ?", java.sql.Timestamp.class, Long.parseLong(id)));
 
-        // 기간 · 검색
+        // 기간 (다른 달 일정은 빠짐)
         create(me, "{\"date\":\"2026-12-30\",\"title\":\"연말 정리\"}");
         call(me, get("/api/events").param("from", "2026-11-01").param("to", "2026-11-30"), null).andExpect(jsonPath("$.length()").value(1));
-        call(me, get("/api/events/search").param("q", "정리"), null).andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].title").value("연말 정리"));
 
         // 남의 일정
         call(other, get("/api/events"), null).andExpect(jsonPath("$.length()").value(0));
@@ -154,25 +153,25 @@ class CalendarIntegrationTests {
         call(other, delete("/api/event-categories/{id}", house), null).andExpect(status().isNotFound());
     }
 
-    // 쓰레기 배출표: 동네 · 장소 한 줄에 종류별 요일(0=일 ~ 6=토) · 시작 시각, 배출 없는 종류는 null. 다른 동네 것은 안 섞임
+    // 쓰레기 배출표(내 배출표): 동네 · 장소 한 줄에 종류별 요일(0=일 ~ 6=토) · 시작 시각, 배출 없는 종류는 null. 다른 동네 것은 안 섞임
     @Test void trashSchedulesListKindsPerPlace() throws Exception {
+        jdbc.update("UPDATE users SET address = '서울 마포구' WHERE id = 1");
+        jdbc.update("UPDATE users SET address = '서울 용산구' WHERE id = 2");
         jdbc.update("""
             INSERT INTO trash_schedules (region_id, place, general_days, general_time, food_days, food_time, recycle_days, recycle_time) VALUES
               (2, '내 집 혹은 내 점포 앞', '일,월,수', '18:00:00', '일,월,수', '18:00:00', '목', '20:00:00'),
               (2, '마을 내 생활 폐기물 배출장', '월', '00:00:00', '', NULL, '', NULL),
               (3, '집 앞', '', NULL, '', NULL, '화', '19:00:00')""");
-        call(me, get("/api/trash-schedules").param("regionId", "2"), null).andExpect(status().isOk())
-            .andExpect(jsonPath("$.length()").value(2))
-            .andExpect(jsonPath("$[0].place").value("내 집 혹은 내 점포 앞"))
-            .andExpect(jsonPath("$[0].general.days.length()").value(3)).andExpect(jsonPath("$[0].general.days[0]").value(0)).andExpect(jsonPath("$[0].general.days[2]").value(3))
-            .andExpect(jsonPath("$[0].general.startTime").value("18:00"))
-            .andExpect(jsonPath("$[0].recycle.days[0]").value(4)).andExpect(jsonPath("$[0].recycle.startTime").value("20:00"))
-            .andExpect(jsonPath("$[1].place").value("마을 내 생활 폐기물 배출장"))
-            .andExpect(jsonPath("$[1].general.startTime").value("00:00"))
-            .andExpect(jsonPath("$[1].food").isEmpty()).andExpect(jsonPath("$[1].recycle").isEmpty());
-        call(me, get("/api/trash-schedules").param("regionId", "3"), null).andExpect(jsonPath("$.length()").value(1));
-        call(me, get("/api/trash-schedules").param("regionId", "999"), null).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
-        call(me, get("/api/trash-schedules").param("regionId", "abc"), null).andExpect(status().isNotFound());
+        call(me, get("/api/trash-schedules/me"), null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.items.length()").value(2))
+            .andExpect(jsonPath("$.items[0].place").value("내 집 혹은 내 점포 앞"))
+            .andExpect(jsonPath("$.items[0].general.days.length()").value(3)).andExpect(jsonPath("$.items[0].general.days[0]").value(0)).andExpect(jsonPath("$.items[0].general.days[2]").value(3))
+            .andExpect(jsonPath("$.items[0].general.startTime").value("18:00"))
+            .andExpect(jsonPath("$.items[0].recycle.days[0]").value(4)).andExpect(jsonPath("$.items[0].recycle.startTime").value("20:00"))
+            .andExpect(jsonPath("$.items[1].place").value("마을 내 생활 폐기물 배출장"))
+            .andExpect(jsonPath("$.items[1].general.startTime").value("00:00"))
+            .andExpect(jsonPath("$.items[1].food").isEmpty()).andExpect(jsonPath("$.items[1].recycle").isEmpty());
+        call(other, get("/api/trash-schedules/me"), null).andExpect(jsonPath("$.items.length()").value(1));
     }
 
     @Test void myTrashScheduleUsesHomeBeforeMemberAddressAndDoesNotSaveEvents() throws Exception {

@@ -7,7 +7,6 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ModerationService {
     static final int PAGE_SIZE = 50;
-    static final int BULK_MAX = 100;
     private static final Set<Integer> SUSPEND_DAYS = Set.of(1, 3, 5, 10);
     private static final Set<String> SORTS = Set.of("activity", "bans", "warns", "joined");
     private static final Pattern ID = Pattern.compile("[1-9][0-9]{0,18}");
@@ -83,17 +81,6 @@ public class ModerationService {
         return member(repository.member(id, clock.instant()).orElseThrow());
     }
 
-    /** 여러 명 한꺼번에 (하나라도 안 되면 아무것도 안 걸림) */
-    @Transactional
-    public void bulk(long adminId, BulkInput input) {
-        if (input == null || input.memberIds() == null || input.memberIds().isEmpty()) throw new ApiException(400, "회원을 골라 주세요.");
-        if (input.memberIds().size() > BULK_MAX) throw new ApiException(400, "한 번에 " + BULK_MAX + "명까지 조치할 수 있어요.");
-        var valid = valid(new SanctionInput(input.type(), input.days(), input.reason()));
-        var ids = new LinkedHashSet<Long>();
-        for (var value : input.memberIds()) ids.add(memberId(value));
-        for (long id : ids) apply(adminId, id, valid);
-    }
-
     /** 정지 해제 (기록 · 횟수는 남기고 해제 시각 · 사유만) → 바뀐 회원 */
     @Transactional
     public Map<String, Object> unban(long adminId, String memberId, String reason) {
@@ -136,7 +123,6 @@ public class ModerationService {
     }
 
     public record SanctionInput(String type, Integer days, String reason) {}
-    public record BulkInput(List<String> memberIds, String type, Integer days, String reason) {}
     private record Valid(String type, Integer days, String reason) {}
 
     private static Valid valid(SanctionInput input) {

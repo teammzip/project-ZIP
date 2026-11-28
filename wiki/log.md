@@ -531,3 +531,10 @@
 
 - 최신 `dev`(PR #154 알림 목록 DTO)를 `front`에 병합했습니다. 충돌은 이 로그 한 곳이었고, 양쪽 기록을 모두 남겼습니다(원격 기록 먼저).
 - Second Brain 검사가 이번 PR의 공용 파일(OpenAPI·`frontend/API.md`·커뮤니티 서비스·저장소)을 링크하는 문서 8곳을 후보로 냈습니다. [DB 조회 설계](topics/database.md)와 [진행 현황](topics/project-status.md)에는 `regionId` 추가 내용을 보충했고, [일정·알림](topics/calendar-notifications.md)·[고정 지출](topics/fixed-expenses.md)·[내 집 정보](topics/home-info.md)·[가계부·메모](topics/ledger-memos.md)·[지도](topics/map-place-ids.md)·[배출표](topics/trash-schedules.md)에는 영향이 없음을 확인해 남겼습니다. [애플리케이션](topics/application.md)의 PR #153 반영 설명에 이후 바뀐 이름·위치를 덧붙였습니다.
+
+## [2026-11-28] record | 남은 미호출 API 7개 삭제
+
+- 결정(2026-11-28 작업 대화, 곽성미): "사용하지 않는 API는 모두 삭제하고, 사용하거나 바뀐 것은 유지한다."
+- 컨트롤러 매핑 142개를 프론트 요청(문자열을 이어 붙인 주소 포함)과 다시 대조했습니다. 지운 것: `GET /api/events/search`, `GET /api/trash-schedules?regionId=`, `POST /api/admin/sanctions/bulk`, `PATCH /api/admin/reports/{id}`, `GET /api/posts/home-tips`, `PUT`·`DELETE /api/admin/posts/{id}/home-tip`. 유지한 것: 오늘 연결한 생활 설정·지역 목록·인접 지역·AI 대화 삭제·저장 리스트 편집·`regionId`, 주소를 이어 붙여 부르는 고지서 사진 등록 결정·장소 리뷰 수정·삭제·신고.
+- 홈 꿀팁의 DB 컬럼·인덱스·응답 칸은 마이그레이션이 필요해 남겼습니다. 팀이 정리하기로 하면 별도 마이그레이션으로 지웁니다.
+- 갱신: [애플리케이션](topics/application.md#화면에서-호출하지-않는-api) · [커뮤니티 운영](topics/community-operations.md) · [OpenAPI](../backend/openapi.yaml) · [프론트 API 문서](../frontend/API.md) · [백엔드 구현 설명](../backend/IMPLEMENTATION.md) · 검증: 백엔드 352개 통과(지운 API만 보던 테스트 3개 삭제), OpenAPI 105 paths 파싱

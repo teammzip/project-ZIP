@@ -154,7 +154,6 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 | API | 현재 동작 |
 |---|---|
 | GET `/api/posts?scope=here\|near\|all&category=&q=&sort=&page=0` | 공개 글 20개 + `hasNext`. here = 내 동네(`users.region_id`), near = 내 동네 + `region_neighbors`(전국 1,286줄 — 육지 경계가 맞닿은 시 · 군 · 구, `db/migrations/20261122_04_region_neighbors_nationwide.sql`), all = 전체. 동네가 없으면 here · near 는 빈 목록. 검색·정렬은 [커뮤니티 API 계약](../frontend/API.md#7-커뮤니티--첨부--신고-) 참고 |
-| GET `/api/posts/home-tips` | `is_home_tip` 글 최대 3개 (지정은 관리자 기능 단계에서) |
 | GET `/api/posts/neighbors` | "주변 동네" 탭 안내: 내 동네(`users.region_id`)와 이웃 동네 이름 `{ region, neighbors: [{ id, name, sido }] }`. 이웃은 같은 시 · 도 먼저 · 이름 순, 동네가 없으면 `region: null` |
 | GET `/api/posts/{id}` | 댓글(VISIBLE) · 첨부 포함, `mine` · `liked` · `reported` 는 토큰 기준 |
 | POST · PATCH · DELETE `/api/posts/{id}` | 쓰기는 동네(`region_id`)가 있어야 함(없으면 403 `REGION_REQUIRED`). 제목 100자 한 줄 · 본문 2000자. 수정 · 삭제는 내 글만(403), 삭제는 `status=DELETED` |
@@ -168,9 +167,8 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
   - GET `/api/admin/posts?category=&q=&page=` 보이는 글 50개씩 (댓글 · 첨부 · `homeTip` 포함)
   - DELETE `/api/admin/posts/{id}` · `/api/admin/comments/{id}` (`?reason=` 200자 → `delete_reason`, 지운 운영자 → `deleted_by`) → 상태 DELETED, 그 글 · 댓글에 들어온 접수 중 신고는 HIDDEN(처리자 · 시각 기록)
   - POST `/api/admin/posts/{id}/comments` 운영자 댓글 (응답 · 회원 화면에 `staff: true`, 관리자는 동네 없이 가능)
-  - PUT · DELETE `/api/admin/posts/{id}/home-tip` 홈 "자취 꿀팁" 지정 · 해제
   - GET `/api/admin/reports?status=` 신고 한 건씩 `{ id, targetType, targetId, postId, target: { title | text, author, deleted }, reason, detail, reporter, status, createdAt }` (최근 500건)
-  - PATCH `/api/admin/reports?targetType=&targetId=` · `/api/admin/reports/{id}` `{ status: HIDDEN | DISMISSED }` → 그 대상의 접수 중 신고 전부. HIDDEN 이면 글 · 댓글도 HIDDEN
+  - PATCH `/api/admin/reports?targetType=&targetId=` `{ status: HIDDEN | DISMISSED }` → 그 대상의 접수 중 신고 전부. HIDDEN 이면 글 · 댓글도 HIDDEN
 - **답글**: 댓글 `{ body, parentId }` → `comments.parent_id`. 한 단계만(답글에 단 답글은 맨 위 댓글로), 다른 글의 댓글 400, 없는 · 지운 댓글 404. 맨 위 댓글을 지워도 답글은 남고 화면이 "삭제된 댓글" 아래로 묶어요.
 - **삭제 기록**: `posts` · `comments`의 `deleted_by` · `delete_reason` (`db/migrations/20261115_04_community_admin.sql`). 본인 삭제는 본인 · 사유 없음, 운영자 삭제는 운영자 · 사유, 신고로 숨기면 "신고 처리로 숨김". 신고 목록 `target.deleteReason`.
 - **아직 없음**: 문서 첨부.
@@ -186,7 +184,6 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 | GET `/api/admin/members?q=&status=ACTIVE|SUSPENDED&minBans=&minWarns=&sort=activity|bans|warns|joined&page=` | 50명씩. 닉네임 · 아이디 검색, `warns` · `bans` 는 해제 · 만료돼도 남는 누적 횟수 |
 | GET `/api/admin/members/{id}/sanctions` | 조치 이력 (최근 것부터, 처리 운영자 · 해제 사유 포함) |
 | POST `/api/admin/members/{id}/sanctions` | `{ type: WARNING | SUSPEND | BAN, days, reason }` — SUSPEND 는 1 · 3 · 5 · 10일, 사유 200자. 정지면 `users.status = SUSPENDED`. 관리자 · 나에게는 400 |
-| POST `/api/admin/sanctions/bulk` | `{ memberIds(최대 100), type, days, reason }` — 하나라도 안 되면 아무것도 안 걸림 |
 | DELETE `/api/admin/members/{id}/sanctions/active` | `{ reason? }` 지금 걸린 정지 해제(revoked_at · revoked_by · revoke_reason), 상태 ACTIVE. 정지 중이 아니면 400 |
 | GET `/api/me/sanctions` · POST `/api/me/warnings/seen` | 내 경고 · 정지 내역 / 경고 안내 창 "확인했어요"(`seen_at`) |
 
@@ -203,12 +200,10 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 | API | 현재 동작 |
 |---|---|
 | GET `/api/events?from=&to=` | 내 일정 (기간 400일 이내, 없으면 전부 최대 10,000개). 매년 반복 기념일은 늘 포함 |
-| GET `/api/events/search?q=` | 제목 검색 (최근 것부터 100개) |
 | POST · PATCH · DELETE `/api/events/{id}` | `{ date, time, title, category, anniv, yearly, done, source }` — PATCH 는 보낸 칸만. 제목 60자, 시간 HH:MM 또는 ""(종일), `source` USER · RENT(만들 때만) |
 | (완료 표시) | PATCH `/api/events/{id}` 에 `{ done }` — 완료 시각(`done_at`)은 완료로 바뀔 때만 적고 해제하면 지움. 예전 전용 경로 `/done` 은 2026-11-28 에 지움 |
 | GET · POST `/api/event-categories`, PATCH · DELETE `/{id}` | 처음 쓸 때 기본 5개 + 미분류 생성. 이름 20자, 같은 이름 409, 미분류는 바꾸기 · 지우기 400 |
 | GET · POST `/api/event-presets`, PATCH · DELETE `/{id}` | 직접 만든 항목. 같은 카테고리에 같은 이름이 있으면 POST 는 그것을 돌려주고 PATCH 는 409 |
-| GET `/api/trash-schedules?regionId=` | 동네(시 · 군 · 구) 쓰레기 배출표 (읽기만). 장소별 `[{ place, general, food, recycle }]`, 종류마다 `{ days: [1,3,5], startTime: "18:00" }`(0=일 ~ 6=토) 또는 `null`(그 종류는 배출 요일 없음). 배출표가 없는 동네 · 없는 번호는 `[]`, 숫자가 아닌 번호는 404 |
 | GET `/api/trash-schedules/me` | 로그인 회원의 내 집 주소로 먼저, 비었거나 시·군·구를 못 찾으면 회원 주소로 다시 찾아요(`RegionMatcher.matchFirst`, 쓰레기 알림과 같은 규칙). 응답은 `{ regionName, items }`. 지역 미확인은 `regionName: null`, 배출표 없음은 `items: []`예요. |
 
 - 기념일(`anniv`)은 시간 · 카테고리 · 완료가 없고, 매년 반복(`yearly`)은 기념일만 (DB CHECK 와 같음).

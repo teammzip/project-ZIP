@@ -28,7 +28,6 @@ public class CalendarService {
     static final int CATEGORY_MAX = 20;
     static final int EVENTS_MAX = 10_000;
     static final int RANGE_MAX_DAYS = 400;
-    static final int SEARCH_MAX = 100;
     private static final Set<String> SOURCES = Set.of("USER", "RENT");
     private static final Pattern ID = Pattern.compile("[1-9][0-9]{0,18}");
     private static final Pattern TIME = Pattern.compile("([01][0-9]|2[0-3]):[0-5][0-9]");
@@ -61,12 +60,6 @@ public class CalendarService {
             }
         }
         return repository.events(userId, start, end, EVENTS_MAX).stream().map(CalendarService::event).toList();
-    }
-
-    public List<Map<String, Object>> search(long userId, String q) {
-        var keyword = q == null ? "" : q.strip();
-        if (keyword.isEmpty() || keyword.length() > 40) throw new ApiException(400, "검색어는 1~40자로 입력해 주세요.");
-        return repository.search(userId, keyword, SEARCH_MAX).stream().map(CalendarService::event).toList();
     }
 
     @Transactional
@@ -250,7 +243,7 @@ public class CalendarService {
             .orElseGet(() -> new MyTrashSchedule(null, List.of()));
     }
 
-    public List<Map<String, Object>> trashSchedules(String regionId) {
+    private List<Map<String, Object>> trashSchedules(String regionId) {
         // [{ place, general: { days: [1,3,5], startTime: "18:00" } | null, food, recycle }]
         return repository.trashSchedules(id(regionId, "동네")).stream().<Map<String, Object>>map(t -> {
             var row = new LinkedHashMap<String, Object>();

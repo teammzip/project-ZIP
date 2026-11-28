@@ -193,11 +193,6 @@ public class CalendarRepository {
         return jdbc.query(sql.toString(), CalendarRepository::event, args.toArray());
     }
 
-    public List<EventRow> search(long userId, String keyword, int limit) {
-        return jdbc.query(EVENT_SQL + " WHERE e.user_id = ? AND e.title LIKE ? ESCAPE '!' ORDER BY e.event_date DESC, e.id DESC LIMIT ?",
-            CalendarRepository::event, userId, Sql.likeContains(keyword), limit);
-    }
-
     public Optional<EventRow> event(long userId, long id) {
         return jdbc.query(EVENT_SQL + " WHERE e.user_id = ? AND e.id = ?", CalendarRepository::event, userId, id).stream().findFirst();
     }

@@ -111,15 +111,6 @@ class ModerationIntegrationTests {
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM user_sanctions", Integer.class));
     }
 
-    @Test void bulkIsAllOrNothing() throws Exception {
-        call(admin, post("/api/admin/sanctions/bulk"), "{\"memberIds\":[\"1\",\"777\"],\"type\":\"WARNING\",\"reason\":\"단체 경고\"}").andExpect(status().isNotFound());
-        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM user_sanctions", Integer.class));
-        call(admin, post("/api/admin/sanctions/bulk"), "{\"memberIds\":[\"1\",\"2\"],\"type\":\"WARNING\",\"reason\":\"단체 경고\"}").andExpect(status().isNoContent());
-        call(admin, get("/api/admin/stats"), null).andExpect(jsonPath("$.members").value(2)).andExpect(jsonPath("$.totalWarns").value(2))
-            .andExpect(jsonPath("$.suspended").value(0));
-        call(admin, get("/api/admin/members").param("q", "요리").param("minWarns", "1"), null).andExpect(jsonPath("$.items.length()").value(1));
-    }
-
     @Test void expiredSuspensionRestoresButManualSuspensionStays() throws Exception {
         Timestamp past = Timestamp.from(Instant.now().minusSeconds(7200)), ended = Timestamp.from(Instant.now().minusSeconds(60));
         jdbc.update("INSERT INTO user_sanctions (user_id, sanction_type, reason, starts_at, ends_at) VALUES (1, 'SUSPEND', '지난 정지', ?, ?)", past, ended);

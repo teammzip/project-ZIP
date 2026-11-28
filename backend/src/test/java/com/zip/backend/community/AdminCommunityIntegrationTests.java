@@ -118,11 +118,10 @@ class AdminCommunityIntegrationTests {
         call(reporter, post("/api/reports"), "{\"targetType\":\"POST\",\"targetId\":\"" + hide + "\",\"reason\":\"ABUSE\"}");
         call(admin, patch("/api/admin/reports").param("targetType", "POST").param("targetId", keep), "{\"status\":\"DISMISSED\"}").andExpect(status().isNoContent());
         call(member, get("/api/posts/{id}", keep), null).andExpect(status().isOk());
-        String reportId = jdbc.queryForObject("SELECT CAST(id AS VARCHAR) FROM reports WHERE target_id = ?", String.class, Long.parseLong(hide));
-        call(admin, patch("/api/admin/reports/{id}", reportId), "{\"status\":\"HIDDEN\"}").andExpect(status().isNoContent());
+        call(admin, patch("/api/admin/reports").param("targetType", "POST").param("targetId", hide), "{\"status\":\"RECEIVED\"}").andExpect(status().isBadRequest());
+        call(admin, patch("/api/admin/reports").param("targetType", "POST").param("targetId", hide), "{\"status\":\"HIDDEN\"}").andExpect(status().isNoContent());
         call(member, get("/api/posts/{id}", hide), null).andExpect(status().isNotFound());
         assertEquals("HIDDEN", jdbc.queryForObject("SELECT status FROM posts WHERE id = ?", String.class, Long.parseLong(hide)));
-        call(admin, patch("/api/admin/reports/{id}", reportId), "{\"status\":\"RECEIVED\"}").andExpect(status().isBadRequest());
     }
 
     @Test void postSearchUsesNewestFirstAndExcludesHiddenDeletedAndOutOfScopePosts() throws Exception {
@@ -286,15 +285,5 @@ class AdminCommunityIntegrationTests {
             .andExpect(status().isNoContent());
         call(member, get("/api/posts").param("scope", "near").param("category", "TIP").param("q", "방충망 교채"), null)
             .andExpect(status().isOk()).andExpect(jsonPath("$.suggestedQuery").doesNotExist());
-    }
-
-    @Test void homeTipsAreChosenByAdmin() throws Exception {
-        String id = writePost("홈에 올릴 글");
-        call(member, get("/api/posts/home-tips"), null).andExpect(jsonPath("$.length()").value(0));
-        call(admin, put("/api/admin/posts/{id}/home-tip", id), null).andExpect(status().isNoContent());
-        call(member, get("/api/posts/home-tips"), null).andExpect(jsonPath("$[0].title").value("홈에 올릴 글"));
-        call(admin, get("/api/admin/posts"), null).andExpect(jsonPath("$.items[0].homeTip").value(true));
-        call(admin, delete("/api/admin/posts/{id}/home-tip", id), null).andExpect(status().isNoContent());
-        call(member, get("/api/posts/home-tips"), null).andExpect(jsonPath("$.length()").value(0));
     }
 }

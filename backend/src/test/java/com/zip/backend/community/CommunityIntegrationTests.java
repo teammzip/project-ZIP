@@ -259,15 +259,6 @@ class CommunityIntegrationTests {
         call(nowhere, get("/api/posts/popular"), null).andExpect(jsonPath("$.length()").value(0));
     }
 
-    @Test void homeTipsShowOnlyMarkedVisiblePosts() throws Exception {
-        String mapo = login("mapo01");
-        String tip = write(mapo, "TIP", "홈에 보일 꿀팁", "내용");
-        write(mapo, "TIP", "평범한 꿀팁", "내용");
-        jdbc.update("UPDATE posts SET is_home_tip = TRUE WHERE id = ?", Long.parseLong(tip));
-        call(mapo, get("/api/posts/home-tips"), null).andExpect(jsonPath("$.length()").value(1))
-            .andExpect(jsonPath("$[0].title").value("홈에 보일 꿀팁")).andExpect(jsonPath("$[0].homeTip").value(true));
-    }
-
     @Test void repliesAreOneLevelDeepAndStayWithTheirPost() throws Exception {
         String mapo = login("mapo01"), yongsan = login("yongsan1");
         String id = write(mapo, "QUESTION", "세탁방 추천", "어디가 좋아요?");

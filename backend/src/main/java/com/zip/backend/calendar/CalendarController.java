@@ -22,11 +22,6 @@ public class CalendarController {
         return calendar.events(userId(jwt), from, to);
     }
 
-    @GetMapping("/api/events/search")
-    public List<Map<String, Object>> search(@AuthenticationPrincipal Jwt jwt, @RequestParam(required = false) String q) {
-        return calendar.search(userId(jwt), q);
-    }
-
     @PostMapping("/api/events")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, Object> create(@AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) CalendarService.EventInput input) {
@@ -84,9 +79,6 @@ public class CalendarController {
     public void deletePreset(@AuthenticationPrincipal Jwt jwt, @PathVariable String id) {
         calendar.deletePreset(userId(jwt), id);
     }
-
-    @GetMapping("/api/trash-schedules")
-    public List<Map<String, Object>> trash(@RequestParam(required = false) String regionId) { return calendar.trashSchedules(regionId); }
 
     @GetMapping("/api/trash-schedules/me")
     public CalendarService.MyTrashSchedule myTrash(@AuthenticationPrincipal Jwt jwt) {

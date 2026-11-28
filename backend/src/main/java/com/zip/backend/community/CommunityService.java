@@ -97,10 +97,6 @@ public class CommunityService {
         return new PostResponse.Page(items, hasNext, suggestion);
     }
 
-    public List<PostResponse> homeTips(long viewerId) {
-        return repository.homeTips(viewerId, HOME_POST_LIMIT).stream().map(p -> postSummary(p, viewerId)).toList();
-    }
-
     /**
      * "주변 동네" 탭 안내: 내 동네(주거 설문 · 내 정보 주소로 정해진 users.region_id)와 이웃 동네 이름.
      * 글 목록 scope=near 가 거르는 기준과 같아서, 안내와 실제로 보이는 글의 동네가 항상 같아요.
@@ -303,14 +299,6 @@ public class CommunityService {
         return comment(saved, adminId);
     }
 
-    /** 홈 "자취 꿀팁"에 보이기 · 빼기 */
-    @Transactional
-    public void adminHomeTip(String postId, boolean on) {
-        long id = id(postId, "글");
-        repository.lockVisiblePostOwner(id).orElseThrow(() -> notFound("글"));
-        repository.setHomeTip(id, on);
-    }
-
     /** 관리자 신고 관리: 신고 한 건씩 (화면에서 대상별로 묶어요). status 가 없으면 전부 */
     public List<Map<String, Object>> adminReports(String status) {
         var filter = status == null || status.isBlank() ? null : status;
@@ -341,12 +329,6 @@ public class CommunityService {
     public void adminResolve(long adminId, String targetType, String targetId, String status) {
         if (!"POST".equals(targetType) && !"COMMENT".equals(targetType)) throw new ApiException(400, "targetType 은 POST 또는 COMMENT 예요.");
         resolve(adminId, new CommunityRepository.TargetRef(targetType, id(targetId, "신고 대상")), status);
-    }
-
-    /** 신고 한 건 처리 = 그 대상의 신고 전부 처리 */
-    @Transactional
-    public void adminResolveReport(long adminId, String reportId, String status) {
-        resolve(adminId, repository.reportTargetOf(id(reportId, "신고")).orElseThrow(() -> notFound("신고")), status);
     }
 
     private void resolve(long adminId, CommunityRepository.TargetRef target, String status) {
