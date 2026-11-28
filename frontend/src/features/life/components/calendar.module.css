@@ -725,6 +725,13 @@ small.trashTime {
 }
 
 /* 일정 고치기 줄의 카테고리 */
+.editFields {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .editCategory {
   display: flex;
   gap: 8px;

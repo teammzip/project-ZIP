@@ -638,3 +638,12 @@
 ## [2026-11-29] record | 양평군 수기 고지서 사례의 ZIP 적용 검토
 
 - [문서 처리 자동화 적용 검토](topics/service-integrations.md#문서-처리-자동화-적용-검토)에 기사 확인 범위와 ZIP 적용안을 기록했습니다. 문서 분류·수정 가능한 미리보기, 청구 연월과 등록월의 매핑, 검증 후 자동 등록을 검토했습니다.
+
+## [2026-11-29] record | 메모·일정 저장 거절 후 초안 복구
+
+- 일반 메모·일정의 생성·수정이 거절되면 목록은 다시 조회하고 편집 내용과 사유는 회원별로 보관합니다. 초안을 열어 편집한 뒤 다시 저장할 수 있으며, 원래 항목이 사라졌으면 새 항목으로 저장할 수 있습니다. [초안 복구](topics/application.md#저장하지-못한-메모일정-복구) · [메모](topics/ledger-memos.md#폴더와-메모-동기화) · [일정](topics/calendar-notifications.md#일정-저장과-반복-기념일)
+- 테스트용 HTTP 응답을 사용한 Playwright Chromium 시나리오 3개, 프론트 테스트 238개, 린트·운영 빌드와 워크플로 YAML 검사가 통과했습니다. 브라우저에서 화면 이동·새로고침·두 회원 전환·재저장 및 사라진 일정의 신규 저장을 확인했습니다. [브라우저 테스트](../frontend/e2e/save-recovery.spec.ts) · [PR 검사](../.github/workflows/test.yml)
+
+## [2026-11-29] record | AI 대화 응답 DTO 적용
+
+- [AI 대화 응답 DTO](topics/service-integrations.md#ai-대화-응답-dto)에 대화 목록·메시지·질문과 답변의 타입, 고지서 `reply` 재사용과 기존 OpenAPI 대화 목록의 차이를 기록했습니다. 적용 전후 H2 통합 테스트 31개, 프론트 AI 테스트 30개, AI DTO 변경 범위의 Second Brain 검사가 통과했습니다.

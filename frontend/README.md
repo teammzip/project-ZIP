@@ -48,6 +48,13 @@ node --test tests/*.test.mjs
 npm run build
 ```
 
+메모·일정 초안 복구는 [Playwright 시나리오](e2e/save-recovery.spec.ts)로 확인해요. 실제 프론트 화면을 실행하고 로그인·저장 응답은 테스트용 HTTP 응답으로 돌려줘요. Chromium을 설치한 뒤 브라우저 테스트를 실행할 수 있어요. PR에서도 같은 시나리오를 실행합니다.
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
+
 ## 화면 주소
 
 | 주소 | 화면 |

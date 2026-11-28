@@ -12,6 +12,8 @@
 - 2026-11-26 같은 [화면 계산](../../frontend/src/features/life/derive.ts) 파일의 동네 인증 판정만 고쳤고 기념일 · 일정 계산은 바뀌지 않았습니다. 프론트 테스트 207개가 통과했습니다. 동네 인증 규칙은 [커뮤니티 문서](community-operations.md#동네-글과-조회-집계)에 있습니다.
 - 카테고리를 삭제하면 일정과 사용자가 직접 만든 항목은 미분류로 옮깁니다. 미분류에 같은 이름의 버튼이 있으면 하나만 남깁니다. 화면은 카테고리 변경 후 서버에서 일정 목록을 다시 읽습니다. [카테고리 저장](../../backend/src/main/java/com/zip/backend/calendar/CalendarRepository.java) · [일정 동기화](../../frontend/src/features/life/calendarSync.ts)
 
+일정 생성·수정이 거절되면 일정 화면의 [초안 복구](application.md#저장하지-못한-메모일정-복구)에서 제목·날짜·시간·카테고리를 다시 열어 저장할 수 있습니다. [일정 편집 화면](../../frontend/src/features/life/components/CalendarBoard.tsx) · [일정 동기화](../../frontend/src/features/life/calendarSync.ts)
+
 ### 일정 응답 DTO
 
 2026-11-28에 `5574d0a`를 기준으로 `CalendarEventResponse`를 적용했습니다. `GET /api/events`는 일정 배열을 반환합니다(`GET /api/events/search`도 같은 모양이었으나 같은 날 화면 미사용으로 삭제). `POST /api/events`는 `201`과 등록한 일정, `PATCH /api/events/{id}`는 `200`과 수정한 일정을 반환합니다. 네 응답은 OpenAPI의 `Event` 항목을 공유합니다. [일정 응답 DTO](../../backend/src/main/java/com/zip/backend/calendar/CalendarEventResponse.java) · [OpenAPI Event 스키마](../../backend/openapi.yaml#L2426) · [프론트 연동](../../frontend/src/features/life/calendarSync.ts)

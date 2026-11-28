@@ -14,8 +14,13 @@ public final class DatabaseMigration {
         if (!url.startsWith("jdbc:mysql://")) {
             throw new IllegalArgumentException("ZIP_MIGRATION_DB_URL must be a MySQL JDBC URL.");
         }
+        run(args.length == 1 ? args[0] : "", url,
+            required("ZIP_MIGRATION_DB_USER"), required("ZIP_MIGRATION_DB_PASSWORD"));
+    }
+
+    static void run(String command, String url, String username, String password) throws SQLException {
         var flyway = Flyway.configure()
-            .dataSource(url, required("ZIP_MIGRATION_DB_USER"), required("ZIP_MIGRATION_DB_PASSWORD"))
+            .dataSource(url, username, password)
             .locations("classpath:db/migration")
             .failOnMissingLocations(true)
             .validateMigrationNaming(true)
@@ -27,7 +32,7 @@ public final class DatabaseMigration {
             .baselineDescription("ZIP schema and reference data through 2026-11-27")
             .load();
 
-        switch (args.length == 1 ? args[0] : "") {
+        switch (command) {
             case "info" -> {
                 for (var migration : flyway.info().all()) {
                     System.out.printf("%s  %s  %s%n", migration.getVersion(), migration.getState(), migration.getDescription());

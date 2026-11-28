@@ -30,6 +30,7 @@
 `backend/` — Spring Boot 서버 API
 
 ### 2026-11-29
+- Codex — AI 대화 목록·메시지와 질문·답변 저장에 응답 DTO를 적용했습니다. 대화 목록의 `null`, 선택 카드와 고지서 답변의 JSON 계약을 보존했고, 적용 전후 백엔드 통합 테스트 31개가 통과했습니다. [AI 대화 응답 DTO](wiki/topics/service-integrations.md#ai-대화-응답-dto)
 - Codex — 공지 목록·상세·팝업과 관리자 등록·수정 응답에 공통 `NoticeResponse`를 적용했습니다. 목록의 본문 생략과 다른 응답의 본문 포함을 보존했으며, 적용 전후 공지 통합 테스트 6개가 통과했습니다. [공지 응답 DTO](wiki/topics/community-operations.md#공지-응답-dto)
 
 ### 2026-11-28
@@ -211,6 +212,9 @@
 ## 프론트엔드
 
 `frontend/` — React 앱
+
+### 2026-11-29
+- Codex — 일반 메모·일정의 저장 거절 사유와 편집 내용을 회원별 초안으로 남겨 다시 열고 저장할 수 있게 했습니다. 화면 재진입과 계정 전환을 확인하는 Playwright 검사를 PR에 추가했습니다. [초안 복구](wiki/topics/application.md#저장하지-못한-메모일정-복구)
 
 ### 2026-11-28
 - Codex — 홈 지출 위젯과 가계부 기타 지출 화면에서 회원·세션·월·시간대별 조회를 공유하고, 지출 저장·삭제 시 영향을 받은 월의 캐시를 갱신합니다. [서버 데이터와 브라우저 저장](wiki/topics/application.md#서버-데이터와-브라우저-저장)

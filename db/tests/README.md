@@ -10,6 +10,17 @@ node db/tests/run-isolated-mysql.cjs                               # 격리 MySQ
 
 격리 검사는 지금 켜진 MySQL 에 접속하지 않아요(`db/private` 에 임시 DB 를 만들고 끝나면 끔). 마이그레이션을 새로 만들 때 할 일은 [마이그레이션 안내](../migrations/README.md#마이그레이션을-새로-만들-때)에 있어요.
 
+## Testcontainers 통합 검사
+
+[백엔드 실행 명령](../../backend/README.md#테스트)과 [PR 검사](../../.github/workflows/test.yml)는 `mysqlTest`를 실행합니다. Testcontainers가 `mysql:8.0.46` 컨테이너를 만들고, 시나리오별 DB를 분리합니다. [통합 테스트](../../backend/src/test/java/com/zip/backend/tools/MySqlIntegrationTests.java)의 확인 범위입니다.
+
+- 빈 DB의 Flyway `V1`~`V4` 이력과 전국 참조 데이터, 재실행 시 같은 이력과 데이터 유지
+- 기준 버전 SQL로 구성한 기존 DB의 `V4` 등록, 회원·폴더·메모 보존, 후속 버전만 적용
+- 참조 데이터가 빠진 DB에서 기준 등록과 자동 마이그레이션 거절, 이력 미생성
+- 실제 API에서 메모 폴더 CRUD, 회원 간 접근 분리, 중복 이름 거절, 폴더 삭제 후 메모 보존과 분류 해제
+
+[아래 SQL 검사](#sql-파일)는 `run-isolated-mysql.cjs`에서 실행합니다.
+
 ## SQL 파일
 
 자동 검사가 아래 파일을 모두 실행해요. 테스트 번호 · 검사 내용 · 기대하는 오류 번호는 각 SQL 파일 안에 적혀 있어요.

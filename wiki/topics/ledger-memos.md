@@ -52,6 +52,10 @@
 
 2026-11-28 폴더 기본 저장·조회를 Spring Data JPA로 전환했습니다. 수정·삭제는 폴더 ID와 회원 ID를 함께 검사합니다. 폴더 삭제 시 연결 메모의 `folder_id`를 해제하는 JDBC 작업과 폴더 삭제는 같은 트랜잭션에서 실행합니다. 이름 중복은 `409`로 반환합니다. [JPA 저장소](../../backend/src/main/java/com/zip/backend/memo/MemoFolderRepository.java) · [폴더 삭제 경로](../../backend/src/main/java/com/zip/backend/memo/MemoRepository.java) · [API 통합 테스트](../../backend/src/test/java/com/zip/backend/memo/MemoIntegrationTests.java)
 
+`mysqlTest`에서도 두 회원의 폴더 접근 분리, 폴더 등록과 이름 변경 시 중복 거절, 삭제 후 메모와 미분류 상태를 검사합니다. [실제 MySQL 테스트](../../backend/src/test/java/com/zip/backend/tools/MySqlIntegrationTests.java) · [실행 방법](../../backend/README.md#테스트)
+
+일반 메모의 등록·수정 요청이 서버에서 거절되면 메모 화면의 [초안 복구](application.md#저장하지-못한-메모일정-복구)에서 제목·본문·체크리스트·폴더를 확인하고 다시 저장할 수 있습니다. [메모 편집 화면](../../frontend/src/features/memo/components/MemoBoard.tsx) · [메모 동기화](../../frontend/src/features/memo/sync.ts)
+
 일반 메모의 본문·체크리스트·고정 여부를 서버에 저장할 수 있습니다. 홈 위젯은 회원이 지정한 본인 메모 최대 3개의 순서를 사용합니다. `ids: null`은 자동 선택, `ids: []`는 선택 항목 없음입니다. [메모 컨트롤러](../../backend/src/main/java/com/zip/backend/memo/MemoController.java) · [메모 처리](../../backend/src/main/java/com/zip/backend/memo/MemoService.java)
 
 ### 메모 응답 DTO

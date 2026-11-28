@@ -3,6 +3,7 @@ import { useAuthStore } from '@/features/auth/store/authStore'
 import { apiClient } from '@/lib/apiClient'
 import { isMockApi } from '@/lib/apiMode'
 import { RETRY_DELAYS, SAVE_DELAY, startListSync, type SyncId } from '@/lib/listSync'
+import { createSaveRecovery } from '@/lib/saveRecovery'
 import { useMemoStore } from './store'
 import type { Memo, MemoItem } from './types'
 
@@ -32,7 +33,14 @@ const fields = (m: Memo) => ({ title: m.title, body: m.body, color: m.color, pin
 let externalChange: { mute: boolean; after: (() => void) | null } = { mute: false, after: null }
 let settleWrites: (() => Promise<void>) | null = null
 let saveLedgerMemo: ((id: number) => Promise<Memo>) | null = null
+let retryMemoSave: ((item: Memo, target: SyncId | null) => Promise<void>) | null = null
+export const memoRecovery = createSaveRecovery<Memo>('zip-memo-save-drafts')
 const missingMemo = '저장할 메모를 찾을 수 없어요. 메모를 다시 열어 주세요.'
+
+export async function retryMemoDraft(item: Memo, target: SyncId | null) {
+  if (!retryMemoSave) throw new Error('메모를 불러오는 중이에요. 잠시 뒤 다시 저장해 주세요.')
+  await retryMemoSave(item, target)
+}
 
 export async function completeLedgerMemo(id: number): Promise<Memo> {
   if (!isMockApi) {
@@ -54,11 +62,17 @@ export function withoutMemoSync(apply: () => void) {
   } finally {
     externalChange.mute = false
   }
+  if (!isMockApi) memoRecovery.clear()
   externalChange.after?.()
 }
 
 /** 동기화 시작 → 멈추는 함수. useMemoServerSync 가 부르고, 테스트도 직접 불러요 */
 export function startMemoSync(userId: string, setTimer: typeof setTimeout = setTimeout, clearTimer: typeof clearTimeout = clearTimeout): () => void {
+  const { sessionKey } = useAuthStore.getState()
+  const isCurrentSession = () => {
+    const auth = useAuthStore.getState()
+    return auth.user?.id === userId && auth.sessionKey === sessionKey
+  }
   let homeDirty = false
   let homeTimer: ReturnType<typeof setTimeout> | null = null
   let writing = false
@@ -84,12 +98,15 @@ export function startMemoSync(userId: string, setTimer: typeof setTimeout = setT
     create: async (m) => Number((await apiClient.post<ServerMemo>('/memos', fields(m))).data.id),
     update: (sid, m) => apiClient.patch(`/memos/${sid}`, fields(m)),
     keepRejectedUpdate: (memo) => !!memo.ledgerContext,
+    onRejectedSave: memoRecovery.record,
     remove: (sid) => apiClient.delete(`/memos/${sid}`),
     // 다른 회원으로 바뀌는 중에 저장소가 그 회원 사본으로 바뀌어도 보내지 않음
-    isMuted: () => externalChange.mute || useAuthStore.getState().user?.id !== userId,
+    isMuted: () => externalChange.mute || !isCurrentSession(),
+    isCurrentSession,
     setTimer,
     clearTimer,
   })
+  retryMemoSave = memos.retrySave
 
   const completions = new Map<number, Promise<Memo>>()
   const complete = (id: number): Promise<Memo> => {
@@ -126,6 +143,7 @@ export function startMemoSync(userId: string, setTimer: typeof setTimeout = setT
     homeTimer = null
     const ids = useMemoStore.getState().homeIds
     await Promise.all((ids ?? []).map((id) => memos.settled(id)))
+    if (!isCurrentSession()) return
     if (ids?.some((id) => memos.isNew(id))) return memos.schedulePull(RETRY_DELAYS[0]) // 아직 서버에 없는 메모가 있으면 나중에
     try {
       await apiClient.put('/me/home-memos', { ids: ids ? ids.map((id: SyncId) => String(memos.serverId(id))) : null })
@@ -139,7 +157,7 @@ export function startMemoSync(userId: string, setTimer: typeof setTimeout = setT
     homeTimer = setTimer(() => void saveHome(), SAVE_DELAY)
   }
   const unsubscribeHome = useMemoStore.subscribe((now, before) => {
-    if (writing || externalChange.mute || now.homeIds === before.homeIds || useAuthStore.getState().user?.id !== userId) return
+    if (writing || externalChange.mute || now.homeIds === before.homeIds || !isCurrentSession()) return
     homeDirty = true
     if (memos.ready()) saveHomeLater()
   })
@@ -170,6 +188,7 @@ export function startMemoSync(userId: string, setTimer: typeof setTimeout = setT
     memos.stop()
     if (settleWrites === settle) settleWrites = null
     if (saveLedgerMemo === complete) saveLedgerMemo = null
+    if (retryMemoSave === memos.retrySave) retryMemoSave = null
     unsubscribeHome()
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onHide)
     if (typeof window !== 'undefined') {
@@ -183,8 +202,9 @@ export function startMemoSync(userId: string, setTimer: typeof setTimeout = setT
 /** 서버 모드일 때 메모를 서버와 맞춤. 앱 화면 틀(AppLayout) 한 곳에서만 부르세요 */
 export function useMemoServerSync() {
   const userId = useAuthStore((s) => s.user?.id)
+  const sessionKey = useAuthStore((s) => s.sessionKey)
   useEffect(() => {
-    if (isMockApi || !userId) return
+    if (isMockApi || !userId || !sessionKey) return
     return startMemoSync(userId)
-  }, [userId])
+  }, [userId, sessionKey])
 }

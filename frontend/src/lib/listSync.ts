@@ -3,7 +3,7 @@
  * - 바뀐 것을 "아직 서버에 안 간 일"로 적어 두고(새 항목 · 고친 항목 · 지운 항목) 서버가 받았을 때만 지워요.
  *   그래서 처음 불러오기 전이나 다시 불러올 때도, 서버 값 위에 아직 안 간 내 변경을 다시 얹어서 잃지 않아요.
  * - 새 항목은 화면 번호(임시)와 서버 번호가 달라서 짝을 기억하고, 항목 하나에 대한 요청은 차례대로 하나씩 보내요(늦게 간 옛 내용이 덮어쓰지 않게).
- * - 서버에 못 닿으면(네트워크 · 5xx) 조금씩 간격을 늘려 다시 불러오고 다시 보내요. 서버가 거절하면(4xx) 그 일은 버리고 서버 값을 따라요.
+ * - 서버에 못 닿으면(네트워크 · 5xx) 간격을 늘려 재시도해요. 서버가 저장을 거절하면 편집 내용을 복구용으로 넘기고 서버 값을 다시 받아요.
  * - 서버와 한 번도 맞춘 적 없는 브라우저의 항목(서버 연결 전에 쓴 것)은 하나씩 올리고, 올린 것을 기억해서 중간에 끊겨도 이어서 올려요.
  *   한 번 다 맞춘 브라우저의 사본은 다시 올리지 않아요(다른 기기에서 지운 항목이 되살아나지 않게). */
 
@@ -23,6 +23,9 @@ export type ListSyncOptions<T extends { id: SyncId }, Extra> = {
   create: (item: T) => Promise<SyncId>
   update: (serverId: SyncId, item: T) => Promise<unknown>
   keepRejectedUpdate?: (item: T) => boolean
+  onRejectedSave?: (item: T, target: SyncId | null, error: unknown) => void
+  /** 기다리던 요청과 응답을 시작 당시의 로그인 세션에 묶음 */
+  isCurrentSession?: () => boolean
   remove: (serverId: SyncId) => Promise<unknown>
   /** 보내기 전에 기다릴 일 (예: 일정은 카테고리 저장이 끝난 뒤에) */
   waitFor?: () => Promise<unknown>
@@ -43,6 +46,7 @@ export type ListSync<T> = {
   settled: (id: SyncId) => Promise<void>
   /** 자동 저장과 같은 순서로 명시적인 저장을 실행하고 성공 응답을 적용 */
   saveNow: (id: SyncId, write: (serverId: SyncId, item: T) => Promise<T>, apply: (saved: T, unchanged: boolean) => void, missing: string) => Promise<T>
+  retrySave: (item: T, target: SyncId | null) => Promise<void>
   schedulePull: (delay: number) => void
   /** 같이 보내는 다른 값이 실패했을 때: 거절이면 drop, 아니면 나중에 다시 */
   failed: (error: unknown, drop: () => void) => void
@@ -55,7 +59,7 @@ export type ListSync<T> = {
 export const SAVE_DELAY = 500
 export const RETRY_DELAYS = [2_000, 5_000, 15_000, 30_000, 60_000]
 
-/** 4xx(로그인 만료 · 너무 많은 요청 제외) = 서버가 거절함 → 그 일은 버림. 나머지(네트워크 · 5xx)는 다시 시도 */
+/** 401·408·429를 제외한 4xx는 같은 요청으로 해결하기 어려운 서버 거절 */
 export const rejected = (error: unknown) => {
   const status = (error as { response?: { status?: number } }).response?.status
   return !!status && status >= 400 && status < 500 && status !== 401 && status !== 408 && status !== 429
@@ -88,11 +92,13 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
   const created = new Map<SyncId, SyncId>() // 화면 번호 → 서버 번호 (새로 만든 항목)
   const createdAt = new Map<SyncId, number>() // 서버에 만들어진 시각 (불러오기 중에 만들어진 항목을 지키려고)
   const newIds = new Set<SyncId>() // 아직 서버에 없는 항목 (만들 차례)
+  const rejectedCreates = new Map<SyncId, unknown>() // 서버 값을 받기 전까지 화면에 남을 수 있는 거절된 임시 항목
   const dirty = new Set<SyncId>() // 고쳤는데 아직 서버가 받지 않은 항목
   const removed = new Set<SyncId>() // 지웠는데 아직 서버에서 안 지운 항목
   const chains = new Map<SyncId, Promise<void>>() // 항목마다 요청을 차례로
   const explicitWrites = new Set<SyncId>()
   let writeVersion = 0
+  let resetVersion = 0
   const timers = new Map<SyncId, ReturnType<typeof setTimeout>>()
   let pullTimer: ReturnType<typeof setTimeout> | null = null
   let failures = 0
@@ -117,6 +123,12 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
   const current = (id: SyncId) => o.read().find((m) => m.id === id)
   const serverId = (id: SyncId) => created.get(id) ?? id
   const waitFor = () => (o.waitFor ? o.waitFor().catch(() => {}) : Promise.resolve())
+  const isCurrent = () => o.isCurrentSession?.() !== false
+  const recover = (id: SyncId, target: SyncId | null, error: unknown) => {
+    const latest = current(id)
+    if (latest && !removed.has(id)) o.onRejectedSave?.(latest, target, error)
+    dirty.delete(id)
+  }
 
   const schedulePull = (delay: number) => {
     if (!alive || pullTimer) return
@@ -144,6 +156,8 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
     enqueue(id, async () => {
       if (!newIds.has(id)) return
       await waitFor()
+      if (!isCurrent() || !newIds.has(id)) return
+      const reset = resetVersion
       const item = current(id)
       if (!item) {
         newIds.delete(id)
@@ -151,18 +165,25 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
       }
       try {
         const sid = await o.create(item)
+        if (!isCurrent() || reset !== resetVersion) return
         created.set(id, sid)
         createdAt.set(id, Date.now())
         newIds.delete(id)
         failures = 0
         if (!isSynced()) markMoved(id)
         if (current(id) === item) dirty.delete(id)
-        else dirty.add(id)
+        else if (current(id)) {
+          dirty.add(id)
+          saveLater(id)
+        }
         finishMoving()
       } catch (error) {
+        if (!isCurrent() || reset !== resetVersion) return
         failed(error, () => {
-          // 서버가 받지 않는 항목(예: 너무 긺)은 다시 올리지 않음 — 계속 다시 보내는 것을 막음
+          if (current(id) && !removed.has(id)) rejectedCreates.set(id, error)
+          recover(id, null, error)
           newIds.delete(id)
+          removed.delete(id)
           if (!isSynced()) markMoved(id)
           finishMoving()
         })
@@ -176,6 +197,8 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
     enqueue(id, async () => {
       if (!dirty.has(id) || newIds.has(id) || removed.has(id)) return
       await waitFor()
+      if (!isCurrent() || !dirty.has(id) || removed.has(id)) return
+      const reset = resetVersion
       const item = current(id)
       if (!item) return
       try {
@@ -183,8 +206,9 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
         failures = 0
         if (current(id) === item) dirty.delete(id)
       } catch (error) {
+        if (!isCurrent() || reset !== resetVersion) return
         if (rejected(error) && o.keepRejectedUpdate?.(item)) return
-        failed(error, () => dirty.delete(id))
+        failed(error, () => recover(id, serverId(id), error))
       }
     })
   }
@@ -199,7 +223,7 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
     if (t) clearTimer(t)
     timers.delete(id)
     enqueue(id, async () => {
-      if (!removed.has(id)) return
+      if (!isCurrent() || !removed.has(id)) return
       try {
         await o.remove(serverId(id))
       } catch (error) {
@@ -218,8 +242,9 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
     const version = writeVersion
     try {
       await waitFor()
+      if (!alive || !isCurrent()) return
       const { items, extra } = await o.fetch()
-      if (!alive) return
+      if (!alive || !isCurrent()) return
       if (version !== writeVersion) return schedulePull(0)
       failures = 0
       const local = o.read()
@@ -235,7 +260,7 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
       const synced = isSynced()
       const done = moved()
       for (const m of local) {
-        if (merged.some((x) => x.id === m.id) || removed.has(m.id)) continue
+        if (merged.some((x) => x.id === m.id) || removed.has(m.id) || rejectedCreates.has(m.id)) continue
         const justCreated = (createdAt.get(m.id) ?? 0) >= startedAt
         if (!newIds.has(m.id) && !justCreated && (synced || done.has(m.id) || created.has(m.id))) continue
         if (!justCreated) newIds.add(m.id)
@@ -248,6 +273,7 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
       } finally {
         muted = false
       }
+      rejectedCreates.clear()
       ready = true
       for (const id of newIds) create(id)
       for (const id of dirty) saveLater(id)
@@ -268,6 +294,10 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
         newIds.add(m.id)
         if (ready) create(m.id)
       } else if (was !== m) {
+        if (rejectedCreates.has(m.id)) {
+          recover(m.id, null, rejectedCreates.get(m.id))
+          continue
+        }
         dirty.add(m.id)
         if (ready) saveLater(m.id)
       }
@@ -275,6 +305,7 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
     for (const m of before) {
       if (kept.has(m.id)) continue
       dirty.delete(m.id)
+      if (rejectedCreates.delete(m.id)) continue
       if (newIds.has(m.id) && !chains.has(m.id)) newIds.delete(m.id) // 서버에 만든 적 없음 → 지울 것도 없음
       else {
         removed.add(m.id)
@@ -318,6 +349,23 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
     })
   }
 
+  const retrySave: ListSync<T>['retrySave'] = (item, target) => {
+    const id = target === null ? item.id : [...created].find(([, sid]) => sid === target)?.[0] ?? target
+    const reset = resetVersion
+    const check = () => {
+      if (!alive || !isCurrent() || reset !== resetVersion) throw new Error('로그인 또는 저장 상태가 변경됐어요. 화면을 다시 열어 주세요.')
+    }
+    return enqueue(id, async () => {
+      await waitFor()
+      check()
+      if (target === null) await o.create(item)
+      else await o.update(target, item)
+      check()
+      writeVersion++
+      schedulePull(0)
+    })
+  }
+
   void pull()
   return {
     stop: () => {
@@ -331,11 +379,15 @@ export function startListSync<T extends { id: SyncId }, Extra>(o: ListSyncOption
     isNew: (id) => newIds.has(id),
     settled: (id) => chains.get(id) ?? Promise.resolve(),
     saveNow,
+    retrySave,
     schedulePull,
     failed,
     flush,
     forgetPending: () => {
+      resetVersion++
+      writeVersion++
       newIds.clear()
+      rejectedCreates.clear()
       dirty.clear()
       removed.clear()
     },

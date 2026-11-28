@@ -19,6 +19,7 @@ repositories {
 }
 
 dependencies {
+    implementation 'com.google.auth:google-auth-library-oauth2-http:1.58.0'
     implementation 'com.google.zxing:core:3.5.4'
     implementation 'com.google.zxing:javase:3.5.4'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -33,13 +34,24 @@ dependencies {
     runtimeOnly 'com.mysql:mysql-connector-j'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-mysql'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testRuntimeOnly 'com.h2database:h2'
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform { excludeTags 'mysql' }
     // Windows 기본 인코딩(cp949)에서는 테스트용 SQL의 한글이 깨져 지역 조회 테스트가 실패한다. 테스트 JVM을 UTF-8로 고정해 PC 설정과 상관없이 같은 결과가 나오게 한다.
+    jvmArgs '-Dfile.encoding=UTF-8'
+}
+
+tasks.register('mysqlTest', Test) {
+    group = 'verification'
+    description = 'Run Flyway and JPA integration tests on a throwaway MySQL container.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'mysql' }
     jvmArgs '-Dfile.encoding=UTF-8'
 }
 
