@@ -58,6 +58,24 @@
   background: var(--b-blue);
 }
 
+/* /welcome 의 로그아웃은 링크가 아니라 버튼이라 기본 버튼 모양을 지움 */
+button.loginPill {
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button.loginPill:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.top button:focus-visible {
+  outline: 3px solid var(--b-blue);
+  outline-offset: 3px;
+}
+
 .top a:focus-visible {
   outline: 3px solid var(--b-blue);
   outline-offset: 3px;

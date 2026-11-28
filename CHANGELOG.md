@@ -200,6 +200,7 @@
 `frontend/` — React 앱
 
 ### 2026-11-28
+- 곽성미 — 소셜 첫 가입 약관 동의 화면(`/welcome`)을 회원가입 · 찾기와 같은 새 틀(`AccountLayout`)로 옮김: 11-20 디자인 변경 때 예전 틀(`AuthLayout`)에 남아 있던 것. `/welcome` 에서는 "로그인" 안내 대신 로그아웃("다른 계정으로 시작할까요?")을 보여 주고, 쓰지 않게 된 `AuthLayout` 삭제. 린트 · 빌드 · 프론트 216개 통과
 - moon — 모의 API의 동네 글 검색에 서버와 같은 복합어 매칭을 적용했습니다. 최신 `dev` 병합 후 프론트 테스트 213개, 린트, 운영 빌드를 통과했습니다. [모의 검색과 서버 비교](wiki/topics/community-operations.md#검색-정렬과-관련도)
 - jgkim7848-lab — 홈 알림 칸에 안 읽은 알림만 보이게(읽은 알림은 알림 전체 보기에서, `life/components/HomePhotoCard.tsx`). 쓰레기 배출일 알림을 없앤 데 맞춰 설정 "알림 받기" 설명 · 내 집 주소 안내 · 소개 화면 문구 수정. [일정·알림](wiki/topics/calendar-notifications.md) · 검증: 새 테스트 `home-noti-card.test.mjs` 3개(고치기 전 코드에서는 2개 실패 확인)
 

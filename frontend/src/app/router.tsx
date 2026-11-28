@@ -1,7 +1,6 @@
 import type { ComponentType } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AccountLayout } from '@/components/layout/AccountLayout'
-import { AuthLayout } from '@/components/layout/AuthLayout'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { RouteErrorPage } from '@/pages/RouteErrorPage'
 import { GuestRoute, ProtectedRoute } from './guards'
@@ -54,7 +53,7 @@ export const router = createBrowserRouter([
           // 소셜 첫 가입: 약관 동의 + 주소 입력
           // 처음 로그인: 우리 집 설문 (별도 페이지)
           { path: '/onboarding', lazy: page(() => import('@/pages/onboarding/OnboardingPage'), 'OnboardingPage') },
-          { element: <AuthLayout />, children: [{ path: '/welcome', lazy: page(() => import('@/pages/auth/WelcomePage'), 'WelcomePage') }] },
+          { element: <AccountLayout />, children: [{ path: '/welcome', lazy: page(() => import('@/pages/auth/WelcomePage'), 'WelcomePage') }] },
           {
             lazy: page(() => import('@/components/layout/AppLayout'), 'AppLayout'),
             children: [
