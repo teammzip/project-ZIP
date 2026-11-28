@@ -1,6 +1,5 @@
 package com.zip.backend.maintenance;
 
-import com.zip.backend.notification.TrashReminderService;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -13,8 +12,9 @@ import org.springframework.stereotype.Service;
  * <ul>
  *   <li>로그인 세션(auth_sessions): 만료됐거나 로그아웃한 지 하루 지난 것. 서버는 세션 행이 없으면 그 토큰을 무효로 봄</li>
  *   <li>이메일 인증(email_verifications): 요청한 지 하루 지난 것. 인증번호 3분 · 인증 완료 값 30분 · 요청 제한 1시간보다 김</li>
- *   <li>알림(notifications): 알릴 시각이 보관 기간(기본 90일) 지난 것. 일정 · 월세 · 쓰레기 알림의 중복 방지는 최근 날짜만 봄.
- *       단 쓰레기 "배출 정보가 없어요" 안내는 (회원, 동네)마다 한 번만 보내는 기록이라 지우지 않음 (지우면 다시 감)</li>
+ *   <li>알림(notifications): 알릴 시각이 보관 기간(기본 90일) 지난 것. 일정 · 월세 알림의 중복 방지는 최근 날짜만 봄.
+ *       쓰레기 배출 알림은 2026-11-28 에 없앴고(배출표는 일정 화면에서 봄), 예전에 만든 쓰레기 알림 · "배출 정보가 없어요" 안내도
+ *       다시 보낼 일이 없어서 다른 알림과 똑같이 기간이 지나면 지움</li>
  * </ul>
  */
 @Service
@@ -40,9 +40,8 @@ public class DataCleanupService {
         var graceLimit = Timestamp.from(now.minus(GRACE));
         int sessions = jdbc.update("DELETE FROM auth_sessions WHERE expires_at < ? OR revoked_at < ?", graceLimit, graceLimit);
         int verifications = jdbc.update("DELETE FROM email_verifications WHERE requested_at < ?", graceLimit);
-        int notifications = jdbc.update("""
-            DELETE FROM notifications WHERE notify_at < ? AND NOT (noti_type = 'TRASH' AND title = ?)
-            """, Timestamp.from(now.minus(Duration.ofDays(notificationDays))), TrashReminderService.NO_DATA_TITLE);
+        int notifications = jdbc.update("DELETE FROM notifications WHERE notify_at < ?",
+            Timestamp.from(now.minus(Duration.ofDays(notificationDays))));
         return new Result(sessions, verifications, notifications);
     }
 }

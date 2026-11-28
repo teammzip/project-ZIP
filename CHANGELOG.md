@@ -31,6 +31,7 @@
 
 ### 2026-11-28
 - moon — 여러 단어로 동네 글을 검색할 때 한글 3음절 이상의 단어를 제목·본문의 띄어쓰기 차이에도 찾도록 개선했습니다. 최신 `dev` 병합 후 백엔드 369개와 격리 MySQL의 합성 검색 사례 40개를 검증했습니다. [검색 규칙과 검증 결과](wiki/topics/community-operations.md#여러-단어-검색의-띄어쓰기-개선-검증)
+- jgkim7848-lab — 쓰레기 배출일 알림 없앰(일정 화면의 우리 동네 배출표 보기로 대신, 사용자 결정): `notification/TrashReminderService` · `TrashReminderScheduler` · `TrashReminderTests` 삭제, 설정 `zip.trash.reminder.*`(`TRASH_REMINDER_*`) 삭제. 오래된 알림 정리(`maintenance/DataCleanupService`)의 "배출 정보가 없어요" 안내 예외도 없앰(90일 지난 알림은 종류 상관없이 삭제). 예전 `TRASH` 알림 · `noti_type` 값은 남김. [배출일 알림](wiki/topics/trash-schedules.md#배출일-알림) · 검증: 백엔드 테스트(`DataCleanupTests` 기대값 수정)
 
 ### 2026-11-27
 - 곽성미 — 문서 정리: `backend/IMPLEMENTATION.md` 의 낡은 내용(refresh 쿠키 없음 · 토큰 1시간 → 현재 15분 · 12시간 · 7일과 refresh 흐름, 없는 테스트 경로 → `frontend/tests/legal-terms.test.mjs`, 해당 없어진 문자 업체 · banned_identities, 잘린 마이그레이션 경로, 11-27 처리방침 외부 전송) 고침. 루트 `README.md` 의 지금 단계 · 남은 것 · 문서 안내표(운영 배포 · 운영 빌드 · ERD · 시스템 구성 · 운영 DB) 갱신. 문서 안 경로 · 링크 모두 실제 파일 확인
@@ -51,10 +52,10 @@
 
 ### 2026-11-24
 - jgkim7848-lab — `openapi.yaml` 최신화: 서버에 있는데 빠져 있던 경로 17개(공지 · 관리자 공지 · 꿀팁 지정 · 관리자 문의 목록 · 고지서 사진 인식 · AI 대화 기록 저장 · 지도 저장 리스트 · 내 정보 이름/생년월일 · 내 경고/정지 내역 · 주변 동네 안내 · 프로필 사진 버리기)와 AI 대화 전체 삭제 추가, 서버에 없는 `GET /api/ai/topics` 삭제, 문의 목록 · 쓰기 응답을 서버와 맞춤. [앱 구조](wiki/topics/application.md#api-데이터-계약과-dto) · 검증: 컨트롤러 경로 전체와 문서 경로 대조
-- jgkim7848-lab — 오래된 데이터 정리를 6시간마다: 만료 · 로그아웃 후 하루 지난 로그인 세션, 요청 후 하루 지난 이메일 인증, 알릴 시각 90일 지난 알림("배출 정보가 없어요" 안내는 제외) (`maintenance/DataCleanupService`, 설정 `zip.cleanup.*`). [앱 구조](wiki/topics/application.md) · [알림](wiki/topics/calendar-notifications.md#알림-생성과-읽음-상태) · 검증: `DataCleanupTests`, 실제 MySQL 에서 같은 조건 개수 확인
+- jgkim7848-lab — 오래된 데이터 정리를 6시간마다: 만료 · 로그아웃 후 하루 지난 로그인 세션, 요청 후 하루 지난 이메일 인증, 알릴 시각 90일 지난 알림("배출 정보가 없어요" 안내는 제외) (`maintenance/DataCleanupService`, 설정 `zip.cleanup.*`). [앱 구조](wiki/topics/application.md) · [알림](wiki/topics/calendar-notifications.md#알림-생성과-읽음-상태) · 검증: `DataCleanupTests`, 실제 MySQL 에서 같은 조건 개수 확인 → 배출일 알림은 [2026-11-28](#2026-11-28)에 없앰
 - jgkim7848-lab — 동네 목록 API `GET /api/regions` · `GET /api/regions/{id}/neighbors` 추가 — 로그인 없이, `frontend/API.md` · `openapi.yaml` 계약대로 (`region/RegionController`). [앱 구조](wiki/topics/application.md) · 검증: `RegionApiIntegrationTests` 2개, 실제 DB 로 띄운 서버에서 확인(249개 · 강남구 이웃 6곳 · 없는 번호 404)
 - jgkim7848-lab — 가계부 메모 초안이 폴더 100개 제한을 넘겨 분류 폴더를 만들던 문제 수정 — 이미 100개면 미분류로 저장 (`memo/LedgerMemoController`). [확인된 폴더 문제](wiki/topics/ledger-memos.md#확인된-폴더-문제) · 검증: `LedgerIntegrationTests` 새 테스트 1개
-- jgkim7848-lab — 쓰레기 배출일 알림 · 배출표 조회(`GET /api/trash-schedules/me`): 내 집 주소로 시 · 군 · 구를 못 찾으면 회원 주소로 다시 찾기 (`RegionMatcher.matchFirst`, 두 곳 같은 규칙). [배출표](wiki/topics/trash-schedules.md) · 검증: `RegionMatcherTests` · `TrashReminderTests` · `CalendarIntegrationTests` 새 테스트 3개
+- jgkim7848-lab — 쓰레기 배출일 알림 · 배출표 조회(`GET /api/trash-schedules/me`): 내 집 주소로 시 · 군 · 구를 못 찾으면 회원 주소로 다시 찾기 (`RegionMatcher.matchFirst`, 두 곳 같은 규칙). [배출표](wiki/topics/trash-schedules.md) · 검증: `RegionMatcherTests` · `TrashReminderTests` · `CalendarIntegrationTests` 새 테스트 3개 → 배출일 알림은 [2026-11-28](#2026-11-28)에 없앰
 - moon — 가계부 등록·수정·삭제와 분류 처리를 서비스로 분리하고 거래·메모·월급 연결의 트랜잭션을 검증. [가계부 저장 트랜잭션](wiki/topics/ledger-memos.md#가계부-저장-트랜잭션)
 - moon — 가계부 수입·기타 지출 목록에서 연결 메모를 일괄 조회하고 수입 목록 쿼리에서 자동 등록 월급 여부도 함께 조회. [가계부 목록 조회](wiki/topics/ledger-memos.md#가계부-기록과-회원별-분류)
 - moon — 로그인한 회원의 공개 게시글 집계 API를 추가하고, 지도·즐겨찾기·회원 리뷰의 카카오 장소 ID 판별을 `kakao:장소ID` 기준으로 통합 (커뮤니티·지도 통합 테스트 통과).
@@ -70,10 +71,10 @@
 - 곽성미 — 회원가입 · 소셜 첫 동의에서 주소를 선택으로 (주소 · 동네는 가입 후 주거 설문에서)
 - 곽성미 — 장소 리뷰(`PlaceReviewService`): 카카오 검색 장소에도 리뷰(장소 id · 이름 + 리뷰만 우리 서버에 저장), 내 리뷰 고치기 · 지우기, 리뷰 사진(5장, 고치기 · 삭제 때 파일 정리, 리뷰 사진은 누구나 보기), 작성자 후기 수 · 별점 평균 · 프로필, 리뷰 신고 · 관리자 삭제(작성자 알림) · 기각, 지도 목록 별점 요약
 - jgkim7848-lab — 커뮤니티 "주변 동네" 안내 API `GET /api/posts/neighbors` (내 동네 = 주거 설문 · 내 정보 주소로 정해진 `users.region_id`, 이웃 = `region_neighbors`, 글 목록 `scope=near` 와 같은 기준). 검증: 백엔드 294개 통과(새 테스트 1개), 실제 DB 에서 같은 SQL 확인
-- jgkim7848-lab — 쓰레기 알림: 내 집 주소가 없으면 회원 주소(가입 · 주거 설문에서 정한 주소)로 동네 찾기, 배출 정보가 없는 동네는 "배출 정보가 없어요" 안내를 한 번만 보내고 그 뒤로는 안 보냄, 배출표를 동네마다 한 번만 읽기(같은 동네 회원이 많을 때), `backend/IMPLEMENTATION.md` 에 「쓰레기 배출표 · 배출일 알림」 절. 검증: 백엔드 293개 통과
+- jgkim7848-lab — 쓰레기 알림: 내 집 주소가 없으면 회원 주소(가입 · 주거 설문에서 정한 주소)로 동네 찾기, 배출 정보가 없는 동네는 "배출 정보가 없어요" 안내를 한 번만 보내고 그 뒤로는 안 보냄, 배출표를 동네마다 한 번만 읽기(같은 동네 회원이 많을 때), `backend/IMPLEMENTATION.md` 에 「쓰레기 배출표 · 배출일 알림」 절. 검증: 백엔드 293개 통과 → 배출일 알림은 [2026-11-28](#2026-11-28)에 없앰
 
 ### 2026-11-21
-- jgkim7848-lab — 쓰레기 배출일 알림(그날 0시, 집 주소 → 시군구 → 배출표, `notification/TrashReminderService`), `/api/trash-schedules` 응답을 장소별 생활쓰레기 · 음식물 · 재활용 요일 · 시작 시각으로 변경, 동네 인증에서 세종(시군구 없음) · 구가 있는 시(성남시 분당구 → 성남시) 처리, 주소 매칭에 전남광주통합특별시 반영. 검증: 백엔드 279개 통과, 실제 DB 로 API 점검
+- jgkim7848-lab — 쓰레기 배출일 알림(그날 0시, 집 주소 → 시군구 → 배출표, `notification/TrashReminderService`), `/api/trash-schedules` 응답을 장소별 생활쓰레기 · 음식물 · 재활용 요일 · 시작 시각으로 변경, 동네 인증에서 세종(시군구 없음) · 구가 있는 시(성남시 분당구 → 성남시) 처리, 주소 매칭에 전남광주통합특별시 반영. 검증: 백엔드 279개 통과, 실제 DB 로 API 점검 → 배출일 알림은 [2026-11-28](#2026-11-28)에 없앰
 - 곽성미 — 생활 알림(일정 · 월세)을 서버가 만들게 (목록을 볼 때 3일 치, 한 번만 · 바뀌면 정리), 공지사항 API (관리자 쓰기 · 고치기 · 지우기, 회원 목록 · 내용, 팝업 공지, 새 공지 알림)
 - 곽성미 — 새 회원이 두 기기에서 동시에 처음 쓸 때 나던 500 오류 수정(일정 기본값 · 지도 저장 리스트 · 홈 메모), 탈퇴하면 남의 글 공감 · 댓글 수를 다시 셈
 - moon — 가계부 분류 관리 · 월급 · 수입 정보 연동, 주거 설문 통합 저장 · 건너뛰기, 홈 인기 글, 지도 장소 추천에 종류 · 검색 조건 반영, 첫 주거 설문과 전세 대출 편집을 서버 저장으로 통합
@@ -198,6 +199,7 @@
 
 ### 2026-11-28
 - moon — 모의 API의 동네 글 검색에 서버와 같은 복합어 매칭을 적용했습니다. 최신 `dev` 병합 후 프론트 테스트 213개, 린트, 운영 빌드를 통과했습니다. [모의 검색과 서버 비교](wiki/topics/community-operations.md#검색-정렬과-관련도)
+- jgkim7848-lab — 홈 알림 칸에 안 읽은 알림만 보이게(읽은 알림은 알림 전체 보기에서, `life/components/HomePhotoCard.tsx`). 쓰레기 배출일 알림을 없앤 데 맞춰 설정 "알림 받기" 설명 · 내 집 주소 안내 · 소개 화면 문구 수정. [일정·알림](wiki/topics/calendar-notifications.md) · 검증: 새 테스트 `home-noti-card.test.mjs` 3개(고치기 전 코드에서는 2개 실패 확인)
 
 ### 2026-11-27
 - 곽성미 — `frontend/README.md` 에 "운영 빌드": `npm ci` · `npm run build` → `dist/`, 항상 서버 모드(확인 방법), 같은 도메인 구성, 없는 주소도 `index.html` 로(새로고침 404 방지), 빌드 환경변수 표. `vite-env.d.ts` 에 `VITE_WEATHER_*` 타입 추가 (린트 · 빌드 · 프론트 212개 통과)
@@ -205,6 +207,7 @@
 - 곽성미 — 서버 모드에서 AI 서버에 닿지 못하면(응답 없음 · 처리하지 않은 오류 · 빈 답 · 대화방 생성 실패) 데모 답변 대신 "AI 서버에 연결하지 못했어요" 안내. 데모 답변은 모의 모드에서만 (`ai/api.ts` `askAi`, 테스트 `ai-quota.test.mjs`). 프론트 테스트 212개 · 린트 · 빌드 통과
 
 ### 2026-11-26
+- jgkim7848-lab — PR 자동 테스트(CI)의 `actions/setup-java` · `setup-node` · `upload-artifact` 를 v4 → v5 로 올림(첫 실행에서 Node.js 20 지원 종료 경고 4건, `.github/workflows/test.yml`). [구현·검증 현황](wiki/topics/project-status.md#구현해야-될-부분)
 - jgkim7848-lab — 날씨 · 홈 · 동네 지도도 다른 기기에서 한 동네 인증을 사용: 이 브라우저에 고른 동네가 없으면 서버의 동네 인증(`region.fullName`)을 설문 주소보다 먼저 씀 (`life/neighborhood.ts` · `life/regionVerification.ts` `serverRegionName`, 테스트 `neighborhood-location.test.mjs`). 임시 DB 서버 · 화면에서 확인. [홈 날씨 위치](wiki/topics/service-integrations.md#홈-날씨-위치)
 - jgkim7848-lab — 다른 기기에서 동네 인증을 했거나 브라우저 데이터를 지운 회원이 커뮤니티에 들어갈 때 다시 인증하라고 막히던 문제 수정: 서버 모드는 브라우저의 동네 이름이 비면 서버의 회원 동네로 인증을 판정 (`life/regionVerification.ts` `serverRegionVerification` · `life/derive.ts`, 테스트 `region-verify-server.test.mjs`). 임시 DB 서버 · 화면에서 확인. [커뮤니티 동네 인증](wiki/topics/community-operations.md#동네-글과-조회-집계)
 

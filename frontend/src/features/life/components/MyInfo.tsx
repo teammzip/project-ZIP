@@ -204,7 +204,7 @@ export function LifeInfoFields({ onSaved, showHomeAddress = true, loanDraft }: L
         <label>내 집 주소<input ref={homeAddressInput} value={form.homeAddress} onChange={(e) => change('homeAddress', e.target.value)} maxLength={200} autoComplete="street-address" placeholder="주소 검색으로 동네를 고른 뒤 상세주소를 이어서 입력해 주세요" /></label>
         <Button variant="line" onClick={() => setAddressSearchOpen((open) => !open)} aria-expanded={addressSearchOpen}>{addressSearchOpen ? '주소 검색 닫기' : '주소 검색'}</Button>
         {addressSearchOpen && <AddressSearch onSelect={pickHomeAddress} />}
-        <p className={common.note}>쓰레기 배출 알림과 배출표는 이 주소의 시·군·구로 찾아요. 비워 두면 회원 주소를 써요.</p>
+        <p className={common.note}>일정 화면의 쓰레기 배출표는 이 주소의 시·군·구로 찾아요. 비워 두면 회원 주소를 써요.</p>
       </>}
       {monthly ? <>
         <label>보증금 (원)<AmountInput value={form.deposit} onValueChange={(value) => change('deposit', value)} max={9999990000} required /></label>
