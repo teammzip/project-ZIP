@@ -13,7 +13,7 @@ import { useCommunityStore } from '../store'
 import { commentCountOf, type Post } from '../types'
 import { useCommunityActions, useServerNeighbors, useServerPost, useServerPosts } from '../useCommunity'
 import styles from './Community.module.css'
-import { NeighborExplorer } from './NeighborExplorer'
+import { NeighborExplorer, NeighborExplorerToggle } from './NeighborExplorer'
 import { PostDetail } from './PostDetail'
 import { PostComposer } from './PostEditor'
 
@@ -70,6 +70,9 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
   const [writing, setWriting] = useState(false)
   // 동네 인증 창 (인증을 마치면 하려던 동작을 이어서: 글쓰기면 글쓰기 화면 열기)
   const [verifyFor, setVerifyFor] = useState<'write' | 'act' | null>(null)
+  // "주변 동네" 탭의 다른 동네 둘러보기 칸 (서버 모드에서만)
+  const [explorerOpen, setExplorerOpen] = useState(false)
+  const explorable = !isMockApi && scope === 'near'
   const { verified } = useRegionVerify()
   const selectedId = Number(params.get('post')) || null
   const locked = !!ban
@@ -192,9 +195,10 @@ function VerifiedCommunityBoard({ region, author, uid }: Props) {
                       동네 인증하기 ›
                     </button>
                   ))}
+                {explorable && !explorerOpen && <NeighborExplorerToggle onOpen={() => setExplorerOpen(true)} />}
               </p>
               {/* 서버 모드 "주변 동네" 탭: 내 동네가 아닌 곳의 주변도 둘러보기 (주소 · 글 범위는 그대로) */}
-              {!isMockApi && scope === 'near' && <NeighborExplorer />}
+              {explorable && explorerOpen && <NeighborExplorer onClose={() => setExplorerOpen(false)} />}
               <label className={styles.search}>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="11" cy="11" r="7" />
