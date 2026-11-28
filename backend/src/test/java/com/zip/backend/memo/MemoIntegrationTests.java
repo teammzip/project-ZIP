@@ -4,6 +4,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.jayway.jsonpath.JsonPath;
+import java.sql.Timestamp;
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -98,6 +101,49 @@ class MemoIntegrationTests {
         call(me, delete("/api/memos/{id}", list), null).andExpect(status().isNotFound());
         call(me, get("/api/memos"), null).andExpect(jsonPath("$.length()").value(1));
         call(null, get("/api/memos"), null).andExpect(status().isUnauthorized());
+    }
+
+    @Test void createReturnsCompleteMemoWithExplicitNulls() throws Exception {
+        var created = call(me, post("/api/memos"), """
+            {"title":"장보기","checklist":true,"items":[{"text":"두부"},{"text":"우유","done":true}]}
+            """).andExpect(status().isCreated());
+        String json = created.andReturn().getResponse().getContentAsString();
+        String id = JsonPath.read(json, "$.id");
+        var createdAt = jdbc.queryForObject("SELECT created_at FROM memos WHERE id = ?", Timestamp.class, id).toInstant();
+        created.andExpect(content().json("""
+            {"id":"%s","title":"장보기","body":"","color":"노랑","pinned":false,"checklist":true,
+             "items":[{"text":"두부","done":false},{"text":"우유","done":true}],
+             "createdAt":"%s","updatedAt":"%s","ledgerContext":null,"draft":false,"folderId":null}
+            """.formatted(id, createdAt, createdAt), JsonCompareMode.STRICT));
+    }
+
+    @Test void listAndUpdatePreserveLedgerDraftAndStoredChecklistJson() throws Exception {
+        var draft = call(me, post("/api/memos/ledger-draft"), """
+            {"kind":"spend","label":"기타 지출 · 식비","key":"0123456789abcdef0123456789abcdef"}
+            """).andExpect(status().isOk());
+        String id = JsonPath.read(draft.andReturn().getResponse().getContentAsString(), "$.id");
+        Long folder = jdbc.queryForObject("SELECT folder_id FROM memos WHERE id = ?", Long.class, id);
+        var createdAt = Instant.parse("2026-11-24T03:00:00Z");
+        jdbc.update("UPDATE memos SET items = ?, is_checklist = TRUE, created_at = ?, updated_at = ? WHERE id = ?",
+            """
+            [{"text":"영수증 확인","done":false,"tag":"확인"}]
+            """, Timestamp.from(createdAt), Timestamp.from(createdAt), id);
+
+        call(me, get("/api/memos"), null).andExpect(status().isOk()).andExpect(content().json("""
+            [{"id":"%s","title":"기타 지출 · 식비","body":"","color":"노랑","pinned":false,"checklist":true,
+              "items":[{"text":"영수증 확인","done":false,"tag":"확인"}],"createdAt":"%s","updatedAt":"%s",
+              "ledgerContext":"기타 지출 · 식비","draft":true,"folderId":"%s"}]
+            """.formatted(id, createdAt, createdAt, folder), JsonCompareMode.STRICT));
+
+        var updated = call(me, patch("/api/memos/{id}", id), """
+            {"complete":true,"folderId":""}
+            """).andExpect(status().isOk());
+        var updatedAt = jdbc.queryForObject("SELECT updated_at FROM memos WHERE id = ?", Timestamp.class, id).toInstant();
+        updated.andExpect(content().json("""
+            {"id":"%s","title":"기타 지출 · 식비","body":"","color":"노랑","pinned":false,"checklist":true,
+             "items":[{"text":"영수증 확인","done":false,"tag":"확인"}],"createdAt":"%s","updatedAt":"%s",
+             "ledgerContext":"기타 지출 · 식비","draft":false,"folderId":null}
+            """.formatted(id, createdAt, updatedAt), JsonCompareMode.STRICT));
     }
 
     @Test void inputIsChecked() throws Exception {

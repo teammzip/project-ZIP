@@ -168,8 +168,9 @@ public class SalaryService {
             // 기존에 직접 입력한 월급이 있는 달은 자동 생성하지 않아 이중 합산을 막는다.
             if(jdbc.queryForObject("SELECT COUNT(*) FROM incomes i JOIN ledger_categories c ON c.id=i.category_id WHERE i.user_id=? AND i.income_type='FIXED' AND c.kind='INCOME' AND c.name='월급' AND i.income_date>=? AND i.income_date<?",Integer.class,user,java.sql.Date.valueOf(month.atDay(1)),java.sql.Date.valueOf(month.plusMonths(1).atDay(1)))>0) continue;
             long amount=annual?original/12+(month.getMonthValue()==12?original%12:0):original;
-            jdbc.update("INSERT INTO incomes(user_id,category_id,amount,income_date,memo,income_type) VALUES (?,?,?,?,'','FIXED')",user,categories.get(0),amount,java.sql.Date.valueOf(date));
-            long id=jdbc.queryForObject("SELECT MAX(id) FROM incomes WHERE user_id=?",Long.class,user);
+            long id = LedgerInsert.withGeneratedId(jdbc,
+                "INSERT INTO incomes(user_id,category_id,amount,income_date,memo,income_type) VALUES (?,?,?,?,'','FIXED')",
+                user, categories.get(0), amount, java.sql.Date.valueOf(date));
             jdbc.update("INSERT INTO salary_records(user_id,period_ym,income_id) VALUES (?,?,?)",user,month.toString(),id);
         }
     }

@@ -564,3 +564,46 @@
 
 - PR #156이 `GET /api/events/search`에도 `CalendarEventResponse`를 적용해, 같은 API를 지운 이 브랜치와 충돌했습니다. 일정 DTO(목록·등록·수정, 등록 응답 201)는 그대로 받고 검색 경로·서비스 메서드·OpenAPI 블록만 지웠습니다.
 - 응답 계약 테스트는 검색 확인 두 줄만 빼고 유지했습니다(`createUpdateAndListShareTheEventResponseContract`). [일정·알림](topics/calendar-notifications.md)의 DTO 설명도 검색 삭제에 맞췄습니다. 검증: 백엔드 353개 통과, OpenAPI 105 paths
+
+## [2026-11-28] record | DB·프론트·백엔드 구현 개선 검토
+
+- `4cdc328` 및 작업 트리 기준으로 [JPA와 마이그레이션 이력](topics/database.md#신규-기능에-적용할-계획), [지출 조회의 캐시 키 차이](topics/application.md#서버-데이터와-브라우저-저장), [목록 동기화 거절과 알림·월급 조회 비용](topics/project-status.md#개선-우선순위-검토)을 검토했습니다. 기존 프론트 일정·메모 동기화와 가계부 테스트 28개가 통과했습니다. 개선안의 실제 MySQL 성능과 브라우저 동작은 별도 확인이 필요합니다.
+
+## [2026-11-28] record | 메모 목록·등록·수정 응답 DTO 적용
+
+- `656c0b4` 기준으로 메모 API 세 곳에서 `MemoResponse`를 반환하도록 바꿨습니다. [메모 응답 DTO 계약](topics/ledger-memos.md#메모-응답-dto)에 문자열 ID·시각, 폴더와 가계부 표시의 `null`, 체크리스트와 초안 상태를 기록하고 기존 OpenAPI `Memo`와 대조했습니다.
+- 별도로 진행 중인 폴더 저장소 변경의 영향을 피하기 위해 `656c0b4`의 격리 소스에서 [응답 계약 테스트](../backend/src/test/java/com/zip/backend/memo/MemoIntegrationTests.java#L106)를 DTO 적용 전후에 실행했습니다. 적용 후 H2 메모·가계부·월별 고정 지출 테스트 45개, 프론트 메모 동기화·가계부 이동 테스트 19개, OpenAPI 스키마와 관련 위키 검사가 통과했습니다.
+
+## [2026-11-28] record | Flyway 이력 관리와 메모 폴더 JPA 적용
+
+- `656c0b4` 기준 작업 트리에 Flyway의 신규 DB 설치와 기존 DB `V4` 등록 절차를 마련했습니다. 메모 폴더의 기본 CRUD를 JPA로 옮기고 회원별 접근, 중복 이름, 메모 연결 해제를 유지했습니다. [Flyway 이력 관리](topics/database.md#마이그레이션-정합성-점검) · [메모 폴더 동기화와 JPA](topics/ledger-memos.md#폴더와-메모-동기화)
+- 격리 MySQL 8.0.46에서 Flyway `V1`~`V4` 이력, 참조 데이터 수와 구조, 재실행, 기존 DB 기준 등록 후 데이터 보존, 불완전한 DB의 등록 거절을 확인했습니다. 작업 트리의 백엔드 전체 366개, DB 정적 검사 8개와 격리 MySQL 9.6 SQL 검사 73단계·265개가 통과했습니다. [DB 검증 현황](topics/project-status.md#검증된-부분)
+
+## [2026-11-28] record | 가계부·월급 등록의 생성 키 검토
+
+- `656c0b4`의 수입·기타 지출 등록과 월급 자동 등록을 기존 고정 지출의 생성 키 사용과 대조했습니다. 새 행당 제거할 조회, 후속 연결과 트랜잭션 조건을 [가계부·월급 생성 키 검토](topics/ledger-memos.md#가계부월급-등록의-생성-키)에 기록했습니다. 코드 경로를 대조했으며 성능은 미측정입니다.
+
+## [2026-11-28] record | 설문·월급 연결과 지출 캐시 범위 확인
+
+- `656c0b4`에서 회원 ID를 사용하는 [설문·내 집 정보 저장 흐름과 수입 생성 키](topics/ledger-memos.md#가계부월급-등록의-생성-키)를 대조했습니다. [지출 캐시 키 검토](topics/application.md#서버-데이터와-브라우저-저장)에 거래 날짜 기준의 갱신 범위와 고정 지출 전파 조건을 기록했습니다. 설치된 TanStack Query로 두 조회의 캐시 공유와 지정한 월만 무효화되는 동작을 재현했습니다.
+
+## [2026-11-28] record | dev PR 156·157 이후 병합 사전 점검
+
+- `656c0b4`의 일정 DTO는 [PR #156](https://github.com/teammzip/project-ZIP/pull/156)으로 들어갔고, [PR #157](https://github.com/teammzip/project-ZIP/pull/157)의 미사용 API 7개 삭제가 원격 `dev`의 `32963af`까지 반영됐습니다. 현재 브랜치 이동 없이 비교했으며, 3방향 비교에서 [변경 기록](../CHANGELOG.md)과 이 로그의 추가 부분이 충돌했습니다.
+- 격리한 최신 코드에 로컬 작업을 적용해 메모·일정·커뮤니티·관리자 H2 44개와 가계부·월급 H2 28개를 각각 확인했습니다. 최신 로컬 프론트 테스트 236개와 타입 검사, 격리본의 DB 정적 검사 8개와 OpenAPI 구문 검사(105경로)가 통과했습니다. 이 점검에서 실제 MySQL을 다시 실행하지 않았습니다. [기존 Flyway 검증](topics/project-status.md#검증된-부분)
+- 가계부·월급 생성 키 변경을 포함하면 `LedgerService`·`SalaryService`를 근거로 쓰는 [계약 고정 지출과 월세 알림](topics/fixed-expenses.md)을 함께 검토하라는 위키 검사가 나옵니다. 업로드 범위를 확정할 때 [변경 기록](../CHANGELOG.md)에 메모 응답 DTO와 가계부 변경 이력을 추가합니다.
+
+## [2026-11-28] record | dev 반영 후 문서 충돌 해결
+
+- `32963af`에 stash를 적용할 때 충돌한 [변경 기록](../CHANGELOG.md)과 이 로그에 양쪽 기록을 합쳤습니다. 변경 기록에는 [메모 응답 DTO](topics/ledger-memos.md#메모-응답-dto), [가계부·월급 생성 키](topics/ledger-memos.md#가계부월급-등록의-생성-키), [월별 기타 지출 캐시](topics/application.md#서버-데이터와-브라우저-저장)를 보완했습니다.
+- 충돌 문서의 기록을 `dev`와 stash 원본에 대조했고, stash에 있던 신규 파일 7개도 원본과 일치했습니다. [월급 자동 등록](topics/fixed-expenses.md#월급-자동-등록) 문서의 생성 키 링크를 포함한 Second Brain 작업 트리 검사, 프론트 테스트 236개, DB 정적 검사 8개가 통과했습니다. [구현·검증 현황](topics/project-status.md#검증된-부분)
+
+## [2026-11-28] record | 가계부·월급 생성 키와 기타 지출 조회 공유 적용
+
+- [가계부·월급 신규 행의 생성 키](topics/ledger-memos.md#가계부월급-등록의-생성-키)를 바로 사용해 ID 재조회 한 번을 제거했습니다. H2 가계부·월급·주거 설문·내 집 정보 통합 테스트 49개가 통과했습니다. 격리 MySQL 8.0.46과 Connector/J 9.7.0에서 기타 지출·수입·자동 월급의 생성 키와 후속 월급 연결 실패 시 롤백을 확인했습니다.
+- 홈·가계부의 [기타 지출 조회 캐시](topics/application.md#서버-데이터와-브라우저-저장)를 공유하고 거래 날짜가 영향을 주는 월만 무효화합니다. 프론트 전체 테스트 236개, 린트와 운영 빌드가 통과했습니다. 최적화 변경 범위의 위키 연결 검사를 `656c0b4`와 `origin/dev` 기준으로 각각 통과했습니다. 운영 응답 시간은 미측정입니다.
+
+## [2026-11-28] record | backend 업로드 전 통합 검증
+
+- GitHub에서 확인한 `dev` `32963af`가 로컬 `backend`에 반영돼 있습니다. [변경 기록](../CHANGELOG.md)과 Flyway·메모·가계부 변경을 스테이징하고, 작업 트리의 신규 파일 7개를 stash 원본과 대조했습니다. 스테이징 범위의 공백·민감정보 패턴·Second Brain 검사를 통과했습니다.
+- 동일한 작업 트리에서 백엔드 H2 전체 363개, 프론트 전체 236개, 린트·운영 빌드, DB 정적 검사 8개가 통과했습니다. 빌드 리소스에 Flyway `V1`~`V4`가 포함됐습니다. 실제 MySQL 결과는 [기존 확인 범위](topics/project-status.md#검증된-부분)에 기록돼 있습니다.

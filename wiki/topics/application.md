@@ -2,7 +2,7 @@
 
 2026-11-24 확인 · [초기 수집 기준](../raw/index.md) · [위키 색인](../index.md)
 
-ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서버 모드에서는 프론트의 `/api` 요청을 Spring Boot 백엔드가 처리하고, 백엔드는 JdbcTemplate으로 MySQL에 접근합니다. 개발 중 Vite는 `/api` 요청을 `VITE_PROXY_TARGET`으로 보내며 기본 대상은 `http://localhost:8080`입니다. [프론트 안내](../../frontend/README.md) · [Vite 설정](../../frontend/vite.config.ts) · [백엔드 안내](../../backend/README.md)
+ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서버 모드에서는 프론트의 `/api` 요청을 Spring Boot 백엔드가 처리합니다. MySQL에는 JdbcTemplate을 기본으로 사용하며, 메모 폴더에 Spring Data JPA를 적용했습니다. DB 변경은 [Flyway 작업](database.md#마이그레이션-정합성-점검)으로 서버 실행 전에 적용합니다. 개발 중 Vite는 `/api` 요청을 `VITE_PROXY_TARGET`으로 보내며 기본 대상은 `http://localhost:8080`입니다. [프론트 안내](../../frontend/README.md) · [Vite 설정](../../frontend/vite.config.ts) · [백엔드 안내](../../backend/README.md)
 
 | 실행 목적 | 시작 위치와 설정 |
 | --- | --- |
@@ -81,6 +81,7 @@ flowchart LR
 | 적용 완료 | 지도·장소 리뷰 응답 11곳 (2026-11-27) | 장소 목록·분류·AI 검색·저장 리스트·카카오 즐겨찾기·지도 설정은 `PlaceResponse`와 그 안의 `record`로 바꿨습니다. 리뷰 목록·별점 요약·관리자 리뷰 신고는 `PlaceReviewResponse`로 바꿨습니다. 장소의 주소·전화·영업시간·별점과 작성자 프로필은 값이 없으면 키를 생략하지 않고 `null`을 보냅니다. 응답 모양 테스트를 바꾸기 전에 만들어 같은 테스트로 확인했습니다. 임시 MySQL 8.0에서 바꾸기 전·후 서버의 응답 24개를 비교한 결과, 칸 순서 말고는 같았습니다. 지도 설정은 MySQL 전용 문법이라 이 비교로 확인했습니다. [지도 응답 DTO](map-place-ids.md#지도-응답-dto) |
 | 적용 완료 | 알림 목록 응답 (2026-11-28) | [알림 목록 DTO와 기존 응답 계약](calendar-notifications.md#알림-목록-응답-dto-검토) |
 | 적용 완료 | 일정 목록·검색·등록·수정 응답 (2026-11-28) | [공통 일정 응답 DTO와 기존 응답 계약](calendar-notifications.md#일정-응답-dto) |
+| 적용 완료 | 메모 목록·등록·수정 응답 (2026-11-28) | [공통 메모 응답 DTO와 기존 응답 계약](ledger-memos.md#메모-응답-dto) |
 
 로그인·가입·일정·일반 메모와 가계부 분류 요청은 기존 `record`를 활용할 수 있습니다. 약관 응답도 이미 타입이 있습니다. 회원 게시글 수처럼 작은 고정 응답과 월별 수입 합계처럼 월이 키인 `Map<String, Long>`은 현재 표현으로 충분합니다. 내부 JDBC 행과 서비스 값은 공개 응답에서 의미나 필드가 달라질 때 분리합니다. 프로필 PATCH는 필드 생략과 명시적 `null`을 구별하는 현재 파서를 유지하는 것이 적합합니다. [일반 메모 입력](../../backend/src/main/java/com/zip/backend/memo/MemoService.java) · [가계부 분류](../../backend/src/main/java/com/zip/backend/ledger/LedgerCategoryService.java) · [약관 응답](../../backend/src/main/java/com/zip/backend/legal/TermsController.java) · [프로필 PATCH](../../backend/src/main/java/com/zip/backend/auth/ProfilePatch.java)
 
@@ -92,7 +93,6 @@ flowchart LR
 
 | 우선순위 | 경계 | 함께 검증할 계약 |
 | --- | --- | --- |
-| 높음 | 메모 목록·저장 응답 | 체크리스트 `items`, 가계부 연결·초안, 폴더 ID의 `null` 계약. [메모 응답 조립](../../backend/src/main/java/com/zip/backend/memo/MemoService.java#L210) · [프론트 메모 동기화](../../frontend/src/features/memo/sync.ts) |
 | 후속 | 관리자 회원·제재 이력과 고객센터 문의 응답 | 페이지의 `items`·`hasNext`, 제재 종료·해제 시각, 미답변 문의의 `answer: null`. [회원·제재 응답](../../backend/src/main/java/com/zip/backend/moderation/ModerationService.java#L47) · [문의 응답](../../backend/src/main/java/com/zip/backend/support/SupportService.java#L99) |
 | 후속 | AI 대화 목록·메시지 응답 | 메시지 ID·역할·본문·시각과 선택 `card`는 공통 응답 타입으로 표현할 수 있습니다. `card.data`는 카드 유형별 구조를 보존합니다. [AI 응답 조립](../../backend/src/main/java/com/zip/backend/ai/AiService.java#L210) |
 | 후속 | 공지 목록·상세·팝업 응답 | 목록은 `body`를 생략하고 상세·팝업·저장 응답은 `body`를 포함합니다. 기존 공지 작성 요청은 `NoticeInput`을 사용합니다. [공지 응답 조립](../../backend/src/main/java/com/zip/backend/notice/NoticeService.java#L85) · [프론트 공지 조회](../../frontend/src/features/notice/api.ts) |
@@ -113,10 +113,10 @@ flowchart LR
 
 ### DTO와 별도로 검토할 최적화
 
-- 가계부 등록과 월급 자동 등록의 `SELECT MAX(id)`를 INSERT에서 반환한 키로 대체하고, 가계부 수정의 존재 확인과 기존 메모 조회를 한 번으로 줄이는 방안을 검토합니다. 월급 동기화는 자동 기록과 직접 입력 월급의 존재를 월별로 확인하므로 대상 기간에서 이미 등록된 월을 한 번에 조회하는 방식과 비교할 수 있습니다. 같은 회원의 동시 저장·메모 연결·월급 중복 방지·롤백을 확인합니다. 목록의 메모·월급 여부 일괄 조회는 이미 반영돼 있습니다. [가계부와 메모](ledger-memos.md#가계부-기록과-회원별-분류) · [가계부 저장](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java#L136) · [월급 동기화](../../backend/src/main/java/com/zip/backend/ledger/SalaryService.java#L150) · [생성 키 사용 예](../../backend/src/main/java/com/zip/backend/bills/BillRepository.java#L76)
+- 가계부·월급 신규 등록에는 [생성 키](ledger-memos.md#가계부월급-등록의-생성-키)를 적용했습니다. 가계부 수정은 존재 확인과 기존 메모 조회를 한 번으로 줄이는 방안을 검토합니다. 월급 동기화는 자동 기록과 직접 입력 월급의 존재를 월별로 확인하므로 대상 기간에서 이미 등록된 월을 한 번에 조회하는 방식과 비교할 수 있습니다. 목록의 메모·월급 여부 일괄 조회는 이미 반영돼 있습니다. [가계부와 메모](ledger-memos.md#가계부-기록과-회원별-분류) · [가계부 수정](../../backend/src/main/java/com/zip/backend/ledger/LedgerService.java#L149) · [월급 동기화](../../backend/src/main/java/com/zip/backend/ledger/SalaryService.java#L151)
 - 고정 지출 등록·수정에서 금액과 납부 날짜는 요청 DTO 변환 때 한 번 파싱합니다. 선택 월과 납부 기한이 속한 월의 검증에서 같은 계약과 저장 시간대를 재사용하는 방안은 후속 후보입니다. [월별 입력 검증](../../backend/src/main/java/com/zip/backend/bills/BillInput.java) · [계약 월 검증](../../backend/src/main/java/com/zip/backend/bills/BillService.java)
 - 회원 응답 조립에서 계정 조회와 별도로 생년월일, 설문 상태, 동의 시각, 제재 집계, 미확인 경고, 동네 인증, 프로필을 조회합니다. 실행 시간과 SQL 수를 기록한 뒤 계정과 함께 조회할 단일 행 정보를 검토합니다. 미확인 경고는 여러 건일 수 있어 회원 행이 중복되지 않도록 확인합니다. [회원 응답 조립](../../backend/src/main/java/com/zip/backend/auth/AuthService.java#L187) · [인증 조회](../../backend/src/main/java/com/zip/backend/auth/AuthRepository.java)
-- 서버 알림은 프론트에서 60초마다 갱신하도록 설정돼 있습니다. 목록 API는 회원 잠금으로 일정 알림을 동기화하고 납부한 월세 알림을 정리한 뒤 목록과 미읽음 수를 조회합니다. 요청당 SQL 수와 잠금 대기를 측정하면 동기화 비용을 줄일 우선순위를 판단할 수 있습니다. 적용 시 변경·완료·반복 일정으로 생성되거나 숨겨지는 알림을 함께 확인합니다. [프론트 갱신](../../frontend/src/features/life/notifications.ts#L45) · [알림 목록](../../backend/src/main/java/com/zip/backend/notification/NotificationService.java#L45) · [일정 알림 동기화](../../backend/src/main/java/com/zip/backend/notification/LifeNotificationService.java#L54)
+- 서버 알림은 프론트에서 60초마다 갱신하도록 설정돼 있습니다. 목록 API는 회원 잠금으로 일정 알림을 동기화하고 납부한 월세 알림을 정리한 뒤 목록과 미읽음 수를 조회합니다. 요청당 SQL 수와 잠금 대기를 측정한 뒤, 일정 변경·납부 시점의 갱신과 날짜 경계를 처리하는 예약 작업으로 쓰기를 옮기는 방안을 검토합니다. 일정 완료·반복 일정, 알림 설정 변경, 납부 취소, 중복 방지와 표시 시각을 함께 확인합니다. [프론트 갱신](../../frontend/src/features/life/notifications.ts#L45) · [알림 목록](../../backend/src/main/java/com/zip/backend/notification/NotificationService.java#L43) · [일정 알림 동기화](../../backend/src/main/java/com/zip/backend/notification/LifeNotificationService.java#L54)
 - OpenAPI 스키마와 실제 HTTP 응답을 CI에서 비교하면 필드·자료형·생략·`null` 규칙의 누락을 발견할 수 있습니다. 11월 27일의 [API 계약 점검](#api-데이터-계약과-dto)에서 `User`의 `birth`·`banCount`, `Post`의 `reported`·`homeTip`, `Bill`의 `homeManaged`가 보완됐습니다. 11월 28일 기준 `Comment`의 `reported`·`parentId`는 여전히 응답 스키마에 없습니다. 최상위 댓글의 `parentId`는 실제 응답에 `null`로 포함됩니다. [OpenAPI](../../backend/openapi.yaml) · [게시글과 댓글 응답](../../backend/src/main/java/com/zip/backend/community/PostResponse.java) · [프론트 댓글 타입](../../frontend/src/features/community/server.ts)
 
 ## 화면에서 호출하지 않는 API
@@ -180,6 +180,10 @@ flowchart LR
 ## 서버 데이터와 브라우저 저장
 
 서버 모드에서 서버가 관리하는 기록은 API 응답을 기준으로 표시합니다. 설정의 ‘내가 쓴 글’은 [본인 게시글 수](community-operations.md#본인-게시글-수)를 참고하세요.
+
+2026-11-28 적용. 홈 지출 위젯과 가계부 기타 지출 화면의 `/api/ledger/spend`는 `['ledger', 회원 ID, 세션, 'spend', 월, 시간대]`와 조회 옵션을 공유합니다. 동시에 조회하면 같은 요청을 공유하며, 화면 이동 후에도 캐시가 남습니다. 앱 기본값인 최신 상태 30초와 미사용 캐시 보관 5분을 사용하며, 화면을 열어 둔 동안 60초마다 재조회합니다. [기타 지출 조회 옵션](../../frontend/src/features/life/ledgerQueries.ts) · [홈 지출](../../frontend/src/features/life/components/HomeWidgets.tsx#L195) · [가계부 조회](../../frontend/src/features/life/components/ServerMoneyLog.tsx#L38) · [앱 조회 기본값](../../frontend/src/lib/queryClient.ts)
+
+기타 지출을 등록·삭제하거나 같은 달에서 수정하면 거래 날짜가 속한 달을, 다른 달로 옮기면 이전 달과 새 달을 무효화합니다. 해당 회원·세션과 영향받은 달의 시간대별 캐시를 모두 갱신 대상으로 삼습니다. 고정 지출 `/api/bills/monthly`는 두 화면이 이미 키를 공유합니다. 금액·납부일 변경이 다른 달의 미납 기록에 전파될 수 있어 기존 갱신 범위를 사용합니다. [기타 지출 저장](../../frontend/src/features/life/components/ServerMoneyLog.tsx#L121) · [공유 요청과 월별 무효화 테스트](../../frontend/tests/ledger.test.mjs) · [월별 고정 지출 조회](../../frontend/src/features/life/components/MonthlyFixedExpense.tsx#L29) · [고정 지출 변경 전파](../../backend/src/main/java/com/zip/backend/bills/BillService.java#L213)
 
 서버 모드의 일정·메모 목록은 공통 `listSync`를 통해 회원별 브라우저 캐시와 서버를 동기화합니다. 가계부의 임시 입력은 [가계부와 메모](ledger-memos.md)를 참고하세요. [일정 동기화](../../frontend/src/features/life/calendarSync.ts) · [메모 동기화](../../frontend/src/features/memo/sync.ts)
 

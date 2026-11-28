@@ -3,7 +3,8 @@ import { isMockApi } from '@/features/auth/api'
 import { useAuthStore } from '@/features/auth'
 import { getErrorMessage } from '@/lib/apiClient'
 import { getMonthlyBills } from '../billsApi'
-import { getLedger, getIncomeSummary } from '../ledgerApi'
+import { getIncomeSummary } from '../ledgerApi'
+import { ledgerSpendOptions } from '../ledgerQueries'
 import { useBillingTimeZone } from '../useBillingTimeZone'
 import { useLocalMonth } from '../useLocalMonth'
 import { lazy, Suspense, useRef, useState } from 'react'
@@ -191,7 +192,7 @@ function ServerSpendDonut() {
     gcTime: 0, staleTime: 0, refetchInterval: 60000,
     refetchOnWindowFocus: 'always', retry: false,
   })
-  const expenses = useQuery({ queryKey: ['ledger', userId, sessionKey, 'spend', timeZone, month], queryFn: ({ signal }) => getLedger('spend', month, timeZone, 'fixed', signal), enabled: !!userId && !!sessionKey && ready, gcTime: 0, staleTime: 0, refetchInterval: 60000, retry: false })
+  const expenses = useQuery(ledgerSpendOptions(userId, sessionKey, month, timeZone, ready))
   if (!userId || !sessionKey) return <Card title="이번 달 지출 구성"><p>로그인 후 조회해 주세요.</p></Card>
   if (!ready || query.isPending || expenses.isPending) return <Card title="이번 달 지출 구성"><p role="status">지출 내역을 불러오는 중이에요.</p></Card>
   if (expenses.isError) return <Card title="이번 달 지출 구성"><p role="alert">{getErrorMessage(expenses.error, '기타 지출을 조회하지 못했어요.')}</p><button onClick={() => void expenses.refetch()}>다시 조회</button></Card>

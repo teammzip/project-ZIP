@@ -6,7 +6,7 @@ const path = require('node:path')
 const cp = require('node:child_process')
 const { randomUUID } = require('node:crypto')
 const assert = require('node:assert/strict')
-const { incrementalMigrations } = require('./migration-path.cjs')
+const { incrementalMigrations, dataMigrations, flywayMigrations } = require('./migration-path.cjs')
 
 const basedir = 'C:/Program Files/MySQL/MySQL Server 9.6'
 const serverExe = path.join(basedir, 'bin/mysqld.exe')
@@ -19,6 +19,16 @@ const read = p => fs.readFileSync(p, 'utf8')
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 const results = []
 let server
+
+function applyFlywayVersions(database) {
+  if (flywayMigrations.length === 0) return
+  for (const name of dataMigrations) {
+    successful(name, read(`db/migrations/${name}`).replace('USE `zip`;', `USE ${database};`), 0)
+  }
+  for (const name of flywayMigrations) {
+    successful(name, `USE ${database};\n` + read(`db/flyway/${name}`), 0)
+  }
+}
 
 function mysql(sql, force = false) {
   return cp.spawnSync(clientExe, [
@@ -197,6 +207,7 @@ async function main() {
   successful('fresh structure audit', read('db/tests/15_schema_audit.sql'), 7)
   successful('legacy schema', read('db/tests/18_legacy_schema.sql'), 0)
   successful('full migration and data preservation', read('db/tests/19_migration_upgrade.sql'), 15)
+  applyFlywayVersions('zip_migration_test')
   successful('migrated structure audit', read('db/tests/20_migration_schema_audit.sql'), 7)
   verifyAnniversaryUpgrade()
   // Exercise the incremental upgrade independently of the fresh/full-path runs.
@@ -228,6 +239,7 @@ INSERT INTO salary_records(user_id,period_ym,income_id) VALUES (@returning,'2026
     const migration = read(`db/migrations/${name}`).replaceAll('USE `zip`;', 'USE `zip_incremental_test`;')
     successful(name, 'USE `zip_incremental_test`;\n' + migration, 0)
   }
+  applyFlywayVersions('zip_incremental_test')
   successful('latest migration behavior and preservation', `USE zip_incremental_test;
 SELECT 'onboarding backfill',IF(
  (SELECT housing_survey_status FROM users WHERE nickname='mig-return')='SKIPPED'

@@ -28,11 +28,10 @@ npm run dev      # → 브라우저에서 http://localhost:3000
 
 ## 백엔드 실행 (선택)
 
-준비물: Java 17, MySQL 8, `db/schema.sql`로 만든 DB.
+준비물: Java 17, MySQL 8, [Flyway로 준비한 DB](db/migrations/README.md#flyway로-적용하기).
 
 1. `backend/application-local.properties.example`을 참고해 `backend/application-local.properties`를 만들고 `DB_URL` · `DB_USERNAME` · `DB_PASSWORD` · `JWT_SECRET`(Base64, 32바이트 이상)을 채워요. MySQL 포트와 DB 이름은 각자 환경에 맞게 `DB_URL`에 적어요. 메일 인증은 `MAIL_*`, 지도 · 동네 인증은 `KAKAO_REST_KEY` 값이 필요해요(example 참고). 이 파일은 깃에 올라가지 않아요.
-   - 새 DB는 [db/schema.sql](db/schema.sql)로 구조를 만들어요. 전국 배출표와 주변 동네 기능을 사용하려면 [신규 DB용 데이터 적용 순서](db/migrations/README.md)를 따라 지역·배출표·이웃 관계를 넣어요.
-   - 이미 쓰던 DB는 [기존 DB 마이그레이션 안내](db/migrations/README.md)에 따라 새 파일을 적용해요.
+   - 새 DB에는 Flyway가 구조와 전국 지역·배출표·이웃 관계를 설치해요. 기존 DB는 [Flyway 등록 절차](db/migrations/README.md#flyway로-적용하기)를 따라 처음 한 번 기준 버전을 기록해요.
 2. (선택) 소셜 로그인: 키가 있는 공급자만 켜져요. 값은 `backend/application-local.properties`나 아래 파일에 넣어요(깃에 올라가지 않아요).
 
    | 공급자 | 파일 | 키 이름 | 콘솔에 등록할 리디렉션 URI |
@@ -57,7 +56,7 @@ db/            DB 설계: 표 만드는 SQL(schema.sql) + 마이그레이션 + �
 secrets/       (선택) 로컬 비밀값(구글 키 등). 깃에 올리지 않아요
 ```
 
-**백엔드 기술 스택**: Java 17 · Spring Boot 4.1.2 · **Gradle**(빌드 도구, Maven 은 쓰지 않음) · Spring Data JPA 의존성 + JdbcTemplate 방식 · MySQL · Spring Security + JWT · OAuth2 클라이언트(구글 로그인).
+**백엔드 기술 스택**: Java 17 · Spring Boot 4.1.2 · Gradle · JdbcTemplate · Spring Data JPA(메모 폴더) · MySQL · Flyway · Spring Security + JWT · OAuth2 클라이언트(구글 로그인).
 
 ---
 

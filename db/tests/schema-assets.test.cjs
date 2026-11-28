@@ -1,11 +1,12 @@
 const fs = require('node:fs')
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { legacyMigrations, incrementalMigrations, dataMigrations } = require('./migration-path.cjs')
+const { createHash } = require('node:crypto')
+const { legacyMigrations, incrementalMigrations, dataMigrations, flywayMigrations } = require('./migration-path.cjs')
 
 const read = path => fs.readFileSync(path, 'utf8').replace(/\r\n/g, '\n')
 function tables(sql) {
-  return new Map([...sql.matchAll(/CREATE TABLE IF NOT EXISTS `([^`]+)` \(([\s\S]*?)\) ENGINE=/g)]
+  return new Map([...sql.matchAll(/CREATE TABLE (?:IF NOT EXISTS )?`([^`]+)` \(([\s\S]*?)\) ENGINE=/g)]
     .map(match => [match[1], match[2]]))
 }
 const normalize = text => text.replace(/ COMMENT .*/, '').replace(/[,;]$/, '').trim()
@@ -20,10 +21,30 @@ const schema = read('db/schema.sql')
 const current = tables(schema)
 const migrations = [...legacyMigrations, ...incrementalMigrations]
   .map(name => [`db/migrations/${name}`, read(`db/migrations/${name}`)])
+const versioned = flywayMigrations.map(name => [`db/flyway/${name}`, read(`db/flyway/${name}`)])
+
+test('Flyway baseline resources stay immutable', () => {
+  const baseline = [
+    ['db/flyway/V1__schema.sql', '0305bdc19e3b4ead07317929bd77531eedca8bb0ecba9a0967f4a78ed149a4a8'],
+    ['db/migrations/20261122_01_regions_nationwide.sql', 'e0cd389977756730b38ec613ca259d6f93f2c02d7c7a059739616c0b253e718a'],
+    ['db/migrations/20261122_02_trash_schedules_nationwide.sql', '90f21d72cbcd5621cf958d7125beda4b5931b5c3167af58e808acaee315de7d7'],
+    ['db/migrations/20261122_04_region_neighbors_nationwide.sql', 'bf0beded1f234aa480b4a03edb040ea696728c9dbacddbfbbdab9f145140356c'],
+  ]
+  for (const [file, checksum] of baseline) {
+    assert.equal(createHash('sha256').update(read(file)).digest('hex'), checksum, `${file}: add a new Flyway version`)
+  }
+})
 
 test('all supported migration files are included in the validation path', () => {
   const files = fs.readdirSync('db/migrations').filter(name => name.endsWith('.sql')).sort()
   assert.deepEqual([...legacyMigrations, ...incrementalMigrations, ...dataMigrations].sort(), files)
+  const versions = new Set()
+  for (const [file, sql] of versioned) {
+    const match = /\/V([1-9]\d*)__([a-z0-9_]+)\.sql$/.exec(file)
+    assert(match && Number(match[1]) > 4 && !versions.has(match[1]), `${file}: use a distinct version starting at V5`)
+    versions.add(match[1])
+    assert(!/^\s*(?:USE\b|(?:CREATE|DROP|ALTER)\s+(?:DATABASE|SCHEMA)\b)/im.test(sql), `${file}: must stay in the configured database`)
+  }
 })
 
 test('data migrations only change rows, not table structure', () => {
@@ -53,7 +74,7 @@ test('foreign keys reference existing compatible columns and SET NULL allows NUL
 test('all migrations produce the same columns, named keys and constraints as fresh schema', () => {
   const baseline = tables(read('db/tests/18_legacy_schema.sql'))
   const state = new Map([...baseline].map(([name, body]) => [name, { columns: columns(body), definitions: definitions(body) }]))
-  for (const [, migration] of migrations) {
+  for (const [, migration] of [...migrations, ...versioned]) {
     // information_schema 로 확인한 뒤 PREPARE 로 지우는 표('DROP TABLE x')는 같은 파일에서 다시 만들 수 있음 (예: 20261121_06 쓰레기 배출표)
     for (const [, table] of migration.matchAll(/^\s*'DROP TABLE `?(\w+)`?'/gm)) state.delete(table)
     for (const [name, body] of tables(migration)) {

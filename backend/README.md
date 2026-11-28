@@ -1,6 +1,6 @@
 # ZIP backend
 
-Java 17 · Spring Boot 4 · JdbcTemplate · MySQL · Spring Security + JWT(DB 세션) 서버예요. 상위 project-ZIP 저장소에서 같이 관리해요.
+Java 17 · Spring Boot 4 · JdbcTemplate · Spring Data JPA · MySQL · Spring Security + JWT(DB 세션) 서버예요. 상위 project-ZIP 저장소에서 같이 관리해요.
 
 - 어떤 API 가 있는지: [frontend/API.md](../frontend/API.md) (프론트와의 약속 · 기능별 상태)
 - 기능별 서버 규칙 · Postman 확인 방법: [IMPLEMENTATION.md](IMPLEMENTATION.md)
@@ -8,7 +8,7 @@ Java 17 · Spring Boot 4 · JdbcTemplate · MySQL · Spring Security + JWT(DB �
 
 ## 처음 설정
 
-1. MySQL 을 켜고 DB 를 준비해요. 새 DB 는 `db/schema.sql`(이 파일은 `zip` DB 를 만들어 선택해요), 이미 쓰던 DB 는 [마이그레이션 안내](../db/migrations/README.md)대로 새 파일만 적용해요.
+1. MySQL을 켜고 [Flyway 적용 안내](../db/migrations/README.md#flyway로-적용하기)에 따라 새 DB를 초기화하거나 기존 DB를 등록해요.
 2. 이 폴더의 `application-local.properties.example` 을 `application-local.properties` 로 복사하고 값을 채워요. 이 파일은 Git 에 올라가지 않아요(`.example` 에는 실제 값을 넣지 마세요).
 
    | 키 | 필요할 때 |
@@ -32,7 +32,7 @@ Java 17 · Spring Boot 4 · JdbcTemplate · MySQL · Spring Security + JWT(DB �
    | `ZIP_FILES_DAILY_LIMIT`(50) · `ZIP_FILES_PENDING_LIMIT`(20) | 사진: 회원 한 명이 24시간에 올릴 수 있는 장수 · 아직 글 · 프로필 · 리뷰에 안 붙인 사진 장수 |
 3. IntelliJ 에서 JDK 17 을 고르고 Gradle 을 새로고침해요.
 
-DB 구조는 `db/` 의 SQL 로만 관리해요(Hibernate 자동 생성 · Spring SQL 자동 실행은 꺼져 있음). DB 에 접속하지 못하면 서버가 켜지지 않아요.
+DB 구조는 앱 실행 전에 Flyway로 적용해요. 메모 폴더는 Spring Data JPA의 [`MemoFolderRepository`](src/main/java/com/zip/backend/memo/MemoFolderRepository.java)를 사용해요. 새 단순 CRUD에 적용할 때는 기존 테이블이나 Flyway SQL에 맞춰 `@Entity`를 선언하고, `JpaRepository`에 회원 범위가 포함된 조회를 정의한 뒤 쓰기를 서비스의 `@Transactional`에서 처리해요. [메모 폴더와 JPA 적용 기준](../wiki/topics/database.md#신규-기능에-적용할-계획)
 
 ## 실행
 
@@ -47,6 +47,8 @@ IntelliJ 에서 `BackendApplication` 을 실행해요(작업 폴더는 `backend`
 ## 운영 배포 설정
 
 배포 방식(서버 · 클라우드)과 상관없이 똑같이 필요한 설정이에요. 운영 DB 만들기와 첫 관리자 계정은 [운영 DB 새로 만들기](../db/README.md#운영-db-새로-만들기-첫-배포--qa용-새-db)를 따라요.
+
+릴리스 전에 별도 마이그레이션 계정으로 `./gradlew flywayMigrate`를 실행하고, 성공한 뒤 앱을 시작해요. [Flyway 작업과 기존 DB 등록](../db/migrations/README.md#flyway로-적용하기)
 
 **빌드와 실행**: `backend` 폴더에서 `./gradlew bootJar` 를 실행하면 `build/libs/backend-0.0.1-SNAPSHOT.jar` 하나가 만들어져요. 서버에서는 JDK 17 로 `java -jar backend-0.0.1-SNAPSHOT.jar` 를 실행해요. 설정은 **서버의 환경변수**로 넣는 걸 권장해요. 파일로 넣으려면 실행하는 폴더에 `application-local.properties` 를 두면 읽어요(Git · 배포 묶음에 넣지 말고 읽기 권한을 서버 계정만으로 제한).
 
