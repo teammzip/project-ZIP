@@ -1,0 +1,35 @@
+{
+  "version": "community-search-multiword-spacing-holdout-v1",
+  "cases": [
+    {"id":"M01","q":"비상연락망 갱신","scope":"here","intent":"공용 비상 연락망의 연락처 갱신 방법","relevant":[101]},
+    {"id":"M02","q":"주민회의실 예약","scope":"near","category":"TOWN","intent":"이웃 주민 회의실의 예약 방법","relevant":[201]},
+    {"id":"M03","q":"공동현관 QR-2 안내","scope":"here","intent":"QR-2의 공동 현관 사용 안내","relevant":[301]},
+    {"id":"M04","q":"전기자전거 충전보관함","scope":"all","intent":"전기 자전거용 충전 보관함의 위치","relevant":[401]},
+    {"id":"M05","q":"분실물 센터 연락처","scope":"here","intent":"분실물센터와 연락하는 방법","relevant":[501]},
+    {"id":"M06","q":"세탁 장비","scope":"here","intent":"세탁 장비 정보. 세 탁자를 적은 글은 제외","relevant":[]},
+    {"id":"M07","q":"배수구청소 일정","scope":"here","intent":"배수구 청소 일정. 다른 주제의 두 필드 접합은 제외","relevant":[]},
+    {"id":"M08","q":"가스밸브 교체","scope":"here","intent":"가스 밸브 교체 안내. 문장부호 사이의 두 단어는 제외","relevant":[]},
+    {"id":"M09","q":"승강기배상 보험료","scope":"here","intent":"승강기 배상 보험료. 보험료가 언급되지 않은 글은 제외","relevant":[]},
+    {"id":"M10","q":"물품보관소 운영시간","scope":"here","category":"TIP","intent":"공개된 우리 동네 꿀팁 중 물품 보관소 운영 시간. 적합한 공개 꿀팁은 비이웃에만 있음","relevant":[1001]}
+  ],
+  "postFields": ["id","region","category","status","title","body"],
+  "posts": [
+    [101,"home","TIP","VISIBLE","비상 연락망 갱신 방법","관리동에 변경된 연락처를 알려 주세요."],
+    [102,"home","FREE","VISIBLE","비상연락망 갱신 문의","비상연락망 갱신 방법을 모르겠습니다."],
+    [201,"neighbor","TOWN","VISIBLE","공용 공간 예약 절차","이웃 주민 회의실은 행정복지센터에서 예약합니다."],
+    [202,"home","FREE","VISIBLE","주민 회의실 예약 문의","다른 카테고리에 올라온 글입니다."],
+    [301,"home","TIP","VISIBLE","공동 현관 출입 안내","QR-2 버튼을 누르면 출입 화면이 열립니다."],
+    [302,"home","TIP","VISIBLE","공동 현관 QR2 안내","버튼 이름이 다른 장치입니다."],
+    [401,"other","TOWN","VISIBLE","전기 자전거 충전 보관함 안내","강 건너 공영 주차장 입구 옆에 있습니다."],
+    [402,"other","TOWN","VISIBLE","전기 자전거 보관 규칙","충전은 별도 장소에서 합니다."],
+    [501,"home","TOWN","VISIBLE","분실물센터 연락처","역 안내 데스크에 전달해 주세요."],
+    [601,"home","FREE","VISIBLE","장비 목록에 있는 세 탁자","행사에서 사용한 탁자 세 개입니다."],
+    [701,"home","FREE","VISIBLE","배수구","청소 일정은 옆 건물 유리창 작업만 해당합니다."],
+    [801,"home","TIP","VISIBLE","가스 - 밸브 교체","서로 다른 두 정비 항목을 구분하는 제목입니다."],
+    [901,"home","TOWN","VISIBLE","승강기 배상 공문","가입 의무에 관한 공문이며 납입 금액은 안내하지 않습니다."],
+    [1001,"other","TIP","VISIBLE","물품 보관소 운영 시간","비이웃 동네의 보관소입니다."],
+    [1002,"home","TIP","HIDDEN","물품 보관소 운영 시간","숨김 상태인 합성 사례입니다."],
+    [1003,"home","TIP","DELETED","물품 보관소 운영 시간","삭제 상태인 합성 사례입니다."],
+    [1004,"home","TOWN","VISIBLE","물품 보관소 운영 시간","다른 카테고리인 동네 소식입니다."]
+  ]
+}

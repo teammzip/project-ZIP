@@ -14,7 +14,7 @@ ZIP은 앱에서 카카오 장소를 `kakao:<장소ID>`로 식별합니다. 접�
 
 장소 검색은 지도 중심이나 저장된 집 좌표를 사용하며 종류·검색어·조건을 적용합니다. 카카오 검색이 사용할 수 없는 경우 일반 지도 목록은 ZIP DB의 장소로 대체합니다. 사용량 제한·오류는 `X-Place-Notice`로 전달하며, 카카오 검색 응답 자체는 이력으로 영구 저장하지 않습니다. 즐겨찾기에는 필요한 장소 ID·이름·분류를 저장합니다. [지도 서비스](../../backend/src/main/java/com/zip/backend/map/MapService.java) · [카카오 사용량 처리](../../backend/src/main/java/com/zip/backend/map/KakaoQuota.java)
 
-2026-11-25 확인. 지도 화면에서 실행한 검색은 검색을 시작한 동네 위치에 연결됩니다. 위치가 바뀌면 이전 결과와 대기 표시를 지우고 진행 중인 요청을 취소합니다. [지도 화면](../../frontend/src/features/map/components/MapView.tsx)
+2026-11-25 확인. 지도 화면에서 실행한 검색은 검색을 시작한 동네 위치에 연결됩니다. 위치가 바뀌면 이전 결과와 대기 표시를 지우고 진행 중인 요청을 취소합니다. [지도 화면](../../frontend/src/features/map/components/MapView.tsx) · [다른 기기에서 인증한 동네의 선택 순서](service-integrations.md#홈-날씨-위치)
 
 장소를 여러 저장 리스트에 넣을 수 있습니다. 해당 장소를 유일하게 담은 리스트를 삭제하거나 소속 리스트를 모두 해제하면 즐겨찾기에서 빠집니다. 카카오 리뷰는 ZIP에 저장되며, 회원당 같은 장소에 하나만 작성할 수 있습니다. [지도 저장 처리](../../backend/src/main/java/com/zip/backend/map/MapService.java) · [리뷰 처리](../../backend/src/main/java/com/zip/backend/map/PlaceReviewService.java)
 

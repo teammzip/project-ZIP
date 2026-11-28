@@ -21,7 +21,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class CommunityRepository {
     private static final Pattern SEARCH_WHITESPACE = Pattern.compile("\\s+", Pattern.UNICODE_CHARACTER_CLASS);
-    private static final Pattern COMPACT_KOREAN_QUERY = Pattern.compile("[가-힣]{3,}");
+    private static final Pattern COMPACT_KOREAN_TERM = Pattern.compile("[가-힣]{3,}");
     private final JdbcTemplate jdbc;
 
     public CommunityRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
@@ -117,25 +117,31 @@ public class CommunityRepository {
 
     enum PostSort { LATEST, VIEWS, POPULAR, RELEVANCE }
 
+    private record SearchTerm(String pattern, boolean ignoreSpaces) {}
+
     /** 관리자 목록은 검색어 전체 문자열과 최신순을 사용. */
     List<PostRow> adminPosts(long viewerId, String category, String keyword, int limit, int offset) {
-        var terms = keyword == null ? List.<String>of() : List.of(Sql.likeContains(keyword));
+        var terms = keyword == null ? List.<SearchTerm>of() : List.of(new SearchTerm(Sql.likeContains(keyword), false));
         return posts(viewerId, null, category, terms, null, false, PostSort.LATEST, limit, offset);
     }
 
     List<PostRow> searchPosts(long viewerId, List<Long> regions, String category, String keyword, PostSort sort, int limit, int offset) {
-        var terms = keyword == null ? List.<String>of() : SEARCH_WHITESPACE.splitAsStream(keyword)
-            .filter(term -> !term.isEmpty()).distinct().map(Sql::likeContains).toList();
+        var terms = keyword == null ? List.<SearchTerm>of() : SEARCH_WHITESPACE.splitAsStream(keyword)
+            .filter(term -> !term.isEmpty()).distinct()
+            .map(term -> new SearchTerm(Sql.likeContains(term), COMPACT_KOREAN_TERM.matcher(term).matches())).toList();
         var phrase = keyword == null ? null : Sql.likeContains(keyword);
-        boolean ignoreSpaces = keyword != null && COMPACT_KOREAN_QUERY.matcher(keyword).matches();
-        return posts(viewerId, regions, category, terms, phrase, ignoreSpaces, sort, limit, offset);
+        boolean compactSingleQuery = keyword != null && COMPACT_KOREAN_TERM.matcher(keyword).matches();
+        return posts(viewerId, regions, category, terms, phrase, compactSingleQuery, sort, limit, offset);
+    }
+
+    private static String searchMatch(String column, boolean ignoreSpaces) {
+        String text = ignoreSpaces ? "REPLACE(" + column + ", ' ', '')" : column;
+        return text + " LIKE ? ESCAPE '!'";
     }
 
     /** regions 가 null 이면 전체 동네. limit+1 개를 읽어 다음 쪽이 있는지 판단은 부르는 쪽에서. */
-    private List<PostRow> posts(long viewerId, List<Long> regions, String category, List<String> terms, String phrase, boolean ignoreSpaces,
+    private List<PostRow> posts(long viewerId, List<Long> regions, String category, List<SearchTerm> terms, String phrase, boolean compactSingleQuery,
         PostSort sort, int limit, int offset) {
-        var titleMatch = (ignoreSpaces ? "REPLACE(p.title, ' ', '')" : "p.title") + " LIKE ? ESCAPE '!'";
-        var bodyMatch = (ignoreSpaces ? "REPLACE(p.body, ' ', '')" : "p.body") + " LIKE ? ESCAPE '!'";
         var sql = new StringBuilder(POST_SQL).append(" WHERE p.status = 'VISIBLE'");
         var args = new ArrayList<Object>(List.of(viewerId, viewerId));
         if (regions != null) {
@@ -147,9 +153,10 @@ public class CommunityRepository {
             args.add(category);
         }
         for (var term : terms) {
-            sql.append(" AND (").append(titleMatch).append(" OR ").append(bodyMatch).append(")");
-            args.add(term);
-            args.add(term);
+            sql.append(" AND (").append(searchMatch("p.title", term.ignoreSpaces())).append(" OR ")
+                .append(searchMatch("p.body", term.ignoreSpaces())).append(")");
+            args.add(term.pattern());
+            args.add(term.pattern());
         }
         sql.append(" ORDER BY ");
         switch (sort) {
@@ -157,10 +164,13 @@ public class CommunityRepository {
             case POPULAR -> sql.append("(p.like_count + 2 * p.comment_count) DESC, ");
             case RELEVANCE -> {
                 if (!terms.isEmpty()) {
+                    // 여러 단어 검색의 기존 결과끼리는 공백을 포함한 원문 일치로 계속 순위를 매긴다.
+                    var titleMatch = searchMatch("p.title", compactSingleQuery);
+                    var bodyMatch = searchMatch("p.body", compactSingleQuery);
                     appendRelevanceOrder(sql, args, terms, phrase, titleMatch, bodyMatch);
-                    if (ignoreSpaces) {
+                    if (compactSingleQuery) {
                         sql.append("(").append(titleMatch).append(") DESC, ");
-                        args.add(terms.get(0));
+                        args.add(terms.get(0).pattern());
                     }
                 }
             }
@@ -172,7 +182,7 @@ public class CommunityRepository {
         return jdbc.query(sql.toString(), CommunityRepository::post, args.toArray());
     }
 
-    private static void appendRelevanceOrder(StringBuilder sql, List<Object> args, List<String> terms, String phrase,
+    private static void appendRelevanceOrder(StringBuilder sql, List<Object> args, List<SearchTerm> terms, String phrase,
         String titleMatch, String bodyMatch) {
         if (terms.size() > 1) {
             sql.append("(p.title LIKE ? ESCAPE '!' OR p.body LIKE ? ESCAPE '!') DESC, ");
@@ -184,8 +194,8 @@ public class CommunityRepository {
         for (int index = 0; index < terms.size(); index++) {
             if (index > 0) sql.append(" AND ");
             sql.append(titleMatch).append(" AND ").append(bodyMatch);
-            args.add(terms.get(index));
-            args.add(terms.get(index));
+            args.add(terms.get(index).pattern());
+            args.add(terms.get(index).pattern());
         }
         sql.append(") DESC, ");
     }
