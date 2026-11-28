@@ -526,3 +526,8 @@
 - 서버: `GET /api/posts`에 `regionId`를 추가했습니다. `scope`만 주는 내 동네 기준 동작은 그대로입니다.
 - 화면: 고른 동네·이웃 칩으로 글 목록을 바꾸고, 닫거나 탭을 바꾸면 내 동네로 돌아갑니다. 글 쓰는 동네는 바뀌지 않습니다.
 - 갱신: [커뮤니티 운영](topics/community-operations.md) · [OpenAPI](../backend/openapi.yaml) · [프론트 API 문서](../frontend/API.md) · 검증: 백엔드 전체 테스트, 프론트 234개·린트·타입 검사
+
+## [2026-11-28] record | dev PR 154 병합과 문서 동기화 확인
+
+- 최신 `dev`(PR #154 알림 목록 DTO)를 `front`에 병합했습니다. 충돌은 이 로그 한 곳이었고, 양쪽 기록을 모두 남겼습니다(원격 기록 먼저).
+- Second Brain 검사가 이번 PR의 공용 파일(OpenAPI·`frontend/API.md`·커뮤니티 서비스·저장소)을 링크하는 문서 8곳을 후보로 냈습니다. [DB 조회 설계](topics/database.md)와 [진행 현황](topics/project-status.md)에는 `regionId` 추가 내용을 보충했고, [일정·알림](topics/calendar-notifications.md)·[고정 지출](topics/fixed-expenses.md)·[내 집 정보](topics/home-info.md)·[가계부·메모](topics/ledger-memos.md)·[지도](topics/map-place-ids.md)·[배출표](topics/trash-schedules.md)에는 영향이 없음을 확인해 남겼습니다. [애플리케이션](topics/application.md)의 PR #153 반영 설명에 이후 바뀐 이름·위치를 덧붙였습니다.

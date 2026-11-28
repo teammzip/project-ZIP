@@ -12,6 +12,8 @@
 
 금액 입력은 원 단위이며, 응답의 `settings.rent`는 만원 단위입니다. 내 집 정보나 대출 조건을 사용하는 새 화면도 같은 조회 경로를 사용합니다. [API 계약](../../frontend/API.md#내-집-정보-서버-연결-2026-11-15) · [설문 저장 흐름](../../frontend/src/features/onboarding/SurveyPage.tsx) · [앱 실행 모드](application.md)
 
+2026-11-28 확인: [공용 API 문서](../../frontend/API.md)의 이번 변경(글 목록 `GET /api/posts`의 `regionId`, AI 대화 목록을 AI 화면으로 옮김, "다른 동네 둘러보기" 이름 변경)은 내 집 정보·생활 설정 API에 영향이 없습니다.
+
 로그인과 세션 복원 시 공통 조회를 준비하고, 로그아웃이나 계정 변경 시 이전 세션의 조회 캐시를 제거합니다. 저장 시 진행 중인 기존 조회를 취소해 오래된 응답이 저장 결과를 덮어쓰지 않도록 합니다. [공통 조회와 저장](../../frontend/src/features/life/homeApi.ts) · [세션 전환](../../frontend/src/app/setupApi.ts) · [홈 정보 회귀 테스트](../../frontend/tests/home-api.test.mjs)
 
 내 집 정보 응답의 `managementBill`은 고정 지출과 같은 `BillResponse` 형식을 사용합니다. 입주월과 계약 만료월이 있는 월세 계약의 월별 금액, 납부 상태와 월세 알림은 관련 문서에서 확인할 수 있습니다. [계약 고정 지출과 월세 알림](fixed-expenses.md) · [내 집 정보 응답](../../backend/src/main/java/com/zip/backend/settings/HomeInfoService.java) · [청구 응답 DTO](../../backend/src/main/java/com/zip/backend/bills/BillResponse.java)
