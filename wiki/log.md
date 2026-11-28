@@ -449,3 +449,10 @@
 - 결정(2026-11-28 작업 대화, 곽성미): 화면에서 부르지 않는 API 14개 중 "삭제 검토"로 분류한 6개를 지웠습니다. 예전 일반 고정 지출 5개(`/api/bills`, `/api/bills/{id}`, `/api/bills/{id}/payments/{month}`)와 일정 완료 전용 `PATCH /api/events/{id}/done`입니다. 화면은 각각 `/api/bills/monthly/**`와 `PATCH /api/events/{id}`의 `done`을 씁니다.
 - 지우기 전에 확인한 것: 프론트(모의 모드 포함)에서 부르는 곳이 없었습니다. 서비스 메서드는 이 API들만 썼습니다. 예전 API 테스트 중 월별 API에 없던 동시 납부 검사는 [월별 테스트](../backend/src/test/java/com/zip/backend/BillIntegrationTests.java)로 옮겼습니다.
 - 남은 일: 관리자 일괄 제재, 일정 검색, 홈 꿀팁 3개(DB `posts.is_home_tip`과 인덱스 포함), 생활 설정 2개는 팀 협의 후 결정합니다. 지역 목록은 유지합니다. [프론트 API 문서](../frontend/API.md) · [백엔드 구현 설명](../backend/IMPLEMENTATION.md#고정-지출-api-확인)
+
+## [2026-11-28] record | 화면에 연결하지 않았던 API 4가지 연결
+
+- 결정(2026-11-28 작업 대화): 변경안 자료 "ZIP API 변경안 한 장 요약"에서 네 가지를 골라 화면에 연결했습니다.
+- [AI 대화 한 건 삭제](topics/service-integrations.md)와 [저장 리스트 이름·색 변경](topics/map-place-ids.md#장소-검색과-저장-리스트)을 연결했습니다. [다른 동네 주변 보기](topics/community-operations.md#동네-글과-조회-집계)도 넣었습니다.
+- [알림 받기 서버 저장·복원](topics/calendar-notifications.md#알림-생성과-읽음-상태)을 연결했습니다. 그전에는 알림을 꺼도 서버의 월세 알림·공지 팝업이 생성됐습니다.
+- 백엔드는 바꾸지 않았습니다. 프론트 테스트는 227개로 늘었고(새 11개), 린트·빌드가 통과했습니다. 지역 목록·인접 지역은 실행 중인 서버에서도 응답을 확인했습니다. 화면 동작은 브라우저에서 직접 확인해야 합니다.

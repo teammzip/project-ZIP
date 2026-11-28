@@ -12,6 +12,9 @@ ZIP은 앱에서 카카오 장소를 `kakao:<장소ID>`로 식별합니다. 접�
 
 ## 장소 검색과 저장 리스트
 
+2026-11-28부터 저장 창에서 리스트의 이름과 색을 바꿀 수 있습니다(`PATCH /api/me/place-lists/{listId}`). 담긴 장소는 그대로입니다. 빈 이름과 다른 리스트와 같은 이름은 화면에서 먼저 막고, 서버의 409도 같은 안내를 보여 줍니다. 다른 기기에서 먼저 지운 리스트(404)는 안내한 뒤 목록을 다시 불러옵니다. [저장 창](../../frontend/src/features/map/components/SaveSheet.tsx) · [검증](../../frontend/tests/map-place-list-edit.test.mjs)
+
+
 장소 검색은 지도 중심이나 저장된 집 좌표를 사용하며 종류·검색어·조건을 적용합니다. 카카오 검색이 사용할 수 없는 경우 일반 지도 목록은 ZIP DB의 장소로 대체합니다. 사용량 제한·오류는 `X-Place-Notice`로 전달하며, 카카오 검색 응답 자체는 이력으로 영구 저장하지 않습니다. 즐겨찾기에는 필요한 장소 ID·이름·분류를 저장합니다. [지도 서비스](../../backend/src/main/java/com/zip/backend/map/MapService.java) · [카카오 사용량 처리](../../backend/src/main/java/com/zip/backend/map/KakaoQuota.java)
 
 2026-11-28 확인: [공용 API 문서](../../frontend/API.md)의 이번 변경(쓰레기 배출일 알림 제거)은 지도·장소 API에 영향이 없습니다.

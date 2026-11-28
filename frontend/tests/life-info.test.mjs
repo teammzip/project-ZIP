@@ -84,6 +84,7 @@ function submitForm(patch = {}, kind = 'monthly', savedRent = 50, serverSave = n
       if (name === '@tanstack/react-query') return { useQueryClient: () => ({ invalidateQueries: async () => {} }) }
       if (name === '@/features/auth/api') return { isMockApi: !serverSave }
       if (name === '../homeApi') return { saveHomeInfo: async (input) => { writes.push('server'); return serverSave(input) } }
+      if (name === '../settingsApi') return { saveNotiOn: async (on) => on }
       if (name === '@/lib/apiClient') return { getErrorMessage: (cause) => cause.message }
       if (name === '@/features/map/components/MyReviews') return { MyReviews: () => null }
       if (name === '@/features/onboarding/AddressSearch') return { AddressSearch: () => null }

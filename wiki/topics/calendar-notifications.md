@@ -13,6 +13,8 @@
 
 ## 알림 생성과 읽음 상태
 
+- 2026-11-28부터 내 정보의 **알림 받기**를 서버(`PUT /api/me/settings`)에도 저장합니다. 그전에는 브라우저에만 저장해서, 알림을 꺼도 서버가 `noti_on`을 보고 만드는 월세 알림·공지 팝업이 계속 생성됐습니다. 저장할 때는 GET으로 받은 최신 월세·기간 값에 `notiOn`만 바꿔 보내고, 실패하면 화면을 되돌립니다. 앱을 열 때 내 집 정보 응답의 `settings.notiOn`으로 복원합니다. [알림 설정 저장](../../frontend/src/features/life/settingsApi.ts) · [알림 스위치](../../frontend/src/features/life/components/MyInfo.tsx) · [검증](../../frontend/tests/life-settings-noti.test.mjs)
+
 알림은 알릴 시각에서 90일(설정 `zip.cleanup.notification-days`)이 지나면 읽음 여부와 관계없이 서버가 6시간마다 지웁니다. 2026-11-24부터 쓰레기 "배출 정보가 없어요" 안내는 지우지 않았지만, 2026-11-28 배출일 알림을 없애면서 이 예외도 없앴습니다([배출일 알림](trash-schedules.md#배출일-알림)). [오래된 데이터 정리](../../backend/src/main/java/com/zip/backend/maintenance/DataCleanupService.java)
 
 | 종류 | 생성 시점과 표시 |

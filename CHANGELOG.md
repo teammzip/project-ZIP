@@ -200,6 +200,7 @@
 `frontend/` — React 앱
 
 ### 2026-11-28
+- 곽성미 — 화면에 연결하지 않았던 API 4가지 연결 (변경안 적용): ① 내 정보 › AI 대화 기록에서 대화 한 건 삭제(`DELETE /api/ai/conversations/{id}`) ② 지도 저장 창에서 리스트 이름 · 색 바꾸기(`PATCH /api/me/place-lists/{listId}`) ③ 커뮤니티 주변 동네 탭의 "다른 동네 주변 보기"(`GET /api/regions`, `GET /api/regions/{id}/neighbors`) ④ 알림 받기를 서버에 저장 · 복원(`PUT /api/me/settings`, 앱을 열 때 내 집 정보의 `settings.notiOn`) — 그전에는 알림을 꺼도 서버의 월세 알림 · 공지 팝업이 생성됐음. 저장 실패 시 화면을 되돌림. 테스트 11개 추가, 프론트 227개 · 린트 · 빌드 통과 [알림 설정](wiki/topics/calendar-notifications.md#알림-생성과-읽음-상태)
 - 곽성미 — 소셜 첫 가입 약관 동의 화면(`/welcome`)을 회원가입 · 찾기와 같은 새 틀(`AccountLayout`)로 옮김: 11-20 디자인 변경 때 예전 틀(`AuthLayout`)에 남아 있던 것. `/welcome` 에서는 "로그인" 안내 대신 로그아웃("다른 계정으로 시작할까요?")을 보여 주고, 쓰지 않게 된 `AuthLayout` 삭제. 린트 · 빌드 · 프론트 216개 통과
 - moon — 모의 API의 동네 글 검색에 서버와 같은 복합어 매칭을 적용했습니다. 최신 `dev` 병합 후 프론트 테스트 213개, 린트, 운영 빌드를 통과했습니다. [모의 검색과 서버 비교](wiki/topics/community-operations.md#검색-정렬과-관련도)
 - jgkim7848-lab — 홈 알림 칸에 안 읽은 알림만 보이게(읽은 알림은 알림 전체 보기에서, `life/components/HomePhotoCard.tsx`). 쓰레기 배출일 알림을 없앤 데 맞춰 설정 "알림 받기" 설명 · 내 집 주소 안내 · 소개 화면 문구 수정. [일정·알림](wiki/topics/calendar-notifications.md) · 검증: 새 테스트 `home-noti-card.test.mjs` 3개(고치기 전 코드에서는 2개 실패 확인)

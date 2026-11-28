@@ -151,7 +151,10 @@ export function SettingsPage() {
                 <span className={styles.grow}>
                   알림 받기<small>{isMonthly ? '일정 · 월세 알림' : '일정 알림'}</small>
                 </span>
-                <NotiSwitch onChange={(on) => notify(on ? '알림을 켰어요.' : '알림을 껐어요.')} />
+                <NotiSwitch
+                  onChange={(on) => notify(on ? '알림을 켰어요.' : '알림을 껐어요.')}
+                  onError={(message) => notify(`알림 설정을 저장하지 못해 원래대로 돌렸어요. ${message}`)}
+                />
               </label>
             </li>
             <li>
