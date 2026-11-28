@@ -471,18 +471,7 @@ paths:
       parameters: [{ $ref: '#/components/parameters/Id' }]
       responses:
         '204': { description: 삭제 완료 }
-  /api/events/{id}/done:
-    patch:
-      tags: [일정 · 쓰레기 배출]
-      summary: 할 일 완료 체크
-      parameters: [{ $ref: '#/components/parameters/Id' }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { type: object, required: [done], properties: { done: { type: boolean } } }
-      responses:
-        '200': { description: 바뀐 일정, content: { application/json: { schema: { $ref: '#/components/schemas/Event' } } } }
+
   /api/trash-schedules:
     get:
       tags: [일정 · 쓰레기 배출]
@@ -574,76 +563,8 @@ paths:
         '204': { description: 삭제 완료 }
 
   # ───────────────────────── 4. 월세 · 고정 지출 ─────────────────────────
-  /api/bills:
-    get:
-      tags: [월세 · 고정 지출]
-      summary: 고정 지출 항목 + 그 달 납부 상태
-      description: 조회는 DB를 변경하지 않음. 과거 월은 기존 스냅샷만 반환. 당월·미래 월의 활성 항목에 기록이 없으면 기본 금액의 예정액(snapshot=false) 반환. 해지 항목도 해당 월 기록이 있으면 active=false로 반환.
-      parameters:
-        - { name: month, in: query, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' }, example: '2026-10' }
-      responses:
-        '200': { description: 고정 지출, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Bill' } } } } }
-    post:
-      tags: [월세 · 고정 지출]
-      summary: 고정 지출 항목 추가
-      description: 한국 기준 당월 미납 스냅샷을 함께 생성. 같은 이름·분류의 활성 항목이 있으면 409. 모든 금액은 0~9007199254740991원 정수.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [name, amount, tag]
-              properties:
-                name: { type: string, maxLength: 30, example: 전기 }
-                amount: { type: integer, minimum: 0, example: 32000 }
-                tag: { type: string, maxLength: 24, example: 공과금, description: '기본 공과금 · 통신 · 구독 · 관리비 · 기타 + 회원이 만든 분류' }
-      responses:
-        '200': { description: 추가된 항목, content: { application/json: { schema: { $ref: '#/components/schemas/Bill' } } } }
-  /api/bills/{id}/payments/{month}:
-    put:
-      tags: [월세 · 고정 지출]
-      summary: 그 달 납부 체크 · 금액 수정 (줄이 없으면 서버가 만듦)
-      description: paid/amount 중 하나 이상 필요. 미래 월 저장은 400. 기록이 없는 과거 월은 amount 필수. 반복 paid=true는 최초 paidAt 유지. amount만 수정하면 납부 상태 유지. 해지 항목은 기존 월 기록만 수정 가능.
-      parameters:
-        - $ref: '#/components/parameters/Id'
-        - { name: month, in: path, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' } }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                paid: { type: boolean }
-                amount: { type: integer, minimum: 0 }
-      responses:
-        '200': { description: 바뀐 항목, content: { application/json: { schema: { $ref: '#/components/schemas/Bill' } } } }
-  /api/bills/{id}:
-    patch:
-      tags: [월세 · 고정 지출]
-      summary: 고정 지출 항목 수정 — 바꿀 값만
-      description: default_amount에 반영하며 당월 기존 금액은 먼저 확정해 보존. 기존 월별 스냅샷은 덮어쓰지 않음. 당월 금액 정정은 payments API 사용. 같은 이름·분류 중복은 409. 해지 항목은 404.
-      parameters: [{ $ref: '#/components/parameters/Id' }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name: { type: string, maxLength: 30 }
-                amount: { type: integer, minimum: 0 }
-                tag: { type: string, maxLength: 24 }
-      responses:
-        '200': { description: 바뀐 항목, content: { application/json: { schema: { $ref: '#/components/schemas/Bill' } } } }
-        '404': { $ref: '#/components/responses/NotFound' }
-    delete:
-      tags: [월세 · 고정 지출]
-      summary: 고정 지출 해지 (is_active = 0)
-      parameters: [{ $ref: '#/components/parameters/Id' }]
-      responses:
-        '204': { description: 해지 완료 }
+
+
 
   /api/bills/monthly:
     parameters:
@@ -1796,7 +1717,33 @@ paths:
       parameters:
         - { name: status, in: query, required: false, schema: { type: string, enum: [RECEIVED, HIDDEN, DISMISSED] } }
       responses:
-        '200': { description: 리뷰 신고 (review.deleted = 리뷰가 지금 없음) }
+        '200':
+          description: 리뷰 신고 (review.deleted = 리뷰가 지금 없음)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    reviewKind: { type: string, enum: [PLACE, KAKAO], description: 'PLACE = DB 장소 리뷰(place_reviews), KAKAO = 카카오 장소 리뷰(kakao_place_reviews)' }
+                    reviewId: { type: string }
+                    placeId: { type: string, description: 'DB 장소는 번호, 카카오 장소는 "kakao:카카오장소id"' }
+                    placeName: { type: string }
+                    review:
+                      type: object
+                      description: 신고 당시 리뷰. 리뷰를 지운 뒤에도 남고 deleted 가 true
+                      properties:
+                        author: { type: string }
+                        text: { type: string }
+                        rating: { type: integer, nullable: true }
+                        deleted: { type: boolean }
+                    reason: { type: string, enum: [ABUSE, FALSE_INFO, PRIVACY, AD_ILLEGAL, COPYRIGHT, OTHER] }
+                    detail: { type: string }
+                    reporter: { type: object, properties: { id: { type: string }, nickname: { type: string } } }
+                    status: { type: string, enum: [RECEIVED, HIDDEN, DISMISSED] }
+                    createdAt: { type: string, format: date-time }
   /api/admin/place-review-reports/{id}:
     parameters:
       - $ref: '#/components/parameters/Id'

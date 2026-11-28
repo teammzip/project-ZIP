@@ -50,7 +50,6 @@ class BillMonthlyDeleteTests {
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_photo_imports WHERE user_id=?",Integer.class,user));
         var update = BillInput.monthlyUpdate(Map.of("amount",1,"dueDate",LocalDate.now(ZoneOffset.UTC).toString()));
         assertEquals(404,assertThrows(ApiException.class,()->service.updateMonthly(user,session,id,YearMonth.parse(month),"UTC",update)).status());
-        assertEquals(404,assertThrows(ApiException.class,()->service.pay(user,session,id,YearMonth.parse(month),Map.of("paid",true))).status());
     }
     @Test void paidRecordCannotBeDeletedUntilPaymentIsCancelled() throws Exception {
         jdbc.update("UPDATE bill_payments SET paid_at=CURRENT_TIMESTAMP WHERE bill_item_id=? AND period_ym=?",id,month);

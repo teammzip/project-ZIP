@@ -19,6 +19,7 @@ import { validateLifeInfo } from '../validateLifeInfo'
 import { isMockApi } from '@/features/auth/api'
 import { getErrorMessage } from '@/lib/apiClient'
 import { saveHomeInfo, useHomeInfo, type SurveyLoanDraft } from '../homeApi'
+import { saveNotiOn } from '../settingsApi'
 import { MyReviews } from '@/features/map/components/MyReviews'
 import { AddressSearch } from '@/features/onboarding/AddressSearch'
 
@@ -239,19 +240,42 @@ export function LifeInfoFields({ onSaved, showHomeAddress = true, loanDraft }: L
 }
 
 /** 알림 받기 스위치: 누르면 바로 저장 */
-export function NotiSwitch({ onChange }: { onChange?: (on: boolean) => void }) {
-  const settings = useLifeStore((s) => s.settings)
-  const saveSettings = useLifeStore((s) => s.saveSettings)
+/** 알림 받기 스위치. 서버 모드는 서버(PUT /api/me/settings)에도 저장해서 다른 기기 · 서버 알림이 같은 설정을 써요.
+ * 화면은 먼저 바꾸고, 저장이 실패하면 원래 값으로 되돌린 뒤 onError 로 알려요. 저장하는 동안은 잠가요. */
+export function NotiSwitch({ onChange, onError }: { onChange?: (on: boolean) => void; onError?: (message: string) => void }) {
+  const notiOn = useLifeStore((s) => s.settings.notiOn)
+  const [saving, setSaving] = useState(false)
+  const setNotiOn = (on: boolean) => useLifeStore.getState().saveSettings({ ...useLifeStore.getState().settings, notiOn: on })
+
+  const change = async (next: boolean) => {
+    const before = useLifeStore.getState().settings.notiOn
+    setNotiOn(next)
+    if (isMockApi) return onChange?.(next)
+    const sessionKey = useAuthStore.getState().sessionKey
+    setSaving(true)
+    try {
+      const saved = await saveNotiOn(next)
+      if (useAuthStore.getState().sessionKey !== sessionKey) return // 그사이 로그아웃 · 계정 전환
+      if (saved !== next) setNotiOn(saved)
+      onChange?.(saved)
+    } catch (err) {
+      if (useAuthStore.getState().sessionKey !== sessionKey) return
+      setNotiOn(before)
+      onError?.(getErrorMessage(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <input
       type="checkbox"
       className={styles.switch}
-      checked={settings.notiOn}
+      checked={notiOn}
       aria-label="알림 받기"
-      onChange={(e) => {
-        saveSettings({ ...settings, notiOn: e.target.checked })
-        onChange?.(e.target.checked)
-      }}
+      aria-busy={saving}
+      disabled={saving}
+      onChange={(e) => void change(e.target.checked)}
     />
   )
 }

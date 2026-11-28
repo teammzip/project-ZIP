@@ -88,4 +88,4 @@ $env:JAVA_TOOL_OPTIONS='-Dfile.encoding=UTF-8'   # Windows 한글 깨짐 방지
 .\gradlew.bat -I verify-monthly-mysql.init.gradle verifyMonthlyMysql   # 고정 지출을 실제 MySQL 로 재검증 (임시 데이터는 롤백)
 ```
 
-Postman 컬렉션: [생활 설정](postman/life-settings.postman_collection.json) · [고정 지출](postman/fixed-bills.postman_collection.json)
+Postman 컬렉션: [생활 설정](postman/life-settings.postman_collection.json)

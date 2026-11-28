@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button, Card, Modal } from '@/components/ui'
-import { deleteAllConversations, useChatStore } from '@/features/ai'
+import { ConversationHistoryDialog, deleteAllConversations, useChatStore } from '@/features/ai'
 import { LoginBadge, LoginMethod, PasswordChangeForm, useAuthStore, useLogout, useUpdateMe, useWithdraw } from '@/features/auth'
 import { useCommunityStore, useMyPostCount, useReportStore } from '@/features/community'
 import { LegalLinks } from '@/features/legal'
@@ -39,7 +39,7 @@ const TILES = [
   { to: '/community', ico: '💬', label: '동네 이야기' },
 ]
 
-type Sheet = 'profile' | 'personal' | 'life' | 'verify' | 'password' | 'sanctions' | 'reset' | 'withdraw' | null
+type Sheet = 'profile' | 'personal' | 'life' | 'verify' | 'password' | 'sanctions' | 'aiHistory' | 'reset' | 'withdraw' | null
 
 /* 내 정보
  * - PC(1100px 이상): 왼쪽 = 프로필 · 수입·지출 카드 / 오른쪽 = 이번 달 요약 · 바로 가기 · 계정·설정
@@ -151,8 +151,20 @@ export function SettingsPage() {
                 <span className={styles.grow}>
                   알림 받기<small>{isMonthly ? '일정 · 월세 알림' : '일정 알림'}</small>
                 </span>
-                <NotiSwitch onChange={(on) => notify(on ? '알림을 켰어요.' : '알림을 껐어요.')} />
+                <NotiSwitch
+                  onChange={(on) => notify(on ? '알림을 켰어요.' : '알림을 껐어요.')}
+                  onError={(message) => notify(`알림 설정을 저장하지 못해 원래대로 돌렸어요. ${message}`)}
+                />
               </label>
+            </li>
+            <li>
+              <button type="button" className={styles.row} onClick={() => setSheet('aiHistory')}>
+                <span className={styles.ico}>🤖</span>
+                <span className={styles.grow}>
+                  AI 대화 기록<small>지우고 싶은 대화만 골라서 지울 수 있어요</small>
+                </span>
+                <i className={styles.chev} aria-hidden="true" />
+              </button>
             </li>
             {sanctions && (
               <li>
@@ -231,6 +243,8 @@ export function SettingsPage() {
       </Modal>
 
       <SanctionHistoryDialog nick={user?.nickname} open={sheet === 'sanctions'} onClose={close} />
+
+      <ConversationHistoryDialog open={sheet === 'aiHistory'} onClose={close} />
 
       <RegionVerifyDialog open={sheet === 'verify'} onClose={close} onVerified={() => notify('동네 인증을 마쳤어요.')} />
 

@@ -102,8 +102,8 @@ class MapFavoriteIntegrationTests {
         };
         var map = new MapService(repository, kakao, new KakaoQuota(Clock.systemUTC(), 30, 30_000));
         var places = map.places(1, "2", "편의점", null, null, 37.55, 126.92, false).items();
-        assertEquals(List.of("kakao:10", "kakao:010"), places.stream().map(place -> place.get("id")).toList());
-        var key = (String) places.get(0).get("id");
+        assertEquals(List.of("kakao:10", "kakao:010"), places.stream().map(PlaceResponse::id).toList());
+        var key = places.get(0).id();
         var token = login("tester01");
         save(token, key, "{\"name\":\"동네 편의점\",\"category\":\"편의점\"}").andExpect(status().isNoContent());
         review(token, key, "{\"rating\":5,\"name\":\"동네 편의점\"}").andExpect(status().isNoContent());

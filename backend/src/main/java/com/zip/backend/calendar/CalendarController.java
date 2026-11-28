@@ -38,11 +38,6 @@ public class CalendarController {
         return calendar.updateEvent(userId(jwt), id, input);
     }
 
-    @PatchMapping("/api/events/{id}/done")
-    public Map<String, Object> done(@AuthenticationPrincipal Jwt jwt, @PathVariable String id, @RequestBody(required = false) CalendarService.DoneInput input) {
-        return calendar.setDone(userId(jwt), id, input);
-    }
-
     @DeleteMapping("/api/events/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@AuthenticationPrincipal Jwt jwt, @PathVariable String id) {

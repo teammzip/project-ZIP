@@ -1350,3 +1350,34 @@
   background: #fdecec;
   color: var(--color-danger);
 }
+
+/* 리스트 이름 · 색 편집 (삭제 버튼과 같은 크기, 눌렀을 때만 파란색) */
+.listEdit {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #a5abb8;
+}
+
+.listEdit svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.listEdit:hover {
+  background: #eaf2ff;
+  color: var(--color-primary);
+}
+
+.listEditForm {
+  flex: 1;
+  border-bottom: 0;
+}

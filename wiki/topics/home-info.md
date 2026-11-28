@@ -24,6 +24,8 @@
 
 ## 주소와 회원 설정
 
+2026-11-28부터 내 집 정보 응답을 화면에 반영할 때 `settings.notiOn`도 함께 반영합니다. 다른 기기에서 바꾼 알림 받기 설정이 앱을 열 때 복원됩니다. 알림 받기를 바꾸면 `PUT /api/me/settings`로 저장하고, 월세·기간은 방금 받은 서버 값을 그대로 다시 보냅니다. 그래서 내 집 정보에서 바꾼 값을 덮어쓰지 않습니다. [내 집 정보 반영](../../frontend/src/features/life/homeApi.ts) · [알림 설정 저장](../../frontend/src/features/life/settingsApi.ts) · [알림 설정 흐름](calendar-notifications.md#알림-생성과-읽음-상태)
+
 회원 주소 `users.address`와 내 집 상세주소는 별도로 저장합니다. ‘내 집 정보’ 화면의 상세주소는 계약 정보와 함께 `PUT /api/me/home-info`의 `homeAddress`로 전달합니다. 배출표는 내 집 주소로 시·군·구를 찾지 못하면 회원 주소를 확인합니다. [회원 주소 변경 API](../../frontend/API.md#회원-주소-변경) · [내 집 정보 API](../../frontend/API.md#내-집-정보-서버-연결-2026-11-15) · [배출표 조회](trash-schedules.md)
 
 내 집 주소 칸 아래 안내는 2026-11-28 배출일 알림을 없애면서 "일정 화면의 쓰레기 배출표는 이 주소의 시·군·구로 찾아요. 비워 두면 회원 주소를 써요."로 바꿨습니다. 주소 저장과 배출표 조회 규칙은 그대로입니다. [내 집 주소 입력](../../frontend/src/features/life/components/MyInfo.tsx) · [배출표](trash-schedules.md)

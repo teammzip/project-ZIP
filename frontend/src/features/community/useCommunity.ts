@@ -28,6 +28,21 @@ export function useMyPostCount() {
   return { count: isMockApi ? localCount : data, isError: !isMockApi && isError }
 }
 
+/** "다른 동네 주변 보기": 전체 지역 목록 (패널을 열 때만, 거의 바뀌지 않아 오래 보관) */
+export function useRegionList(enabled: boolean) {
+  return useQuery({ queryKey: ['regions'], queryFn: communityApi.regions, enabled: !isMockApi && enabled, staleTime: 60 * 60_000 })
+}
+
+/** "다른 동네 주변 보기": 고른 시 · 군 · 구의 이웃 */
+export function useRegionNeighbors(regionId: string | null) {
+  return useQuery({
+    queryKey: ['regions', regionId, 'neighbors'],
+    queryFn: () => communityApi.regionNeighbors(regionId!),
+    enabled: !isMockApi && !!regionId,
+    staleTime: 60 * 60_000,
+  })
+}
+
 /** 서버 모드 "주변 동네" 탭 안내: 내 동네와 이웃 동네 이름 (주거 설문 · 내 정보 주소로 정해진 동네 기준 — 글 목록 near 와 같은 기준) */
 export function useServerNeighbors(enabled: boolean) {
   return useQuery({

@@ -78,6 +78,7 @@ flowchart LR
 | 적용 완료 | 로그인·가입·내 정보·설문 완료의 공통 회원 응답 | [공통 회원 응답 DTO](#공통-회원-응답-dto) |
 | 적용 완료 | 커뮤니티 게시글 목록·상세 응답 | [게시글 응답 DTO](community-operations.md#게시글-응답-dto) |
 | 적용 완료 | 월급 설정·설문 월급 초안 응답 | 마이페이지 수입 정보의 조회·저장에 `SalarySettingsResponse`를 사용합니다. [월급 설정 응답 DTO](fixed-expenses.md#월급-설정-응답-dto) |
+| 적용 완료 | 지도·장소 리뷰 응답 11곳 (2026-11-27) | 장소 목록·분류·AI 검색·저장 리스트·카카오 즐겨찾기·지도 설정은 `PlaceResponse`와 그 안의 `record`로 바꿨습니다. 리뷰 목록·별점 요약·관리자 리뷰 신고는 `PlaceReviewResponse`로 바꿨습니다. 장소의 주소·전화·영업시간·별점과 작성자 프로필은 값이 없으면 키를 생략하지 않고 `null`을 보냅니다. 응답 모양 테스트를 바꾸기 전에 만들어 같은 테스트로 확인했습니다. 임시 MySQL 8.0에서 바꾸기 전·후 서버의 응답 24개를 비교한 결과, 칸 순서 말고는 같았습니다. 지도 설정은 MySQL 전용 문법이라 이 비교로 확인했습니다. [지도 응답 DTO](map-place-ids.md#지도-응답-dto) |
 
 로그인·가입·일정·일반 메모와 가계부 분류 요청은 기존 `record`를 활용할 수 있습니다. 약관 응답도 이미 타입이 있습니다. 회원 게시글 수처럼 작은 고정 응답과 월별 수입 합계처럼 월이 키인 `Map<String, Long>`은 현재 표현으로 충분합니다. 내부 JDBC 행과 서비스 값은 공개 응답에서 의미나 필드가 달라질 때 분리합니다. 프로필 PATCH는 필드 생략과 명시적 `null`을 구별하는 현재 파서를 유지하는 것이 적합합니다. [일반 메모 입력](../../backend/src/main/java/com/zip/backend/memo/MemoService.java) · [가계부 분류](../../backend/src/main/java/com/zip/backend/ledger/LedgerCategoryService.java) · [약관 응답](../../backend/src/main/java/com/zip/backend/legal/TermsController.java) · [프로필 PATCH](../../backend/src/main/java/com/zip/backend/auth/ProfilePatch.java)
 

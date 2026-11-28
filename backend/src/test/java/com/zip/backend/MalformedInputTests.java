@@ -29,7 +29,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Map 으로 요청을 받는 API 14곳: 정상 요청에서 칸 하나만 이상한 값(타입이 다름 · 빈 값 · 아주 큰 수 · 아주 긴 글 · 없는 날짜 등)으로 바꿔도
+ * Map 으로 요청을 받는 API 11곳 (예전 고정 지출 3곳은 2026-11-28 에 API 를 지우며 뺌): 정상 요청에서 칸 하나만 이상한 값(타입이 다름 · 빈 값 · 아주 큰 수 · 아주 긴 글 · 없는 날짜 등)으로 바꿔도
  * 서버 오류(5xx)가 나지 않고 4xx 로 거절되는지 확인한다. 정상 요청 자체는 성공해야 해서(2xx) 바꾼 칸까지 실제로 검사가 닿는다.
  */
 @SpringBootTest
@@ -114,17 +114,6 @@ class MalformedInputTests {
         String other = createMonthly("구독");
         probe("POST /api/bills/monthly/{id}/termination", () -> post("/api/bills/monthly/" + other + "/termination").param("timeZone", "Asia/Seoul"),
             Map.of("effectiveDate", effective), "effectiveDate");
-        assertNoServerErrors();
-    }
-
-    @Test
-    void legacyBills() throws Exception {
-        probe("POST /api/bills", () -> post("/api/bills"), Map.of("name", "관리비", "amount", 50_000, "tag", "관리비"), "name", "amount", "tag");
-        String body = mvc.perform(auth(post("/api/bills")).contentType("application/json").content("{\"name\":\"전기\",\"amount\":30000,\"tag\":\"공과금\"}"))
-            .andReturn().getResponse().getContentAsString();
-        String id = JsonPath.read(body, "$.id");
-        probe("PATCH /api/bills/{id}", () -> patch("/api/bills/" + id), Map.of("amount", 31_000), "name", "amount", "tag");
-        probe("PUT /api/bills/{id}/payments/{month}", () -> put("/api/bills/" + id + "/payments/" + month), Map.of("paid", true), "paid", "amount");
         assertNoServerErrors();
     }
 

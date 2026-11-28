@@ -46,7 +46,6 @@ public class CalendarService {
 
     /** 일정 입력: 만들 때 빈 칸은 기본값, 고칠 때는 보낸 칸만 바뀜. category: 이름, "" = 분류 없음 */
     public record EventInput(String date, String time, String title, String category, Boolean anniv, Boolean yearly, Boolean done, String source) {}
-    public record DoneInput(Boolean done) {}
     public record NameInput(String name) {}
     public record PresetInput(String title, String category) {}
 
@@ -88,12 +87,6 @@ public class CalendarService {
         if (input == null) throw new ApiException(400, "바꿀 내용을 보내 주세요.");
         repository.updateEvent(userId, id, values(userId, before, input, false), now());
         return event(repository.event(userId, id).orElseThrow());
-    }
-
-    @Transactional
-    public Map<String, Object> setDone(long userId, String eventId, DoneInput input) {
-        if (input == null || input.done() == null) throw new ApiException(400, "done 을 보내 주세요.");
-        return updateEvent(userId, eventId, new EventInput(null, null, null, null, null, null, input.done(), null));
     }
 
     @Transactional

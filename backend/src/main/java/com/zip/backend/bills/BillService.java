@@ -111,18 +111,6 @@ public class BillService {
         return row == null ? null : response(row.item(), row.payment(), month);
     }
 
-    @Transactional(readOnly = true)
-    public List<BillResponse> list(long userId, YearMonth month) {
-        YearMonth current = currentMonth();
-        var home=repository.housing(userId);
-        return repository.list(userId, month).stream()
-            .filter(row -> row.payment()!=null || row.item().terminationDate()==null || month.atEndOfMonth().isBefore(row.item().terminationDate()))
-            .filter(row -> row.item().homeContractKind()==null || (home!=null && row.item().homeContractKind().equals(home.kind())))
-            .filter(row -> row.payment() != null || (row.item().active() && !month.isBefore(current)
-                && !month.isBefore(YearMonth.from(row.item().createdAt().atZone(KOREA)))))
-            .map(row -> response(row.item(), row.payment(), month)).toList();
-    }
-
     private void lock(long userId, long sessionId) {
         auth.lockUser(userId);
         if (!auth.sessionActive(sessionId, userId, clock.instant())) throw new ApiException(401, "로그인이 만료됐어요.");
@@ -271,41 +259,12 @@ public class BillService {
     }
 
     @Transactional
-    public BillResponse create(long userId, long sessionId, Map<String, Object> body) {
-        BillInput.item(body, true); lock(userId, sessionId);
-        String name = BillInput.text(body.get("name"), "이름", 30), tag = BillInput.text(body.get("tag"), "분류", 24);
-        checkDuplicate(userId, name, tag, 0);
-        long amount = BillInput.amount(body.get("amount"));
-        var now = clock.instant();
-        var month = YearMonth.from(now.atZone(KOREA));
-        requireContractMonth(userId,month);
-        long id = repository.create(userId, name, amount, tag, now);
-        repository.insertPayment(id, month, amount, null);
-        return response(repository.find(userId, id), repository.payment(id, month), month);
-    }
-
-    @Transactional
     public BillResponse createFromHome(long userId,long sessionId,Map<String,Object> body) {
         BillInput.item(body,true); lock(userId,sessionId);
         String name=BillInput.text(body.get("name"),"이름",30),tag=BillInput.text(body.get("tag"),"분류",24);
         checkDuplicate(userId,name,tag,0);
         long id=repository.create(userId,name,BillInput.amount(body.get("amount")),tag,clock.instant());
         return response(repository.find(userId,id),null,currentMonth());
-    }
-
-    @Transactional
-    public BillResponse update(long userId, long sessionId, long id, Map<String, Object> body) {
-        lock(userId,sessionId);
-        requireContractMonth(userId,currentMonth());
-        requireManual(userId,id);
-        freezeCurrent(active(repository.find(userId,id)),currentMonth());
-        var result=updateFromHome(userId,sessionId,id,body);
-        if(body.containsKey("amount")) {
-            var zone=repository.savedZone(userId);
-            repository.propagateAmount(userId,id,BillInput.amount(body.get("amount")),java.time.LocalDate.ofInstant(clock.instant(),zone==null?KOREA:ZoneId.of(zone)));
-            return response(repository.find(userId,id),repository.payment(id,currentMonth()),currentMonth());
-        }
-        return result;
     }
 
     @Transactional
@@ -324,52 +283,10 @@ public class BillService {
     }
 
     @Transactional
-    public BillResponse pay(long userId, long sessionId, long id, YearMonth month, Map<String, Object> body) {
-        BillInput.payment(body); lock(userId, sessionId);
-        if(body.containsKey("amount")) requireManual(userId,id);
-        var current = currentMonth();
-        if (month.isAfter(current)) throw BillInput.bad("미래 월의 납부 기록은 저장할 수 없어요.");
-        var item = repository.find(userId, id);
-        var payment = repository.payment(id, month);
-        requireContractMonth(userId,month);
-        if (payment != null && payment.deletedAt() != null) throw new ApiException(404, "삭제된 월별 기록이에요.");
-        if(payment!=null && payment.paidAt()!=null && body.containsKey("amount") && BillInput.amount(body.get("amount"))!=payment.amount())
-            throw new ApiException(409,"납부 완료 기록의 금액은 변경할 수 없어요.");
-        if (payment == null && !item.active()) throw new ApiException(404, "해지된 항목에 새 청구를 만들 수 없어요.");
-        if(payment==null && item.terminationDate()!=null && !month.atEndOfMonth().isBefore(item.terminationDate()))
-            throw BillInput.bad("해지 적용일 이후에는 새 납부 기록을 만들 수 없어요.");
-        if (payment == null && month.isBefore(current) && !body.containsKey("amount")) {
-            throw BillInput.bad("기록이 없는 과거 월은 당시 금액 amount를 함께 입력해 주세요.");
-        }
-        long amount = body.containsKey("amount") ? BillInput.amount(body.get("amount")) : payment == null ? item.defaultAmount() : payment.amount();
-        java.time.Instant paidAt = payment == null ? null : payment.paidAt();
-        if (body.containsKey("paid")) {
-            if (Boolean.TRUE.equals(body.get("paid"))) { if (paidAt == null) paidAt = clock.instant(); }
-            else paidAt = null;
-        }
-        if (payment == null) repository.insertPayment(id, month, amount, paidAt);
-        else repository.updatePayment(id, month, amount, paidAt);
-        return response(item, repository.payment(id, month), month);
-    }
-
-    @Transactional
-    public void remove(long userId, long sessionId, long id) {
-        lock(userId,sessionId);
-        requireManual(userId,id);
-        var item=repository.find(userId,id);
-        if(item.active()) freezeCurrent(item,currentMonth());
-        removeFromHome(userId,sessionId,id);
-    }
-    @Transactional
     public void removeFromHome(long userId,long sessionId,long id) {
         lock(userId, sessionId);
         var item = repository.find(userId, id);
         if (item.active()) repository.deactivate(userId, id);
-    }
-
-    private void freezeCurrent(BillRepository.Item item, YearMonth month) {
-        // Preserve this month's previous default before future defaults change or an item is stopped.
-        if (repository.payment(item.id(), month) == null) repository.insertPayment(item.id(), month, item.defaultAmount(), null);
     }
 
     private void checkDuplicate(long userId, String name, String tag, long id) {

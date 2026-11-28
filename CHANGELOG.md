@@ -30,10 +30,12 @@
 `backend/` — Spring Boot 서버 API
 
 ### 2026-11-28
+- 곽성미 — 화면에서 쓰지 않는 API 6개 삭제: 예전 일반 고정 지출 `GET · POST /api/bills`, `PATCH · DELETE /api/bills/{id}`, `PUT /api/bills/{id}/payments/{month}`(화면은 `/api/bills/monthly/**`), 일정 완료 전용 `PATCH /api/events/{id}/done`(화면은 `PATCH /api/events/{id}` 의 `done`). 그 API 만 쓰던 서비스 · 저장소 · 입력 검사 코드와 Postman 컬렉션 · 테스트도 지움. 월별 API 의 동시 납부 검사는 `BillIntegrationTests` 로 옮기고, 일정 완료 검사는 일반 수정 경로로 바꿈(완료 시각 기록 · 해제 확인). OpenAPI 경로 115 → 111, 서버 경로 156 → 150. 관리자 일괄 제재 · 일정 검색 · 홈 꿀팁 · 생활 설정은 팀 협의, 지역 목록은 유지. 백엔드 360개 통과 [계약 고정 지출](wiki/topics/fixed-expenses.md#일반-고정-지출의-납부와-해지) · [일정](wiki/topics/calendar-notifications.md#일정-저장과-반복-기념일)
 - moon — 여러 단어로 동네 글을 검색할 때 한글 3음절 이상의 단어를 제목·본문의 띄어쓰기 차이에도 찾도록 개선했습니다. 최신 `dev` 병합 후 백엔드 369개와 격리 MySQL의 합성 검색 사례 40개를 검증했습니다. [검색 규칙과 검증 결과](wiki/topics/community-operations.md#여러-단어-검색의-띄어쓰기-개선-검증)
 - jgkim7848-lab — 쓰레기 배출일 알림 없앰(일정 화면의 우리 동네 배출표 보기로 대신, 사용자 결정): `notification/TrashReminderService` · `TrashReminderScheduler` · `TrashReminderTests` 삭제, 설정 `zip.trash.reminder.*`(`TRASH_REMINDER_*`) 삭제. 오래된 알림 정리(`maintenance/DataCleanupService`)의 "배출 정보가 없어요" 안내 예외도 없앰(90일 지난 알림은 종류 상관없이 삭제). 예전 `TRASH` 알림 · `noti_type` 값은 남김. [배출일 알림](wiki/topics/trash-schedules.md#배출일-알림) · 검증: 백엔드 테스트(`DataCleanupTests` 기대값 수정)
 
 ### 2026-11-27
+- 곽성미 — 지도 · 장소 리뷰 응답 11곳을 Map 에서 DTO 로: `PlaceResponse`(장소 · 분류 · AI 검색 · 카카오 즐겨찾기 · 저장 리스트 · 지도 설정), `PlaceReviewResponse`(리뷰 · 별점 요약 · 관리자 신고). 응답 JSON 은 그대로(null 칸 유지, 칸 순서만 record 순서로 고정). 바꾸기 전 응답 모양을 고정한 `MapResponseContractTests` 4개 추가 · 통과, 임시 MySQL 8.0 에서 바꾸기 전(`dev` 731e329) · 후 서버 응답 24개 비교 동일(지도 설정은 MySQL 전용이라 이 비교로 확인). OpenAPI 에 관리자 리뷰 신고 응답 스키마 추가. 백엔드 372개 통과 [지도 응답 DTO](wiki/topics/map-place-ids.md#지도-응답-dto)
 - 곽성미 — 문서 정리: `backend/IMPLEMENTATION.md` 의 낡은 내용(refresh 쿠키 없음 · 토큰 1시간 → 현재 15분 · 12시간 · 7일과 refresh 흐름, 없는 테스트 경로 → `frontend/tests/legal-terms.test.mjs`, 해당 없어진 문자 업체 · banned_identities, 잘린 마이그레이션 경로, 11-27 처리방침 외부 전송) 고침. 루트 `README.md` 의 지금 단계 · 남은 것 · 문서 안내표(운영 배포 · 운영 빌드 · ERD · 시스템 구성 · 운영 DB) 갱신. 문서 안 경로 · 링크 모두 실제 파일 확인
 - 곽성미 — `openapi.yaml` 을 서버와 대조: 경로 누락 · 잔존 0건(가계부 `{kind}` 분리 표기 · Security 가 처리하는 OAuth 시작 경로는 같은 API). 응답 DTO 7개 칸 대조로 `User`(+`birth` · `banCount`, −`lastLoginAt`, 이미 연동된 칸의 "확장 제안" 문구 정리) · `Post`(+`reported` · `homeTip`, −`reportCount`) · `Bill`(+`homeManaged`) 수정, `frontend/API.md` 회원 응답 예시도 서버와 같게. SnakeYAML 로 해석 확인(경로 115 · 스키마 78 유지, 중복 키 없음) [API 계약](wiki/topics/application.md#api-데이터-계약과-dto)
 - 곽성미 — `backend/README.md` 에 "운영 배포 설정": `bootJar` 빌드 · 실행, 같은 도메인 · 백엔드 한 대 전제, 운영 필수 환경변수와 위험한 기본값(`ZIP_AUTH_COOKIE_SECURE` · `FRONTEND_URL` · `ZIP_UPLOAD_DIR` · `MAIL_LOG_ONLY` 등), 기본값 그대로 써도 되는 값. `application.properties` 의 Gemini 키 없을 때 주석을 현재 동작(안내 문구)으로 고침
@@ -198,6 +200,8 @@
 `frontend/` — React 앱
 
 ### 2026-11-28
+- 곽성미 — 화면에 연결하지 않았던 API 4가지 연결 (변경안 적용): ① 내 정보 › AI 대화 기록에서 대화 한 건 삭제(`DELETE /api/ai/conversations/{id}`) ② 지도 저장 창에서 리스트 이름 · 색 바꾸기(`PATCH /api/me/place-lists/{listId}`) ③ 커뮤니티 주변 동네 탭의 "다른 동네 주변 보기"(`GET /api/regions`, `GET /api/regions/{id}/neighbors`) ④ 알림 받기를 서버에 저장 · 복원(`PUT /api/me/settings`, 앱을 열 때 내 집 정보의 `settings.notiOn`) — 그전에는 알림을 꺼도 서버의 월세 알림 · 공지 팝업이 생성됐음. 저장 실패 시 화면을 되돌림. 테스트 11개 추가, 프론트 227개 · 린트 · 빌드 통과 [알림 설정](wiki/topics/calendar-notifications.md#알림-생성과-읽음-상태)
+- 곽성미 — 소셜 첫 가입 약관 동의 화면(`/welcome`)을 회원가입 · 찾기와 같은 새 틀(`AccountLayout`)로 옮김: 11-20 디자인 변경 때 예전 틀(`AuthLayout`)에 남아 있던 것. `/welcome` 에서는 "로그인" 안내 대신 로그아웃("다른 계정으로 시작할까요?")을 보여 주고, 쓰지 않게 된 `AuthLayout` 삭제. 린트 · 빌드 · 프론트 216개 통과
 - moon — 모의 API의 동네 글 검색에 서버와 같은 복합어 매칭을 적용했습니다. 최신 `dev` 병합 후 프론트 테스트 213개, 린트, 운영 빌드를 통과했습니다. [모의 검색과 서버 비교](wiki/topics/community-operations.md#검색-정렬과-관련도)
 - jgkim7848-lab — 홈 알림 칸에 안 읽은 알림만 보이게(읽은 알림은 알림 전체 보기에서, `life/components/HomePhotoCard.tsx`). 쓰레기 배출일 알림을 없앤 데 맞춰 설정 "알림 받기" 설명 · 내 집 주소 안내 · 소개 화면 문구 수정. [일정·알림](wiki/topics/calendar-notifications.md) · 검증: 새 테스트 `home-noti-card.test.mjs` 3개(고치기 전 코드에서는 2개 실패 확인)
 

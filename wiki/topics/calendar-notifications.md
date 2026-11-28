@@ -4,12 +4,16 @@
 
 ## 일정 저장과 반복 기념일
 
+- 완료 표시는 일반 수정 `PATCH /api/events/{id}`의 `done`으로 저장합니다. 완료로 바뀔 때만 `done_at`을 적고, 해제하면 지웁니다. 화면이 쓰지 않던 완료 전용 `PATCH /api/events/{id}/done`은 2026-11-28에 지웠습니다. [일정 API](../../backend/src/main/java/com/zip/backend/calendar/CalendarController.java) · [완료 표시 테스트](../../backend/src/test/java/com/zip/backend/calendar/CalendarIntegrationTests.java)
+
 - 일정 화면에 할 일을 함께 표시합니다. 서버 모드에서는 일정·카테고리·항목 버튼을 각각 `/api/events`, `/api/event-categories`, `/api/event-presets`에서 회원별로 관리합니다. 일반 일정은 완료할 때 완료 시각을 저장하고, 완료를 해제하면 시각을 지웁니다. [일정 컨트롤러](../../backend/src/main/java/com/zip/backend/calendar/CalendarController.java) · [일정 서비스](../../backend/src/main/java/com/zip/backend/calendar/CalendarService.java)
 - 기념일은 원본 한 행에 저장하고 시간·카테고리·완료를 적용하지 않습니다. 매년 반복은 기념일만 지원합니다. 조회한 원본을 화면에서 연도별로 표시하며, 2월 29일은 평년에 2월 28일로 표시합니다. [화면 계산](../../frontend/src/features/life/derive.ts) · [DB 저장 계약](../../db/README.md#일정과-카테고리) · [기념일 마이그레이션](database.md#기념일-마이그레이션)
 - 2026-11-26 같은 [화면 계산](../../frontend/src/features/life/derive.ts) 파일의 동네 인증 판정만 고쳤고 기념일 · 일정 계산은 바뀌지 않았습니다. 프론트 테스트 207개가 통과했습니다. 동네 인증 규칙은 [커뮤니티 문서](community-operations.md#동네-글과-조회-집계)에 있습니다.
 - 카테고리를 삭제하면 일정과 사용자가 직접 만든 항목은 미분류로 옮깁니다. 미분류에 같은 이름의 버튼이 있으면 하나만 남깁니다. 화면은 카테고리 변경 후 서버에서 일정 목록을 다시 읽습니다. [카테고리 저장](../../backend/src/main/java/com/zip/backend/calendar/CalendarRepository.java) · [일정 동기화](../../frontend/src/features/life/calendarSync.ts)
 
 ## 알림 생성과 읽음 상태
+
+- 2026-11-28부터 내 정보의 **알림 받기**를 서버(`PUT /api/me/settings`)에도 저장합니다. 그전에는 브라우저에만 저장해서, 알림을 꺼도 서버가 `noti_on`을 보고 만드는 월세 알림·공지 팝업이 계속 생성됐습니다. 저장할 때는 GET으로 받은 최신 월세·기간 값에 `notiOn`만 바꿔 보내고, 실패하면 화면을 되돌립니다. 앱을 열 때 내 집 정보 응답의 `settings.notiOn`으로 복원합니다. [알림 설정 저장](../../frontend/src/features/life/settingsApi.ts) · [알림 스위치](../../frontend/src/features/life/components/MyInfo.tsx) · [검증](../../frontend/tests/life-settings-noti.test.mjs)
 
 알림은 알릴 시각에서 90일(설정 `zip.cleanup.notification-days`)이 지나면 읽음 여부와 관계없이 서버가 6시간마다 지웁니다. 2026-11-24부터 쓰레기 "배출 정보가 없어요" 안내는 지우지 않았지만, 2026-11-28 배출일 알림을 없애면서 이 예외도 없앴습니다([배출일 알림](trash-schedules.md#배출일-알림)). [오래된 데이터 정리](../../backend/src/main/java/com/zip/backend/maintenance/DataCleanupService.java)
 

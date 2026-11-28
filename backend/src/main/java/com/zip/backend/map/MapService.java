@@ -4,7 +4,6 @@ import com.zip.backend.common.ApiException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,13 +48,13 @@ public class MapService {
         this.quota = quota;
     }
 
-    public List<Map<String, Object>> categories() {
-        return repository.categories().stream().map(c -> Map.<String, Object>of(
-            "id", Long.toString(c.id()), "name", c.name(), "icon", c.icon())).toList();
+    public List<PlaceResponse.Category> categories() {
+        return repository.categories().stream()
+            .map(c -> new PlaceResponse.Category(Long.toString(c.id()), c.name(), c.icon())).toList();
     }
 
     /** 장소 목록 + 카카오를 못 써서 DB 장소로 대신했을 때의 이유 코드 (없으면 null) */
-    public record PlaceResult(List<Map<String, Object>> items, String notice) {}
+    public record PlaceResult(List<PlaceResponse> items, String notice) {}
     public record NearbyPlace(String id, String name, String address, long distanceMeters, double lat, double lon, String category) {}
 
     /** 응답 장소 한 곳. 카카오 장소는 DB 번호가 없어 id 가 "kakao:카카오장소id" */
@@ -198,13 +197,13 @@ public class MapService {
         return null;
     }
 
-    public List<Map<String, Object>> aiSearch(long userId, MapRequests.AiSearch request) {
+    public List<PlaceResponse.AiMatch> aiSearch(long userId, MapRequests.AiSearch request) {
         var home = repository.home(userId);
         var kinds = repository.categories().stream().map(MapRepository.Category::name).toList();
         return PlaceFinder.find(request.q().trim(), repository.places(region(request.regionId()), null, null), kinds,
                 p -> walkMin(p, home))
-            .stream().map(found -> Map.<String, Object>of("place", place(Long.toString(found.place().id()), found.place(), home),
-                "reasons", found.reasons(), "walkMin", walkMin(found.place(), home))).toList();
+            .stream().map(found -> new PlaceResponse.AiMatch(place(Long.toString(found.place().id()), found.place(), home),
+                found.reasons(), walkMin(found.place(), home))).toList();
     }
 
     /** 저장한 장소 id. DB 장소는 번호, 카카오 장소는 "kakao:카카오장소id" */
@@ -216,9 +215,9 @@ public class MapService {
     }
 
     /** 저장한 카카오 장소 (저장 목록에 보일 이름 · 종류). 지도 핀용 좌표는 없음 */
-    public List<Map<String, String>> kakaoFavorites(long userId) {
-        return repository.kakaoFavorites(userId).stream().map(f -> Map.of(
-            "id", KakaoPlaceId.toKey(f.kakaoPlaceId()), "name", f.name(), "category", f.category())).toList();
+    public List<PlaceResponse.KakaoFavorite> kakaoFavorites(long userId) {
+        return repository.kakaoFavorites(userId).stream()
+            .map(f -> new PlaceResponse.KakaoFavorite(KakaoPlaceId.toKey(f.kakaoPlaceId()), f.name(), f.category())).toList();
     }
 
     /** 한 사람이 저장할 수 있는 카카오 장소 수 */
@@ -260,7 +259,7 @@ public class MapService {
 
     /** 리스트 목록 + 각 리스트의 장소 키. 리스트가 하나도 없으면 "내 장소"를 만들고, 리스트에 안 든 저장 장소는 첫 리스트에 넣음 */
     @Transactional
-    public List<Map<String, Object>> placeLists(long userId) {
+    public List<PlaceResponse.PlaceList> placeLists(long userId) {
         repository.lockUser(userId); // 두 기기가 처음 동시에 열어도 "내 장소"는 하나
         var lists = repository.placeLists(userId);
         var saved = favorites(userId);
@@ -275,22 +274,22 @@ public class MapService {
         }
         // 저장이 풀린 장소가 리스트에 남아 있으면 보이지 않게 (저장 목록과 맞춤)
         var savedSet = new java.util.HashSet<>(saved);
-        var result = new ArrayList<Map<String, Object>>();
+        var result = new ArrayList<PlaceResponse.PlaceList>();
         for (var list : lists) {
             var keys = items.stream().filter(row -> (long) row[0] == list.id()).map(row -> (String) row[1]).filter(savedSet::contains).toList();
-            result.add(Map.of("id", Long.toString(list.id()), "name", list.name(), "color", list.color(), "placeIds", keys));
+            result.add(new PlaceResponse.PlaceList(Long.toString(list.id()), list.name(), list.color(), keys));
         }
         return result;
     }
 
     @Transactional
-    public Map<String, Object> createPlaceList(long userId, MapRequests.PlaceListInput input) {
+    public PlaceResponse.PlaceList createPlaceList(long userId, MapRequests.PlaceListInput input) {
         var valid = validList(input);
         if (repository.placeLists(userId).size() >= LIST_MAX) throw new ApiException(400, "리스트는 " + LIST_MAX + "개까지 만들 수 있어요.");
         long id;
         try { id = repository.insertPlaceList(userId, valid[0], valid[1]); }
         catch (org.springframework.dao.DuplicateKeyException duplicate) { throw new ApiException(409, "같은 이름의 리스트가 있어요."); }
-        return Map.of("id", Long.toString(id), "name", valid[0], "color", valid[1], "placeIds", List.of());
+        return new PlaceResponse.PlaceList(Long.toString(id), valid[0], valid[1], List.of());
     }
 
     @Transactional
@@ -353,14 +352,14 @@ public class MapService {
         return KakaoPlaceId.fromKey(placeId) != null ? placeId : Long.toString(id(placeId));
     }
 
-    public Map<String, List<String>> mapSettings(long userId) {
+    public PlaceResponse.MapSettings mapSettings(long userId) {
         var categories = repository.mapList(userId, "map_categories").orElseGet(() -> repository.categories().stream()
             .limit(DEFAULT_CATEGORY_COUNT).map(MapRepository.Category::name).toList());
-        return Map.of("categories", categories, "keywords", repository.mapList(userId, "map_keywords").orElse(List.of()));
+        return new PlaceResponse.MapSettings(categories, repository.mapList(userId, "map_keywords").orElse(List.of()));
     }
 
     @Transactional
-    public Map<String, List<String>> saveMapSettings(long userId, MapRequests.MapSettings request) {
+    public PlaceResponse.MapSettings saveMapSettings(long userId, MapRequests.MapSettings request) {
         var known = repository.categories().stream().map(MapRepository.Category::name).toList();
         var categories = new LinkedHashSet<String>();
         for (var name : request.categories()) {
@@ -375,7 +374,7 @@ public class MapService {
             keywords.add(keyword);
         }
         repository.saveMapSettings(userId, List.copyOf(categories), List.copyOf(keywords));
-        return Map.of("categories", List.copyOf(categories), "keywords", List.copyOf(keywords));
+        return new PlaceResponse.MapSettings(List.copyOf(categories), List.copyOf(keywords));
     }
 
     private long region(String regionId) {
@@ -420,20 +419,8 @@ public class MapService {
         return 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(Math.max(0, 1 - a)));
     }
 
-    private static Map<String, Object> place(String id, MapRepository.PlaceRow p, Optional<MapRepository.Point> home) {
-        var result = new LinkedHashMap<String, Object>();
-        result.put("id", id);
-        result.put("category", p.category());
-        result.put("name", p.name());
-        result.put("description", p.description() == null ? "" : p.description());
-        result.put("lat", p.lat());
-        result.put("lon", p.lon());
-        result.put("walkMin", walkMin(p, home));
-        result.put("address", p.address());
-        result.put("phone", p.phone());
-        result.put("openHours", p.openHours());
-        result.put("rating", p.rating());
-        result.put("reviewCount", p.reviewCount());
-        return result;
+    private static PlaceResponse place(String id, MapRepository.PlaceRow p, Optional<MapRepository.Point> home) {
+        return new PlaceResponse(id, p.category(), p.name(), p.description() == null ? "" : p.description(),
+            p.lat(), p.lon(), walkMin(p, home), p.address(), p.phone(), p.openHours(), p.rating(), p.reviewCount());
     }
 }

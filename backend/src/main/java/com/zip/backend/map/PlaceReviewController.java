@@ -1,7 +1,6 @@
 package com.zip.backend.map;
 
 import java.util.List;
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -22,7 +21,7 @@ public class PlaceReviewController {
     }
 
     @GetMapping("/api/places/{id}/reviews")
-    public List<Map<String, Object>> reviews(@AuthenticationPrincipal Jwt jwt, @PathVariable String id) { return reviews.reviews(userId(jwt), id); }
+    public List<PlaceReviewResponse> reviews(@AuthenticationPrincipal Jwt jwt, @PathVariable String id) { return reviews.reviews(userId(jwt), id); }
 
     @PostMapping("/api/places/{id}/reviews")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -49,14 +48,14 @@ public class PlaceReviewController {
 
     /** 지도 목록의 별점: ids=12,kakao:123 (100곳까지) → [{ id, rating, count }] (리뷰 없는 곳은 빠짐) */
     @GetMapping("/api/places/review-summary")
-    public List<Map<String, Object>> summary(@RequestParam(required = false) String ids) { return reviews.summaries(ids); }
+    public List<PlaceReviewResponse.Summary> summary(@RequestParam(required = false) String ids) { return reviews.summaries(ids); }
 
     // ---------- 관리자 ----------
 
     public record Resolution(String status) {}
 
     @GetMapping("/api/admin/place-review-reports")
-    public List<Map<String, Object>> adminReports(@RequestParam(required = false) String status) { return reviews.adminReports(status); }
+    public List<PlaceReviewResponse.AdminReport> adminReports(@RequestParam(required = false) String status) { return reviews.adminReports(status); }
 
     /** 신고 처리: HIDDEN = 리뷰 삭제, DISMISSED = 문제없음 (그 리뷰의 접수 중 신고 전부) */
     @PatchMapping("/api/admin/place-review-reports/{id}")

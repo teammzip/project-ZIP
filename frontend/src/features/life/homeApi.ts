@@ -26,7 +26,7 @@ export type HousingOnboardingInput = { action: 'skip' } | {
   home?: Pick<HomeInput, 'kind'> & Partial<Pick<HomeInput, 'deposit' | 'rent' | 'mgmtIncluded' | 'mgmtFee' | 'contractFee'>> & { loan?: SurveyLoanDraft }
 }
 type HomeResponse = {
-  settings: { rent: number; rentDay: number; moveIn: string; contractEnd: string; homeAddress: string }
+  settings: { rent: number; rentDay: number; moveIn: string; contractEnd: string; homeAddress: string; notiOn?: boolean }
   contract: (Contract & { managementBillId: string | null }) | null
   loan: HousingLoan | null
   loanDraft: SurveyLoanDraft | null
@@ -50,6 +50,8 @@ function apply(data: HomeResponse, owner: HomeOwner) {
   const settings = useLifeStore.getState().settings
   useLifeStore.getState().saveSettings({ ...settings, ...(data.contract ? { rent: Number(data.settings.rent), rentDay: data.settings.rentDay,
     moveIn: data.settings.moveIn, contractEnd: data.settings.contractEnd } : {}),
+    // 알림 받기는 서버 값이 기준 (다른 기기에서 바꾼 설정과 서버 알림이 같은 값을 쓰도록 복원)
+    ...(typeof data.settings.notiOn === 'boolean' ? { notiOn: data.settings.notiOn } : {}),
     homeAddresses: { ...settings.homeAddresses, [owner.id]: data.settings.homeAddress } })
   if (!data.contract) return // 서버에 계약이 없으면 기존 로컬 입력은 초안으로 보존한다.
   const old = useHousingSurveyStore.getState().survey

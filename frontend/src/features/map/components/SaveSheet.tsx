@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import axios from 'axios'
 import { isMockApi } from '@/features/auth'
 import { Modal } from '@/components/ui'
 import { getErrorMessage } from '@/lib/apiClient'
@@ -32,6 +33,8 @@ function SaveSheetBody({ target }: { target: SaveTarget }) {
   const [color, setColor] = useState(LIST_COLORS[1])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // 이름 · 색 편집 중인 리스트 (한 번에 하나)
+  const [editing, setEditing] = useState<{ id: string; name: string; color: string } | null>(null)
 
   // 서버 모드: 창이 열리면 최신 리스트를 받아 체크를 맞춤 (처음이면 서버가 "내 장소"를 만들어 줌)
   useEffect(() => {
@@ -73,6 +76,40 @@ function SaveSheetBody({ target }: { target: SaveTarget }) {
       setName('')
     } catch (err) {
       setError(getErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** 리스트 이름 · 색 바꾸기. 담긴 장소와 체크는 그대로 */
+  const saveEdit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!editing) return
+    const n = editing.name.trim()
+    if (!n) return setError('리스트 이름을 입력해 주세요.')
+    if (lists.some((l) => l.id !== editing.id && l.name === n)) return setError('같은 이름의 리스트가 있어요.')
+    setBusy(true)
+    setError('')
+    try {
+      if (isMockApi) {
+        if (!useMapStore.getState().updateListLocal(editing.id, n, editing.color)) throw new Error('리스트를 바꾸지 못했어요.')
+      } else {
+        await mapApi.updatePlaceList(editing.id, n, editing.color)
+        await refreshSavedFromServer()
+      }
+      setEditing(null)
+      showFavNote(`'${n}' 리스트를 바꿨어요.`)
+    } catch (err) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined
+      if (status === 409) setError('같은 이름의 리스트가 있어요.')
+      else if (status === 404) {
+        // 다른 기기에서 먼저 지운 리스트: 목록을 새로 받아서 보여 줌
+        setEditing(null)
+        setError('이미 지워진 리스트예요. 목록을 새로 불러왔어요.')
+        await refreshSavedFromServer().catch(() => {})
+        setPicked((p) => p.filter((x) => useMapStore.getState().lists.some((l) => l.id === x)))
+        setInitial((p) => p.filter((x) => useMapStore.getState().lists.some((l) => l.id === x)))
+      } else setError(getErrorMessage(err))
     } finally {
       setBusy(false)
     }
@@ -162,6 +199,28 @@ function SaveSheetBody({ target }: { target: SaveTarget }) {
       <ul className={styles.listPick}>
         {lists.map((l) => {
           const on = picked.includes(l.id)
+          if (editing?.id === l.id) {
+            return (
+              <li key={l.id} className={styles.listPickItem}>
+                <form className={cx(styles.newList, styles.listEditForm)} onSubmit={saveEdit}>
+                  <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} maxLength={20} aria-label={`'${l.name}' 리스트의 새 이름`} autoFocus />
+                  <div className={styles.colorDots} role="radiogroup" aria-label="리스트 색">
+                    {LIST_COLORS.map((c) => (
+                      <button key={c} type="button" role="radio" aria-checked={editing.color === c} aria-label={`색 ${c}`} className={cx(styles.colorDot, editing.color === c && styles.colorDotOn)} style={{ background: c }} onClick={() => setEditing({ ...editing, color: c })} />
+                    ))}
+                  </div>
+                  <div className={styles.newListBtns}>
+                    <button type="button" onClick={() => { setEditing(null); setError('') }}>
+                      취소
+                    </button>
+                    <button type="submit" className={styles.newListAdd} disabled={busy}>
+                      바꾸기
+                    </button>
+                  </div>
+                </form>
+              </li>
+            )
+          }
           return (
             <li key={l.id} className={styles.listPickItem}>
               <button type="button" role="checkbox" aria-checked={on} className={styles.listPickRow} onClick={() => toggle(l.id)}>
@@ -173,6 +232,11 @@ function SaveSheetBody({ target }: { target: SaveTarget }) {
                 <span className={cx(styles.listCheck, on && styles.listCheckOn)} aria-hidden="true">
                   ✓
                 </span>
+              </button>
+              <button type="button" className={styles.listEdit} onClick={() => { setError(''); setEditing({ id: l.id, name: l.name, color: LIST_COLORS.includes(l.color) ? l.color : LIST_COLORS[0] }) }} disabled={busy} aria-label={`'${l.name}' 리스트 이름 · 색 바꾸기`} title="이름 · 색 바꾸기">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 20h4l10-10-4-4L4 16v4zM13 7l4 4" />
+                </svg>
               </button>
               <button type="button" className={styles.listDelete} onClick={() => void removeList(l.id)} disabled={busy} aria-label={`'${l.name}' 리스트 삭제`} title="리스트 삭제">
                 <svg viewBox="0 0 24 24" aria-hidden="true">

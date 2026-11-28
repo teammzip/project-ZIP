@@ -81,6 +81,78 @@
   color: var(--color-muted);
 }
 
+/* "주변 동네" 탭 › 다른 동네 주변 보기 */
+.explorerOpen {
+  margin-top: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-card);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.explorerOpen:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.explorer {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+}
+
+.explorerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.explorerHead button,
+.explorerRetry {
+  border: 0;
+  background: none;
+  font-size: 12px;
+  color: var(--color-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.explorerPick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.explorerPick select {
+  flex: 1 1 140px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background: var(--color-card);
+  font-size: 13px;
+}
+
+.explorerNote {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.explorerHint {
+  font-size: 11px;
+  color: var(--color-muted);
+}
+
 /* 동네 인증 표시 · 인증하기 */
 .verified,
 .verifyLink {

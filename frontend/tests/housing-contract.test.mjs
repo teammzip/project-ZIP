@@ -53,6 +53,7 @@ function setup(kind) {
     if (name === '@tanstack/react-query') return { useQueryClient: () => ({ invalidateQueries: async () => {} }) }
       if (name === '@/features/auth/api') return { isMockApi: true }
     if (name === '../homeApi') return {}
+    if (name === '../settingsApi') return { saveNotiOn: async (on) => on }
     if (name === '@/lib/apiClient') return { getErrorMessage: (cause) => cause.message }
     if (name === '@/features/map/components/MyReviews') return { MyReviews: () => null }
     if (name === '@/features/onboarding/AddressSearch') return { AddressSearch: () => null }

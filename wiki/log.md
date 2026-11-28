@@ -402,6 +402,14 @@
 - `backend`의 `e543b6b` 기준으로 주요 DTO 적용 범위를 다시 확인했습니다. 일정·알림·메모 응답과 관리자·문의·AI 응답의 [후속 DTO 후보](topics/application.md#후속-dto-후보)를 정리했습니다.
 - 가계부·월급 INSERT의 생성 키 사용, 월급 동기화의 월별 조회 일괄 처리와 기존 응답의 스키마 누락을 [별도 최적화](topics/application.md#dto와-별도로-검토할-최적화)에 기록했습니다. 코드 변경과 응답 시간 측정은 수행하지 않았습니다.
 
+## [2026-11-27] record | 배포 준비 문서·설정과 지도 응답 DTO
+
+- [앱 구조와 실행 모드](topics/application.md)에 운영 빌드, 프록시 헤더, 오류 응답 형식, 시스템 구성도, OpenAPI 대조 결과를 반영했습니다. 지도·장소 리뷰 응답 11곳의 DTO 적용도 기록했습니다.
+- [외부 서비스와 AI](topics/service-integrations.md)에 서버 모드의 AI 연결 실패 안내와 처리방침 외부 전송 4곳을 반영했습니다. 처리방침 1번에 동네 인증 위치(GPS)가 빠져 있다는 점은 미해결로 남겼습니다.
+- [데이터베이스와 검증](topics/database.md)에는 약관 동기화 마이그레이션의 격리 MySQL 검증과 운영 DB 생성 절차 연결을 적었습니다. [계약 고정 지출](topics/fixed-expenses.md)에는 `homeManaged`를 적었습니다.
+- [구현·검증 현황](topics/project-status.md)에는 프록시 IP 해결과 잘못된 입력 점검(5xx 0건)을 적었습니다. [지도 장소 식별자](topics/map-place-ids.md#지도-응답-dto)에는 지도 응답 DTO와 확인 방법(바꾸기 전 고정한 모양 테스트, 임시 MySQL에서 바꾸기 전·후 서버 응답 24개 비교)을 적었습니다.
+- 남은 일: 화면에서 쓰지 않는 API 정리 여부, 처리방침 GPS 문구, 남은 요청 DTO 14곳과 응답 약 55곳(문원 님과 범위 조율), 10단계 로컬 통합 테스트.
+
 ## [2026-11-28] record | 최신 dev와 동네 검색 작업 병합
 
 - `backend`를 `e543b6b`에서 `dev`의 `731e329`까지 fast-forward했습니다. 작업 복구 중 이 로그 끝부분의 충돌을 원격 운영 기록과 로컬 검색 평가 기록을 모두 보존해 해결했습니다. 다른 변경은 자동으로 합쳐졌습니다. [원격 기준 비교](https://github.com/teammzip/project-ZIP/compare/e543b6bf88c3d3246e8d1443b5223cc9435c9593...731e32941268635c45bf6b61d759f39339b270a1)
@@ -429,3 +437,22 @@
 - 사용자 결정으로 쓰레기 배출일 알림을 없앴습니다. 일정 화면의 우리 동네 배출표 보기가 있어 알림은 없어도 된다는 판단입니다. 서버의 예약 작업과 테스트, 설정을 지웠고, 오래된 알림 정리에서 "배출 정보가 없어요" 안내를 지우지 않던 예외도 없앴습니다. 설정 화면·내 집 주소 안내·소개 화면 문구도 고쳤습니다. 지난 동작은 [배출일 알림](topics/trash-schedules.md#배출일-알림)에 이력으로 남겼고, [일정·알림](topics/calendar-notifications.md), [앱 구조](topics/application.md), [구현·검증 현황](topics/project-status.md), [색인](index.md)도 갱신했습니다.
 - 홈 알림 칸이 읽은 알림까지 보여 주던 것을 안 읽은 알림만 보이게 고쳤습니다. 읽은 알림은 알림 전체 보기에서 봅니다. 새 테스트(`frontend/tests/home-noti-card.test.mjs`)는 고치기 전 코드에서는 실패하고 고친 코드에서는 통과하는 것을 확인했습니다. [일정·알림](topics/calendar-notifications.md)
 - 위키 누락 검사에 걸린 [계약 고정 지출](topics/fixed-expenses.md)·[데이터베이스](topics/database.md)·[커뮤니티](topics/community-operations.md)·[가계부와 메모](topics/ledger-memos.md)·[내 집 정보](topics/home-info.md)·[지도](topics/map-place-ids.md)·[외부 서비스](topics/service-integrations.md)에 이번 변경과의 관계(영향 있음·없음)를 확인해 적었습니다.
+
+## [2026-11-28] record | Claude Code용 작업 규칙 파일 분리
+
+- Codex는 [AGENTS.md](../AGENTS.md)·[위키 AGENTS.md](AGENTS.md)를 읽고, Claude Code는 기본적으로 `CLAUDE.md`를 읽습니다. 2026-11-28 작업 대화에서 Claude Code 세션에 최상위 `AGENTS.md`가 처음부터 들어오지 않는 것을 확인했습니다.
+- 도구별로 자기 파일만 읽도록 [CLAUDE.md](../CLAUDE.md)와 [위키 CLAUDE.md](CLAUDE.md)를 추가했습니다. 내용은 AGENTS 파일과 같고, 안의 링크만 Claude 파일끼리 가리킵니다. 네 파일 맨 위에 짝 파일과 함께 고치라는 안내를 넣었고, [색인](index.md)에 두 파일의 관계를 적었습니다.
+- 할 일: 규칙을 고칠 때 AGENTS·CLAUDE 두 쌍을 같은 내용으로 유지해야 합니다. 어긋남을 자동으로 잡는 검사는 아직 없습니다.
+
+## [2026-11-28] record | 화면에서 쓰지 않는 API 6개 삭제
+
+- 결정(2026-11-28 작업 대화, 곽성미): 화면에서 부르지 않는 API 14개 중 "삭제 검토"로 분류한 6개를 지웠습니다. 예전 일반 고정 지출 5개(`/api/bills`, `/api/bills/{id}`, `/api/bills/{id}/payments/{month}`)와 일정 완료 전용 `PATCH /api/events/{id}/done`입니다. 화면은 각각 `/api/bills/monthly/**`와 `PATCH /api/events/{id}`의 `done`을 씁니다.
+- 지우기 전에 확인한 것: 프론트(모의 모드 포함)에서 부르는 곳이 없었습니다. 서비스 메서드는 이 API들만 썼습니다. 예전 API 테스트 중 월별 API에 없던 동시 납부 검사는 [월별 테스트](../backend/src/test/java/com/zip/backend/BillIntegrationTests.java)로 옮겼습니다.
+- 남은 일: 관리자 일괄 제재, 일정 검색, 홈 꿀팁 3개(DB `posts.is_home_tip`과 인덱스 포함), 생활 설정 2개는 팀 협의 후 결정합니다. 지역 목록은 유지합니다. [프론트 API 문서](../frontend/API.md) · [백엔드 구현 설명](../backend/IMPLEMENTATION.md#고정-지출-api-확인)
+
+## [2026-11-28] record | 화면에 연결하지 않았던 API 4가지 연결
+
+- 결정(2026-11-28 작업 대화): 변경안 자료 "ZIP API 변경안 한 장 요약"에서 네 가지를 골라 화면에 연결했습니다.
+- [AI 대화 한 건 삭제](topics/service-integrations.md)와 [저장 리스트 이름·색 변경](topics/map-place-ids.md#장소-검색과-저장-리스트)을 연결했습니다. [다른 동네 주변 보기](topics/community-operations.md#동네-글과-조회-집계)도 넣었습니다.
+- [알림 받기 서버 저장·복원](topics/calendar-notifications.md#알림-생성과-읽음-상태)을 연결했습니다. 그전에는 알림을 꺼도 서버의 월세 알림·공지 팝업이 생성됐습니다.
+- 백엔드는 바꾸지 않았습니다. 프론트 테스트는 227개로 늘었고(새 11개), 린트·빌드가 통과했습니다. 지역 목록·인접 지역은 실행 중인 서버에서도 응답을 확인했습니다. 화면 동작은 브라우저에서 직접 확인해야 합니다.

@@ -134,9 +134,6 @@ class ContractAutoRegisterTests {
         var update = BillInput.monthlyUpdate(Map.of("amount",1,"dueDate","2026-12-31"));
         assertEquals(409,assertThrows(ApiException.class,()->service.updateMonthly(1,10,20,YearMonth.of(2026,12),"Asia/Seoul",update)).status());
         assertEquals(409,assertThrows(ApiException.class,()->service.deleteMonthly(1,10,20,"2026-12","Asia/Seoul")).status());
-        assertEquals(409,assertThrows(ApiException.class,()->service.update(1,10,20,Map.of("amount",1))).status());
-        assertEquals(409,assertThrows(ApiException.class,()->service.remove(1,10,20)).status());
-        assertEquals(409,assertThrows(ApiException.class,()->service.pay(1,10,20,YearMonth.of(2026,12),Map.of("amount",1))).status());
         jdbc.update("UPDATE bill_payments SET deleted_at=CURRENT_TIMESTAMP WHERE bill_item_id=20");
         service.autoRegister(1,10,"Asia/Seoul");
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments WHERE deleted_at IS NOT NULL",Integer.class));
@@ -149,10 +146,5 @@ class ContractAutoRegisterTests {
         assertEquals(401,assertThrows(ApiException.class,()->service.autoRegister(2,10,"UTC")).status());
         at("2028-01-01T00:00:00Z").autoRegisterForUser(1,"UTC");
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM rent_payments",Integer.class));
-    }
-    @Test void outsideTermBlocksNewManagementPaymentThroughLegacyEndpoint() {
-        jdbc.update("UPDATE user_settings SET contract_end_ym='2026-10' WHERE user_id=1");
-        assertEquals(400,assertThrows(ApiException.class,()->service.pay(1,10,20,YearMonth.of(2026,12),Map.of("paid",true))).status());
-        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM bill_payments",Integer.class));
     }
 }

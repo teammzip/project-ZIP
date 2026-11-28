@@ -89,6 +89,21 @@ export async function recordExchange(conversationId: string | null, text: string
   }
 }
 
+/** 대화 목록 한 줄 (GET /api/ai/conversations). title = 첫 질문 요약, 질문 없이 만든 대화는 null */
+export type ConversationSummary = { id: string; title: string | null; topic: string | null; entryPoint: EntryPoint; updatedAt: string }
+
+/** 내 AI 대화 목록 (홈 · AI 화면 모두, 최근 20개). 모의 API 모드는 서버에 저장하지 않아 빈 목록 */
+export async function listConversations(): Promise<ConversationSummary[]> {
+  if (isMockApi) return []
+  return (await apiClient.get<ConversationSummary[]>('/ai/conversations')).data
+}
+
+/** 대화 한 건 삭제 (DELETE /api/ai/conversations/{id}). 실패하면 오류를 그대로 던져서 화면이 안내해요 */
+export async function deleteConversation(id: string): Promise<void> {
+  if (isMockApi) return
+  await apiClient.delete(`/ai/conversations/${encodeURIComponent(id)}`)
+}
+
 /** 내 AI 대화를 모두 지움 (데이터 초기화) */
 export async function deleteAllConversations(): Promise<void> {
   if (isMockApi) return

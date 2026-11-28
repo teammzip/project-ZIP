@@ -33,6 +33,8 @@ type MapState = {
   ensureDefaultList: () => void
   /** 가짜 API 모드: 새 리스트 */
   addListLocal: (name: string, color: string) => PlaceList | null
+  /** 가짜 API 모드: 리스트 이름 · 색 바꾸기 (담긴 장소는 그대로). 빈 이름 · 다른 리스트와 같은 이름 · 없는 리스트면 false */
+  updateListLocal: (listId: string, name: string, color: string) => boolean
   /** 가짜 API 모드: 리스트 삭제 (이 리스트에만 있던 장소는 저장도 풂) */
   deleteListLocal: (listId: string) => void
   /** 가짜 API 모드: 이 장소를 고른 리스트들에 넣음 (비우면 저장 풂) */
@@ -63,6 +65,13 @@ export const useMapStore = create<MapState>()(
         const list = { id: `local-${Date.now()}`, name: n, color, placeIds: [] }
         set((s) => ({ lists: [...s.lists, list] }))
         return list
+      },
+      updateListLocal: (listId, name, color) => {
+        const n = name.trim()
+        const lists = get().lists
+        if (!n || !lists.some((l) => l.id === listId) || lists.some((l) => l.id !== listId && l.name === n)) return false
+        set((s) => ({ lists: s.lists.map((l) => (l.id === listId ? { ...l, name: n, color } : l)) }))
+        return true
       },
       deleteListLocal: (listId) =>
         set((s) => {

@@ -92,11 +92,6 @@ public class BillRepository {
             id, month.toString(), amount, paidAt == null ? null : Timestamp.from(paidAt.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)));
     }
 
-    public void updatePayment(long id, YearMonth month, long amount, Instant paidAt) {
-        jdbc.update("UPDATE bill_payments SET amount = ?, paid_at = ? WHERE bill_item_id = ? AND period_ym = ?",
-            amount, paidAt == null ? null : Timestamp.from(paidAt.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)), id, month.toString());
-    }
-
     public void deleteMonthly(long id, YearMonth month, Instant now) {
         jdbc.update("UPDATE bill_payments SET deleted_at=? WHERE bill_item_id=? AND period_ym=? AND deleted_at IS NULL",
             Timestamp.from(now.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)), id, month.toString());
@@ -157,17 +152,6 @@ public class BillRepository {
         }
     }
     private record FuturePayment(YearMonth month,java.time.LocalDate due,long amount) {}
-
-    public void propagateAmount(long user,long id,long amount,java.time.LocalDate today) {
-        var home=housing(user);
-        var rows=jdbc.query("SELECT period_ym,due_date FROM bill_payments WHERE bill_item_id=? AND paid_at IS NULL AND deleted_at IS NULL AND due_date>=?",
-            (rs,n)->new DatedMonth(YearMonth.parse(rs.getString(1)),YearMonth.from(rs.getDate(2).toLocalDate())),id,java.sql.Date.valueOf(today));
-        for(var row:rows) {
-            if(home!=null && (!home.includes(row.month()) || !home.includes(row.dueMonth()))) continue;
-            jdbc.update("UPDATE bill_payments SET amount=? WHERE bill_item_id=? AND period_ym=? AND paid_at IS NULL AND deleted_at IS NULL",amount,id,row.month().toString());
-        }
-    }
-    private record DatedMonth(YearMonth month,YearMonth dueMonth) {}
 
     public Long photoImport(long userId, String hash) {
         return jdbc.query("SELECT bill_item_id FROM bill_photo_imports WHERE user_id=? AND image_hash=?", (rs, n) -> rs.getLong(1), userId, hash).stream().findFirst().orElse(null);

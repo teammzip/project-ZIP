@@ -169,7 +169,7 @@ PATCH `/api/auth/me`는 프로필 수정, [소셜 첫 약관 동의](#소셜-로
 
 ## 2. 설정 · 동네 ✅
 
-> 화면은 `/api/me/region-verify`, `/api/me/home-info`와 `/loan`, `/api/me/housing-onboarding`, `/api/me/profile-info`를 호출해요. `/api/me/settings` 는 서버에 있지만 2026-11-24 리팩토링(`b0a937d`) 뒤 화면은 부르지 않아요(우리 동네는 브라우저 생활 설정 + 로그인 응답의 `region` · `regionVerifiedAt`). 동네 목록 `GET /api/regions` 와 이웃 조회 `GET /api/regions/{id}/neighbors` 는 서버에 있고(로그인 없이), 화면의 "주변 동네" 안내는 `/api/posts/neighbors` 를 써요.
+> 화면은 `/api/me/region-verify`, `/api/me/home-info`와 `/loan`, `/api/me/housing-onboarding`, `/api/me/profile-info`를 호출해요. `/api/me/settings` 는 2026-11-28부터 내 정보의 **알림 받기**에 써요: 스위치를 바꾸면 GET 으로 받은 최신 월세 · 납부일 · 입주월 · 계약 종료월에 `notiOn` 만 바꿔 PUT 하고(동네 · 주소 칸은 보내지 않아 그대로), 실패하면 화면을 원래 값으로 되돌려요. 앱을 열 때는 `/api/me/home-info` 응답의 `settings.notiOn` 으로 복원해요. 서버 알림(월세 알림 · 공지 팝업 · 알림 목록)이 DB 의 `noti_on` 을 보기 때문이에요. 우리 동네는 여전히 브라우저 생활 설정 + 로그인 응답의 `region` · `regionVerifiedAt` 이에요. 동네 목록 `GET /api/regions` 와 이웃 조회 `GET /api/regions/{id}/neighbors` 는 커뮤니티 "주변 동네" 탭의 **다른 동네 주변 보기**에 써요(2026-11-28, 로그인 없이). "주변 동네" 안내 자체는 `/api/posts/neighbors` 를 써요.
 
 ### 내 집 정보 서버 연결 (2026-11-15)
 
@@ -259,8 +259,7 @@ PATCH `/api/auth/me`는 프로필 수정, [소셜 첫 약관 동의](#소셜-로
 | GET | `/api/events?from=2026-10-01&to=2026-10-31` | — | `[event]` |
 | GET | `/api/events/search?q=월세` | — | `[event]` (상단 검색) |
 | POST | `/api/events` | `{ date, time, title, category, anniv, yearly }` | `event` |
-| PATCH | `/api/events/{id}` | `{ date, time, title, category, anniv, yearly }` 중 바꿀 것 | `event` |
-| PATCH | `/api/events/{id}/done` | `{ done: true }` | `event` |
+| PATCH | `/api/events/{id}` | `{ date, time, title, category, anniv, yearly, done }` 중 바꿀 것 (완료 표시도 여기로. 예전 `/done` 경로는 2026-11-28에 지움) | `event` |
 | DELETE | `/api/events/{id}` | — | — |
 | GET | `/api/trash-schedules?regionId=2` | — | `[{ place, general: { days: [1,3,5], startTime: "18:00" } \| null, food, recycle }]` (장소 한 줄에 종류별 요일 · 시각, 배출 없는 종류는 `null`) |
 | GET | `/api/trash-schedules/me` | — | `{ regionName, items }`. 내 집 주소가 비어 있으면 회원 주소를 사용해 시·군·구를 찾아요. 지역을 찾지 못하면 `regionName: null`, 배출표가 없으면 `items: []`예요. `items`는 위 배출표와 같은 형식이에요. |
@@ -302,21 +301,8 @@ PATCH `/api/auth/me`는 프로필 수정, [소셜 첫 약관 동의](#소셜-로
 
 가계부 → 지출 → **고정 지출** 화면: 월세 + 공과금 · 통신 · 구독 · 관리비 같은 매달 나가는 돈. 항목마다 **태그**를 붙여 태그별 합계를 보여 주고, **이번 달 납부 체크리스트**로 달마다 체크해요.
 
-화면은 아래 [4-1. 월별 고정 지출](#4-1-월별-고정-지출-현재-화면이-쓰는-api)의 `/api/bills/monthly`를 사용합니다. 월세는 `housingItems`에 포함되며 전세 대출은 [내 집 정보 API](#내-집-정보-서버-연결-2026-11-15)에서 관리합니다. 아래 표는 이전 방식의 고정 지출 API입니다.
+화면은 아래 [4-1. 월별 고정 지출](#4-1-월별-고정-지출-현재-화면이-쓰는-api)의 `/api/bills/monthly`를 사용합니다. 월세는 `housingItems`에 포함되며 전세 대출은 [내 집 정보 API](#내-집-정보-서버-연결-2026-11-15)에서 관리합니다. 예전 일반 고정 지출 API(`GET · POST /api/bills`, `PATCH · DELETE /api/bills/{id}`, `PUT /api/bills/{id}/payments/{month}`)는 화면이 월별 API로 바뀐 뒤 쓰이지 않아 2026-11-28에 지웠어요.
 
-| 메서드 | 주소 | 보내는 값 | 받는 값 |
-|---|---|---|---|
-| GET | `/api/bills?month=2026-10` | — | `[bill]` (그 달 납부 상태 포함) |
-| POST | `/api/bills` | `{ name, amount, tag }` | `bill` |
-| PATCH | `/api/bills/{id}` | `{ name, amount, tag }` 중 변경값 | `bill` |
-| PUT | `/api/bills/{id}/payments/{month}` | `{ paid: true }` 또는 `{ amount: 41000 }` | `bill` |
-| DELETE | `/api/bills/{id}` | — (해지: `is_active = 0`) | — |
-
-일반 고정 지출 API의 POST는 당월 미납 스냅샷을 생성하고, PATCH는 당월 금액을 보존한 채 기본 금액을 수정해요. 응답의 defaultAmount는 미생성 월 예정액, amount는 선택 월 금액이에요. 당월 금액 정정은 payments API로 보내세요. 일반 고정 지출 GET은 DB를 변경하지 않고 과거 월은 기존 기록만, 현재/미래 월은 스냅샷 또는 예정액(snapshot=false)을 반환해요. 해지 항목도 기존 월 기록은 active=false로 남아요. 가계부의 계약 비용은 아래 월별 조회·자동 등록 정책을 따릅니다. [Postman 검증·상세 정책](../backend/IMPLEMENTATION.md#고정-지출-api-확인)을 참고하세요.
-
-```json
-{ "id": "5", "name": "전기", "amount": 32000, "tag": "공과금", "paid": false, "paidAt": null }
-```
 - 월세 `amount`는 **원 단위** (설정의 `rent` × 10000, `rent_payments.amount`).
 - 고정 지출 `id`는 항목(`bill_items.id`), `amount`·`paid`는 그 달 납부 기록(`bill_payments`)의 값이에요.
 - **tag**: 기본 5개 + 회원이 bill scope에 추가한 분류예요. DB `bill_items.tag VARCHAR(24)`. 현재 고정 지출 화면은 사용자 분류별 합계와 전체 납부/남은 금액을 보여요.
