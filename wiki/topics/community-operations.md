@@ -220,3 +220,9 @@ Windows에서 JDK 17의 `JAVA_HOME`을 설정하고 `backend`에서 `./gradlew.b
 | 장소 리뷰 신고 | 관리자 화면에서 장소 리뷰 신고를 기각하거나 리뷰를 삭제할 수 있습니다. 리뷰 삭제에 따른 사진 정리 규칙도 적용됩니다. 리뷰를 삭제해도 신고 목록에는 신고 당시의 작성자·내용·별점이 남고 `review.deleted`가 `true`가 됩니다. 목록 응답은 2026-11-27부터 `PlaceReviewResponse.AdminReport`이며, 칸은 이전과 같습니다. [리뷰 서비스](../../backend/src/main/java/com/zip/backend/map/PlaceReviewService.java) · [지도 장소 식별자](map-place-ids.md#지도-응답-dto) |
 
 권한 분리, 관리자 처리와 사용자 알림은 커뮤니티·회원 제재·문의·공지 통합 테스트에 다뤄져 있습니다. 실제 환경별 검증은 [구현·검증 현황](project-status.md#검증된-부분)을 참고하세요. [커뮤니티 관리 테스트](../../backend/src/test/java/com/zip/backend/community/AdminCommunityIntegrationTests.java) · [회원 제재 테스트](../../backend/src/test/java/com/zip/backend/moderation/ModerationIntegrationTests.java) · [문의 테스트](../../backend/src/test/java/com/zip/backend/support/SupportIntegrationTests.java) · [공지 테스트](../../backend/src/test/java/com/zip/backend/notice/NoticeIntegrationTests.java)
+
+### 공지 응답 DTO
+
+2026-11-29에 공지 조회와 관리자 등록·수정 응답을 공통 `NoticeResponse`로 바꿨습니다. 목록은 `body` 키를 생략하며, 상세·팝업·관리자 등록 및 수정의 반환값에는 본문이 있습니다. ID와 UTC ISO 8601 시각은 문자열이며, 작성자를 조회할 수 없으면 `author`는 `운영자`입니다. 관리자 요청은 기존 `NoticeInput`을 사용합니다. [응답 DTO](../../backend/src/main/java/com/zip/backend/notice/NoticeResponse.java) · [공지 서비스](../../backend/src/main/java/com/zip/backend/notice/NoticeService.java) · [프론트 공지 조회](../../frontend/src/features/notice/api.ts) · [OpenAPI 공지 계약](../../backend/openapi.yaml#L1726)
+
+DTO 적용 전후에 공지 통합 테스트 6개를 H2에서 실행해 통과했습니다. 목록·상세·팝업의 JSON 전체를 비교했고 관리자 등록·수정의 본문, 권한과 알림도 확인했습니다. [공지 통합 테스트](../../backend/src/test/java/com/zip/backend/notice/NoticeIntegrationTests.java)

@@ -607,3 +607,34 @@
 
 - GitHub에서 확인한 `dev` `32963af`가 로컬 `backend`에 반영돼 있습니다. [변경 기록](../CHANGELOG.md)과 Flyway·메모·가계부 변경을 스테이징하고, 작업 트리의 신규 파일 7개를 stash 원본과 대조했습니다. 스테이징 범위의 공백·민감정보 패턴·Second Brain 검사를 통과했습니다.
 - 동일한 작업 트리에서 백엔드 H2 전체 363개, 프론트 전체 236개, 린트·운영 빌드, DB 정적 검사 8개가 통과했습니다. 빌드 리소스에 Flyway `V1`~`V4`가 포함됐습니다. 실제 MySQL 결과는 [기존 확인 범위](topics/project-status.md#검증된-부분)에 기록돼 있습니다.
+
+## [2026-11-28] record | Flyway·JPA 반영 후 프로젝트 개선안 재검토
+
+- 로컬 `backend`의 `b20bc2c`에서 Flyway, 메모 폴더 JPA, 홈·가계부 지출 캐시 공유가 코드에 반영된 범위를 확인했습니다. [개선 우선순위](topics/project-status.md#개선-우선순위-검토)에 실제 MySQL의 Flyway·JPA CI 검증, 메모·일정의 거절된 편집 복구, 운영 상태 확인, API 계약·타입 생성, AI 응답 복구를 기록했습니다.
+- 백엔드 전체 H2 테스트 363개를 재실행해 실패·오류·건너뜀 없이 통과했습니다. 프론트 테스트 236개와 린트·운영 빌드, DB 정적 검사 8개도 통과했습니다. 격리 MySQL·브라우저·팀 배포 DB의 재검증은 후속 작업으로 남았습니다. [기존 검증 범위](topics/project-status.md#검증된-부분)
+
+## [2026-11-28] record | AI API와 고지서 처리 흐름 확인
+
+- 로컬 `b20bc2c`의 서버와 화면 코드를 대조해 [Gemini 요청과 고지서 데이터](topics/service-integrations.md#gemini-요청과-고지서-데이터)에 모델 설정, 공통 사용량, 사진·QR 전송, 등록 확인 기한과 데이터 저장 범위를 정리했습니다. 실제 배포 설정과 Gemini 호출은 확인하지 않았습니다.
+
+## [2026-11-28] record | 문서 충돌 해결과 남은 DTO·조회 최적화 확인
+
+- 로컬 `backend`와 `origin/backend`가 `b20bc2c`를 가리키며, [변경 기록](../CHANGELOG.md)과 이 로그에는 충돌 표시나 미해결 인덱스 항목이 없습니다. 로그에 추가된 작업 기록은 커밋 이후 편집입니다.
+- [후속 DTO 후보](topics/application.md#후속-dto-후보)에 개인 정보와 일정 분류·프리셋 응답, 월급·내 집 정보 저장 요청의 확인 항목을 추가했습니다. 월급의 기간별 중복 확인, 고정 지출의 계약·시간대 재조회, 가계부 수정의 두 조회, 알림 폴링과 회원 응답 조립을 [별도 최적화 후보](topics/application.md#dto와-별도로-검토할-최적화)와 대조했습니다. 코드 검토이며 운영 성능은 미측정입니다.
+
+## [2026-11-28] record | Testcontainers MySQL 통합 검사 추가
+
+- `b20bc2c` 기준으로 [MySQL 통합 테스트](../backend/src/test/java/com/zip/backend/tools/MySqlIntegrationTests.java)와 [GitHub Actions 작업](../.github/workflows/test.yml)을 추가했습니다. 기존 Flyway 실행 경로를 재사용해 신규 DB·이력 재실행·기존 DB 기준 등록·불완전한 DB 거절을 검증하고, 마이그레이션된 DB에서 메모 폴더 API의 회원별 CRUD를 확인합니다. [DB 검증](topics/database.md#db-검증-결과) · [메모 폴더](topics/ledger-memos.md#폴더와-메모-동기화)
+- `mysql:8.0.46` 이미지 태그를 확인하고 Gradle에서 컨테이너 테스트를 컴파일했습니다. 로컬에 Docker 런타임이 없어 임시 MySQL 8.0.46에 같은 테스트 로직을 연결해 네 시나리오를 실패·오류·건너뜀 없이 통과시켰습니다. 기존 H2 메모 테스트 6개, DB 정적 검사 8개, 워크플로 YAML·명령 확인도 통과했습니다. 실제 컨테이너 실행 결과는 GitHub Actions에서 확인합니다.
+
+## [2026-11-29] record | 고지서 추출 항목과 Gemini 실제 판독 확인
+
+- [Gemini 요청과 고지서 데이터](topics/service-integrations.md#gemini-요청과-고지서-데이터)에 API 응답과 화면 표시 항목을 비교해 기록했습니다. ZIP의 고지서 지시문·응답 스키마로 합성 전기요금 PNG 한 장을 실제 Gemini에 보내 금액·납부 기한·문서 식별 정보가 일치함을 확인했습니다. 프론트 고지서 테스트 5개와 출력 경로를 분리해 재실행한 백엔드 고지서·QR 테스트 21개가 통과했습니다.
+
+## [2026-11-29] record | 공지 응답 DTO 적용
+
+- [공지 응답 DTO](topics/community-operations.md#공지-응답-dto)에서 목록의 본문 생략과 상세·팝업·관리자 저장의 본문 포함을 유지했습니다. 적용 전후 H2 공지 통합 테스트 6개, 프론트 팝업 테스트 3개, 공지 변경 범위의 Second Brain 검사를 통과했습니다.
+
+## [2026-11-29] record | 양평군 수기 고지서 사례의 ZIP 적용 검토
+
+- [문서 처리 자동화 적용 검토](topics/service-integrations.md#문서-처리-자동화-적용-검토)에 기사 확인 범위와 ZIP 적용안을 기록했습니다. 문서 분류·수정 가능한 미리보기, 청구 연월과 등록월의 매핑, 검증 후 자동 등록을 검토했습니다.

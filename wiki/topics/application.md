@@ -82,6 +82,7 @@ flowchart LR
 | 적용 완료 | 알림 목록 응답 (2026-11-28) | [알림 목록 DTO와 기존 응답 계약](calendar-notifications.md#알림-목록-응답-dto-검토) |
 | 적용 완료 | 일정 목록·검색·등록·수정 응답 (2026-11-28) | [공통 일정 응답 DTO와 기존 응답 계약](calendar-notifications.md#일정-응답-dto) |
 | 적용 완료 | 메모 목록·등록·수정 응답 (2026-11-28) | [공통 메모 응답 DTO와 기존 응답 계약](ledger-memos.md#메모-응답-dto) |
+| 적용 완료 | 공지 목록·상세·팝업·관리자 등록 및 수정 응답 (2026-11-29) | [공지 응답 DTO](community-operations.md#공지-응답-dto) |
 
 로그인·가입·일정·일반 메모와 가계부 분류 요청은 기존 `record`를 활용할 수 있습니다. 약관 응답도 이미 타입이 있습니다. 회원 게시글 수처럼 작은 고정 응답과 월별 수입 합계처럼 월이 키인 `Map<String, Long>`은 현재 표현으로 충분합니다. 내부 JDBC 행과 서비스 값은 공개 응답에서 의미나 필드가 달라질 때 분리합니다. 프로필 PATCH는 필드 생략과 명시적 `null`을 구별하는 현재 파서를 유지하는 것이 적합합니다. [일반 메모 입력](../../backend/src/main/java/com/zip/backend/memo/MemoService.java) · [가계부 분류](../../backend/src/main/java/com/zip/backend/ledger/LedgerCategoryService.java) · [약관 응답](../../backend/src/main/java/com/zip/backend/legal/TermsController.java) · [프로필 PATCH](../../backend/src/main/java/com/zip/backend/auth/ProfilePatch.java)
 
@@ -95,9 +96,11 @@ flowchart LR
 | --- | --- | --- |
 | 후속 | 관리자 회원·제재 이력과 고객센터 문의 응답 | 페이지의 `items`·`hasNext`, 제재 종료·해제 시각, 미답변 문의의 `answer: null`. [회원·제재 응답](../../backend/src/main/java/com/zip/backend/moderation/ModerationService.java#L47) · [문의 응답](../../backend/src/main/java/com/zip/backend/support/SupportService.java#L99) |
 | 후속 | AI 대화 목록·메시지 응답 | 메시지 ID·역할·본문·시각과 선택 `card`는 공통 응답 타입으로 표현할 수 있습니다. `card.data`는 카드 유형별 구조를 보존합니다. [AI 응답 조립](../../backend/src/main/java/com/zip/backend/ai/AiService.java#L210) |
-| 후속 | 공지 목록·상세·팝업 응답 | 목록은 `body`를 생략하고 상세·팝업·저장 응답은 `body`를 포함합니다. 기존 공지 작성 요청은 `NoticeInput`을 사용합니다. [공지 응답 조립](../../backend/src/main/java/com/zip/backend/notice/NoticeService.java#L85) · [프론트 공지 조회](../../frontend/src/features/notice/api.ts) |
+| 선택 | 개인 정보 응답과 일정 분류·프리셋 응답 | `/api/me/profile-info`의 조회·수정은 동일한 네 필드를 반환하며 생년월일이 없으면 `null`입니다. 일정 본문 응답과 별개로 분류에는 기본 항목 배열이, 프리셋에는 분류 ID가 포함됩니다. [개인 정보 API](../../backend/src/main/java/com/zip/backend/settings/ProfileInfoController.java#L29) · [일정 분류·프리셋 API](../../backend/src/main/java/com/zip/backend/calendar/CalendarController.java#L42) |
 
 월별 고정 지출은 서비스가 검증한 입력을 `BillInput`의 `record`로 이미 다룹니다. HTTP 컨트롤러에서 받는 원본 `Map`을 바꿀 때는 금액의 JSON 자료형과 허용 필드 규칙을 테스트로 보존합니다. [월별 입력](../../backend/src/main/java/com/zip/backend/bills/BillInput.java) · [월별 저장 API](../../backend/src/main/java/com/zip/backend/bills/BillController.java#L33)
+
+`b20bc2c` 기준으로 월급 설정과 내 집 정보의 응답 DTO는 적용됐으며, 저장 API의 HTTP 본문은 `Map`입니다. 월급 설정 요청을 별도로 타입화할 때는 수령일까지 받는 저장 API와 수령일이 없을 수 있는 첫 설문을 구분합니다. 전체 계약 저장에서 `loan`을 생략하거나 `null`로 보내면 대출을 비활성화하며, 대출 전용 저장은 `loan` 키를 요구하고 비활성화할 때 `null`을 받습니다. [월급 저장 API](../../backend/src/main/java/com/zip/backend/ledger/SalaryController.java) · [설문 월급 처리](fixed-expenses.md#월급-설정-응답-dto) · [내 집 정보 저장 API](../../backend/src/main/java/com/zip/backend/settings/HomeInfoController.java) · [대출 비활성화](../../backend/src/main/java/com/zip/backend/settings/HomeInfoService.java#L131)
 
 적용할 때는 JSON 필드명·자료형·금액 단위·필드 생략과 `null`·검증 오류 상태를 기존 HTTP 테스트로 비교합니다. 요청 `record`가 이미 있는 경계도 API 계약과 대조합니다.
 

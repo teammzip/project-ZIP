@@ -5,9 +5,7 @@ import com.zip.backend.common.ApiException;
 import com.zip.backend.notification.NotificationService;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,21 +30,21 @@ public class NoticeService {
     /** popup: 앱을 열면 팝업으로, notify: true 면 회원들에게 알림도 보냄 */
     public record NoticeInput(String title, String body, Boolean pinned, Boolean popup, @JsonProperty("notify") Boolean sendAlert) {}
 
-    public List<Map<String, Object>> list() {
+    public List<NoticeResponse> list() {
         return repository.list(LIST_MAX).stream().map(n -> notice(n, false)).toList();
     }
 
     /** 앱을 열면 띄울 팝업 공지 (내용 포함, 새 것부터 최대 5개). 안 보기 · 닫기는 화면이 브라우저에 기억해요 */
-    public List<Map<String, Object>> popups() {
+    public List<NoticeResponse> popups() {
         return repository.popups(POPUP_MAX).stream().map(n -> notice(n, true)).toList();
     }
 
-    public Map<String, Object> get(String id) {
+    public NoticeResponse get(String id) {
         return notice(repository.find(id(id)).orElseThrow(NoticeService::notFound), true);
     }
 
     @Transactional
-    public Map<String, Object> create(long adminId, NoticeInput input) {
+    public NoticeResponse create(long adminId, NoticeInput input) {
         var valid = valid(input);
         var now = clock.instant().truncatedTo(ChronoUnit.SECONDS); // MySQL DATETIME 반올림 대비
         long id = repository.insert(adminId, valid.title(), valid.body(), valid.pinned(), valid.popup(), now);
@@ -57,7 +55,7 @@ public class NoticeService {
     }
 
     @Transactional
-    public Map<String, Object> update(String id, NoticeInput input) {
+    public NoticeResponse update(String id, NoticeInput input) {
         long noticeId = id(id);
         var valid = valid(input);
         if (repository.update(noticeId, valid.title(), valid.body(), valid.pinned(), valid.popup(), clock.instant().truncatedTo(ChronoUnit.SECONDS)) == 0) throw notFound();
@@ -82,17 +80,17 @@ public class NoticeService {
         return new Valid(title, body, Boolean.TRUE.equals(input.pinned()), Boolean.TRUE.equals(input.popup()));
     }
 
-    private static Map<String, Object> notice(NoticeRepository.NoticeRow n, boolean withBody) {
-        var out = new LinkedHashMap<String, Object>();
-        out.put("id", Long.toString(n.id()));
-        out.put("title", n.title());
-        if (withBody) out.put("body", n.body());
-        out.put("pinned", n.pinned());
-        out.put("popup", n.popup());
-        out.put("author", n.author() == null ? "운영자" : n.author());
-        out.put("createdAt", n.createdAt().toString());
-        out.put("updatedAt", n.updatedAt().toString());
-        return out;
+    private static NoticeResponse notice(NoticeRepository.NoticeRow n, boolean withBody) {
+        return new NoticeResponse(
+            Long.toString(n.id()),
+            n.title(),
+            withBody ? n.body() : null,
+            n.pinned(),
+            n.popup(),
+            n.author() == null ? "운영자" : n.author(),
+            n.createdAt().toString(),
+            n.updatedAt().toString()
+        );
     }
 
     private static long id(String value) {

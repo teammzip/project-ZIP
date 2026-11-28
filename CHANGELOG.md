@@ -29,6 +29,9 @@
 
 `backend/` — Spring Boot 서버 API
 
+### 2026-11-29
+- Codex — 공지 목록·상세·팝업과 관리자 등록·수정 응답에 공통 `NoticeResponse`를 적용했습니다. 목록의 본문 생략과 다른 응답의 본문 포함을 보존했으며, 적용 전후 공지 통합 테스트 6개가 통과했습니다. [공지 응답 DTO](wiki/topics/community-operations.md#공지-응답-dto)
+
 ### 2026-11-28
 - 곽성미 — 화면에서 쓰지 않는 API 7개 삭제: `GET /api/events/search`, `GET /api/trash-schedules?regionId=`, `POST /api/admin/sanctions/bulk`, `PATCH /api/admin/reports/{id}`, `GET /api/posts/home-tips`, `PUT`·`DELETE /api/admin/posts/{id}/home-tip`. 이 API만 쓰던 서비스 · 저장소 메서드와 테스트 3개(홈 꿀팁 2 · 일괄 정지 1)도 지움. 신고 숨김 · 배출표 표 모양 검증은 남은 API(대상별 신고 처리 · 내 배출표)로 옮김. DB `posts.is_home_tip` · 응답 `homeTip` 은 유지. OpenAPI 105 paths, 백엔드 352개 통과 [애플리케이션](wiki/topics/application.md#화면에서-호출하지-않는-api)
 - Codex — 메모 폴더의 생성·조회·수정·삭제에 Spring Data JPA를 적용했습니다. 회원별 접근, 이름 중복 `409`, 폴더를 지울 때 메모가 미분류로 이동하는 동작을 보존합니다. [메모 폴더 저장과 검증](wiki/topics/ledger-memos.md#폴더와-메모-동기화)
@@ -130,6 +133,7 @@
 `db/` — 표 설계(schema.sql) · 마이그레이션 · 검사. 마이그레이션 파일 설명은 [db/migrations/README.md](db/migrations/README.md)
 
 ### 2026-11-28
+- Codex — Testcontainers MySQL 8.0.46에서 Flyway 설치·기준 등록·재실행 및 메모 폴더 CRUD를 검사하는 `mysqlTest`를 PR 워크플로에 추가했습니다. 로컬 격리 MySQL 8.0.46에서 네 시나리오가 통과했습니다. [검사 범위](db/tests/README.md#testcontainers-통합-검사)
 - Codex — Flyway로 스키마 이력을 관리합니다. `V1__schema.sql`과 전국 참조 데이터 `V2`~`V4`를 신규 DB에 적용하고 기존 DB는 `V4`를 기준으로 등록합니다. 격리 MySQL 8.0.46에서 신규 설치·재실행·기존 데이터 보존과 불완전한 DB 거절을 검증했습니다. [적용 안내](db/migrations/README.md#flyway로-적용하기)
 
 ### 2026-11-27
