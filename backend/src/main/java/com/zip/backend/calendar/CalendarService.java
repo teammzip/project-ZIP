@@ -51,7 +51,7 @@ public class CalendarService {
 
     // ---------- 일정 ----------
 
-    public List<Map<String, Object>> events(long userId, String from, String to) {
+    public List<CalendarEventResponse> events(long userId, String from, String to) {
         LocalDate start = null, end = null;
         if (from != null || to != null) {
             start = date(from, "from");
@@ -63,14 +63,14 @@ public class CalendarService {
         return repository.events(userId, start, end, EVENTS_MAX).stream().map(CalendarService::event).toList();
     }
 
-    public List<Map<String, Object>> search(long userId, String q) {
+    public List<CalendarEventResponse> search(long userId, String q) {
         var keyword = q == null ? "" : q.strip();
         if (keyword.isEmpty() || keyword.length() > 40) throw new ApiException(400, "검색어는 1~40자로 입력해 주세요.");
         return repository.search(userId, keyword, SEARCH_MAX).stream().map(CalendarService::event).toList();
     }
 
     @Transactional
-    public Map<String, Object> createEvent(long userId, EventInput input) {
+    public CalendarEventResponse createEvent(long userId, EventInput input) {
         if (input == null) throw new ApiException(400, "일정 내용을 보내 주세요.");
         repository.ensureDefaults(userId);
         if (repository.countEvents(userId) >= EVENTS_MAX) throw new ApiException(400, "일정은 " + String.format("%,d", EVENTS_MAX) + "개까지 만들 수 있어요.");
@@ -81,7 +81,7 @@ public class CalendarService {
     }
 
     @Transactional
-    public Map<String, Object> updateEvent(long userId, String eventId, EventInput input) {
+    public CalendarEventResponse updateEvent(long userId, String eventId, EventInput input) {
         long id = id(eventId, "일정");
         var before = repository.event(userId, id).orElseThrow(() -> notFound("일정"));
         if (input == null) throw new ApiException(400, "바꿀 내용을 보내 주세요.");
@@ -292,18 +292,18 @@ public class CalendarService {
         return new ApiException(404, what + "을(를) 찾을 수 없어요.");
     }
 
-    private static Map<String, Object> event(CalendarRepository.EventRow e) {
-        var result = new LinkedHashMap<String, Object>();
-        result.put("id", Long.toString(e.id()));
-        result.put("date", e.date().toString());
-        result.put("time", e.time() == null ? "" : e.time().toString().substring(0, 5));
-        result.put("title", e.title());
-        result.put("category", e.category());
-        result.put("done", e.done());
-        result.put("source", e.source());
-        result.put("anniv", e.anniv());
-        result.put("yearly", e.yearly());
-        return result;
+    private static CalendarEventResponse event(CalendarRepository.EventRow e) {
+        return new CalendarEventResponse(
+            Long.toString(e.id()),
+            e.date().toString(),
+            e.time() == null ? "" : e.time().toString().substring(0, 5),
+            e.title(),
+            e.category(),
+            e.done(),
+            e.source(),
+            e.anniv(),
+            e.yearly()
+        );
     }
 
     private static Map<String, Object> preset(CalendarRepository.PresetRow p) {

@@ -68,7 +68,7 @@ flowchart LR
 
 ### DTO 적용 검토
 
-2026-11-28에 로컬 `backend`의 `0a25818`에서 컨트롤러·서비스와 프론트 타입을 대조한 여섯 영역에, [PR #153](https://github.com/teammzip/project-ZIP/pull/153)의 지도·장소 리뷰 응답을 추가했습니다. 알림 목록 DTO는 `6c6079e`를 기준으로 작업 트리에 적용했습니다.
+2026-11-28에 로컬 `backend`의 `0a25818`에서 컨트롤러·서비스와 프론트 타입을 대조한 여섯 영역에, [PR #153](https://github.com/teammzip/project-ZIP/pull/153)의 지도·장소 리뷰 응답을 추가했습니다. 이후 `5574d0a`에서 알림 목록 DTO를 확인하고 해당 커밋을 기준으로 일정 응답 DTO를 적용했습니다.
 
 | 상태 | 경계 | 적용 이유 |
 | --- | --- | --- |
@@ -80,6 +80,7 @@ flowchart LR
 | 적용 완료 | 월급 설정·설문 월급 초안 응답 | 마이페이지 수입 정보의 조회·저장에 `SalarySettingsResponse`를 사용합니다. [월급 설정 응답 DTO](fixed-expenses.md#월급-설정-응답-dto) |
 | 적용 완료 | 지도·장소 리뷰 응답 11곳 (2026-11-27) | 장소 목록·분류·AI 검색·저장 리스트·카카오 즐겨찾기·지도 설정은 `PlaceResponse`와 그 안의 `record`로 바꿨습니다. 리뷰 목록·별점 요약·관리자 리뷰 신고는 `PlaceReviewResponse`로 바꿨습니다. 장소의 주소·전화·영업시간·별점과 작성자 프로필은 값이 없으면 키를 생략하지 않고 `null`을 보냅니다. 응답 모양 테스트를 바꾸기 전에 만들어 같은 테스트로 확인했습니다. 임시 MySQL 8.0에서 바꾸기 전·후 서버의 응답 24개를 비교한 결과, 칸 순서 말고는 같았습니다. 지도 설정은 MySQL 전용 문법이라 이 비교로 확인했습니다. [지도 응답 DTO](map-place-ids.md#지도-응답-dto) |
 | 적용 완료 | 알림 목록 응답 (2026-11-28) | [알림 목록 DTO와 기존 응답 계약](calendar-notifications.md#알림-목록-응답-dto-검토) |
+| 적용 완료 | 일정 목록·검색·등록·수정 응답 (2026-11-28) | [공통 일정 응답 DTO와 기존 응답 계약](calendar-notifications.md#일정-응답-dto) |
 
 로그인·가입·일정·일반 메모와 가계부 분류 요청은 기존 `record`를 활용할 수 있습니다. 약관 응답도 이미 타입이 있습니다. 회원 게시글 수처럼 작은 고정 응답과 월별 수입 합계처럼 월이 키인 `Map<String, Long>`은 현재 표현으로 충분합니다. 내부 JDBC 행과 서비스 값은 공개 응답에서 의미나 필드가 달라질 때 분리합니다. 프로필 PATCH는 필드 생략과 명시적 `null`을 구별하는 현재 파서를 유지하는 것이 적합합니다. [일반 메모 입력](../../backend/src/main/java/com/zip/backend/memo/MemoService.java) · [가계부 분류](../../backend/src/main/java/com/zip/backend/ledger/LedgerCategoryService.java) · [약관 응답](../../backend/src/main/java/com/zip/backend/legal/TermsController.java) · [프로필 PATCH](../../backend/src/main/java/com/zip/backend/auth/ProfilePatch.java)
 
@@ -91,7 +92,6 @@ flowchart LR
 
 | 우선순위 | 경계 | 함께 검증할 계약 |
 | --- | --- | --- |
-| 높음 | 일정 목록·검색·등록·수정 응답 | 같은 일정 형식을 공유합니다. 문자열 ID, 종일 일정의 `time: ""`, 미분류 `category: null`, 반복 필드와 서버의 `source`를 보존합니다. 완료 상태는 일반 수정 응답에 포함됩니다. [일정 응답 조립](../../backend/src/main/java/com/zip/backend/calendar/CalendarService.java) · [프론트 일정 동기화](../../frontend/src/features/life/calendarSync.ts) |
 | 높음 | 메모 목록·저장 응답 | 체크리스트 `items`, 가계부 연결·초안, 폴더 ID의 `null` 계약. [메모 응답 조립](../../backend/src/main/java/com/zip/backend/memo/MemoService.java#L210) · [프론트 메모 동기화](../../frontend/src/features/memo/sync.ts) |
 | 후속 | 관리자 회원·제재 이력과 고객센터 문의 응답 | 페이지의 `items`·`hasNext`, 제재 종료·해제 시각, 미답변 문의의 `answer: null`. [회원·제재 응답](../../backend/src/main/java/com/zip/backend/moderation/ModerationService.java#L47) · [문의 응답](../../backend/src/main/java/com/zip/backend/support/SupportService.java#L99) |
 | 후속 | AI 대화 목록·메시지 응답 | 메시지 ID·역할·본문·시각과 선택 `card`는 공통 응답 타입으로 표현할 수 있습니다. `card.data`는 카드 유형별 구조를 보존합니다. [AI 응답 조립](../../backend/src/main/java/com/zip/backend/ai/AiService.java#L210) |
