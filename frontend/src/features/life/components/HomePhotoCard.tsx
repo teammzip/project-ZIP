@@ -10,6 +10,7 @@ import styles from './HomePhotoCard.module.css'
 
 /* 홈 알림 카드 (팀장님 시안)
  * - HomeNotiCard: 맨 위 줄 메모 옆 알림 칸 (components/home-noti.js)
+ *   안 읽은 알림만 보여 줌. 읽은 알림은 "알림 전체 보기"(/my/noti)에서 봄
  *   "닫기"를 누른 알림은 오늘 하루 안 보임(localStorage 'zip-home-noti-closed'). 다음 날이면 다시 나옴 */
 const KEY = 'zip-home-noti-closed'
 /** 홈 알림 칸에 한 번에 보여 줄 알림 수 */
@@ -23,12 +24,13 @@ function readClosed(): string[] {
 /** 메모 옆 알림 칸: 알림이 세로로 쌓여 있고, 맨 위부터 "닫기"를 누르면 옆으로 날아가며 아래 알림이 올라옴.
  * 3개까지 보이고(팀장님 시안 #30) 나머지는 "+N개 더 있어요". 다 닫아도 칸은 남아 "새 알림이 없어요" + 닫은 알림 다시 보기 */
 export function HomeNotiCard() {
-  const { notis } = useNotis()
+  const { notis, notiRead } = useNotis()
   const notiOn = useLifeStore((s) => s.settings.notiOn)
   const navigate = useNavigate()
   const [closed, setClosed] = useState(readClosed)
   const [leaving, setLeaving] = useState<string | null>(null)
-  const list = notiOn ? notis.filter((x) => !closed.includes(x.id)) : []
+  // 홈에는 아직 안 읽은 알림만 (서버 알림은 서버의 읽음 표시, 모의 모드 알림은 이 브라우저의 읽음 기록 — useNotis 가 합쳐 줌)
+  const list = notiOn ? notis.filter((x) => !notiRead[x.id] && !closed.includes(x.id)) : []
   const shown = list.slice(0, MAX_SHOWN)
   const more = list.length - shown.length
 

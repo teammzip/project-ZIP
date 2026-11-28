@@ -18,7 +18,7 @@ ZIP은 자취 생활에 필요한 일정, 가계부, 동네 정보 등을 한곳
 | [지도 장소 식별자](topics/map-place-ids.md) | 장소의 키 형식, 카카오 검색과 DB 대체, 저장 리스트·리뷰 사진 |
 | [외부 서비스와 AI](topics/service-integrations.md) | 이메일·소셜, Gemini·고지서, 지도·GPS, 약관과 실제 연동 확인 범위 |
 | [데이터베이스와 검증](topics/database.md) | [신규 기능의 데이터 접근 계획](topics/database.md#신규-기능에-적용할-계획), 마이그레이션과 격리 MySQL 검증 |
-| [우리 동네 쓰레기 배출표](topics/trash-schedules.md) | 주소별 배출표 조회·알림과 공공데이터 출처 |
+| [우리 동네 쓰레기 배출표](topics/trash-schedules.md) | 주소별 배출표 조회와 공공데이터 출처, 없앤 배출일 알림의 이력 |
 
 ## 위키 사용
 

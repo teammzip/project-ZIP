@@ -14,7 +14,7 @@ ZIP의 프론트엔드는 React·TypeScript·Vite로 구성됩니다. 실제 서
 
 ## 시스템 구성
 
-운영에서는 화면과 API를 한 도메인에서 내보냅니다. 서버에 CORS 설정이 없고 refresh 쿠키가 같은 출처에서만 동작하기 때문입니다. 백엔드는 한 대만 띄웁니다. 예약 작업 4개와 남용 방지 횟수가 서버 메모리에 있기 때문입니다. 지도 타일·주소 검색·날씨는 서버를 거치지 않고 브라우저가 직접 호출합니다(2026-11-27 코드 기준). [운영 배포 설정](../../backend/README.md#운영-배포-설정) · [프론트 운영 빌드](../../frontend/README.md#운영-빌드) · [DB 관계도](../../db/README.md#관계도-erd)
+운영에서는 화면과 API를 한 도메인에서 내보냅니다. 서버에 CORS 설정이 없고 refresh 쿠키가 같은 출처에서만 동작하기 때문입니다. 백엔드는 한 대만 띄웁니다. 예약 작업 3개(2026-11-28 쓰레기 배출 알림 제거)와 남용 방지 횟수가 서버 메모리에 있기 때문입니다. 지도 타일·주소 검색·날씨는 서버를 거치지 않고 브라우저가 직접 호출합니다(2026-11-27 코드 기준). [운영 배포 설정](../../backend/README.md#운영-배포-설정) · [프론트 운영 빌드](../../frontend/README.md#운영-빌드) · [DB 관계도](../../db/README.md#관계도-erd)
 
 ```mermaid
 flowchart LR
@@ -27,7 +27,7 @@ flowchart LR
     end
     subgraph Backend["Spring Boot 백엔드 (1대)"]
         App["API · Spring Security · JWT"]
-        Jobs["예약 작업 4개<br/>계약 자동 등록 · 월세 알림 · 배출 알림 · 데이터 정리"]
+        Jobs["예약 작업 3개<br/>계약 자동 등록 · 월세 알림 · 데이터 정리"]
     end
     DB[("MySQL zip")]
     Files[("업로드 폴더 ZIP_UPLOAD_DIR")]

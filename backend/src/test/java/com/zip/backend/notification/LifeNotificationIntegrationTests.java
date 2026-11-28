@@ -109,7 +109,7 @@ class LifeNotificationIntegrationTests {
         assertEquals(1, rows("RENT"), "숨긴 알림도 같은 달의 발송 이력에 남음");
     }
 
-    /** 쓰레기 배출 알림은 TrashReminderService(기본 0시)가 만들고, 생활 알림은 건드리지 않음 */
+    /** 쓰레기 배출 알림은 2026-11-28 에 없앴지만, 그 전에 만들어진 알림은 알림함에 그대로 보이고 생활 알림 정리가 건드리지 않음 */
     @Test void trashReminderRowsAreLeftAlone() throws Exception {
         jdbc.update("INSERT INTO notifications (user_id, noti_type, title, body, link_view, ref_id, notify_at) VALUES (1, 'TRASH', '오늘은 쓰레기 배출일이에요', '생활쓰레기', NULL, 2, TIMESTAMP '2020-01-01 07:00:00')");
         notis().andExpect(jsonPath("$.items[?(@.type == 'TRASH')].title").value("오늘은 쓰레기 배출일이에요"));

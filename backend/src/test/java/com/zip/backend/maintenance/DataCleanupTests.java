@@ -2,7 +2,6 @@ package com.zip.backend.maintenance;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.zip.backend.notification.TrashReminderService;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -37,9 +36,9 @@ class DataCleanupTests {
         // 이메일 인증: 이틀 전 요청(지움) · 1시간 전 요청(남김 — 1시간 요청 제한에 쓰임)
         jdbc.update("INSERT INTO email_verifications (purpose, email, code_hash, requested_at, expires_at) VALUES ('SIGNUP', 'old@zip.com', 'h1', ?, ?)", ago(Duration.ofDays(2)), ago(Duration.ofDays(2)));
         jdbc.update("INSERT INTO email_verifications (purpose, email, code_hash, requested_at, expires_at) VALUES ('SIGNUP', 'new@zip.com', 'h2', ?, ?)", ago(Duration.ofHours(1)), ago(Duration.ofMinutes(57)));
-        // 알림: 100일 전 댓글 알림(지움) · 100일 전 "배출 정보 없음" 안내(남김 — 한 번만 보내는 기록) · 10일 전(남김)
+        // 알림: 100일 전 댓글 알림(지움) · 100일 전 예전 "배출 정보 없음" 안내(지움 — 쓰레기 알림을 없애서 다시 보낼 일 없음) · 10일 전(남김)
         jdbc.update("INSERT INTO notifications (user_id, noti_type, title, notify_at) VALUES (1, 'COMMUNITY', '오래된 댓글', ?)", ago(Duration.ofDays(100)));
-        jdbc.update("INSERT INTO notifications (user_id, noti_type, title, ref_id, notify_at) VALUES (1, 'TRASH', ?, 3, ?)", TrashReminderService.NO_DATA_TITLE, ago(Duration.ofDays(100)));
+        jdbc.update("INSERT INTO notifications (user_id, noti_type, title, ref_id, notify_at) VALUES (1, 'TRASH', '배출 정보가 없어요', 3, ?)", ago(Duration.ofDays(100)));
         jdbc.update("INSERT INTO notifications (user_id, noti_type, title, notify_at) VALUES (1, 'TRASH', '오늘은 쓰레기 배출일이에요', ?)", ago(Duration.ofDays(10)));
     }
 
@@ -47,10 +46,10 @@ class DataCleanupTests {
         var result = service.cleanup(NOW);
         assertEquals(2, result.sessions());
         assertEquals(1, result.emailVerifications());
-        assertEquals(1, result.notifications());
+        assertEquals(2, result.notifications());
         assertEquals(List.of("c", "d"), jdbc.queryForList("SELECT refresh_token_hash FROM auth_sessions ORDER BY refresh_token_hash", String.class));
         assertEquals(List.of("new@zip.com"), jdbc.queryForList("SELECT email FROM email_verifications", String.class));
-        assertEquals(List.of(TrashReminderService.NO_DATA_TITLE, "오늘은 쓰레기 배출일이에요"),
+        assertEquals(List.of("오늘은 쓰레기 배출일이에요"),
             jdbc.queryForList("SELECT title FROM notifications ORDER BY id", String.class));
         // 다시 돌려도 더 지울 것이 없음
         assertEquals(0, service.cleanup(NOW).total());

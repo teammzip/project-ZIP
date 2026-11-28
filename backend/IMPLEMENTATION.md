@@ -198,7 +198,7 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 
 ## 일정
 
-`com.zip.backend.calendar` (CalendarController · CalendarService · CalendarRepository · CalendarDefaults). 표는 `events` · `event_categories` · `event_presets` (DB 변경 없음) · `trash_schedules`(구조 변경 `20261121_05` · `06`, 아래 [쓰레기 배출표 · 배출일 알림](#쓰레기-배출표--배출일-알림)). 규칙은 `frontend/API.md` 3장과 같아요.
+`com.zip.backend.calendar` (CalendarController · CalendarService · CalendarRepository · CalendarDefaults). 표는 `events` · `event_categories` · `event_presets` (DB 변경 없음) · `trash_schedules`(구조 변경 `20261121_05` · `06`, 아래 [쓰레기 배출표](#쓰레기-배출표)). 규칙은 `frontend/API.md` 3장과 같아요.
 
 | API | 현재 동작 |
 |---|---|
@@ -230,8 +230,8 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 - 알릴 시각은 초 단위로 내림해서 저장해요 (MySQL DATETIME 반올림으로 "미래 알림"처럼 숨지 않게).
 - **일정 알림** (`LifeNotificationService`): 목록을 볼 때 오늘부터 3일 뒤까지 갱신해요. 회원 행 잠금으로 같은 회원의 동시 요청을 처리하고, 종류 · `ref_id` · `link_view`로 읽거나 지운 이력까지 대조해요. 일정이 바뀌면 안 읽은 알림을 정리하거나 제목과 내용을 갱신해요.
 - **월세 알림** (`RentReminderScheduler`): 1분마다 납부 기한이 0~3일 남은 이번 달 미납 월세 기록을 확인해요. 회원 잠금으로 중복 생성을 막고 납부 처리 · 계약 변경과 같은 순서로 처리해요. `link_view`는 `budget`, `ref_id`는 납부 대상 연월(`YYYYMM`)이에요. 기존 날짜 링크와 삭제 이력도 같은 달로 대조해요. 납부가 확인되면 목록에서 안 읽은 해당 알림을 숨겨요.
-- **쓰레기 배출일 알림** (`TrashReminderService` · `TrashReminderScheduler`): 배출일 0시에 `TRASH` 알림을 만들어요. 아래 [쓰레기 배출표 · 배출일 알림](#쓰레기-배출표--배출일-알림) 참고.
-- **검증**: `NotificationIntegrationTests`, `LifeNotificationIntegrationTests`, `RentReminderTests`, `TrashReminderTests`에서 생성 · 갱신 · 읽음 · 삭제와 종류별 생성 경로를 확인해요.
+- **쓰레기 배출일 알림**: 2026-11-28 에 없앴어요. 배출 요일은 일정 화면의 **우리 동네 배출표 보기**([쓰레기 배출표](#쓰레기-배출표))로 봐요. 그 전에 만든 `TRASH` 알림은 알림함에 그대로 보이고, 다른 알림처럼 90일이 지나면 정리돼요. `notifications.noti_type` 의 `TRASH` 값은 이 예전 알림 때문에 남겨 둬요.
+- **검증**: `NotificationIntegrationTests`, `LifeNotificationIntegrationTests`, `RentReminderTests`에서 생성 · 갱신 · 읽음 · 삭제와 종류별 생성 경로를 확인해요.
 
 ## 오래된 데이터 정리
 
@@ -241,7 +241,7 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 |---|---|---|
 | `auth_sessions` | 만료됐거나 로그아웃한 지 하루 지난 세션 | 세션 행이 없으면 그 토큰은 무효 — 이미 만료 · 로그아웃이라 결과가 같음 |
 | `email_verifications` | 요청한 지 하루 지난 인증 | 인증번호 3분 · 인증 완료 값 30분 · 요청 제한(1시간 10번)보다 김 |
-| `notifications` | 알릴 시각이 90일 지난 알림(읽음 여부 무관) | 일정 · 월세 · 쓰레기 알림의 중복 방지는 최근 날짜만 봄. **쓰레기 "배출 정보가 없어요" 안내는 제외**(한 번만 보내는 기록이라 지우면 다시 감) |
+| `notifications` | 알릴 시각이 90일 지난 알림(읽음 여부 무관) | 일정 · 월세 알림의 중복 방지는 최근 날짜만 봄. 예전 쓰레기 알림 · "배출 정보가 없어요" 안내도 다시 보낼 일이 없어서 같이 지움(2026-11-28 부터) |
 
 - 설정: `zip.cleanup.enabled`(`DATA_CLEANUP_ENABLED`, 기본 true, 테스트는 false) · `zip.cleanup.notification-days`(`NOTIFICATION_KEEP_DAYS`, 기본 90).
 - **검증**: `DataCleanupTests`(지울 것 · 남길 것 · 두 번 실행해도 같음). 실제 MySQL 에서 같은 조건을 개수 세기로 확인.
@@ -258,9 +258,9 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 - **목록 기준은 하나**: 프론트 `features/auth/data/regions.ts`. `db/tools/trash_import.py` 가 지역 마이그레이션(`20261122_01`)을, `db/tools/region_neighbors_import.py` 가 이웃 마이그레이션(`20261122_04`)과 프론트 이웃 목록(`community/data/neighbors.ts`, 모의 모드용)을 만들어요. 어긋나면 `frontend/tests/region-data-sync.test.mjs` 가 실패.
 - **검증**: `RegionApiIntegrationTests` 2개(로그인 없이 목록 · 시 · 도 먼저, 이웃 · 없는 번호 404).
 
-## 쓰레기 배출표 · 배출일 알림
+## 쓰레기 배출표
 
-`com.zip.backend.notification` (TrashReminderService · TrashReminderScheduler), 주소 → 동네는 `com.zip.backend.auth.RegionMatcher`. 일정 화면에서 **우리 동네 배출표 보기**를 펼칠 때 `GET /api/trash-schedules/me`로 읽기 전용 배출표를 조회해요.
+`com.zip.backend.calendar` (`CalendarService` 의 내 배출표 조회), 주소 → 동네는 `com.zip.backend.auth.RegionMatcher`. 일정 화면에서 **우리 동네 배출표 보기**를 펼칠 때 `GET /api/trash-schedules/me`로 읽기 전용 배출표를 조회해요. 배출일 알림(`TrashReminderService` · `TrashReminderScheduler`)은 2026-11-28 에 없앴어요.
 
 | 표 | 내용 | 넣는 법 |
 |---|---|---|
@@ -270,25 +270,14 @@ H2 테스트는 실제 MySQL 전체 스키마/동시성 검증을 대신하지 �
 - **출처**: 행정안전부 「전국생활쓰레기배출정보표준데이터」 (공공데이터포털 15025450, 이용허락범위 제한 없음). CSV → SQL 변환은 `db/tools/trash_import.py`, 변환 규칙(마을 장소 한 문구 · 종료 시각 안 넣음 · 동(洞) 구분 없음)은 `db/README.md` "전국 지역 · 쓰레기 배출표 · 주변 동네".
 - **배출 정보가 없는 시 · 군 · 구 13곳**: 서울 강동구 · 도봉구, 인천 중구 · 동구 · 서구, 경기 고양시 · 광주시, 강원 속초시 · 화천군, 충북 청주시, 충남 공주시 · 예산군, 전북 남원시.
 
-**알림 만드는 규칙** (`TrashReminderService.sendDue`, 스케줄러가 서버 시작 30초 뒤부터 1분마다 불러요)
+**배출표를 찾는 규칙** (`GET /api/trash-schedules/me`)
 
-1. **대상**: 알림을 켠 회원(`user_settings.noti_on`). 주소는 마이페이지 내 집 주소(`user_settings.home_address`)로 먼저 찾고, 비었거나 동네를 못 찾으면(직접 입력이라 시군구가 빠지는 등) 회원 주소(`users.address` — 주거 설문 · 동네 인증으로 정함)로 다시 찾아요(`RegionMatcher.matchFirst`, 배출표 화면과 같은 규칙).
-2. **주소 → 시 · 군 · 구**: `RegionMatcher`. 시 · 도는 짧은 이름 · 예전 이름(광주 · 전남 → 전남광주)도 알아보고, 중구 · 동구처럼 여러 곳에 있는 이름은 주소에 시 · 도가 있어야 해요. 못 찾으면 아무것도 안 보내요.
-3. **배출일 알림**: 그날(한국 시간) 0시부터 그날 안에 한 번, 오늘 요일이 든 종류가 있으면 `TRASH` 알림. 제목 "오늘은 쓰레기 배출일이에요", 내용 예 `생활쓰레기 · 음식물 · 18:00부터 · 내 집 혹은 내 점포 앞`.
-   - 종류마다 시각이 다르면 `생활쓰레기 18:00 · 재활용 20:00부터`. `00:00` 은 "시간 제한 없음"과 섞여 있어서 시각을 빼요.
-   - 장소가 여러 곳(마을 · 거점마다 다른 군 지역)이면 장소 대신 `배출장소는 사는 곳마다 달라요`.
-   - `notify_at` = 그날 0시, `ref_id` = 동네 번호, `link` 없음(이동할 화면 없음).
-4. **같은 날 두 번 안 만듦**: (회원, `TRASH`, 그날 0시) 알림이 있으면 건너뛰어요. 서버가 0시에 꺼져 있었으면 켜진 뒤 그날 안에 만들어요(`notify_at` 은 그대로 0시).
-5. **배출표가 아예 없는 동네**: "우리 동네는 쓰레기 배출 정보가 없어요" 안내를 (회원, 동네)마다 **한 번만** 보내고(지워도 다시 안 옴), 그 뒤로는 아무것도 안 보내요. 주소를 다른 동네로 바꾸거나 그 동네 배출표가 생기면 다시 판단해요.
-6. **조회 줄이기**: 한 번 확인할 때 배출표는 동네마다 한 번만 읽고, 오늘 보낼 것이 없던 (회원, 주소)는 그날 다시 찾지 않아요(서버 메모리, 날짜가 바뀌면 비움).
+1. **주소**: 마이페이지 내 집 주소(`user_settings.home_address`)로 먼저 찾고, 비었거나 동네를 못 찾으면(직접 입력이라 시군구가 빠지는 등) 회원 주소(`users.address` — 주거 설문 · 동네 인증으로 정함)로 다시 찾아요(`RegionMatcher.matchFirst`).
+2. **주소 → 시 · 군 · 구**: `RegionMatcher`. 시 · 도는 짧은 이름 · 예전 이름(광주 · 전남 → 전남광주)도 알아보고, 중구 · 동구처럼 여러 곳에 있는 이름은 주소에 시 · 도가 있어야 해요.
 
-| 설정 (`application.properties`) | 환경 변수 | 기본 | 설명 |
-|---|---|---|---|
-| `zip.trash.reminder.enabled` | `TRASH_REMINDER_ENABLED` | `true` | `false` 면 스케줄러를 만들지 않아요. 테스트(`application-test.properties`)는 `false` |
-| `zip.trash.reminder-hour` | `TRASH_REMINDER_HOUR` | `0` | 알림 시각(한국 시간, 0 = 배출일 자정). 이 시각 전에는 아무것도 안 해요 |
-
-- **한계**: 서버를 여러 대 띄우면 같은 회원에게 두 번 갈 수 있어요(지금은 한 대 기준, 늘리면 DB 잠금 필요). 같은 장소인데 동(洞)마다 요일이 다른 동네(예: 서울 성북구)는 일부 동에 안 맞을 수 있어요(동 단위는 보류).
-- **검증**: `TrashReminderTests` 7개(0시 한 번 · 늦게 켜져도 그날 안 · 같은 날 주소 등록 · 시각 설정 · 가입 주소 · 정보 없는 동네 안내 한 번 · 알림 문구) + `CalendarIntegrationTests` 배출표 1개 + `RegionMatcherTests` 5개. 실제 DB(249개 지역 · 6,218줄)로 배출표 API 확인(2026-11-21), 알림 만들기는 H2 테스트로 확인.
+- **한계**: 같은 장소인데 동(洞)마다 요일이 다른 동네(예: 서울 성북구)는 일부 동에 안 맞을 수 있어요(동 단위는 보류).
+- **검증**: `CalendarIntegrationTests` 배출표 1개 + `RegionMatcherTests` 5개. 실제 DB(249개 지역 · 6,218줄)로 배출표 API 확인(2026-11-21).
+- **없앤 배출일 알림 (2026-11-21 ~ 11-28)**: 예약 작업이 1분마다 확인해 배출일(처음엔 아침 7시, 11-22 부터 0시)에 `TRASH` 알림을 만들었어요. 배출표 보기가 생겨서 2026-11-28 에 없앴어요. 당시 규칙은 위키 `trash-schedules.md` "배출일 알림"과 Git 이력(`git log -- backend/src/main/java/com/zip/backend/notification/TrashReminderService.java`)에 있어요.
 
 ## 공지사항
 

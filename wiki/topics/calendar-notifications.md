@@ -13,12 +13,12 @@
 
 ## 알림 생성과 읽음 상태
 
-알림은 알릴 시각에서 90일(설정 `zip.cleanup.notification-days`)이 지나면 읽음 여부와 관계없이 서버가 6시간마다 지웁니다. 단 쓰레기 "배출 정보가 없어요" 안내는 (회원, 동네)마다 한 번만 보내는 기록이라 지우지 않습니다(2026-11-24). [오래된 데이터 정리](../../backend/src/main/java/com/zip/backend/maintenance/DataCleanupService.java)
+알림은 알릴 시각에서 90일(설정 `zip.cleanup.notification-days`)이 지나면 읽음 여부와 관계없이 서버가 6시간마다 지웁니다. 2026-11-24부터 쓰레기 "배출 정보가 없어요" 안내는 지우지 않았지만, 2026-11-28 배출일 알림을 없애면서 이 예외도 없앴습니다([배출일 알림](trash-schedules.md#배출일-알림)). [오래된 데이터 정리](../../backend/src/main/java/com/zip/backend/maintenance/DataCleanupService.java)
 
 | 종류 | 생성 시점과 표시 |
 | --- | --- |
 | 일정·기념일 | 알림 목록 조회 시 오늘부터 3일 뒤까지 갱신합니다. 일정이 바뀌거나 완료되면 관련 미확인 알림을 갱신하거나 정리합니다. 반복 기념일은 발생 날짜별로 구분합니다. [일정 알림](../../backend/src/main/java/com/zip/backend/notification/LifeNotificationService.java) |
-| 월세·배출일 | [월세 알림](fixed-expenses.md#월세-알림) · [배출일 알림](trash-schedules.md#배출일-알림). 배출표 조회와 배출일 알림은 내 집 주소로 시·군·구를 먼저 찾고 회원 주소를 다음으로 확인합니다. 가입 시 주소 입력은 선택입니다. 두 주소 모두 시·군·구를 확인할 수 없으면 배출표 화면에 주소 안내를 표시합니다. [회원가입 주소 계약](../../frontend/API.md#회원가입) · [회원 주소 변경 계약](../../frontend/API.md#회원-주소-변경) · [배출표 조회와 안내](trash-schedules.md) |
+| 월세·배출일 | [월세 알림](fixed-expenses.md#월세-알림). 배출일 알림은 2026-11-28에 없앴습니다([배출일 알림](trash-schedules.md#배출일-알림)). 배출표 조회는 내 집 주소로 시·군·구를 먼저 찾고 회원 주소를 다음으로 확인합니다. 가입 시 주소 입력은 선택입니다. 두 주소 모두 시·군·구를 확인할 수 없으면 배출표 화면에 주소 안내를 표시합니다. [회원가입 주소 계약](../../frontend/API.md#회원가입) · [회원 주소 변경 계약](../../frontend/API.md#회원-주소-변경) · [배출표 조회와 안내](trash-schedules.md) |
 | 댓글·운영 | 댓글·답글, 관리 조치, 문의 답변, 공지 등 해당 동작에서 생성합니다. [커뮤니티와 운영](community-operations.md) · [알림 서비스](../../backend/src/main/java/com/zip/backend/notification/NotificationService.java) |
 
-`GET /api/notifications`는 본인 알림을 `status`(`all`, `unread`, `read`)로 필터링하고 `{ items, unreadCount }`를 반환합니다. `PATCH /api/notifications/read`에 빈 `ids` 배열을 보내면 전체를 읽음 처리합니다. `DELETE /api/notifications`는 읽은 알림만 삭제합니다. 홈 위젯의 당일 숨김은 현재 브라우저에 보관되는 화면 설정입니다. [알림 API 계약](../../frontend/API.md#6-알림-) · [알림 컨트롤러](../../backend/src/main/java/com/zip/backend/notification/NotificationController.java)
+`GET /api/notifications`는 본인 알림을 `status`(`all`, `unread`, `read`)로 필터링하고 `{ items, unreadCount }`를 반환합니다. `PATCH /api/notifications/read`에 빈 `ids` 배열을 보내면 전체를 읽음 처리합니다. `DELETE /api/notifications`는 읽은 알림만 삭제합니다. 홈 알림 칸은 안 읽은 알림만 보여 주고(2026-11-28, 읽은 알림은 알림 전체 보기에서 확인), 홈 위젯의 당일 숨김은 현재 브라우저에 보관되는 화면 설정입니다. [홈 알림 칸](../../frontend/src/features/life/components/HomePhotoCard.tsx) [알림 API 계약](../../frontend/API.md#6-알림-) · [알림 컨트롤러](../../backend/src/main/java/com/zip/backend/notification/NotificationController.java)

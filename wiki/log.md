@@ -417,6 +417,27 @@
 - 병합 후 실행 JAR과 격리 MySQL에서 합성 검색어 40개를 다시 실행했습니다. API 요청 369건의 공개 범위 위반은 0건이었고, 복합어 평가의 기대 글 5개가 모두 상위 5개에 들었습니다. 결과가 없어야 하는 복합어 검색 5개는 모두 0건을 반환했습니다. [복합어 평가 사례](../db/tests/community-search/multiword-spacing-holdout-v1.json) · [독립 평가 사례](../db/tests/community-search/independent-v1.json)
 - 백엔드 전체 369개가 실패·오류·건너뜀 없이 통과했습니다. 실행 JAR 빌드와 OpenAPI 경로 115개의 YAML 구문 및 중복 키 검사도 통과했습니다. [백엔드 검증 명령](../.github/workflows/test.yml)
 
+## [2026-11-26] record | CI 액션 버전 올림
+- PR #147에서 [테스트 워크플로](../.github/workflows/test.yml)가 처음 실행되어 backend·frontend·db가 모두 통과했고, `actions/setup-java@v4`·`actions/setup-node@v4`가 Node.js 20 기반(지원 종료)이라는 경고 4건이 나왔습니다. `setup-java`·`setup-node`·`upload-artifact`를 v5로 올리고 [구현·검증 현황](topics/project-status.md#구현해야-될-부분)의 CI 설명을 갱신했습니다.
+
+## [2026-11-26] record | 배포 전 전체 점검
+- 보안 설정·환경변수·토큰 저장·사진 접근·탈퇴·오류 응답·입력 제한·남용 제한의 저장 위치를 코드와 대조했습니다. 운영 빌드의 가짜 API 기본값, 배포 구성(같은 주소 권장·배포 파일 없음), 커뮤니티 쓰기 횟수 제한 없음, 메모리 기반 제한을 [구현·검증 현황](topics/project-status.md#구현해야-될-부분)에 기록했습니다. 코드는 바꾸지 않았습니다.
+
+## [2026-11-27] record | dev PR #148~#150 반영 후 배포 점검 항목 갱신
+- dev `731e329`을 받으면서 [구현·검증 현황](topics/project-status.md#구현해야-될-부분)의 배포 전 점검 항목을 갱신했습니다. 운영 빌드의 가짜 API 문제는 `871f95e`에서 해결됐고, 배포 구성 전제와 환경변수는 [운영 배포 설정](../backend/README.md#운영-배포-설정)에 정리돼 있습니다. 병합 중 CI 설명 충돌은 dev의 인증 메일 설명과 이 작업의 CI 첫 실행 기록을 함께 남기는 방식으로 정리했습니다.
+
+## [2026-11-27] record | 처리방침 마이그레이션 로컬 적용과 남은 항목 재확인
+- 로컬 개발 DB에 `20261127_01_terms_privacy_transfers.sql`을 적용했습니다. 처리방침 본문만 바뀌었고, 새 DB에 `schema.sql`을 넣어 약관 3종 본문이 같은지 대조했습니다. 적용 전에는 DB를 전체 백업했습니다.
+- dev `731e329` 기준으로 남은 항목을 다시 확인했습니다. 처리방침 수집 항목에서 빠진 부분을 [구현·검증 현황](topics/project-status.md#구현해야-될-부분)에 기록했습니다. 비밀번호 재설정 시 모든 세션을 끝내는 것과, 저장소 스키마·마이그레이션에 회원 계정을 넣지 않는 것도 확인했습니다.
+
+## [2026-11-28] record | 코드베이스 전체 분석 결과 기록
+- dev `731e329`를 기준으로 백엔드 엔드포인트 156개를 프론트 호출과 대조했습니다. 함께 보안·토큰·예약 작업·데이터 흐름도 코드에서 확인했습니다. 새로 확인한 항목은 [구현·검증 현황](topics/project-status.md#구현해야-될-부분)에 기록했습니다. AI 질문 대기 시간 불일치, 조회수 중복 증가, 예약 작업 실패 기록, 화면이 부르지 않는 API 17개, 목록 동기화의 거절 처리, 미연결 사진 정리, 미사용 뷰입니다. 코드는 바꾸지 않았습니다.
+
+## [2026-11-28] record | 쓰레기 배출일 알림 제거와 홈 알림 칸 정리
+- 사용자 결정으로 쓰레기 배출일 알림을 없앴습니다. 일정 화면의 우리 동네 배출표 보기가 있어 알림은 없어도 된다는 판단입니다. 서버의 예약 작업과 테스트, 설정을 지웠고, 오래된 알림 정리에서 "배출 정보가 없어요" 안내를 지우지 않던 예외도 없앴습니다. 설정 화면·내 집 주소 안내·소개 화면 문구도 고쳤습니다. 지난 동작은 [배출일 알림](topics/trash-schedules.md#배출일-알림)에 이력으로 남겼고, [일정·알림](topics/calendar-notifications.md), [앱 구조](topics/application.md), [구현·검증 현황](topics/project-status.md), [색인](index.md)도 갱신했습니다.
+- 홈 알림 칸이 읽은 알림까지 보여 주던 것을 안 읽은 알림만 보이게 고쳤습니다. 읽은 알림은 알림 전체 보기에서 봅니다. 새 테스트(`frontend/tests/home-noti-card.test.mjs`)는 고치기 전 코드에서는 실패하고 고친 코드에서는 통과하는 것을 확인했습니다. [일정·알림](topics/calendar-notifications.md)
+- 위키 누락 검사에 걸린 [계약 고정 지출](topics/fixed-expenses.md)·[데이터베이스](topics/database.md)·[커뮤니티](topics/community-operations.md)·[가계부와 메모](topics/ledger-memos.md)·[내 집 정보](topics/home-info.md)·[지도](topics/map-place-ids.md)·[외부 서비스](topics/service-integrations.md)에 이번 변경과의 관계(영향 있음·없음)를 확인해 적었습니다.
+
 ## [2026-11-28] record | Claude Code용 작업 규칙 파일 분리
 
 - Codex는 [AGENTS.md](../AGENTS.md)·[위키 AGENTS.md](AGENTS.md)를 읽고, Claude Code는 기본적으로 `CLAUDE.md`를 읽습니다. 2026-11-28 작업 대화에서 Claude Code 세션에 최상위 `AGENTS.md`가 처음부터 들어오지 않는 것을 확인했습니다.

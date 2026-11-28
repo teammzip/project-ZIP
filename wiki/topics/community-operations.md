@@ -8,6 +8,7 @@
 - 홈의 동네 인기 글은 본인 동네에서 조회수 순으로 집계합니다. 운영자가 지정하는 자취 꿀팁은 별도로 조회합니다. [커뮤니티 API](../../backend/src/main/java/com/zip/backend/community/CommunityController.java) · [게시글 집계](../../backend/src/main/java/com/zip/backend/community/CommunityRepository.java)
 - 게시글에는 본인 사진을 연결할 수 있고, 댓글·답글과 공감은 서버에 저장합니다. 글·댓글 신고는 신고 당시의 대상 내용을 보존하며, 운영자가 숨김·기각을 결정합니다. 다른 회원의 글·댓글 관리와 홈 꿀팁 지정은 관리자 권한이 필요합니다. [커뮤니티 서비스](../../backend/src/main/java/com/zip/backend/community/CommunityService.java) · [커뮤니티 관리 API](../../backend/src/main/java/com/zip/backend/community/AdminCommunityController.java)
 - 커뮤니티 화면은 동네 인증 뒤에만 열립니다. 서버 모드에서는 서버(DB)의 회원 동네와 인증 시각(`regionVerifiedAt`, 30일 유효)으로 판정합니다. 이 브라우저에 인증한 동네 이름이 없으면(다른 기기에서 인증했거나 브라우저 데이터를 지움) 로그인 응답의 회원 동네 이름(`region.fullName`을 `서울 중구`처럼 줄인 이름, 없으면 `region.name`)을 씁니다. 날씨·지도도 같은 동네를 씁니다([홈 날씨 위치](service-integrations.md#홈-날씨-위치)). 2026-11-26 전에는 브라우저의 동네 이름이 비면 서버에 인증이 있어도 다시 인증하라는 안내가 떴습니다. [입구](../../frontend/src/features/life/components/RegionAccessGate.tsx) · [인증 판정](../../frontend/src/features/life/derive.ts) · [판정 규칙](../../frontend/src/features/life/regionVerification.ts) · [판정 테스트](../../frontend/tests/region-verify-server.test.mjs)
+- 댓글·답글 알림(`COMMUNITY`)은 홈 알림 칸에서 안 읽은 것만 보입니다(2026-11-28). 같은 날 [알림 API 문서](../../frontend/API.md)의 알림 종류 설명에서 쓰레기 배출일을 뺐지만, 커뮤니티 표와 API는 바뀌지 않았습니다. [홈 알림 칸](../../frontend/src/features/life/components/HomePhotoCard.tsx)
 
 ### 본인 게시글 수
 
